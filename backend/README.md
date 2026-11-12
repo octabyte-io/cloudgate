@@ -67,7 +67,7 @@ configs that can no longer drift from each other. A dependency added to the
 place is `package.json`. What is *not* duplication is the pair the preset
 carries and the unit config deliberately omits (`logHeapUsage`,
 `workerIdleMemoryLimit`) or the ones they set to different values on purpose:
-`maxWorkers` is `2` on the integration side for the reasons below, and `"50%"`
+`maxWorkers` is sized to the machine on the integration side (up to 4, for the reasons below), and `"50%"`
 on the lock-free unit side, which runs no Postgres and no Nest app — and, since
 it became lock-free, `globalSetup`/`globalTeardown`/`reporters`, which the unit config carries
 in its own spelling rather than omitting. It arms the same stall watchdog
@@ -88,7 +88,7 @@ That floor is **not** the number this file used to give. "Roughly half a gigabyt
 
 **What retains it is Nest's DI container, and not this harness.** Twelve generated files through one worker, each doing one thing: requiring the whole `AppModule` graph into a fresh jest module registry retains **9.6 MB per file**, so jest reclaims the registry; `Test.createTestingModule({ imports: [AppModule] }).compile()` followed by `close()` retains **61.6 MB**; and the full `createTestApp()` + `teardown()` that every e2e file calls retains **65.2 MB**, i.e. 3.6 MB more than the injector alone. The real suites agree — regressing per-file retention on a file's test count over 35 within-worker steps gives `63.7 MB + 0.74 x tests` with an **r² of 0.013**, so the cost is flat per file and there are no worst-offender suites to bisect for. `teardown()`'s ordering was corrected in the same pass (`app.close()` before `db.$client.end()`, so a shutdown hook can still reach the database) and moved the retention from 64.7 to 63.6 MB per file, which is to say not at all.
 
-The integration cap is **2**, the number `ci.yml` already recorded these suites as requiring. It is no longer a memory setting — one shared server makes 4 affordable, and 4 finishes ~150s sooner — but 2 is the documented number and nothing yet argues for raising it.
+The integration cap is **sized to the machine, up to 4** (`test/utils/worker-budget.js`). It was 2, the number `ci.yml` once recorded these suites as requiring, and this paragraph used to say that one shared server made 4 affordable but nothing yet argued for raising it. The suite tripling did: a full run of 380 suites took about 70 minutes at 2 workers and 24 at 4 on a 4-core, 16 GB machine (2026-11-12), peaking at 8.6 GB for the whole machine, with no OOM and no `instanceof` starvation. A worker is mostly waiting on Postgres, so the cores, not the CPU each worker uses, are the limit. The budget allows 2.5 GB per worker after 2 GB for Postgres and jest, so a smaller machine gets fewer.
 
 What the cap does **not** buy is a green run. A full run reds one arbitrary suite roughly two times in three: a different suite each time, every one of them passing in isolation, usually a suite-level lifecycle-hook error with no individual test failure. That predates this harness — three runs of the container-per-suite code at the same cap reded 2 of 3 (`realtime`, `certificates`) against 3 of 5 here — so it is neither the shared server nor the worker count, and a single red suite is not evidence against whatever change is in the tree. The failures cluster where `afterAll` does work before restoring process-wide state: `session-address.e2e-spec.ts`, `session-address-untrusted.e2e-spec.ts` and `trusted-origins.e2e-spec.ts` all set `process.env.NODE_ENV` at module load and restore it *after* `await ctx.teardown()`, and `process.env` outlives a test file inside a worker — so a teardown that throws strands the mutation on every suite that worker runs next. That is where a real fix starts.
 
@@ -96,19 +96,21 @@ Two of the three full runs on 2026-09-07 drew that bad card, and both times it c
 
 That trail explains the **red suite**. It does not explain the run that hangs, and an earlier investigation assumed that it did. An `afterAll` is bounded: jest-circus times a hook with `hook.timeout || getState().testTimeout`, so one that never returns fails at 60s with `Exceeded timeout of 60000 ms for a hook` — loudly, and as a test result. Nor is worker shutdown the answer: `jest-worker`'s pool `end()` schedules a `forceExit` 500 ms after asking a worker to stop. What is genuinely unbounded is a worker that stops being scheduled at all, because `testTimeout` is a timer *inside* that worker; freeze one with `SIGSTOP` and jest waits forever with no output. `test/utils/stall-watchdog.ts` is what fails such a run, and it took **two** predicates to cover the shape that actually shows up. "Nothing has been reported for five minutes" misses a wedge entirely: the reporter touches the heartbeat on every test case result including a timed-out one, and every e2e file's per-test timeout is under the budget — 107 of the 115 set `jest.setTimeout(120_000)`, three set 180 s, five inherit 60 s — so a wedged suite reports liveness forever. The second predicate is per suite: one file in flight for five minutes fails the run with that file named, at ~3.8x the slowest suite three full runs have (`docker-ops.e2e-spec.ts`, **78.1 s**, the only one of 239 suite completions past 60 s). Both exit **124**. `test/utils/heartbeat-reporter.js` is what names the file, and its `forS` is as of the file's own `at` rather than now — the watchdog adds the difference, and so should you when you read it by hand.
 
-One run at a time per machine. `globalSetup` bounds a *run* — one server, however many suites — and
+A worker budget per machine. `globalSetup` bounds a *run* — one server, however many suites — and
 nothing in jest bounds a *machine*, so a fan-out of agents each invoking `jest` is back to a server and
-two workers apiece. The suite therefore takes `$TMPDIR/cloudgate-e2e-postgres.lock` before it starts
-anything, and a second run waits for the first instead of doubling the bill; a run killed between setup
-and teardown leaves a stale file, and the next run takes it once it sees the pid is dead.
-`CLOUDGATE_E2E_NO_LOCK=1` opts out, and should not be used to make a fan-out faster — two concurrent runs
-cost about what container-per-suite cost, which is the thing this replaced.
+a full set of workers apiece. The suite therefore holds slots before it starts anything: the machine has
+one per worker it has room for, and a run takes one per worker it can use, so a full run takes every
+slot while an agent's run of one file takes one. Several agents' small runs go at once; a full run waits
+for them and they for it. Slot 0 is `$TMPDIR/cloudgate-e2e-postgres.lock`, the others carry `.1` to `.3`,
+and `test-postgres.ts` says how one waiter at a time claims them so a big run is not starved. A run killed
+between setup and teardown leaves stale files, and the next run takes them once it sees the pid is dead.
+`CLOUDGATE_E2E_NO_LOCK=1` opts out, and should not be used to make a fan-out faster.
 
 Set `TEST_POSTGRES_URL` to run against a server that is already up (`postgresql://postgres:postgres@localhost:5432/postgres` for a local dev container) instead of starting one. Each suite still creates and drops its own database on it, so nothing already on that server is touched — but the tests then run against whatever major version it is.
 
 Three things about running them:
 
-- **Give the integration run `--maxWorkers=2`.** At default worker count it does not just slow down, it fails — starved suites die with `Right-hand side of 'instanceof' is not an object` and pass again in isolation. The flag has to reach jest directly, since `pnpm run … --` puts it behind a literal `--` where jest reads it as a path pattern:
+- **Never give the integration run jest's default worker count.** At that count it does not just slow down, it fails — starved suites die with `Right-hand side of 'instanceof' is not an object` and pass again in isolation. The preset sizes it (up to 4); to choose, set `CLOUDGATE_E2E_WORKERS`, or pass the flag to jest directly, since `pnpm run … --` puts it behind a literal `--` where jest reads it as a path pattern:
   ```bash
   pnpm exec jest --config ./test/jest-e2e.json --maxWorkers=2
   ```

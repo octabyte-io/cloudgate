@@ -25,9 +25,9 @@ palette, font or aesthetic. The console is an *Operate* surface: precision and r
 
 ## Running tests
 
-Run the test files your change touches, not the whole suite. A full e2e run takes about five
-minutes and peaks around 5 GB plus a Postgres container, and a machine-wide lock makes a second run
-wait rather than start a second Postgres.
+Run the test files your change touches, not the whole suite. A full e2e run takes about 24 minutes
+on a 4-core machine and peaks around 9 GB; CI runs it on every push, split eight ways. A machine-wide
+lock hands out one slot per worker, so runs of a file or two go at once and a full run waits for them.
 
 - A single red suite in a full run is usually flakiness: re-run it alone before treating it as your
   regression. A `ran out of memory` failure is a resource problem, not a red test.

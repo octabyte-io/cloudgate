@@ -16,8 +16,10 @@ Bare positional args are matched as regexes against the full path, which is why
 `test/app.e2e-spec.ts` sometimes selects nothing and sometimes selects a dozen
 files.
 
-Do not run several full suites in parallel. The machine-wide lock serialises
-them anyway, so a second run only waits.
+Do not run several full suites in parallel. The machine-wide lock gives a full
+run every slot, so a second one only waits. Runs of a file or two from parallel
+agents do go at once (see the lock below), and the full suite runs in CI on
+every push, split eight ways (`.github/workflows/e2e-shards.yml`).
 
 ## The lanes
 
@@ -47,25 +49,54 @@ All approximate; they move as specs are added.
 - **Unit**: a bit over 220 files and 3,000 tests; budget 30 s, more alongside a
   live e2e run (CPU, not the lock).
 - **Database**: 3 files, a few seconds. Budget wall clock, not jest's `Time:`.
-- **E2e**: over a hundred suites, a couple of thousand tests, about **5
-  minutes**, peaking at roughly **5 GB plus the Postgres container**.
+- **E2e**: 380 suites, nearly 6,000 tests. About **24 minutes** at 4 workers
+  on a 4-core, 16 GB machine, peaking at **8.6 GB for the whole machine**
+  (2026-11-12); about 70 minutes at 2. In CI, eight shards of about 48 suites
+  each.
 - **Per worker**: about 370 MB of heap on its first file, then roughly 75 MB
   more per file (Nest's DI container retains it). `workerIdleMemoryLimit:
   "1.5GB"` recycles a worker past that, about 2.2 GB of RSS.
-- **Workers**: the Docker configs cap `maxWorkers` at **2** through the preset;
-  the unit config uses `"50%"`. **Do not raise `maxWorkers`**;
-  `backend/README.md` says why.
-- **The machine-wide lock** (`$TMPDIR/cloudgate-e2e-postgres.lock`): one
-  Postgres-backed run at a time. A second run prints
+- **Workers**: the Docker configs fork as many as the machine has room for,
+  from 1 up to **4**: never more than its cores, and 2.5 GB per worker after
+  2 GB for Postgres and jest (`test/utils/worker-budget.js`, which says why).
+  A 2-vCPU, 7 GB CI runner gets 2; a 16 GB, 4-core laptop gets 4.
+  `CLOUDGATE_E2E_WORKERS=<n>` overrides it for every Docker lane. The unit
+  config uses `"50%"`. Do not go back to jest's default count: at 9 workers
+  on a 10-core, 16 GB machine, starved suites died with `Right-hand side of
+  'instanceof' is not an object` (`README.md`).
+- **The machine-wide lock** (`$TMPDIR/cloudgate-e2e-postgres.lock`, and
+  `….lock.1` to `….lock.3`): the machine has one slot per worker it has room
+  for, and a run takes one slot per worker it can use. A `--runTestsByPath`
+  run of one file takes one slot, so parallel agents running a file each go
+  at once; a full run takes every slot and waits for them. A run that cannot
+  get its slots prints
 
   ```
-  [e2e] another run holds …/cloudgate-e2e-postgres.lock; waiting rather than starting a second Postgres.
+  [e2e] other runs hold the e2e slots (…/cloudgate-e2e-postgres.lock); waiting for 4 rather than overloading the machine.
   ```
 
-  and waits; nothing is lost. A lock left by a killed run is taken over once
-  its pid is dead, so do not delete it by hand. The wait times out after 45
-  minutes. `CLOUDGATE_E2E_NO_LOCK=1` skips the lock; use it only on a machine
-  with real headroom, never to run several suites at once.
+  and waits; nothing is lost. One waiter at a time claims slots
+  (`….queue`), so a full run is not starved by a stream of small ones. A slot
+  left by a killed run is taken over once its pid is dead, so do not delete
+  the files by hand. The wait times out after 45 minutes.
+  `CLOUDGATE_E2E_NO_LOCK=1` skips the lock; use it only on a machine with real
+  headroom, never to run several suites at once.
+
+## What keeps a test cheap
+
+Three things the Docker lanes do that production does not, each because it
+cost every test time and bought a test nothing (measured 2026-11-12):
+
+- **A cheap password hash.** better-auth's scrypt costs about 85 ms per
+  sign-up or sign-in, a fifth to a third of an auth-heavy suite.
+  `test/utils/cheap-password-hash.ts`, in the preset's `setupFiles`, lowers
+  that one call's cost; the stored format and verification are unchanged.
+- **Quiet request logs.** `globalSetup` sets `LOG_LEVEL=warn` unless you set
+  it, since every request was otherwise pretty-printed. Set `LOG_LEVEL=info`
+  to see them while debugging a suite.
+- **A reset that names only the tables with rows.** `resetDb` truncates the
+  tables holding a row plus those owning a sequence, not all ~100: a truncate
+  costs per table named.
 
 ## A single red suite is not your regression
 

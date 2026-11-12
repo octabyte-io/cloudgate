@@ -61,14 +61,15 @@
  * relative to rootDir* rather than finding this file beside it.
  *
  * **`maxWorkers` and `workerIdleMemoryLimit` are load-bearing values, not
- * tidiness.** `backend/README.md` and `docs/testing.md` price
- * both: at the default worker count the integration run does not merely slow
- * down, starved suites die with `Right-hand side of 'instanceof' is not an
- * object`; and without the recycle one worker reached V8's 4288 MB ceiling and
- * OOMed at suite 109 of 114. Do not raise either one to make a run faster.
+ * tidiness.** `backend/README.md` and `docs/testing.md` price both: without
+ * the recycle one worker reached V8's 4288 MB ceiling and OOMed at suite 109
+ * of 114, and `utils/worker-budget.js` sizes the worker count to the machine's memory
+ * on the strength of that recycle. Do not remove the limit to make a run
+ * faster.
  */
 
 const { join } = require('node:path');
+const { e2eWorkers } = require('./utils/worker-budget');
 
 /** A path beside this file, absolute, so it reads the same from either root. */
 const here = (relative) => join(__dirname, relative);
@@ -105,7 +106,12 @@ module.exports = {
   // Likewise the stall watchdog: it is armed from `globalSetup` and reads the
   // heartbeat this reporter writes, so the pair has to travel together.
   reporters: ['default', here('utils/heartbeat-reporter.js')],
+  // A cheap password hash for every test file: better-auth's scrypt was a
+  // fifth to a third of an auth-heavy suite. The file says what it matches.
+  setupFiles: [here('utils/cheap-password-hash.ts')],
   logHeapUsage: true,
   workerIdleMemoryLimit: '1.5GB',
-  maxWorkers: 2,
+  // As many as the machine has room for, up to 4, or CLOUDGATE_E2E_WORKERS:
+  // `utils/worker-budget.js` says why and how it is measured.
+  maxWorkers: e2eWorkers(),
 };

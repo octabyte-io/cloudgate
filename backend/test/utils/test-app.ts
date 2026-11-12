@@ -474,10 +474,7 @@ export async function createTestApp(
 }
 
 async function resetDb(db: DrizzleDB): Promise<void> {
-  const result = await db.execute<{ tablename: string }>(
-    sql`select tablename from pg_tables where schemaname = 'public'`,
-  );
-  const tables = result.rows.map((row) => `"public"."${row.tablename}"`);
+  const tables = await tablesToEmpty(db);
   if (tables.length === 0) return;
   // Retried on a deadlock (40P01): the truncate locks every table in
   // `pg_tables` order, so any background statement still running — a
@@ -493,6 +490,69 @@ async function resetDb(db: DrizzleDB): Promise<void> {
       if (attempt >= 3 || !isDeadlock(error)) throw error;
     }
   }
+}
+
+/**
+ * The tables a truncate has to touch to leave the database as the template
+ * left it: every table holding a row, plus every table that owns a sequence.
+ *
+ * `truncate` costs per table named, not per row: Postgres gives each table and
+ * each of its indexes a new file, so naming all ~100 tables took about 100 ms
+ * on every test even when the test had written to five of them. A table with
+ * no rows is already empty, so leaving it out changes nothing, except for a
+ * sequence that a deleted row advanced. `restart identity` puts those back, so
+ * the tables owning a sequence (the `serial` columns) are always named.
+ *
+ * The list of tables and their sequences is read once per database and kept:
+ * the schema does not change during a suite. Whether a table holds a row is
+ * asked every time, in one statement of `exists` probes, each of which stops
+ * at the first row it finds.
+ */
+const schemaOf = new WeakMap<
+  DrizzleDB,
+  Promise<{ all: string[]; withSequence: Set<string> }>
+>();
+
+async function tablesToEmpty(db: DrizzleDB): Promise<string[]> {
+  let schema = schemaOf.get(db);
+  if (!schema) {
+    schema = readSchema(db);
+    schemaOf.set(db, schema);
+  }
+  const { all, withSequence } = await schema;
+  if (all.length === 0) return [];
+  const probes = all
+    .map(
+      (table) =>
+        `select '${table}' as tablename where exists (select 1 from "public"."${table}")`,
+    )
+    .join(' union all ');
+  const holding = await db.execute<{ tablename: string }>(sql.raw(probes));
+  const named = new Set(holding.rows.map((row) => row.tablename));
+  for (const table of withSequence) named.add(table);
+  return all
+    .filter((table) => named.has(table))
+    .map((table) => `"public"."${table}"`);
+}
+
+async function readSchema(
+  db: DrizzleDB,
+): Promise<{ all: string[]; withSequence: Set<string> }> {
+  const tables = await db.execute<{ tablename: string }>(
+    sql`select tablename from pg_tables where schemaname = 'public' order by tablename`,
+  );
+  const owners = await db.execute<{ tablename: string }>(
+    sql`select distinct t.relname as tablename
+          from pg_class s
+          join pg_depend d on d.objid = s.oid and d.deptype in ('a', 'i')
+          join pg_class t on t.oid = d.refobjid
+          join pg_namespace n on n.oid = t.relnamespace
+         where s.relkind = 'S' and n.nspname = 'public'`,
+  );
+  return {
+    all: tables.rows.map((row) => row.tablename),
+    withSequence: new Set(owners.rows.map((row) => row.tablename)),
+  };
 }
 
 /** SQLSTATE 40P01, on the pg error or on the Drizzle error wrapping it. */

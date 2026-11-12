@@ -7,10 +7,11 @@ import tseslint from 'typescript-eslint';
  * Linting the harness JS, the half of it that is a property rather than a
  * config edit.
  *
- * The harness has three hand-written CommonJS files — `test/octokit-resolver.js`
+ * The harness has four hand-written CommonJS files — `test/octokit-resolver.js`
  * (both Docker configs' `resolver`), `test/utils/heartbeat-reporter.js` (every
- * e2e run's reporter, and the source of the heartbeat the stall watchdog reads)
- * and `test/jest-preset.js` (everything those two configs share). Until
+ * e2e run's reporter, and the source of the heartbeat the stall watchdog reads),
+ * `test/jest-preset.js` (everything those two configs share) and
+ * `test/utils/worker-budget.js` (the worker count and the e2e slots). Until
  * this gate **nothing linted any of them**, and by two independent mechanisms:
  *
  * - `package.json`'s `scripts.lint` globbed `{ts,tsx}`, so eslint was never
@@ -79,6 +80,7 @@ const HARNESS_JS: readonly string[] = [
   'test/jest-preset.js',
   'test/octokit-resolver.js',
   'test/utils/heartbeat-reporter.js',
+  'test/utils/worker-budget.js',
 ];
 
 /** The two scripts that are the only way eslint is ever handed a file here. */
@@ -268,7 +270,7 @@ function typeAwareRules(): string[] {
  */
 describe('backend/eslint.config.mjs — the .js block and the glob that feeds it', () => {
   /** Regression one: `js` falling back out of either script's glob. */
-  it('is handed all three of them by both lint scripts', () => {
+  it('is handed all four of them by both lint scripts', () => {
     const missed = Object.fromEntries(
       LINT_SCRIPTS.map((script) => {
         const globbed = reachedBy(script);
@@ -279,7 +281,7 @@ describe('backend/eslint.config.mjs — the .js block and the glob that feeds it
     expect(missed).toEqual({ lint: [], 'lint:fix': [] });
   });
 
-  it('has no .js file under the lint glob that is not one of the three', () => {
+  it('has no .js file under the lint glob that is not one of the four', () => {
     const globbed = reachedBy('lint').filter((file) => file.endsWith('.js'));
 
     expect(globbed).toEqual([...HARNESS_JS]);
@@ -325,7 +327,7 @@ describe('backend/eslint.config.mjs — the .js block and the glob that feeds it
    * produce is a parse error and a rule crash — and both of those land at
    * `pnpm lint` time rather than here unless something asks.
    */
-  it('parses all three with no rule crashing on them', () => {
+  it('parses all four with no rule crashing on them', () => {
     expect(probe(HARNESS_JS).lint).toEqual({
       threw: null,
       fatal: [],
