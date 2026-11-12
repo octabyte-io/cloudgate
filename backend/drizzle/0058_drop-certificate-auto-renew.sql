@@ -1,0 +1,1 @@
+ALTER TABLE "certificate" DROP COLUMN "auto_renew";

@@ -1,0 +1,208 @@
+# Builds, smoke-checks and publishes the Cloudgate builder image
+# (ADR-0047): the one image every hosted cloud build starts from, in CodeBuild
+# on AWS and Cloud Build on Google. It is built from deploy/builder-image/image/
+# and published as
+#
+#   ghcr.io/octabyte-io/cloudgate-builder:<CLOUD_BUILDER_IMAGE_VERSION>
+#
+# where the version is the constant in backend/src/builders/cloud-builder-image.ts,
+# read from that file here, so the tag published and the tag the cloud-build
+# code pulls are one value. Moving the image is: change deploy/builder-image/image/,
+# bump the constant, merge to main.
+#
+# The order is the point. Nothing is published until the smoke check has built
+# a sample app of every kind (Dockerfile, buildpacks, Nixpacks, Railpack) with
+# the image, in both of the ways a cloud reaches a daemon: Cloud Build mounts
+# its worker's docker socket into the step, CodeBuild runs the build inside the
+# image, privileged, with a daemon the build starts itself.
+#
+# A published version is never overwritten. Each image carries the git tree id
+# of its build context as a label, so the `pin` job can tell a re-run (same
+# tree under the version: nothing to publish) from a change nobody versioned
+# (another tree under a published version: the run fails, on the pull request
+# already, asking for the bump). An image a deploy has used therefore never
+# changes underneath it.
+#
+# Runs on a pull request or a push to main that touches the image, the smoke
+# apps, the constant or this file, and by hand. Only main publishes.
+#
+# The package is created on the first publish, linked to this repository by
+# the image's `org.opencontainers.image.source` label. It starts private, like
+# this repository; a customer's CodeBuild project or Cloud Build pulls it with
+# no registry credential, so an organization owner makes the package public
+# once, in its package settings, before the first hosted cloud build.
+name: Builder image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - deploy/builder-image/**
+      - backend/src/builders/cloud-builder-image.ts
+      - .github/workflows/builder-image.yml
+  pull_request:
+    paths:
+      - deploy/builder-image/**
+      - backend/src/builders/cloud-builder-image.ts
+      - .github/workflows/builder-image.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One run per ref at a time; a second waits, so two pushes cannot race to
+# publish the same version.
+concurrency:
+  group: builder-image-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  CONTEXT: deploy/builder-image/image
+
+jobs:
+  pin:
+    name: Read the pinned version and check it is free
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      version: ${{ steps.pin.outputs.version }}
+      image: ${{ steps.pin.outputs.image }}
+      tree: ${{ steps.pin.outputs.tree }}
+      published: ${{ steps.published.outputs.published }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # The constant is plain erasable TypeScript with no imports, so Node 24
+      # runs it as it is, with no install and no build.
+      - name: The version pinned in backend/src/builders/cloud-builder-image.ts
+        id: pin
+        run: |
+          node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --input-type=module -e "
+            const m = await import('./backend/src/builders/cloud-builder-image.ts');
+            console.log('version=' + m.CLOUD_BUILDER_IMAGE_VERSION);
+            console.log('image=' + m.CLOUD_BUILDER_IMAGE);
+          " | tee -a "$GITHUB_OUTPUT"
+          echo "tree=$(git rev-parse "HEAD:$CONTEXT")" | tee -a "$GITHUB_OUTPUT"
+
+      # skopeo is on the runner image. "Absent" is only an answer the registry
+      # gives about the tag or the package (not found, or denied before the
+      # package exists); any other failure fails the job rather than letting a
+      # flaky read become an overwrite.
+      - name: Is ${{ steps.pin.outputs.image }} already published?
+        id: published
+        env:
+          IMAGE: ${{ steps.pin.outputs.image }}
+          VERSION: ${{ steps.pin.outputs.version }}
+          TREE: ${{ steps.pin.outputs.tree }}
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if labels=$(skopeo inspect --creds "$GH_ACTOR:$GH_TOKEN" --format '{{json .Labels}}' "docker://$IMAGE" 2>"$RUNNER_TEMP/inspect.err"); then
+            published_tree=$(jq -r '."io.octabyte.cloudgate.builder.context" // ""' <<<"$labels")
+            if [ "$published_tree" = "$TREE" ]; then
+              echo "::notice::$IMAGE is already published from this build context ($TREE); there is nothing to publish."
+              echo "published=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "::error::$IMAGE is already published from another build context (${published_tree:-unlabelled}), and $CONTEXT is now $TREE. A published version is never overwritten: bump CLOUD_BUILDER_IMAGE_VERSION in backend/src/builders/cloud-builder-image.ts (now $VERSION) in this change."
+            exit 1
+          fi
+          if grep -qiE 'manifest unknown|name unknown|not found|denied' "$RUNNER_TEMP/inspect.err"; then
+            echo "$IMAGE is not published yet."
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "::error::Could not read $IMAGE from the registry:"
+          cat "$RUNNER_TEMP/inspect.err"
+          exit 1
+
+  smoke:
+    name: Smoke check (${{ matrix.shape }})
+    needs: pin
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Cloud Build: the step gets the worker's docker socket.
+          - shape: socket
+            run: >-
+              docker run --rm
+              -v /var/run/docker.sock:/var/run/docker.sock
+              -v "$PWD/deploy/builder-image/smoke:/smoke:ro"
+              cloudgate-builder:smoke
+              bash /smoke/smoke.sh
+          # CodeBuild: the build runs in the image, privileged, and starts
+          # its own daemon.
+          - shape: own-daemon
+            run: >-
+              docker run --rm --privileged
+              -v "$PWD/deploy/builder-image/smoke:/smoke:ro"
+              cloudgate-builder:smoke
+              bash -c 'cloudgate-start-dockerd && bash /smoke/smoke.sh'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      # amd64, the runner's arch. The cache is the one the publish job reads,
+      # so the amd64 image it pushes is made of the layers smoke-checked here.
+      - name: Build the image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.CONTEXT }}
+          platforms: linux/amd64
+          load: true
+          tags: cloudgate-builder:smoke
+          labels: io.octabyte.cloudgate.builder.context=${{ needs.pin.outputs.tree }}
+          cache-from: type=gha,scope=builder-image
+          cache-to: type=gha,scope=builder-image,mode=max
+
+      - name: Build and run a sample app of every kind
+        run: ${{ matrix.run }}
+
+  publish:
+    name: Publish ${{ needs.pin.outputs.image }}
+    needs: [pin, smoke]
+    if: >-
+      github.event_name != 'pull_request'
+      && github.ref == 'refs/heads/main'
+      && needs.pin.outputs.published == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      # amd64 and arm64: CodeBuild has arm64 build hosts as well as x86 ones.
+      # The pinned tag only; there is no `latest` for anything to drift onto.
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.CONTEXT }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ needs.pin.outputs.image }}
+          labels: |
+            io.octabyte.cloudgate.builder.context=${{ needs.pin.outputs.tree }}
+            org.opencontainers.image.version=${{ needs.pin.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=builder-image

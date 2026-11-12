@@ -1,0 +1,43 @@
+[Unit]
+Description=Cloudgate console (Next.js on :3000)
+Documentation=https://github.com/octabyte-io/cloudgate
+After=network-online.target cloudgate-backend.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cloudgate
+Group=cloudgate
+WorkingDirectory=/opt/cloudgate/frontend
+EnvironmentFile=/etc/default/cloudgate-console
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=HOME=/var/lib/cloudgate
+
+# `next start` cannot forward the browser's address on a rewrite — a Next
+# rewrite to an external destination is a server-side proxy and its http-proxy
+# is built without `xfwd`. server.mjs is `next start` plus that one
+# header. NODE_ENV=production comes from EnvironmentFile, which matters here:
+# `next start` sets it itself and a custom server does not.
+ExecStart=/usr/local/bin/node /opt/cloudgate/frontend/server.mjs
+
+Restart=always
+RestartSec=5s
+
+# The console only serves a prebuilt bundle, so it can be sandboxed properly.
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+# the console writes its runtime cache under .next
+ReadWritePaths=/opt/cloudgate/frontend/.next
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cloudgate-console
+
+[Install]
+WantedBy=multi-user.target

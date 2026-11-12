@@ -1,0 +1,420 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "prior_state": {
+    "format_version": "1.2",
+    "terraform_version": "1.13.1",
+    "values": {
+      "root_module": {
+        "resources": [
+          {
+            "address": "aws_elasticache_replication_group.cache",
+            "mode": "managed",
+            "type": "aws_elasticache_replication_group",
+            "name": "cache",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "values": {
+              "replication_group_id": "cloudgate-svcx2",
+              "description": "Cloudgate: redis",
+              "engine": "valkey",
+              "engine_version": "7.2",
+              "node_type": "cache.t4g.small",
+              "cluster_mode": "disabled",
+              "num_cache_clusters": 1,
+              "automatic_failover_enabled": false,
+              "multi_az_enabled": false,
+              "port": 6379,
+              "subnet_group_name": "cloudgate-svcx2",
+              "at_rest_encryption_enabled": true,
+              "transit_encryption_enabled": true,
+              "auth_token": "x",
+              "auto_minor_version_upgrade": true,
+              "snapshot_retention_limit": 1,
+              "apply_immediately": true,
+              "final_snapshot_identifier": "shop-production-redis-final-2026-10-17",
+              "tags": {
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_redis",
+                "cloudgate:address": "aws_elasticache_replication_group.cache",
+                "Name": "cloudgate/redis/cache"
+              },
+              "tags_all": {
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_redis",
+                "cloudgate:address": "aws_elasticache_replication_group.cache",
+                "Name": "cloudgate/redis/cache"
+              },
+              "parameter_group_name": "cloudgate-svcx2-valkey7",
+              "security_group_ids": [
+                "sg-0cache"
+              ],
+              "primary_endpoint_address": "master.cloudgate-svcx2.abc123.euc1.cache.amazonaws.com",
+              "reader_endpoint_address": "replica.cloudgate-svcx2.abc123.euc1.cache.amazonaws.com",
+              "configuration_endpoint_address": null,
+              "member_clusters": [
+                "cloudgate-svcx2-001"
+              ],
+              "engine_version_actual": "7.2.4",
+              "kms_key_id": "",
+              "snapshot_window": "03:00-04:00",
+              "maintenance_window": "sun:05:00-sun:06:00",
+              "id": "cloudgate-svcx2",
+              "arn": "arn:aws:elasticache:eu-central-1:123456789012:replicationgroup:cloudgate-svcx2"
+            },
+            "sensitive_values": {
+              "auth_token": true
+            }
+          },
+          {
+            "address": "aws_elasticache_parameter_group.valkey7",
+            "mode": "managed",
+            "type": "aws_elasticache_parameter_group",
+            "name": "valkey7",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "values": {
+              "name": "cloudgate-svcx2-valkey7",
+              "family": "valkey7",
+              "description": "Cloudgate: keys are never evicted (noeviction)",
+              "parameter": [
+                {
+                  "name": "maxmemory-policy",
+                  "value": "noeviction"
+                }
+              ],
+              "tags": {
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_redis",
+                "cloudgate:address": "aws_elasticache_parameter_group.valkey7",
+                "Name": "cloudgate/redis/parameters"
+              },
+              "tags_all": {
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_redis",
+                "cloudgate:address": "aws_elasticache_parameter_group.valkey7",
+                "Name": "cloudgate/redis/parameters"
+              },
+              "id": "cloudgate-svcx2-valkey7",
+              "arn": "arn:aws:elasticache:eu-central-1:123456789012:parametergroup:cloudgate-svcx2-valkey7"
+            },
+            "sensitive_values": {}
+          },
+          {
+            "address": "aws_elasticache_subnet_group.cache",
+            "mode": "managed",
+            "type": "aws_elasticache_subnet_group",
+            "name": "cache",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "values": {
+              "name": "cloudgate-svcx2",
+              "description": "Cloudgate: the Environment network private subnets",
+              "subnet_ids": [
+                "subnet-0ccc",
+                "subnet-0ddd"
+              ],
+              "tags": {
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_redis",
+                "cloudgate:address": "aws_elasticache_subnet_group.cache",
+                "Name": "cloudgate/redis/subnets"
+              },
+              "tags_all": {
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_redis",
+                "cloudgate:address": "aws_elasticache_subnet_group.cache",
+                "Name": "cloudgate/redis/subnets"
+              },
+              "id": "cloudgate-svcx2",
+              "arn": "arn:aws:elasticache:eu-central-1:123456789012:subnetgroup:cloudgate-svcx2",
+              "vpc_id": "vpc-0a1b"
+            },
+            "sensitive_values": {}
+          },
+          {
+            "address": "aws_security_group.cache",
+            "mode": "managed",
+            "type": "aws_security_group",
+            "name": "cache",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "values": {
+              "name": "cloudgate-cache-svc_2",
+              "description": "Cloudgate: a cache, reachable from the Services of the Environment only",
+              "vpc_id": "vpc-0a1b",
+              "ingress": [
+                {
+                  "cidr_blocks": [
+                    "10.80.0.0/20"
+                  ],
+                  "description": "",
+                  "from_port": 6379,
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "protocol": "tcp",
+                  "security_groups": [],
+                  "self": false,
+                  "to_port": 6379
+                },
+                {
+                  "cidr_blocks": [
+                    "10.80.16.0/20"
+                  ],
+                  "description": "",
+                  "from_port": 6379,
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "protocol": "tcp",
+                  "security_groups": [],
+                  "self": false,
+                  "to_port": 6379
+                }
+              ],
+              "egress": [],
+              "revoke_rules_on_delete": false,
+              "tags": {
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_redis",
+                "cloudgate:address": "aws_security_group.cache",
+                "Name": "cloudgate/redis/cache"
+              },
+              "tags_all": {
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_redis",
+                "cloudgate:address": "aws_security_group.cache",
+                "Name": "cloudgate/redis/cache"
+              },
+              "id": "sg-0cache",
+              "arn": "arn:aws:ec2:eu-central-1:123456789012:security-group/sg-0cache",
+              "owner_id": "123456789012"
+            },
+            "sensitive_values": {}
+          }
+        ]
+      }
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "aws_elasticache_parameter_group.valkey8",
+      "mode": "managed",
+      "type": "aws_elasticache_parameter_group",
+      "name": "valkey8",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name": "cloudgate-svcx2-valkey8",
+          "family": "valkey8",
+          "description": "Cloudgate: keys are never evicted (noeviction)",
+          "parameter": [
+            {
+              "name": "maxmemory-policy",
+              "value": "noeviction"
+            }
+          ],
+          "tags": {
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_redis",
+            "cloudgate:address": "aws_elasticache_parameter_group.valkey8",
+            "Name": "cloudgate/redis/parameters"
+          },
+          "tags_all": {
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_redis",
+            "cloudgate:address": "aws_elasticache_parameter_group.valkey8",
+            "Name": "cloudgate/redis/parameters"
+          }
+        },
+        "after_unknown": {
+          "parameter": [
+            {}
+          ],
+          "id": true,
+          "arn": true,
+          "tags_all": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_elasticache_parameter_group.valkey7",
+      "mode": "managed",
+      "type": "aws_elasticache_parameter_group",
+      "name": "valkey7",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "name": "cloudgate-svcx2-valkey7",
+          "family": "valkey7",
+          "description": "Cloudgate: keys are never evicted (noeviction)",
+          "parameter": [
+            {
+              "name": "maxmemory-policy",
+              "value": "noeviction"
+            }
+          ],
+          "tags": {
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_redis",
+            "cloudgate:address": "aws_elasticache_parameter_group.valkey7",
+            "Name": "cloudgate/redis/parameters"
+          },
+          "tags_all": {
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_redis",
+            "cloudgate:address": "aws_elasticache_parameter_group.valkey7",
+            "Name": "cloudgate/redis/parameters"
+          },
+          "id": "cloudgate-svcx2-valkey7",
+          "arn": "arn:aws:elasticache:eu-central-1:123456789012:parametergroup:cloudgate-svcx2-valkey7"
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": false
+      }
+    },
+    {
+      "address": "aws_elasticache_replication_group.cache",
+      "mode": "managed",
+      "type": "aws_elasticache_replication_group",
+      "name": "cache",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "replication_group_id": "cloudgate-svcx2",
+          "description": "Cloudgate: redis",
+          "engine": "valkey",
+          "engine_version": "7.2",
+          "node_type": "cache.t4g.small",
+          "cluster_mode": "disabled",
+          "num_cache_clusters": 1,
+          "automatic_failover_enabled": false,
+          "multi_az_enabled": false,
+          "port": 6379,
+          "subnet_group_name": "cloudgate-svcx2",
+          "at_rest_encryption_enabled": true,
+          "transit_encryption_enabled": true,
+          "auth_token": "x",
+          "auto_minor_version_upgrade": true,
+          "snapshot_retention_limit": 1,
+          "apply_immediately": true,
+          "final_snapshot_identifier": "shop-production-redis-final-2026-10-17",
+          "tags": {
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_redis",
+            "cloudgate:address": "aws_elasticache_replication_group.cache",
+            "Name": "cloudgate/redis/cache"
+          },
+          "tags_all": {
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_redis",
+            "cloudgate:address": "aws_elasticache_replication_group.cache",
+            "Name": "cloudgate/redis/cache"
+          },
+          "parameter_group_name": "cloudgate-svcx2-valkey7",
+          "security_group_ids": [
+            "sg-0cache"
+          ],
+          "primary_endpoint_address": "master.cloudgate-svcx2.abc123.euc1.cache.amazonaws.com",
+          "reader_endpoint_address": "replica.cloudgate-svcx2.abc123.euc1.cache.amazonaws.com",
+          "configuration_endpoint_address": null,
+          "member_clusters": [
+            "cloudgate-svcx2-001"
+          ],
+          "engine_version_actual": "7.2.4",
+          "kms_key_id": "",
+          "snapshot_window": "03:00-04:00",
+          "maintenance_window": "sun:05:00-sun:06:00",
+          "id": "cloudgate-svcx2",
+          "arn": "arn:aws:elasticache:eu-central-1:123456789012:replicationgroup:cloudgate-svcx2"
+        },
+        "after": {
+          "replication_group_id": "cloudgate-svcx2",
+          "description": "Cloudgate: redis",
+          "engine": "valkey",
+          "engine_version": "8.1",
+          "node_type": "cache.t4g.small",
+          "cluster_mode": "disabled",
+          "num_cache_clusters": 1,
+          "automatic_failover_enabled": false,
+          "multi_az_enabled": false,
+          "port": 6379,
+          "subnet_group_name": "cloudgate-svcx2",
+          "at_rest_encryption_enabled": true,
+          "transit_encryption_enabled": true,
+          "auth_token": "x",
+          "auto_minor_version_upgrade": true,
+          "snapshot_retention_limit": 1,
+          "apply_immediately": true,
+          "final_snapshot_identifier": "shop-production-redis-final-2026-10-17",
+          "tags": {
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_redis",
+            "cloudgate:address": "aws_elasticache_replication_group.cache",
+            "Name": "cloudgate/redis/cache"
+          },
+          "tags_all": {
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_redis",
+            "cloudgate:address": "aws_elasticache_replication_group.cache",
+            "Name": "cloudgate/redis/cache"
+          },
+          "parameter_group_name": null,
+          "security_group_ids": [
+            "sg-0cache"
+          ],
+          "primary_endpoint_address": "master.cloudgate-svcx2.abc123.euc1.cache.amazonaws.com",
+          "reader_endpoint_address": "replica.cloudgate-svcx2.abc123.euc1.cache.amazonaws.com",
+          "configuration_endpoint_address": null,
+          "member_clusters": [
+            "cloudgate-svcx2-001"
+          ],
+          "engine_version_actual": "7.2.4",
+          "kms_key_id": "",
+          "snapshot_window": "03:00-04:00",
+          "maintenance_window": "sun:05:00-sun:06:00",
+          "id": "cloudgate-svcx2",
+          "arn": "arn:aws:elasticache:eu-central-1:123456789012:replicationgroup:cloudgate-svcx2"
+        },
+        "after_unknown": {
+          "parameter_group_name": true
+        },
+        "before_sensitive": {
+          "auth_token": true
+        },
+        "after_sensitive": {
+          "auth_token": true
+        }
+      }
+    }
+  ],
+  "timestamp": "2026-10-17T09:00:00Z",
+  "applyable": true,
+  "complete": true,
+  "errored": false
+}

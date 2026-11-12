@@ -1,0 +1,301 @@
+{
+  "cloudgate_fixture": {
+    "source": "the live walk by hand",
+    "how": "Recorded by `tofu show -json` from a real plan in the live Google Cloud project on 2026-11-06 (a walk by hand, step 11; OpenTofu 1.13.1, hashicorp/google 8.8.0), then rewritten to the stored files' sample ids (cloud_1, env_1, the Service and state ids this file stored before, project example-project-123 / 123456789012, region europe-west1) and the stored existing bucket's name, acme-prod-uploads. An existing bucket's own service account and its HMAC key, before its first Apply: no bucket and no binding. The walk's existing bucket was in the Cloud account's own project, not another one."
+  },
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "planned_values": {
+    "outputs": {
+      "access_key_id": {
+        "sensitive": false
+      },
+      "bucket_name": {
+        "sensitive": false,
+        "type": "string",
+        "value": "acme-prod-uploads"
+      },
+      "secret_access_key": {
+        "sensitive": true
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "google_service_account.bucket",
+          "mode": "managed",
+          "type": "google_service_account",
+          "name": "bucket",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "account_id": "cloudgate-33lu2dv74xuy",
+            "create_ignore_already_exists": null,
+            "deletion_policy": "DELETE",
+            "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_bucket_1",
+            "disabled": false,
+            "display_name": null,
+            "email": "cloudgate-33lu2dv74xuy@example-project-123.iam.gserviceaccount.com",
+            "member": "serviceAccount:cloudgate-33lu2dv74xuy@example-project-123.iam.gserviceaccount.com",
+            "project": "example-project-123",
+            "timeouts": null
+          },
+          "sensitive_values": {},
+          "identity": {
+            "email": null,
+            "project": null
+          },
+          "identity_schema_version": 1
+        },
+        {
+          "address": "google_storage_hmac_key.key",
+          "mode": "managed",
+          "type": "google_storage_hmac_key",
+          "name": "key",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "deletion_policy": "DELETE",
+            "project": "example-project-123",
+            "service_account_email": "cloudgate-33lu2dv74xuy@example-project-123.iam.gserviceaccount.com",
+            "state": "ACTIVE",
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "secret": true
+          },
+          "identity": {
+            "access_id": null,
+            "project": null
+          },
+          "identity_schema_version": 1
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "google_service_account.bucket",
+      "mode": "managed",
+      "type": "google_service_account",
+      "name": "bucket",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "account_id": "cloudgate-33lu2dv74xuy",
+          "create_ignore_already_exists": null,
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_bucket_1",
+          "disabled": false,
+          "display_name": null,
+          "email": "cloudgate-33lu2dv74xuy@example-project-123.iam.gserviceaccount.com",
+          "member": "serviceAccount:cloudgate-33lu2dv74xuy@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123",
+          "timeouts": null
+        },
+        "after_unknown": {
+          "id": true,
+          "name": true,
+          "unique_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {},
+        "after_identity": {
+          "email": null,
+          "project": null
+        }
+      }
+    },
+    {
+      "address": "google_storage_hmac_key.key",
+      "mode": "managed",
+      "type": "google_storage_hmac_key",
+      "name": "key",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "deletion_policy": "DELETE",
+          "project": "example-project-123",
+          "service_account_email": "cloudgate-33lu2dv74xuy@example-project-123.iam.gserviceaccount.com",
+          "state": "ACTIVE",
+          "timeouts": null
+        },
+        "after_unknown": {
+          "access_id": true,
+          "id": true,
+          "secret": true,
+          "time_created": true,
+          "updated": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "secret": true
+        },
+        "after_identity": {
+          "access_id": null,
+          "project": null
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "access_key_id": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "bucket_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "acme-prod-uploads",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "secret_access_key": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": true,
+      "after_sensitive": true
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "outputs": {
+        "bucket_name": {
+          "sensitive": false,
+          "value": "acme-prod-uploads",
+          "type": "string"
+        }
+      },
+      "root_module": {}
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "google": {
+        "name": "google",
+        "full_name": "registry.opentofu.org/hashicorp/google",
+        "version_constraint": "8.8.0",
+        "expressions": {
+          "add_terraform_attribution_label": {
+            "constant_value": false
+          },
+          "project": {
+            "constant_value": "example-project-123"
+          },
+          "region": {
+            "constant_value": "europe-west1"
+          }
+        }
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "access_key_id": {
+          "expression": {
+            "constant_value": "${google_storage_hmac_key.key.access_id}",
+            "references": [
+              "google_storage_hmac_key.key.access_id",
+              "google_storage_hmac_key.key"
+            ]
+          }
+        },
+        "bucket_name": {
+          "expression": {
+            "constant_value": "acme-prod-uploads"
+          }
+        },
+        "secret_access_key": {
+          "sensitive": true,
+          "expression": {
+            "constant_value": "${google_storage_hmac_key.key.secret}",
+            "references": [
+              "google_storage_hmac_key.key.secret",
+              "google_storage_hmac_key.key"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "google_service_account.bucket",
+          "mode": "managed",
+          "type": "google_service_account",
+          "name": "bucket",
+          "provider_config_key": "google",
+          "expressions": {
+            "account_id": {
+              "constant_value": "cloudgate-33lu2dv74xuy"
+            },
+            "description": {
+              "constant_value": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_bucket_1"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "google_storage_hmac_key.key",
+          "mode": "managed",
+          "type": "google_storage_hmac_key",
+          "name": "key",
+          "provider_config_key": "google",
+          "expressions": {
+            "service_account_email": {
+              "constant_value": "${google_service_account.bucket.email}",
+              "references": [
+                "google_service_account.bucket.email",
+                "google_service_account.bucket"
+              ]
+            },
+            "state": {
+              "constant_value": "ACTIVE"
+            }
+          },
+          "schema_version": 0
+        }
+      ]
+    }
+  },
+  "relevant_attributes": [
+    {
+      "resource": "google_service_account.bucket",
+      "attribute": [
+        "email"
+      ]
+    },
+    {
+      "resource": "google_storage_hmac_key.key",
+      "attribute": [
+        "secret"
+      ]
+    },
+    {
+      "resource": "google_storage_hmac_key.key",
+      "attribute": [
+        "access_id"
+      ]
+    }
+  ],
+  "timestamp": "2026-11-06T18:17:57Z",
+  "errored": false
+}

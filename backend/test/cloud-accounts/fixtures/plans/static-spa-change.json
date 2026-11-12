@@ -1,0 +1,3121 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "planned_values": {
+    "outputs": {
+      "bucket_name": {
+        "sensitive": false,
+        "type": "string",
+        "value": "docs-p4x8m2rt-123456789012-eu-central-1-an"
+      },
+      "distribution_arn": {
+        "sensitive": false,
+        "type": "string",
+        "value": "arn:aws:cloudfront::123456789012:distribution/E000000000001"
+      },
+      "distribution_domain": {
+        "sensitive": false,
+        "type": "string",
+        "value": "d000000000001.cloudfront.net"
+      },
+      "distribution_id": {
+        "sensitive": false,
+        "type": "string",
+        "value": "E000000000001"
+      },
+      "domain_certificates": {
+        "sensitive": false,
+        "type": [
+          "object",
+          {}
+        ],
+        "value": {}
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_cloudfront_distribution.site",
+          "mode": "managed",
+          "type": "aws_cloudfront_distribution",
+          "name": "site",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "aliases": [],
+            "anycast_ip_list_id": "",
+            "arn": "arn:aws:cloudfront::123456789012:distribution/E000000000001",
+            "cache_tag_config": [],
+            "caller_reference": "terraform-00000000000000000000000001",
+            "comment": "cloudgate/docs",
+            "connection_function_association": [],
+            "continuous_deployment_policy_id": "",
+            "custom_error_response": [
+              {
+                "error_caching_min_ttl": 10,
+                "error_code": 403,
+                "response_code": 200,
+                "response_page_path": "/index.html"
+              },
+              {
+                "error_caching_min_ttl": 10,
+                "error_code": 404,
+                "response_code": 200,
+                "response_page_path": "/index.html"
+              }
+            ],
+            "default_cache_behavior": [
+              {
+                "allowed_methods": [
+                  "GET",
+                  "HEAD"
+                ],
+                "cache_policy_id": "00000000-0000-4000-8000-000000000001",
+                "cached_methods": [
+                  "GET",
+                  "HEAD"
+                ],
+                "compress": true,
+                "default_ttl": 0,
+                "field_level_encryption_id": "",
+                "forwarded_values": [],
+                "function_association": [],
+                "grpc_config": [],
+                "lambda_function_association": [],
+                "max_ttl": 0,
+                "min_ttl": 0,
+                "origin_request_policy_id": "",
+                "realtime_log_config_arn": "",
+                "response_headers_policy_id": "",
+                "smooth_streaming": false,
+                "target_origin_id": "site-bucket",
+                "trusted_key_groups": [],
+                "trusted_signers": [],
+                "viewer_protocol_policy": "redirect-to-https"
+              }
+            ],
+            "default_root_object": "index.html",
+            "domain_name": "d000000000001.cloudfront.net",
+            "enabled": true,
+            "etag": "E000000000002",
+            "hosted_zone_id": "Z2FDTNDATAQYW2",
+            "http_version": "http2",
+            "id": "E000000000001",
+            "in_progress_validation_batches": 0,
+            "is_ipv6_enabled": true,
+            "last_modified_time": "2021-11-27 10:34:26.802 +0000 UTC",
+            "logging_config": [],
+            "logging_v1_enabled": false,
+            "ordered_cache_behavior": [],
+            "origin": [
+              {
+                "connection_attempts": 3,
+                "connection_timeout": 10,
+                "custom_header": [],
+                "custom_origin_config": [],
+                "domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.eu-central-1.amazonaws.com",
+                "origin_access_control_id": "E000000000003",
+                "origin_id": "site-bucket",
+                "origin_path": "",
+                "origin_shield": [],
+                "s3_origin_config": [],
+                "vpc_origin_config": []
+              }
+            ],
+            "origin_group": [],
+            "price_class": "PriceClass_All",
+            "restrictions": [
+              {
+                "geo_restriction": [
+                  {
+                    "locations": [],
+                    "restriction_type": "none"
+                  }
+                ]
+              }
+            ],
+            "retain_on_delete": false,
+            "staging": false,
+            "status": "Deployed",
+            "tags": {
+              "Name": "cloudgate/docs/site",
+              "cloudgate:address": "aws_cloudfront_distribution.site"
+            },
+            "tags_all": {
+              "Name": "cloudgate/docs/site",
+              "cloudgate:address": "aws_cloudfront_distribution.site",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_static_1"
+            },
+            "trusted_key_groups": [
+              {
+                "enabled": false,
+                "items": []
+              }
+            ],
+            "trusted_signers": [
+              {
+                "enabled": false,
+                "items": []
+              }
+            ],
+            "viewer_certificate": [
+              {
+                "acm_certificate_arn": "",
+                "cloudfront_default_certificate": true,
+                "iam_certificate_id": "",
+                "minimum_protocol_version": "TLSv1",
+                "ssl_support_method": null
+              }
+            ],
+            "viewer_mtls_config": [],
+            "wait_for_deployment": false,
+            "web_acl_id": ""
+          },
+          "sensitive_values": {
+            "aliases": [],
+            "cache_tag_config": [],
+            "connection_function_association": [],
+            "custom_error_response": [
+              {},
+              {}
+            ],
+            "default_cache_behavior": [
+              {
+                "allowed_methods": [
+                  false,
+                  false
+                ],
+                "cached_methods": [
+                  false,
+                  false
+                ],
+                "forwarded_values": [],
+                "function_association": [],
+                "grpc_config": [],
+                "lambda_function_association": [],
+                "trusted_key_groups": [],
+                "trusted_signers": []
+              }
+            ],
+            "logging_config": [],
+            "ordered_cache_behavior": [],
+            "origin": [
+              {
+                "custom_header": [],
+                "custom_origin_config": [],
+                "origin_shield": [],
+                "s3_origin_config": [],
+                "vpc_origin_config": []
+              }
+            ],
+            "origin_group": [],
+            "restrictions": [
+              {
+                "geo_restriction": [
+                  {
+                    "locations": []
+                  }
+                ]
+              }
+            ],
+            "tags": {},
+            "tags_all": {},
+            "trusted_key_groups": [
+              {
+                "items": []
+              }
+            ],
+            "trusted_signers": [
+              {
+                "items": []
+              }
+            ],
+            "viewer_certificate": [
+              {}
+            ],
+            "viewer_mtls_config": []
+          },
+          "identity": {
+            "account_id": "123456789012",
+            "id": "E000000000001"
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_cloudfront_origin_access_control.site",
+          "mode": "managed",
+          "type": "aws_cloudfront_origin_access_control",
+          "name": "site",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "arn": "arn:aws:cloudfront::123456789012:origin-access-control/E000000000003",
+            "description": "cloudgate/docs",
+            "etag": "E000000000004",
+            "id": "E000000000003",
+            "name": "cloudgate-app_static_1",
+            "origin_access_control_origin_type": "s3",
+            "signing_behavior": "always",
+            "signing_protocol": "sigv4"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "aws_s3_bucket.site",
+          "mode": "managed",
+          "type": "aws_s3_bucket",
+          "name": "site",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "acceleration_status": "",
+            "acl": null,
+            "arn": "arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an",
+            "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+            "bucket_domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.amazonaws.com",
+            "bucket_namespace": "account-regional",
+            "bucket_prefix": "",
+            "bucket_region": "eu-central-1",
+            "bucket_regional_domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.eu-central-1.amazonaws.com",
+            "cors_rule": [],
+            "force_destroy": false,
+            "grant": [
+              {
+                "id": "0000000000000000000000000000000000000000000000000000000000000001",
+                "permissions": [
+                  "FULL_CONTROL"
+                ],
+                "type": "CanonicalUser",
+                "uri": ""
+              }
+            ],
+            "hosted_zone_id": "Z21DNDUVLTQW6Q",
+            "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+            "lifecycle_rule": [],
+            "logging": [],
+            "object_lock_configuration": [],
+            "object_lock_enabled": false,
+            "policy": "{\"Statement\":[{\"Action\":[\"s3:GetObject\",\"s3:ListBucket\"],\"Condition\":{\"StringEquals\":{\"AWS:SourceArn\":\"arn:aws:cloudfront::123456789012:distribution/E000000000001\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudfront.amazonaws.com\"},\"Resource\":[\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an\",\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an/*\"],\"Sid\":\"CloudFrontReadsSite\"}],\"Version\":\"2012-10-17\"}",
+            "region": "eu-central-1",
+            "replication_configuration": [],
+            "request_payer": "",
+            "server_side_encryption_configuration": [
+              {
+                "rule": [
+                  {
+                    "apply_server_side_encryption_by_default": [
+                      {
+                        "kms_master_key_id": "",
+                        "sse_algorithm": "AES256"
+                      }
+                    ],
+                    "bucket_key_enabled": false
+                  }
+                ]
+              }
+            ],
+            "tags": {
+              "Name": "cloudgate/docs/site",
+              "cloudgate:address": "aws_s3_bucket.site"
+            },
+            "tags_all": {
+              "Name": "cloudgate/docs/site",
+              "cloudgate:address": "aws_s3_bucket.site",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_static_1"
+            },
+            "timeouts": null,
+            "versioning": [
+              {
+                "enabled": false,
+                "mfa_delete": false
+              }
+            ],
+            "website": [],
+            "website_domain": null,
+            "website_endpoint": null
+          },
+          "sensitive_values": {
+            "cors_rule": [],
+            "grant": [
+              {
+                "permissions": [
+                  false
+                ]
+              }
+            ],
+            "lifecycle_rule": [],
+            "logging": [],
+            "object_lock_configuration": [],
+            "replication_configuration": [],
+            "server_side_encryption_configuration": [
+              {
+                "rule": [
+                  {
+                    "apply_server_side_encryption_by_default": [
+                      {}
+                    ]
+                  }
+                ]
+              }
+            ],
+            "tags": {},
+            "tags_all": {},
+            "versioning": [
+              {}
+            ],
+            "website": []
+          },
+          "identity": {
+            "account_id": "123456789012",
+            "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+            "region": "eu-central-1"
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_s3_bucket_ownership_controls.site",
+          "mode": "managed",
+          "type": "aws_s3_bucket_ownership_controls",
+          "name": "site",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+            "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+            "region": "eu-central-1",
+            "rule": [
+              {
+                "object_ownership": "BucketOwnerEnforced"
+              }
+            ]
+          },
+          "sensitive_values": {
+            "rule": [
+              {}
+            ]
+          },
+          "identity": {
+            "account_id": "123456789012",
+            "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+            "region": "eu-central-1"
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_s3_bucket_policy.site",
+          "mode": "managed",
+          "type": "aws_s3_bucket_policy",
+          "name": "site",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+            "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+            "policy": "{\"Statement\":[{\"Action\":[\"s3:GetObject\",\"s3:ListBucket\"],\"Condition\":{\"StringEquals\":{\"AWS:SourceArn\":\"arn:aws:cloudfront::123456789012:distribution/E000000000001\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudfront.amazonaws.com\"},\"Resource\":[\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an\",\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an/*\"],\"Sid\":\"CloudFrontReadsSite\"}],\"Version\":\"2012-10-17\"}",
+            "region": "eu-central-1"
+          },
+          "sensitive_values": {},
+          "identity": {
+            "account_id": "123456789012",
+            "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+            "region": "eu-central-1"
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_s3_bucket_public_access_block.site",
+          "mode": "managed",
+          "type": "aws_s3_bucket_public_access_block",
+          "name": "site",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "block_public_acls": true,
+            "block_public_policy": true,
+            "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+            "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+            "ignore_public_acls": true,
+            "region": "eu-central-1",
+            "restrict_public_buckets": true,
+            "skip_destroy": null
+          },
+          "sensitive_values": {},
+          "identity": {
+            "account_id": "123456789012",
+            "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+            "region": "eu-central-1"
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_s3_bucket_server_side_encryption_configuration.site",
+          "mode": "managed",
+          "type": "aws_s3_bucket_server_side_encryption_configuration",
+          "name": "site",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+            "expected_bucket_owner": "",
+            "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+            "region": "eu-central-1",
+            "rule": [
+              {
+                "apply_server_side_encryption_by_default": [
+                  {
+                    "kms_master_key_id": "",
+                    "sse_algorithm": "AES256"
+                  }
+                ],
+                "blocked_encryption_types": [],
+                "bucket_key_enabled": false
+              }
+            ]
+          },
+          "sensitive_values": {
+            "rule": [
+              {
+                "apply_server_side_encryption_by_default": [
+                  {}
+                ],
+                "blocked_encryption_types": []
+              }
+            ]
+          },
+          "identity": {
+            "account_id": "123456789012",
+            "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+            "region": "eu-central-1"
+          },
+          "identity_schema_version": 1
+        }
+      ]
+    }
+  },
+  "resource_drift": [
+    {
+      "address": "aws_cloudfront_distribution.site",
+      "mode": "managed",
+      "type": "aws_cloudfront_distribution",
+      "name": "site",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "aliases": null,
+          "anycast_ip_list_id": "",
+          "arn": "arn:aws:cloudfront::123456789012:distribution/E000000000001",
+          "cache_tag_config": [],
+          "caller_reference": "terraform-00000000000000000000000001",
+          "comment": "cloudgate/docs",
+          "connection_function_association": [],
+          "continuous_deployment_policy_id": "",
+          "custom_error_response": [
+            {
+              "error_caching_min_ttl": 10,
+              "error_code": 403,
+              "response_code": 404,
+              "response_page_path": "/404.html"
+            }
+          ],
+          "default_cache_behavior": [
+            {
+              "allowed_methods": [
+                "GET",
+                "HEAD"
+              ],
+              "cache_policy_id": "00000000-0000-4000-8000-000000000001",
+              "cached_methods": [
+                "GET",
+                "HEAD"
+              ],
+              "compress": true,
+              "default_ttl": 0,
+              "field_level_encryption_id": "",
+              "forwarded_values": [],
+              "function_association": [],
+              "grpc_config": [],
+              "lambda_function_association": [],
+              "max_ttl": 0,
+              "min_ttl": 0,
+              "origin_request_policy_id": "",
+              "realtime_log_config_arn": "",
+              "response_headers_policy_id": "",
+              "smooth_streaming": false,
+              "target_origin_id": "site-bucket",
+              "trusted_key_groups": [],
+              "trusted_signers": [],
+              "viewer_protocol_policy": "redirect-to-https"
+            }
+          ],
+          "default_root_object": "index.html",
+          "domain_name": "d000000000001.cloudfront.net",
+          "enabled": true,
+          "etag": "E000000000002",
+          "hosted_zone_id": "Z2FDTNDATAQYW2",
+          "http_version": "http2",
+          "id": "E000000000001",
+          "in_progress_validation_batches": 0,
+          "is_ipv6_enabled": true,
+          "last_modified_time": "2021-11-27 10:34:26.802 +0000 UTC",
+          "logging_config": [],
+          "logging_v1_enabled": false,
+          "ordered_cache_behavior": [],
+          "origin": [
+            {
+              "connection_attempts": 3,
+              "connection_timeout": 10,
+              "custom_header": [],
+              "custom_origin_config": [],
+              "domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.eu-central-1.amazonaws.com",
+              "origin_access_control_id": "E000000000003",
+              "origin_id": "site-bucket",
+              "origin_path": "",
+              "origin_shield": [],
+              "response_completion_timeout": 0,
+              "s3_origin_config": [],
+              "vpc_origin_config": []
+            }
+          ],
+          "origin_group": [],
+          "price_class": "PriceClass_All",
+          "restrictions": [
+            {
+              "geo_restriction": [
+                {
+                  "locations": [],
+                  "restriction_type": "none"
+                }
+              ]
+            }
+          ],
+          "retain_on_delete": false,
+          "staging": false,
+          "status": "Deployed",
+          "tags": {
+            "Name": "cloudgate/docs/site",
+            "cloudgate:address": "aws_cloudfront_distribution.site"
+          },
+          "tags_all": {
+            "Name": "cloudgate/docs/site",
+            "cloudgate:address": "aws_cloudfront_distribution.site",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_static_1"
+          },
+          "trusted_key_groups": [
+            {
+              "enabled": false,
+              "items": []
+            }
+          ],
+          "trusted_signers": [
+            {
+              "enabled": false,
+              "items": []
+            }
+          ],
+          "viewer_certificate": [
+            {
+              "acm_certificate_arn": "",
+              "cloudfront_default_certificate": true,
+              "iam_certificate_id": "",
+              "minimum_protocol_version": "TLSv1",
+              "ssl_support_method": null
+            }
+          ],
+          "viewer_mtls_config": [],
+          "wait_for_deployment": false,
+          "web_acl_id": ""
+        },
+        "after": {
+          "aliases": [],
+          "anycast_ip_list_id": "",
+          "arn": "arn:aws:cloudfront::123456789012:distribution/E000000000001",
+          "cache_tag_config": [],
+          "caller_reference": "terraform-00000000000000000000000001",
+          "comment": "cloudgate/docs",
+          "connection_function_association": [],
+          "continuous_deployment_policy_id": "",
+          "custom_error_response": [
+            {
+              "error_caching_min_ttl": 10,
+              "error_code": 403,
+              "response_code": 404,
+              "response_page_path": "/404.html"
+            }
+          ],
+          "default_cache_behavior": [
+            {
+              "allowed_methods": [
+                "GET",
+                "HEAD"
+              ],
+              "cache_policy_id": "00000000-0000-4000-8000-000000000001",
+              "cached_methods": [
+                "GET",
+                "HEAD"
+              ],
+              "compress": true,
+              "default_ttl": 0,
+              "field_level_encryption_id": "",
+              "forwarded_values": [],
+              "function_association": [],
+              "grpc_config": [],
+              "lambda_function_association": [],
+              "max_ttl": 0,
+              "min_ttl": 0,
+              "origin_request_policy_id": "",
+              "realtime_log_config_arn": "",
+              "response_headers_policy_id": "",
+              "smooth_streaming": false,
+              "target_origin_id": "site-bucket",
+              "trusted_key_groups": [],
+              "trusted_signers": [],
+              "viewer_protocol_policy": "redirect-to-https"
+            }
+          ],
+          "default_root_object": "index.html",
+          "domain_name": "d000000000001.cloudfront.net",
+          "enabled": true,
+          "etag": "E000000000002",
+          "hosted_zone_id": "Z2FDTNDATAQYW2",
+          "http_version": "http2",
+          "id": "E000000000001",
+          "in_progress_validation_batches": 0,
+          "is_ipv6_enabled": true,
+          "last_modified_time": "2021-11-27 10:34:26.802 +0000 UTC",
+          "logging_config": [],
+          "logging_v1_enabled": false,
+          "ordered_cache_behavior": [],
+          "origin": [
+            {
+              "connection_attempts": 3,
+              "connection_timeout": 10,
+              "custom_header": [],
+              "custom_origin_config": [],
+              "domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.eu-central-1.amazonaws.com",
+              "origin_access_control_id": "E000000000003",
+              "origin_id": "site-bucket",
+              "origin_path": "",
+              "origin_shield": [],
+              "response_completion_timeout": 0,
+              "s3_origin_config": [],
+              "vpc_origin_config": []
+            }
+          ],
+          "origin_group": [],
+          "price_class": "PriceClass_All",
+          "restrictions": [
+            {
+              "geo_restriction": [
+                {
+                  "locations": [],
+                  "restriction_type": "none"
+                }
+              ]
+            }
+          ],
+          "retain_on_delete": false,
+          "staging": false,
+          "status": "Deployed",
+          "tags": {
+            "Name": "cloudgate/docs/site",
+            "cloudgate:address": "aws_cloudfront_distribution.site"
+          },
+          "tags_all": {
+            "Name": "cloudgate/docs/site",
+            "cloudgate:address": "aws_cloudfront_distribution.site",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_static_1"
+          },
+          "trusted_key_groups": [
+            {
+              "enabled": false,
+              "items": []
+            }
+          ],
+          "trusted_signers": [
+            {
+              "enabled": false,
+              "items": []
+            }
+          ],
+          "viewer_certificate": [
+            {
+              "acm_certificate_arn": "",
+              "cloudfront_default_certificate": true,
+              "iam_certificate_id": "",
+              "minimum_protocol_version": "TLSv1",
+              "ssl_support_method": null
+            }
+          ],
+          "viewer_mtls_config": [],
+          "wait_for_deployment": false,
+          "web_acl_id": ""
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "cache_tag_config": [],
+          "connection_function_association": [],
+          "custom_error_response": [
+            {}
+          ],
+          "default_cache_behavior": [
+            {
+              "allowed_methods": [
+                false,
+                false
+              ],
+              "cached_methods": [
+                false,
+                false
+              ],
+              "forwarded_values": [
+                {
+                  "cookies": [
+                    {
+                      "whitelisted_names": []
+                    }
+                  ],
+                  "headers": [],
+                  "query_string_cache_keys": []
+                }
+              ],
+              "function_association": [],
+              "grpc_config": [],
+              "lambda_function_association": [],
+              "trusted_key_groups": [],
+              "trusted_signers": []
+            }
+          ],
+          "logging_config": [],
+          "ordered_cache_behavior": [],
+          "origin": [
+            {
+              "custom_header": [],
+              "custom_origin_config": [],
+              "origin_shield": [],
+              "s3_origin_config": [],
+              "vpc_origin_config": []
+            }
+          ],
+          "origin_group": [],
+          "restrictions": [
+            {
+              "geo_restriction": [
+                {
+                  "locations": []
+                }
+              ]
+            }
+          ],
+          "tags": {},
+          "tags_all": {},
+          "trusted_key_groups": [
+            {
+              "items": []
+            }
+          ],
+          "trusted_signers": [
+            {
+              "items": []
+            }
+          ],
+          "viewer_certificate": [
+            {}
+          ],
+          "viewer_mtls_config": []
+        },
+        "after_sensitive": {
+          "aliases": [],
+          "cache_tag_config": [],
+          "connection_function_association": [],
+          "custom_error_response": [
+            {}
+          ],
+          "default_cache_behavior": [
+            {
+              "allowed_methods": [
+                false,
+                false
+              ],
+              "cached_methods": [
+                false,
+                false
+              ],
+              "forwarded_values": [
+                {
+                  "cookies": [
+                    {
+                      "whitelisted_names": []
+                    }
+                  ],
+                  "headers": [],
+                  "query_string_cache_keys": []
+                }
+              ],
+              "function_association": [],
+              "grpc_config": [],
+              "lambda_function_association": [],
+              "trusted_key_groups": [],
+              "trusted_signers": []
+            }
+          ],
+          "logging_config": [],
+          "ordered_cache_behavior": [],
+          "origin": [
+            {
+              "custom_header": [],
+              "custom_origin_config": [],
+              "origin_shield": [],
+              "s3_origin_config": [],
+              "vpc_origin_config": []
+            }
+          ],
+          "origin_group": [],
+          "restrictions": [
+            {
+              "geo_restriction": [
+                {
+                  "locations": []
+                }
+              ]
+            }
+          ],
+          "tags": {},
+          "tags_all": {},
+          "trusted_key_groups": [
+            {
+              "items": []
+            }
+          ],
+          "trusted_signers": [
+            {
+              "items": []
+            }
+          ],
+          "viewer_certificate": [
+            {}
+          ],
+          "viewer_mtls_config": []
+        },
+        "before_identity": {
+          "account_id": "123456789012",
+          "id": "E000000000001"
+        },
+        "after_identity": {
+          "account_id": "123456789012",
+          "id": "E000000000001"
+        }
+      }
+    },
+    {
+      "address": "aws_s3_bucket.site",
+      "mode": "managed",
+      "type": "aws_s3_bucket",
+      "name": "site",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "acceleration_status": "",
+          "acl": null,
+          "arn": "arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "bucket_domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.amazonaws.com",
+          "bucket_namespace": "account-regional",
+          "bucket_prefix": "",
+          "bucket_region": "eu-central-1",
+          "bucket_regional_domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.eu-central-1.amazonaws.com",
+          "cors_rule": [],
+          "force_destroy": false,
+          "grant": [
+            {
+              "id": "0000000000000000000000000000000000000000000000000000000000000001",
+              "permissions": [
+                "FULL_CONTROL"
+              ],
+              "type": "CanonicalUser",
+              "uri": ""
+            }
+          ],
+          "hosted_zone_id": "Z21DNDUVLTQW6Q",
+          "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "lifecycle_rule": [],
+          "logging": [],
+          "object_lock_configuration": [],
+          "object_lock_enabled": false,
+          "policy": "",
+          "region": "eu-central-1",
+          "replication_configuration": [],
+          "request_payer": "",
+          "server_side_encryption_configuration": [],
+          "tags": {
+            "Name": "cloudgate/docs/site",
+            "cloudgate:address": "aws_s3_bucket.site"
+          },
+          "tags_all": {
+            "Name": "cloudgate/docs/site",
+            "cloudgate:address": "aws_s3_bucket.site",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_static_1"
+          },
+          "timeouts": null,
+          "versioning": [
+            {
+              "enabled": false,
+              "mfa_delete": false
+            }
+          ],
+          "website": [],
+          "website_domain": null,
+          "website_endpoint": null
+        },
+        "after": {
+          "acceleration_status": "",
+          "acl": null,
+          "arn": "arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "bucket_domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.amazonaws.com",
+          "bucket_namespace": "account-regional",
+          "bucket_prefix": "",
+          "bucket_region": "eu-central-1",
+          "bucket_regional_domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.eu-central-1.amazonaws.com",
+          "cors_rule": [],
+          "force_destroy": false,
+          "grant": [
+            {
+              "id": "0000000000000000000000000000000000000000000000000000000000000001",
+              "permissions": [
+                "FULL_CONTROL"
+              ],
+              "type": "CanonicalUser",
+              "uri": ""
+            }
+          ],
+          "hosted_zone_id": "Z21DNDUVLTQW6Q",
+          "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "lifecycle_rule": [],
+          "logging": [],
+          "object_lock_configuration": [],
+          "object_lock_enabled": false,
+          "policy": "{\"Statement\":[{\"Action\":[\"s3:GetObject\",\"s3:ListBucket\"],\"Condition\":{\"StringEquals\":{\"AWS:SourceArn\":\"arn:aws:cloudfront::123456789012:distribution/E000000000001\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudfront.amazonaws.com\"},\"Resource\":[\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an\",\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an/*\"],\"Sid\":\"CloudFrontReadsSite\"}],\"Version\":\"2012-10-17\"}",
+          "region": "eu-central-1",
+          "replication_configuration": [],
+          "request_payer": "",
+          "server_side_encryption_configuration": [
+            {
+              "rule": [
+                {
+                  "apply_server_side_encryption_by_default": [
+                    {
+                      "kms_master_key_id": "",
+                      "sse_algorithm": "AES256"
+                    }
+                  ],
+                  "bucket_key_enabled": false
+                }
+              ]
+            }
+          ],
+          "tags": {
+            "Name": "cloudgate/docs/site",
+            "cloudgate:address": "aws_s3_bucket.site"
+          },
+          "tags_all": {
+            "Name": "cloudgate/docs/site",
+            "cloudgate:address": "aws_s3_bucket.site",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_static_1"
+          },
+          "timeouts": null,
+          "versioning": [
+            {
+              "enabled": false,
+              "mfa_delete": false
+            }
+          ],
+          "website": [],
+          "website_domain": null,
+          "website_endpoint": null
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "cors_rule": [],
+          "grant": [
+            {
+              "permissions": [
+                false
+              ]
+            }
+          ],
+          "lifecycle_rule": [],
+          "logging": [],
+          "object_lock_configuration": [],
+          "replication_configuration": [],
+          "server_side_encryption_configuration": [],
+          "tags": {},
+          "tags_all": {},
+          "versioning": [
+            {}
+          ],
+          "website": []
+        },
+        "after_sensitive": {
+          "cors_rule": [],
+          "grant": [
+            {
+              "permissions": [
+                false
+              ]
+            }
+          ],
+          "lifecycle_rule": [],
+          "logging": [],
+          "object_lock_configuration": [],
+          "replication_configuration": [],
+          "server_side_encryption_configuration": [
+            {
+              "rule": [
+                {
+                  "apply_server_side_encryption_by_default": [
+                    {}
+                  ]
+                }
+              ]
+            }
+          ],
+          "tags": {},
+          "tags_all": {},
+          "versioning": [
+            {}
+          ],
+          "website": []
+        },
+        "before_identity": {
+          "account_id": "123456789012",
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "region": "eu-central-1"
+        },
+        "after_identity": {
+          "account_id": "123456789012",
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "region": "eu-central-1"
+        }
+      }
+    }
+  ],
+  "resource_changes": [
+    {
+      "address": "aws_cloudfront_distribution.site",
+      "mode": "managed",
+      "type": "aws_cloudfront_distribution",
+      "name": "site",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "aliases": [],
+          "anycast_ip_list_id": "",
+          "arn": "arn:aws:cloudfront::123456789012:distribution/E000000000001",
+          "cache_tag_config": [],
+          "caller_reference": "terraform-00000000000000000000000001",
+          "comment": "cloudgate/docs",
+          "connection_function_association": [],
+          "continuous_deployment_policy_id": "",
+          "custom_error_response": [
+            {
+              "error_caching_min_ttl": 10,
+              "error_code": 403,
+              "response_code": 404,
+              "response_page_path": "/404.html"
+            }
+          ],
+          "default_cache_behavior": [
+            {
+              "allowed_methods": [
+                "GET",
+                "HEAD"
+              ],
+              "cache_policy_id": "00000000-0000-4000-8000-000000000001",
+              "cached_methods": [
+                "GET",
+                "HEAD"
+              ],
+              "compress": true,
+              "default_ttl": 0,
+              "field_level_encryption_id": "",
+              "forwarded_values": [],
+              "function_association": [],
+              "grpc_config": [],
+              "lambda_function_association": [],
+              "max_ttl": 0,
+              "min_ttl": 0,
+              "origin_request_policy_id": "",
+              "realtime_log_config_arn": "",
+              "response_headers_policy_id": "",
+              "smooth_streaming": false,
+              "target_origin_id": "site-bucket",
+              "trusted_key_groups": [],
+              "trusted_signers": [],
+              "viewer_protocol_policy": "redirect-to-https"
+            }
+          ],
+          "default_root_object": "index.html",
+          "domain_name": "d000000000001.cloudfront.net",
+          "enabled": true,
+          "etag": "E000000000002",
+          "hosted_zone_id": "Z2FDTNDATAQYW2",
+          "http_version": "http2",
+          "id": "E000000000001",
+          "in_progress_validation_batches": 0,
+          "is_ipv6_enabled": true,
+          "last_modified_time": "2021-11-27 10:34:26.802 +0000 UTC",
+          "logging_config": [],
+          "logging_v1_enabled": false,
+          "ordered_cache_behavior": [],
+          "origin": [
+            {
+              "connection_attempts": 3,
+              "connection_timeout": 10,
+              "custom_header": [],
+              "custom_origin_config": [],
+              "domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.eu-central-1.amazonaws.com",
+              "origin_access_control_id": "E000000000003",
+              "origin_id": "site-bucket",
+              "origin_path": "",
+              "origin_shield": [],
+              "response_completion_timeout": 0,
+              "s3_origin_config": [],
+              "vpc_origin_config": []
+            }
+          ],
+          "origin_group": [],
+          "price_class": "PriceClass_All",
+          "restrictions": [
+            {
+              "geo_restriction": [
+                {
+                  "locations": [],
+                  "restriction_type": "none"
+                }
+              ]
+            }
+          ],
+          "retain_on_delete": false,
+          "staging": false,
+          "status": "Deployed",
+          "tags": {
+            "Name": "cloudgate/docs/site",
+            "cloudgate:address": "aws_cloudfront_distribution.site"
+          },
+          "tags_all": {
+            "Name": "cloudgate/docs/site",
+            "cloudgate:address": "aws_cloudfront_distribution.site",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_static_1"
+          },
+          "trusted_key_groups": [
+            {
+              "enabled": false,
+              "items": []
+            }
+          ],
+          "trusted_signers": [
+            {
+              "enabled": false,
+              "items": []
+            }
+          ],
+          "viewer_certificate": [
+            {
+              "acm_certificate_arn": "",
+              "cloudfront_default_certificate": true,
+              "iam_certificate_id": "",
+              "minimum_protocol_version": "TLSv1",
+              "ssl_support_method": null
+            }
+          ],
+          "viewer_mtls_config": [],
+          "wait_for_deployment": false,
+          "web_acl_id": ""
+        },
+        "after": {
+          "aliases": [],
+          "anycast_ip_list_id": "",
+          "arn": "arn:aws:cloudfront::123456789012:distribution/E000000000001",
+          "cache_tag_config": [],
+          "caller_reference": "terraform-00000000000000000000000001",
+          "comment": "cloudgate/docs",
+          "connection_function_association": [],
+          "continuous_deployment_policy_id": "",
+          "custom_error_response": [
+            {
+              "error_caching_min_ttl": 10,
+              "error_code": 403,
+              "response_code": 200,
+              "response_page_path": "/index.html"
+            },
+            {
+              "error_caching_min_ttl": 10,
+              "error_code": 404,
+              "response_code": 200,
+              "response_page_path": "/index.html"
+            }
+          ],
+          "default_cache_behavior": [
+            {
+              "allowed_methods": [
+                "GET",
+                "HEAD"
+              ],
+              "cache_policy_id": "00000000-0000-4000-8000-000000000001",
+              "cached_methods": [
+                "GET",
+                "HEAD"
+              ],
+              "compress": true,
+              "default_ttl": 0,
+              "field_level_encryption_id": "",
+              "forwarded_values": [],
+              "function_association": [],
+              "grpc_config": [],
+              "lambda_function_association": [],
+              "max_ttl": 0,
+              "min_ttl": 0,
+              "origin_request_policy_id": "",
+              "realtime_log_config_arn": "",
+              "response_headers_policy_id": "",
+              "smooth_streaming": false,
+              "target_origin_id": "site-bucket",
+              "trusted_key_groups": [],
+              "trusted_signers": [],
+              "viewer_protocol_policy": "redirect-to-https"
+            }
+          ],
+          "default_root_object": "index.html",
+          "domain_name": "d000000000001.cloudfront.net",
+          "enabled": true,
+          "etag": "E000000000002",
+          "hosted_zone_id": "Z2FDTNDATAQYW2",
+          "http_version": "http2",
+          "id": "E000000000001",
+          "in_progress_validation_batches": 0,
+          "is_ipv6_enabled": true,
+          "last_modified_time": "2021-11-27 10:34:26.802 +0000 UTC",
+          "logging_config": [],
+          "logging_v1_enabled": false,
+          "ordered_cache_behavior": [],
+          "origin": [
+            {
+              "connection_attempts": 3,
+              "connection_timeout": 10,
+              "custom_header": [],
+              "custom_origin_config": [],
+              "domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.eu-central-1.amazonaws.com",
+              "origin_access_control_id": "E000000000003",
+              "origin_id": "site-bucket",
+              "origin_path": "",
+              "origin_shield": [],
+              "s3_origin_config": [],
+              "vpc_origin_config": [],
+              "response_completion_timeout": 0
+            }
+          ],
+          "origin_group": [],
+          "price_class": "PriceClass_All",
+          "restrictions": [
+            {
+              "geo_restriction": [
+                {
+                  "locations": [],
+                  "restriction_type": "none"
+                }
+              ]
+            }
+          ],
+          "retain_on_delete": false,
+          "staging": false,
+          "status": "Deployed",
+          "tags": {
+            "Name": "cloudgate/docs/site",
+            "cloudgate:address": "aws_cloudfront_distribution.site"
+          },
+          "tags_all": {
+            "Name": "cloudgate/docs/site",
+            "cloudgate:address": "aws_cloudfront_distribution.site",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_static_1"
+          },
+          "trusted_key_groups": [
+            {
+              "enabled": false,
+              "items": []
+            }
+          ],
+          "trusted_signers": [
+            {
+              "enabled": false,
+              "items": []
+            }
+          ],
+          "viewer_certificate": [
+            {
+              "acm_certificate_arn": "",
+              "cloudfront_default_certificate": true,
+              "iam_certificate_id": "",
+              "minimum_protocol_version": "TLSv1",
+              "ssl_support_method": null
+            }
+          ],
+          "viewer_mtls_config": [],
+          "wait_for_deployment": false,
+          "web_acl_id": ""
+        },
+        "after_unknown": {
+          "aliases": [],
+          "cache_tag_config": [],
+          "connection_function_association": [],
+          "custom_error_response": [
+            {},
+            {}
+          ],
+          "default_cache_behavior": [
+            {
+              "allowed_methods": [
+                false,
+                false
+              ],
+              "cached_methods": [
+                false,
+                false
+              ],
+              "forwarded_values": [],
+              "function_association": [],
+              "grpc_config": [],
+              "lambda_function_association": [],
+              "trusted_key_groups": [],
+              "trusted_signers": []
+            }
+          ],
+          "logging_config": [],
+          "ordered_cache_behavior": [],
+          "origin": [
+            {
+              "custom_header": [],
+              "custom_origin_config": [],
+              "origin_shield": [],
+              "s3_origin_config": [],
+              "vpc_origin_config": []
+            }
+          ],
+          "origin_group": [],
+          "restrictions": [
+            {
+              "geo_restriction": [
+                {
+                  "locations": []
+                }
+              ]
+            }
+          ],
+          "tags": {},
+          "tags_all": {},
+          "trusted_key_groups": [
+            {
+              "items": []
+            }
+          ],
+          "trusted_signers": [
+            {
+              "items": []
+            }
+          ],
+          "viewer_certificate": [
+            {}
+          ],
+          "viewer_mtls_config": []
+        },
+        "before_sensitive": {
+          "aliases": [],
+          "cache_tag_config": [],
+          "connection_function_association": [],
+          "custom_error_response": [
+            {}
+          ],
+          "default_cache_behavior": [
+            {
+              "allowed_methods": [
+                false,
+                false
+              ],
+              "cached_methods": [
+                false,
+                false
+              ],
+              "forwarded_values": [
+                {
+                  "cookies": [
+                    {
+                      "whitelisted_names": []
+                    }
+                  ],
+                  "headers": [],
+                  "query_string_cache_keys": []
+                }
+              ],
+              "function_association": [],
+              "grpc_config": [],
+              "lambda_function_association": [],
+              "trusted_key_groups": [],
+              "trusted_signers": []
+            }
+          ],
+          "logging_config": [],
+          "ordered_cache_behavior": [],
+          "origin": [
+            {
+              "custom_header": [],
+              "custom_origin_config": [],
+              "origin_shield": [],
+              "s3_origin_config": [],
+              "vpc_origin_config": []
+            }
+          ],
+          "origin_group": [],
+          "restrictions": [
+            {
+              "geo_restriction": [
+                {
+                  "locations": []
+                }
+              ]
+            }
+          ],
+          "tags": {},
+          "tags_all": {},
+          "trusted_key_groups": [
+            {
+              "items": []
+            }
+          ],
+          "trusted_signers": [
+            {
+              "items": []
+            }
+          ],
+          "viewer_certificate": [
+            {}
+          ],
+          "viewer_mtls_config": []
+        },
+        "after_sensitive": {
+          "aliases": [],
+          "cache_tag_config": [],
+          "connection_function_association": [],
+          "custom_error_response": [
+            {},
+            {}
+          ],
+          "default_cache_behavior": [
+            {
+              "allowed_methods": [
+                false,
+                false
+              ],
+              "cached_methods": [
+                false,
+                false
+              ],
+              "forwarded_values": [],
+              "function_association": [],
+              "grpc_config": [],
+              "lambda_function_association": [],
+              "trusted_key_groups": [],
+              "trusted_signers": []
+            }
+          ],
+          "logging_config": [],
+          "ordered_cache_behavior": [],
+          "origin": [
+            {
+              "custom_header": [],
+              "custom_origin_config": [],
+              "origin_shield": [],
+              "s3_origin_config": [],
+              "vpc_origin_config": []
+            }
+          ],
+          "origin_group": [],
+          "restrictions": [
+            {
+              "geo_restriction": [
+                {
+                  "locations": []
+                }
+              ]
+            }
+          ],
+          "tags": {},
+          "tags_all": {},
+          "trusted_key_groups": [
+            {
+              "items": []
+            }
+          ],
+          "trusted_signers": [
+            {
+              "items": []
+            }
+          ],
+          "viewer_certificate": [
+            {}
+          ],
+          "viewer_mtls_config": []
+        },
+        "before_identity": {
+          "account_id": "123456789012",
+          "id": "E000000000001"
+        },
+        "after_identity": {
+          "account_id": "123456789012",
+          "id": "E000000000001"
+        }
+      }
+    },
+    {
+      "address": "aws_cloudfront_origin_access_control.site",
+      "mode": "managed",
+      "type": "aws_cloudfront_origin_access_control",
+      "name": "site",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "arn": "arn:aws:cloudfront::123456789012:origin-access-control/E000000000003",
+          "description": "cloudgate/docs",
+          "etag": "E000000000004",
+          "id": "E000000000003",
+          "name": "cloudgate-app_static_1",
+          "origin_access_control_origin_type": "s3",
+          "signing_behavior": "always",
+          "signing_protocol": "sigv4"
+        },
+        "after": {
+          "arn": "arn:aws:cloudfront::123456789012:origin-access-control/E000000000003",
+          "description": "cloudgate/docs",
+          "etag": "E000000000004",
+          "id": "E000000000003",
+          "name": "cloudgate-app_static_1",
+          "origin_access_control_origin_type": "s3",
+          "signing_behavior": "always",
+          "signing_protocol": "sigv4"
+        },
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_s3_bucket.site",
+      "mode": "managed",
+      "type": "aws_s3_bucket",
+      "name": "site",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "acceleration_status": "",
+          "acl": null,
+          "arn": "arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "bucket_domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.amazonaws.com",
+          "bucket_namespace": "account-regional",
+          "bucket_prefix": "",
+          "bucket_region": "eu-central-1",
+          "bucket_regional_domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.eu-central-1.amazonaws.com",
+          "cors_rule": [],
+          "force_destroy": false,
+          "grant": [
+            {
+              "id": "0000000000000000000000000000000000000000000000000000000000000001",
+              "permissions": [
+                "FULL_CONTROL"
+              ],
+              "type": "CanonicalUser",
+              "uri": ""
+            }
+          ],
+          "hosted_zone_id": "Z21DNDUVLTQW6Q",
+          "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "lifecycle_rule": [],
+          "logging": [],
+          "object_lock_configuration": [],
+          "object_lock_enabled": false,
+          "policy": "{\"Statement\":[{\"Action\":[\"s3:GetObject\",\"s3:ListBucket\"],\"Condition\":{\"StringEquals\":{\"AWS:SourceArn\":\"arn:aws:cloudfront::123456789012:distribution/E000000000001\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudfront.amazonaws.com\"},\"Resource\":[\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an\",\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an/*\"],\"Sid\":\"CloudFrontReadsSite\"}],\"Version\":\"2012-10-17\"}",
+          "region": "eu-central-1",
+          "replication_configuration": [],
+          "request_payer": "",
+          "server_side_encryption_configuration": [
+            {
+              "rule": [
+                {
+                  "apply_server_side_encryption_by_default": [
+                    {
+                      "kms_master_key_id": "",
+                      "sse_algorithm": "AES256"
+                    }
+                  ],
+                  "bucket_key_enabled": false
+                }
+              ]
+            }
+          ],
+          "tags": {
+            "Name": "cloudgate/docs/site",
+            "cloudgate:address": "aws_s3_bucket.site"
+          },
+          "tags_all": {
+            "Name": "cloudgate/docs/site",
+            "cloudgate:address": "aws_s3_bucket.site",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_static_1"
+          },
+          "timeouts": null,
+          "versioning": [
+            {
+              "enabled": false,
+              "mfa_delete": false
+            }
+          ],
+          "website": [],
+          "website_domain": null,
+          "website_endpoint": null
+        },
+        "after": {
+          "acceleration_status": "",
+          "acl": null,
+          "arn": "arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "bucket_domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.amazonaws.com",
+          "bucket_namespace": "account-regional",
+          "bucket_prefix": "",
+          "bucket_region": "eu-central-1",
+          "bucket_regional_domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.eu-central-1.amazonaws.com",
+          "cors_rule": [],
+          "force_destroy": false,
+          "grant": [
+            {
+              "id": "0000000000000000000000000000000000000000000000000000000000000001",
+              "permissions": [
+                "FULL_CONTROL"
+              ],
+              "type": "CanonicalUser",
+              "uri": ""
+            }
+          ],
+          "hosted_zone_id": "Z21DNDUVLTQW6Q",
+          "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "lifecycle_rule": [],
+          "logging": [],
+          "object_lock_configuration": [],
+          "object_lock_enabled": false,
+          "policy": "{\"Statement\":[{\"Action\":[\"s3:GetObject\",\"s3:ListBucket\"],\"Condition\":{\"StringEquals\":{\"AWS:SourceArn\":\"arn:aws:cloudfront::123456789012:distribution/E000000000001\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudfront.amazonaws.com\"},\"Resource\":[\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an\",\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an/*\"],\"Sid\":\"CloudFrontReadsSite\"}],\"Version\":\"2012-10-17\"}",
+          "region": "eu-central-1",
+          "replication_configuration": [],
+          "request_payer": "",
+          "server_side_encryption_configuration": [
+            {
+              "rule": [
+                {
+                  "apply_server_side_encryption_by_default": [
+                    {
+                      "kms_master_key_id": "",
+                      "sse_algorithm": "AES256"
+                    }
+                  ],
+                  "bucket_key_enabled": false
+                }
+              ]
+            }
+          ],
+          "tags": {
+            "Name": "cloudgate/docs/site",
+            "cloudgate:address": "aws_s3_bucket.site"
+          },
+          "tags_all": {
+            "Name": "cloudgate/docs/site",
+            "cloudgate:address": "aws_s3_bucket.site",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_static_1"
+          },
+          "timeouts": null,
+          "versioning": [
+            {
+              "enabled": false,
+              "mfa_delete": false
+            }
+          ],
+          "website": [],
+          "website_domain": null,
+          "website_endpoint": null
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "cors_rule": [],
+          "grant": [
+            {
+              "permissions": [
+                false
+              ]
+            }
+          ],
+          "lifecycle_rule": [],
+          "logging": [],
+          "object_lock_configuration": [],
+          "replication_configuration": [],
+          "server_side_encryption_configuration": [
+            {
+              "rule": [
+                {
+                  "apply_server_side_encryption_by_default": [
+                    {}
+                  ]
+                }
+              ]
+            }
+          ],
+          "tags": {},
+          "tags_all": {},
+          "versioning": [
+            {}
+          ],
+          "website": []
+        },
+        "after_sensitive": {
+          "cors_rule": [],
+          "grant": [
+            {
+              "permissions": [
+                false
+              ]
+            }
+          ],
+          "lifecycle_rule": [],
+          "logging": [],
+          "object_lock_configuration": [],
+          "replication_configuration": [],
+          "server_side_encryption_configuration": [
+            {
+              "rule": [
+                {
+                  "apply_server_side_encryption_by_default": [
+                    {}
+                  ]
+                }
+              ]
+            }
+          ],
+          "tags": {},
+          "tags_all": {},
+          "versioning": [
+            {}
+          ],
+          "website": []
+        },
+        "before_identity": {
+          "account_id": "123456789012",
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "region": "eu-central-1"
+        },
+        "after_identity": {
+          "account_id": "123456789012",
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "region": "eu-central-1"
+        }
+      }
+    },
+    {
+      "address": "aws_s3_bucket_ownership_controls.site",
+      "mode": "managed",
+      "type": "aws_s3_bucket_ownership_controls",
+      "name": "site",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "region": "eu-central-1",
+          "rule": [
+            {
+              "object_ownership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "after": {
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "region": "eu-central-1",
+          "rule": [
+            {
+              "object_ownership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "rule": [
+            {}
+          ]
+        },
+        "after_sensitive": {
+          "rule": [
+            {}
+          ]
+        },
+        "before_identity": {
+          "account_id": "123456789012",
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "region": "eu-central-1"
+        },
+        "after_identity": {
+          "account_id": "123456789012",
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "region": "eu-central-1"
+        }
+      }
+    },
+    {
+      "address": "aws_s3_bucket_policy.site",
+      "mode": "managed",
+      "type": "aws_s3_bucket_policy",
+      "name": "site",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "policy": "{\"Statement\":[{\"Action\":[\"s3:GetObject\",\"s3:ListBucket\"],\"Condition\":{\"StringEquals\":{\"AWS:SourceArn\":\"arn:aws:cloudfront::123456789012:distribution/E000000000001\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudfront.amazonaws.com\"},\"Resource\":[\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an\",\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an/*\"],\"Sid\":\"CloudFrontReadsSite\"}],\"Version\":\"2012-10-17\"}",
+          "region": "eu-central-1"
+        },
+        "after": {
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "policy": "{\"Statement\":[{\"Action\":[\"s3:GetObject\",\"s3:ListBucket\"],\"Condition\":{\"StringEquals\":{\"AWS:SourceArn\":\"arn:aws:cloudfront::123456789012:distribution/E000000000001\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudfront.amazonaws.com\"},\"Resource\":[\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an\",\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an/*\"],\"Sid\":\"CloudFrontReadsSite\"}],\"Version\":\"2012-10-17\"}",
+          "region": "eu-central-1"
+        },
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": {},
+        "before_identity": {
+          "account_id": "123456789012",
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "region": "eu-central-1"
+        },
+        "after_identity": {
+          "account_id": "123456789012",
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "region": "eu-central-1"
+        }
+      }
+    },
+    {
+      "address": "aws_s3_bucket_public_access_block.site",
+      "mode": "managed",
+      "type": "aws_s3_bucket_public_access_block",
+      "name": "site",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "block_public_acls": true,
+          "block_public_policy": true,
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "ignore_public_acls": true,
+          "region": "eu-central-1",
+          "restrict_public_buckets": true,
+          "skip_destroy": null
+        },
+        "after": {
+          "block_public_acls": true,
+          "block_public_policy": true,
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "ignore_public_acls": true,
+          "region": "eu-central-1",
+          "restrict_public_buckets": true,
+          "skip_destroy": null
+        },
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": {},
+        "before_identity": {
+          "account_id": "123456789012",
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "region": "eu-central-1"
+        },
+        "after_identity": {
+          "account_id": "123456789012",
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "region": "eu-central-1"
+        }
+      }
+    },
+    {
+      "address": "aws_s3_bucket_server_side_encryption_configuration.site",
+      "mode": "managed",
+      "type": "aws_s3_bucket_server_side_encryption_configuration",
+      "name": "site",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "expected_bucket_owner": "",
+          "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "region": "eu-central-1",
+          "rule": [
+            {
+              "apply_server_side_encryption_by_default": [
+                {
+                  "kms_master_key_id": "",
+                  "sse_algorithm": "AES256"
+                }
+              ],
+              "blocked_encryption_types": [],
+              "bucket_key_enabled": false
+            }
+          ]
+        },
+        "after": {
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "expected_bucket_owner": "",
+          "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "region": "eu-central-1",
+          "rule": [
+            {
+              "apply_server_side_encryption_by_default": [
+                {
+                  "kms_master_key_id": "",
+                  "sse_algorithm": "AES256"
+                }
+              ],
+              "blocked_encryption_types": [],
+              "bucket_key_enabled": false
+            }
+          ]
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "rule": [
+            {
+              "apply_server_side_encryption_by_default": [
+                {}
+              ],
+              "blocked_encryption_types": []
+            }
+          ]
+        },
+        "after_sensitive": {
+          "rule": [
+            {
+              "apply_server_side_encryption_by_default": [
+                {}
+              ],
+              "blocked_encryption_types": []
+            }
+          ]
+        },
+        "before_identity": {
+          "account_id": "123456789012",
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "region": "eu-central-1"
+        },
+        "after_identity": {
+          "account_id": "123456789012",
+          "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "region": "eu-central-1"
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "bucket_name": {
+      "actions": [
+        "no-op"
+      ],
+      "before": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+      "after": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "distribution_arn": {
+      "actions": [
+        "no-op"
+      ],
+      "before": "arn:aws:cloudfront::123456789012:distribution/E000000000001",
+      "after": "arn:aws:cloudfront::123456789012:distribution/E000000000001",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "distribution_domain": {
+      "actions": [
+        "no-op"
+      ],
+      "before": "d000000000001.cloudfront.net",
+      "after": "d000000000001.cloudfront.net",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "distribution_id": {
+      "actions": [
+        "no-op"
+      ],
+      "before": "E000000000001",
+      "after": "E000000000001",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "domain_certificates": {
+      "actions": [
+        "no-op"
+      ],
+      "before": {},
+      "after": {},
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "outputs": {
+        "bucket_name": {
+          "sensitive": false,
+          "value": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+          "type": "string"
+        },
+        "distribution_arn": {
+          "sensitive": false,
+          "value": "arn:aws:cloudfront::123456789012:distribution/E000000000001",
+          "type": "string"
+        },
+        "distribution_domain": {
+          "sensitive": false,
+          "value": "d000000000001.cloudfront.net",
+          "type": "string"
+        },
+        "distribution_id": {
+          "sensitive": false,
+          "value": "E000000000001",
+          "type": "string"
+        },
+        "domain_certificates": {
+          "sensitive": false,
+          "value": {},
+          "type": [
+            "object",
+            {}
+          ]
+        }
+      },
+      "root_module": {
+        "resources": [
+          {
+            "address": "aws_cloudfront_distribution.site",
+            "mode": "managed",
+            "type": "aws_cloudfront_distribution",
+            "name": "site",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 1,
+            "values": {
+              "aliases": [],
+              "anycast_ip_list_id": "",
+              "arn": "arn:aws:cloudfront::123456789012:distribution/E000000000001",
+              "cache_tag_config": [],
+              "caller_reference": "terraform-00000000000000000000000001",
+              "comment": "cloudgate/docs",
+              "connection_function_association": [],
+              "continuous_deployment_policy_id": "",
+              "custom_error_response": [
+                {
+                  "error_caching_min_ttl": 10,
+                  "error_code": 403,
+                  "response_code": 404,
+                  "response_page_path": "/404.html"
+                }
+              ],
+              "default_cache_behavior": [
+                {
+                  "allowed_methods": [
+                    "GET",
+                    "HEAD"
+                  ],
+                  "cache_policy_id": "00000000-0000-4000-8000-000000000001",
+                  "cached_methods": [
+                    "GET",
+                    "HEAD"
+                  ],
+                  "compress": true,
+                  "default_ttl": 0,
+                  "field_level_encryption_id": "",
+                  "forwarded_values": [],
+                  "function_association": [],
+                  "grpc_config": [],
+                  "lambda_function_association": [],
+                  "max_ttl": 0,
+                  "min_ttl": 0,
+                  "origin_request_policy_id": "",
+                  "realtime_log_config_arn": "",
+                  "response_headers_policy_id": "",
+                  "smooth_streaming": false,
+                  "target_origin_id": "site-bucket",
+                  "trusted_key_groups": [],
+                  "trusted_signers": [],
+                  "viewer_protocol_policy": "redirect-to-https"
+                }
+              ],
+              "default_root_object": "index.html",
+              "domain_name": "d000000000001.cloudfront.net",
+              "enabled": true,
+              "etag": "E000000000002",
+              "hosted_zone_id": "Z2FDTNDATAQYW2",
+              "http_version": "http2",
+              "id": "E000000000001",
+              "in_progress_validation_batches": 0,
+              "is_ipv6_enabled": true,
+              "last_modified_time": "2021-11-27 10:34:26.802 +0000 UTC",
+              "logging_config": [],
+              "logging_v1_enabled": false,
+              "ordered_cache_behavior": [],
+              "origin": [
+                {
+                  "connection_attempts": 3,
+                  "connection_timeout": 10,
+                  "custom_header": [],
+                  "custom_origin_config": [],
+                  "domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.eu-central-1.amazonaws.com",
+                  "origin_access_control_id": "E000000000003",
+                  "origin_id": "site-bucket",
+                  "origin_path": "",
+                  "origin_shield": [],
+                  "response_completion_timeout": 0,
+                  "s3_origin_config": [],
+                  "vpc_origin_config": []
+                }
+              ],
+              "origin_group": [],
+              "price_class": "PriceClass_All",
+              "restrictions": [
+                {
+                  "geo_restriction": [
+                    {
+                      "locations": [],
+                      "restriction_type": "none"
+                    }
+                  ]
+                }
+              ],
+              "retain_on_delete": false,
+              "staging": false,
+              "status": "Deployed",
+              "tags": {
+                "Name": "cloudgate/docs/site",
+                "cloudgate:address": "aws_cloudfront_distribution.site"
+              },
+              "tags_all": {
+                "Name": "cloudgate/docs/site",
+                "cloudgate:address": "aws_cloudfront_distribution.site",
+                "cloudgate:cloud-account": "cloud_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "state_static_1"
+              },
+              "trusted_key_groups": [
+                {
+                  "enabled": false,
+                  "items": []
+                }
+              ],
+              "trusted_signers": [
+                {
+                  "enabled": false,
+                  "items": []
+                }
+              ],
+              "viewer_certificate": [
+                {
+                  "acm_certificate_arn": "",
+                  "cloudfront_default_certificate": true,
+                  "iam_certificate_id": "",
+                  "minimum_protocol_version": "TLSv1",
+                  "ssl_support_method": null
+                }
+              ],
+              "viewer_mtls_config": [],
+              "wait_for_deployment": false,
+              "web_acl_id": ""
+            },
+            "sensitive_values": {
+              "aliases": [],
+              "cache_tag_config": [],
+              "connection_function_association": [],
+              "custom_error_response": [
+                {}
+              ],
+              "default_cache_behavior": [
+                {
+                  "allowed_methods": [
+                    false,
+                    false
+                  ],
+                  "cached_methods": [
+                    false,
+                    false
+                  ],
+                  "forwarded_values": [
+                    {
+                      "cookies": [
+                        {
+                          "whitelisted_names": []
+                        }
+                      ],
+                      "headers": [],
+                      "query_string_cache_keys": []
+                    }
+                  ],
+                  "function_association": [],
+                  "grpc_config": [],
+                  "lambda_function_association": [],
+                  "trusted_key_groups": [],
+                  "trusted_signers": []
+                }
+              ],
+              "logging_config": [],
+              "ordered_cache_behavior": [],
+              "origin": [
+                {
+                  "custom_header": [],
+                  "custom_origin_config": [],
+                  "origin_shield": [],
+                  "s3_origin_config": [],
+                  "vpc_origin_config": []
+                }
+              ],
+              "origin_group": [],
+              "restrictions": [
+                {
+                  "geo_restriction": [
+                    {
+                      "locations": []
+                    }
+                  ]
+                }
+              ],
+              "tags": {},
+              "tags_all": {},
+              "trusted_key_groups": [
+                {
+                  "items": []
+                }
+              ],
+              "trusted_signers": [
+                {
+                  "items": []
+                }
+              ],
+              "viewer_certificate": [
+                {}
+              ],
+              "viewer_mtls_config": []
+            },
+            "depends_on": [
+              "aws_cloudfront_origin_access_control.site",
+              "aws_s3_bucket.site"
+            ],
+            "identity": {
+              "account_id": "123456789012",
+              "id": "E000000000001"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_cloudfront_origin_access_control.site",
+            "mode": "managed",
+            "type": "aws_cloudfront_origin_access_control",
+            "name": "site",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "arn": "arn:aws:cloudfront::123456789012:origin-access-control/E000000000003",
+              "description": "cloudgate/docs",
+              "etag": "E000000000004",
+              "id": "E000000000003",
+              "name": "cloudgate-app_static_1",
+              "origin_access_control_origin_type": "s3",
+              "signing_behavior": "always",
+              "signing_protocol": "sigv4"
+            },
+            "sensitive_values": {}
+          },
+          {
+            "address": "aws_s3_bucket.site",
+            "mode": "managed",
+            "type": "aws_s3_bucket",
+            "name": "site",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "acceleration_status": "",
+              "acl": null,
+              "arn": "arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an",
+              "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+              "bucket_domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.amazonaws.com",
+              "bucket_namespace": "account-regional",
+              "bucket_prefix": "",
+              "bucket_region": "eu-central-1",
+              "bucket_regional_domain_name": "docs-p4x8m2rt-123456789012-eu-central-1-an.s3.eu-central-1.amazonaws.com",
+              "cors_rule": [],
+              "force_destroy": false,
+              "grant": [
+                {
+                  "id": "0000000000000000000000000000000000000000000000000000000000000001",
+                  "permissions": [
+                    "FULL_CONTROL"
+                  ],
+                  "type": "CanonicalUser",
+                  "uri": ""
+                }
+              ],
+              "hosted_zone_id": "Z21DNDUVLTQW6Q",
+              "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+              "lifecycle_rule": [],
+              "logging": [],
+              "object_lock_configuration": [],
+              "object_lock_enabled": false,
+              "policy": "{\"Statement\":[{\"Action\":[\"s3:GetObject\",\"s3:ListBucket\"],\"Condition\":{\"StringEquals\":{\"AWS:SourceArn\":\"arn:aws:cloudfront::123456789012:distribution/E000000000001\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudfront.amazonaws.com\"},\"Resource\":[\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an\",\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an/*\"],\"Sid\":\"CloudFrontReadsSite\"}],\"Version\":\"2012-10-17\"}",
+              "region": "eu-central-1",
+              "replication_configuration": [],
+              "request_payer": "",
+              "server_side_encryption_configuration": [
+                {
+                  "rule": [
+                    {
+                      "apply_server_side_encryption_by_default": [
+                        {
+                          "kms_master_key_id": "",
+                          "sse_algorithm": "AES256"
+                        }
+                      ],
+                      "bucket_key_enabled": false
+                    }
+                  ]
+                }
+              ],
+              "tags": {
+                "Name": "cloudgate/docs/site",
+                "cloudgate:address": "aws_s3_bucket.site"
+              },
+              "tags_all": {
+                "Name": "cloudgate/docs/site",
+                "cloudgate:address": "aws_s3_bucket.site",
+                "cloudgate:cloud-account": "cloud_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "state_static_1"
+              },
+              "timeouts": null,
+              "versioning": [
+                {
+                  "enabled": false,
+                  "mfa_delete": false
+                }
+              ],
+              "website": [],
+              "website_domain": null,
+              "website_endpoint": null
+            },
+            "sensitive_values": {
+              "cors_rule": [],
+              "grant": [
+                {
+                  "permissions": [
+                    false
+                  ]
+                }
+              ],
+              "lifecycle_rule": [],
+              "logging": [],
+              "object_lock_configuration": [],
+              "replication_configuration": [],
+              "server_side_encryption_configuration": [
+                {
+                  "rule": [
+                    {
+                      "apply_server_side_encryption_by_default": [
+                        {}
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "tags": {},
+              "tags_all": {},
+              "versioning": [
+                {}
+              ],
+              "website": []
+            },
+            "identity": {
+              "account_id": "123456789012",
+              "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+              "region": "eu-central-1"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_s3_bucket_ownership_controls.site",
+            "mode": "managed",
+            "type": "aws_s3_bucket_ownership_controls",
+            "name": "site",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+              "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+              "region": "eu-central-1",
+              "rule": [
+                {
+                  "object_ownership": "BucketOwnerEnforced"
+                }
+              ]
+            },
+            "sensitive_values": {
+              "rule": [
+                {}
+              ]
+            },
+            "depends_on": [
+              "aws_s3_bucket.site"
+            ],
+            "identity": {
+              "account_id": "123456789012",
+              "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+              "region": "eu-central-1"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_s3_bucket_policy.site",
+            "mode": "managed",
+            "type": "aws_s3_bucket_policy",
+            "name": "site",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+              "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+              "policy": "{\"Statement\":[{\"Action\":[\"s3:GetObject\",\"s3:ListBucket\"],\"Condition\":{\"StringEquals\":{\"AWS:SourceArn\":\"arn:aws:cloudfront::123456789012:distribution/E000000000001\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudfront.amazonaws.com\"},\"Resource\":[\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an\",\"arn:aws:s3:::docs-p4x8m2rt-123456789012-eu-central-1-an/*\"],\"Sid\":\"CloudFrontReadsSite\"}],\"Version\":\"2012-10-17\"}",
+              "region": "eu-central-1"
+            },
+            "sensitive_values": {},
+            "depends_on": [
+              "aws_cloudfront_distribution.site",
+              "aws_cloudfront_origin_access_control.site",
+              "aws_s3_bucket.site"
+            ],
+            "identity": {
+              "account_id": "123456789012",
+              "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+              "region": "eu-central-1"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_s3_bucket_public_access_block.site",
+            "mode": "managed",
+            "type": "aws_s3_bucket_public_access_block",
+            "name": "site",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "block_public_acls": true,
+              "block_public_policy": true,
+              "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+              "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+              "ignore_public_acls": true,
+              "region": "eu-central-1",
+              "restrict_public_buckets": true,
+              "skip_destroy": null
+            },
+            "sensitive_values": {},
+            "depends_on": [
+              "aws_s3_bucket.site"
+            ],
+            "identity": {
+              "account_id": "123456789012",
+              "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+              "region": "eu-central-1"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_s3_bucket_server_side_encryption_configuration.site",
+            "mode": "managed",
+            "type": "aws_s3_bucket_server_side_encryption_configuration",
+            "name": "site",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+              "expected_bucket_owner": "",
+              "id": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+              "region": "eu-central-1",
+              "rule": [
+                {
+                  "apply_server_side_encryption_by_default": [
+                    {
+                      "kms_master_key_id": "",
+                      "sse_algorithm": "AES256"
+                    }
+                  ],
+                  "blocked_encryption_types": [],
+                  "bucket_key_enabled": false
+                }
+              ]
+            },
+            "sensitive_values": {
+              "rule": [
+                {
+                  "apply_server_side_encryption_by_default": [
+                    {}
+                  ],
+                  "blocked_encryption_types": []
+                }
+              ]
+            },
+            "depends_on": [
+              "aws_s3_bucket.site"
+            ],
+            "identity": {
+              "account_id": "123456789012",
+              "bucket": "docs-p4x8m2rt-123456789012-eu-central-1-an",
+              "region": "eu-central-1"
+            },
+            "identity_schema_version": 1
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "aws": {
+        "name": "aws",
+        "full_name": "registry.opentofu.org/hashicorp/aws",
+        "version_constraint": "6.69.1",
+        "expressions": {
+          "allowed_account_ids": {
+            "constant_value": [
+              "123456789012"
+            ]
+          },
+          "assume_role": [
+            {
+              "external_id": {
+                "constant_value": "moto-lane-external-id"
+              },
+              "role_arn": {
+                "constant_value": "arn:aws:iam::123456789012:role/cloudgate/cloudgate-deploy"
+              },
+              "session_name": {
+                "constant_value": "cloudgate"
+              }
+            }
+          ],
+          "default_tags": [
+            {
+              "tags": {
+                "constant_value": {
+                  "cloudgate:cloud-account": "cloud_1",
+                  "cloudgate:environment": "env_1",
+                  "cloudgate:state": "state_static_1"
+                }
+              }
+            }
+          ],
+          "endpoints": [
+            {
+              "acm": {
+                "constant_value": "http://moto:5000"
+              },
+              "cloudfront": {
+                "constant_value": "http://moto:5000"
+              },
+              "iam": {
+                "constant_value": "http://moto:5000"
+              },
+              "s3": {
+                "constant_value": "http://moto:5000"
+              },
+              "s3control": {
+                "constant_value": "http://moto:5000"
+              },
+              "sts": {
+                "constant_value": "http://moto:5000"
+              }
+            }
+          ],
+          "region": {
+            "constant_value": "eu-central-1"
+          },
+          "s3_use_path_style": {
+            "constant_value": true
+          }
+        }
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "bucket_name": {
+          "expression": {
+            "constant_value": "${aws_s3_bucket.site.bucket}",
+            "references": [
+              "aws_s3_bucket.site",
+              "aws_s3_bucket.site.bucket"
+            ]
+          }
+        },
+        "distribution_arn": {
+          "expression": {
+            "constant_value": "${aws_cloudfront_distribution.site.arn}",
+            "references": [
+              "aws_cloudfront_distribution.site",
+              "aws_cloudfront_distribution.site.arn"
+            ]
+          }
+        },
+        "distribution_domain": {
+          "expression": {
+            "constant_value": "${aws_cloudfront_distribution.site.domain_name}",
+            "references": [
+              "aws_cloudfront_distribution.site",
+              "aws_cloudfront_distribution.site.domain_name"
+            ]
+          }
+        },
+        "distribution_id": {
+          "expression": {
+            "constant_value": "${aws_cloudfront_distribution.site.id}",
+            "references": [
+              "aws_cloudfront_distribution.site",
+              "aws_cloudfront_distribution.site.id"
+            ]
+          }
+        },
+        "domain_certificates": {
+          "expression": {
+            "constant_value": "${ {for key, certificate in aws_acm_certificate.domain : key => { arn = certificate.arn, validation = [for option in certificate.domain_validation_options : { name = option.resource_record_name, type = option.resource_record_type, value = option.resource_record_value }] }} }",
+            "references": [
+              "aws_acm_certificate.domain"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "aws_acm_certificate.domain",
+          "mode": "managed",
+          "type": "aws_acm_certificate",
+          "name": "domain",
+          "provider_config_key": "aws",
+          "expressions": {
+            "domain_name": {
+              "constant_value": "${each.value.host}",
+              "references": [
+                "each.value",
+                "each.value.host"
+              ]
+            },
+            "region": {
+              "constant_value": "us-east-1"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "${each.value.name}",
+                "cloudgate:address": "aws_acm_certificate.domain/${each.key}"
+              },
+              "references": [
+                "each.key",
+                "each.value",
+                "each.value.name"
+              ]
+            },
+            "validation_method": {
+              "constant_value": "DNS"
+            }
+          },
+          "schema_version": 0,
+          "for_each_expression": {
+            "constant_value": {}
+          }
+        },
+        {
+          "address": "aws_cloudfront_distribution.site",
+          "mode": "managed",
+          "type": "aws_cloudfront_distribution",
+          "name": "site",
+          "provider_config_key": "aws",
+          "expressions": {
+            "aliases": {
+              "constant_value": []
+            },
+            "comment": {
+              "constant_value": "cloudgate/docs"
+            },
+            "custom_error_response": [
+              {
+                "error_caching_min_ttl": {
+                  "constant_value": 10
+                },
+                "error_code": {
+                  "constant_value": 403
+                },
+                "response_code": {
+                  "constant_value": 200
+                },
+                "response_page_path": {
+                  "constant_value": "/index.html"
+                }
+              },
+              {
+                "error_caching_min_ttl": {
+                  "constant_value": 10
+                },
+                "error_code": {
+                  "constant_value": 404
+                },
+                "response_code": {
+                  "constant_value": 200
+                },
+                "response_page_path": {
+                  "constant_value": "/index.html"
+                }
+              }
+            ],
+            "default_cache_behavior": [
+              {
+                "allowed_methods": {
+                  "constant_value": [
+                    "GET",
+                    "HEAD"
+                  ]
+                },
+                "cache_policy_id": {
+                  "constant_value": "00000000-0000-4000-8000-000000000001"
+                },
+                "cached_methods": {
+                  "constant_value": [
+                    "GET",
+                    "HEAD"
+                  ]
+                },
+                "compress": {
+                  "constant_value": true
+                },
+                "target_origin_id": {
+                  "constant_value": "site-bucket"
+                },
+                "viewer_protocol_policy": {
+                  "constant_value": "redirect-to-https"
+                }
+              }
+            ],
+            "default_root_object": {
+              "constant_value": "index.html"
+            },
+            "enabled": {
+              "constant_value": true
+            },
+            "http_version": {
+              "constant_value": "http2"
+            },
+            "is_ipv6_enabled": {
+              "constant_value": true
+            },
+            "origin": [
+              {
+                "domain_name": {
+                  "constant_value": "${aws_s3_bucket.site.bucket_regional_domain_name}",
+                  "references": [
+                    "aws_s3_bucket.site",
+                    "aws_s3_bucket.site.bucket_regional_domain_name"
+                  ]
+                },
+                "origin_access_control_id": {
+                  "constant_value": "${aws_cloudfront_origin_access_control.site.id}",
+                  "references": [
+                    "aws_cloudfront_origin_access_control.site",
+                    "aws_cloudfront_origin_access_control.site.id"
+                  ]
+                },
+                "origin_id": {
+                  "constant_value": "site-bucket"
+                },
+                "origin_path": {
+                  "constant_value": ""
+                }
+              }
+            ],
+            "price_class": {
+              "constant_value": "PriceClass_All"
+            },
+            "restrictions": [
+              {
+                "geo_restriction": [
+                  {
+                    "locations": {
+                      "constant_value": []
+                    },
+                    "restriction_type": {
+                      "constant_value": "none"
+                    }
+                  }
+                ]
+              }
+            ],
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/docs/site",
+                "cloudgate:address": "aws_cloudfront_distribution.site"
+              }
+            },
+            "viewer_certificate": [
+              {
+                "cloudfront_default_certificate": {
+                  "constant_value": true
+                }
+              }
+            ],
+            "wait_for_deployment": {
+              "constant_value": false
+            }
+          },
+          "schema_version": 1
+        },
+        {
+          "address": "aws_cloudfront_origin_access_control.site",
+          "mode": "managed",
+          "type": "aws_cloudfront_origin_access_control",
+          "name": "site",
+          "provider_config_key": "aws",
+          "expressions": {
+            "description": {
+              "constant_value": "cloudgate/docs"
+            },
+            "name": {
+              "constant_value": "cloudgate-app_static_1"
+            },
+            "origin_access_control_origin_type": {
+              "constant_value": "s3"
+            },
+            "signing_behavior": {
+              "constant_value": "always"
+            },
+            "signing_protocol": {
+              "constant_value": "sigv4"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_s3_bucket.site",
+          "mode": "managed",
+          "type": "aws_s3_bucket",
+          "name": "site",
+          "provider_config_key": "aws",
+          "expressions": {
+            "bucket": {
+              "constant_value": "docs-p4x8m2rt-123456789012-eu-central-1-an"
+            },
+            "bucket_namespace": {
+              "constant_value": "account-regional"
+            },
+            "force_destroy": {
+              "constant_value": false
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/docs/site",
+                "cloudgate:address": "aws_s3_bucket.site"
+              }
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_s3_bucket_ownership_controls.site",
+          "mode": "managed",
+          "type": "aws_s3_bucket_ownership_controls",
+          "name": "site",
+          "provider_config_key": "aws",
+          "expressions": {
+            "bucket": {
+              "constant_value": "${aws_s3_bucket.site.id}",
+              "references": [
+                "aws_s3_bucket.site",
+                "aws_s3_bucket.site.id"
+              ]
+            },
+            "rule": [
+              {
+                "object_ownership": {
+                  "constant_value": "BucketOwnerEnforced"
+                }
+              }
+            ]
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_s3_bucket_policy.site",
+          "mode": "managed",
+          "type": "aws_s3_bucket_policy",
+          "name": "site",
+          "provider_config_key": "aws",
+          "expressions": {
+            "bucket": {
+              "constant_value": "${aws_s3_bucket.site.id}",
+              "references": [
+                "aws_s3_bucket.site",
+                "aws_s3_bucket.site.id"
+              ]
+            },
+            "policy": {
+              "constant_value": "{\"Statement\":[{\"Action\":[\"s3:GetObject\",\"s3:ListBucket\"],\"Condition\":{\"StringEquals\":{\"AWS:SourceArn\":\"${aws_cloudfront_distribution.site.arn}\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudfront.amazonaws.com\"},\"Resource\":[\"${aws_s3_bucket.site.arn}\",\"${aws_s3_bucket.site.arn}/*\"],\"Sid\":\"CloudFrontReadsSite\"}],\"Version\":\"2012-10-17\"}",
+              "references": [
+                "aws_cloudfront_distribution.site",
+                "aws_cloudfront_distribution.site.arn",
+                "aws_s3_bucket.site",
+                "aws_s3_bucket.site",
+                "aws_s3_bucket.site.arn",
+                "aws_s3_bucket.site.arn"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_s3_bucket_public_access_block.site",
+          "mode": "managed",
+          "type": "aws_s3_bucket_public_access_block",
+          "name": "site",
+          "provider_config_key": "aws",
+          "expressions": {
+            "block_public_acls": {
+              "constant_value": true
+            },
+            "block_public_policy": {
+              "constant_value": true
+            },
+            "bucket": {
+              "constant_value": "${aws_s3_bucket.site.id}",
+              "references": [
+                "aws_s3_bucket.site",
+                "aws_s3_bucket.site.id"
+              ]
+            },
+            "ignore_public_acls": {
+              "constant_value": true
+            },
+            "restrict_public_buckets": {
+              "constant_value": true
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_s3_bucket_server_side_encryption_configuration.site",
+          "mode": "managed",
+          "type": "aws_s3_bucket_server_side_encryption_configuration",
+          "name": "site",
+          "provider_config_key": "aws",
+          "expressions": {
+            "bucket": {
+              "constant_value": "${aws_s3_bucket.site.id}",
+              "references": [
+                "aws_s3_bucket.site",
+                "aws_s3_bucket.site.id"
+              ]
+            },
+            "rule": [
+              {
+                "apply_server_side_encryption_by_default": [
+                  {
+                    "sse_algorithm": {
+                      "constant_value": "AES256"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "schema_version": 0
+        }
+      ]
+    }
+  },
+  "relevant_attributes": [
+    {
+      "resource": "aws_cloudfront_origin_access_control.site",
+      "attribute": [
+        "id"
+      ]
+    },
+    {
+      "resource": "aws_s3_bucket.site",
+      "attribute": [
+        "bucket_regional_domain_name"
+      ]
+    }
+  ],
+  "timestamp": "2026-01-01T00:00:00Z",
+  "errored": false
+}

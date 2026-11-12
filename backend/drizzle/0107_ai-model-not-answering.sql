@@ -1,0 +1,1 @@
+ALTER TABLE "notification" ADD COLUMN "ai_model_not_answering" boolean DEFAULT false NOT NULL;

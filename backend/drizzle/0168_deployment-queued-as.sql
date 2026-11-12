@@ -1,0 +1,1 @@
+ALTER TABLE "deployment" ADD COLUMN "queued_as" jsonb;

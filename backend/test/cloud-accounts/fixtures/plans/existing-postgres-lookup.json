@@ -1,0 +1,303 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "planned_values": {
+    "root_module": {}
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "root_module": {
+        "resources": [
+          {
+            "address": "data.aws_db_instance.database[0]",
+            "mode": "data",
+            "type": "aws_db_instance",
+            "name": "database",
+            "index": 0,
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "address": "acme-prod.aaaaaaaaaa.eu-central-1.rds.amazonaws.com",
+              "allocated_storage": 20,
+              "auto_minor_version_upgrade": true,
+              "availability_zone": "eu-central-1a",
+              "backup_retention_period": 1,
+              "ca_cert_identifier": "rds-ca-default",
+              "database_insights_mode": "",
+              "db_cluster_identifier": "",
+              "db_instance_arn": "arn:aws:rds:eu-central-1:123456789012:db:acme-prod",
+              "db_instance_class": "db.t4g.micro",
+              "db_instance_identifier": "acme-prod",
+              "db_instance_port": 5432,
+              "db_name": "",
+              "db_parameter_groups": [
+                "default.postgres17"
+              ],
+              "db_subnet_group": "acme-subnets",
+              "enabled_cloudwatch_logs_exports": [],
+              "endpoint": "acme-prod.aaaaaaaaaa.eu-central-1.rds.amazonaws.com:5432",
+              "engine": "postgres",
+              "engine_version": "17.4",
+              "hosted_zone_id": "",
+              "id": "acme-prod",
+              "iops": 0,
+              "kms_key_id": "",
+              "license_model": "general-public-license",
+              "master_user_secret": null,
+              "master_username": "acme",
+              "max_allocated_storage": 0,
+              "monitoring_interval": 0,
+              "monitoring_role_arn": "",
+              "multi_az": false,
+              "network_type": "",
+              "option_group_memberships": [
+                "default:postgres-17-4"
+              ],
+              "port": 5432,
+              "preferred_backup_window": "13:14-13:44",
+              "preferred_maintenance_window": "wed:06:38-wed:07:08",
+              "publicly_accessible": false,
+              "region": "eu-central-1",
+              "replicate_source_db": "",
+              "resource_id": "db-M5ENSHXFPU6XHZ4G4ZEI5QIO2U",
+              "storage_encrypted": false,
+              "storage_throughput": 0,
+              "storage_type": "gp2",
+              "tags": {
+                "Team": "shop"
+              },
+              "timezone": "",
+              "upgrade_rollout_order": "",
+              "vpc_security_groups": [
+                "sg-00000000000000004"
+              ]
+            },
+            "sensitive_values": {
+              "db_parameter_groups": [
+                false
+              ],
+              "enabled_cloudwatch_logs_exports": [],
+              "option_group_memberships": [
+                false
+              ],
+              "tags": {},
+              "vpc_security_groups": [
+                false
+              ]
+            }
+          },
+          {
+            "address": "data.aws_db_instances.found",
+            "mode": "data",
+            "type": "aws_db_instances",
+            "name": "found",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "filter": [
+                {
+                  "name": "db-instance-id",
+                  "values": [
+                    "acme-prod"
+                  ]
+                }
+              ],
+              "id": "eu-central-1",
+              "instance_arns": [
+                "arn:aws:rds:eu-central-1:123456789012:db:acme-prod"
+              ],
+              "instance_identifiers": [
+                "acme-prod"
+              ],
+              "region": "eu-central-1",
+              "tags": null
+            },
+            "sensitive_values": {
+              "filter": [
+                {
+                  "values": [
+                    false
+                  ]
+                }
+              ],
+              "instance_arns": [
+                false
+              ],
+              "instance_identifiers": [
+                false
+              ]
+            }
+          },
+          {
+            "address": "data.aws_db_subnet_group.database[0]",
+            "mode": "data",
+            "type": "aws_db_subnet_group",
+            "name": "database",
+            "index": 0,
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "arn": "arn:aws:rds:eu-central-1:123456789012:subgrp:acme-subnets",
+              "description": "made by hand",
+              "id": "acme-subnets",
+              "name": "acme-subnets",
+              "region": "eu-central-1",
+              "status": "Complete",
+              "subnet_ids": [
+                "subnet-00000000000000002",
+                "subnet-00000000000000003"
+              ],
+              "supported_network_types": [],
+              "vpc_id": "vpc-00000000000000001"
+            },
+            "sensitive_values": {
+              "subnet_ids": [
+                false,
+                false
+              ],
+              "supported_network_types": []
+            }
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "aws": {
+        "name": "aws",
+        "full_name": "registry.opentofu.org/hashicorp/aws",
+        "version_constraint": "6.69.1",
+        "expressions": {
+          "allowed_account_ids": {
+            "constant_value": [
+              "123456789012"
+            ]
+          },
+          "assume_role": [
+            {
+              "external_id": {
+                "constant_value": "moto-lane-external-id"
+              },
+              "role_arn": {
+                "constant_value": "arn:aws:iam::123456789012:role/cloudgate/cloudgate-deploy"
+              },
+              "session_name": {
+                "constant_value": "cloudgate"
+              }
+            }
+          ],
+          "default_tags": [
+            {
+              "tags": {
+                "constant_value": {
+                  "cloudgate:cloud-account": "ca_1",
+                  "cloudgate:environment": "env_1",
+                  "cloudgate:state": "st_existing_1"
+                }
+              }
+            }
+          ],
+          "endpoints": [
+            {
+              "ec2": {
+                "constant_value": "http://moto:5000"
+              },
+              "elasticache": {
+                "constant_value": "http://moto:5000"
+              },
+              "iam": {
+                "constant_value": "http://moto:5000"
+              },
+              "rds": {
+                "constant_value": "http://moto:5000"
+              },
+              "sts": {
+                "constant_value": "http://moto:5000"
+              }
+            }
+          ],
+          "region": {
+            "constant_value": "eu-central-1"
+          }
+        }
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "data.aws_db_instance.database",
+          "mode": "data",
+          "type": "aws_db_instance",
+          "name": "database",
+          "provider_config_key": "aws",
+          "expressions": {
+            "db_instance_identifier": {
+              "constant_value": "acme-prod"
+            }
+          },
+          "schema_version": 0,
+          "count_expression": {
+            "constant_value": "${length(data.aws_db_instances.found.instance_identifiers)}",
+            "references": [
+              "data.aws_db_instances.found",
+              "data.aws_db_instances.found.instance_identifiers"
+            ]
+          }
+        },
+        {
+          "address": "data.aws_db_instances.found",
+          "mode": "data",
+          "type": "aws_db_instances",
+          "name": "found",
+          "provider_config_key": "aws",
+          "expressions": {
+            "filter": [
+              {
+                "name": {
+                  "constant_value": "db-instance-id"
+                },
+                "values": {
+                  "constant_value": [
+                    "acme-prod"
+                  ]
+                }
+              }
+            ]
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "data.aws_db_subnet_group.database",
+          "mode": "data",
+          "type": "aws_db_subnet_group",
+          "name": "database",
+          "provider_config_key": "aws",
+          "expressions": {
+            "name": {
+              "constant_value": "${data.aws_db_instance.database[0].db_subnet_group}",
+              "references": [
+                "data.aws_db_instance.database",
+                "data.aws_db_instance.database[0]",
+                "data.aws_db_instance.database[0].db_subnet_group"
+              ]
+            }
+          },
+          "schema_version": 0,
+          "count_expression": {
+            "constant_value": "${length(data.aws_db_instances.found.instance_identifiers)}",
+            "references": [
+              "data.aws_db_instances.found",
+              "data.aws_db_instances.found.instance_identifiers"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "timestamp": "2026-01-01T00:00:00Z",
+  "errored": false,
+  "resource_drift": []
+}

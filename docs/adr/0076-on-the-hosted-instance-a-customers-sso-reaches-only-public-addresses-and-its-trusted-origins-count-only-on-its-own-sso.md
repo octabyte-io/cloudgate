@@ -1,0 +1,28 @@
+# On the Hosted instance a customer's SSO reaches only public addresses, and its trusted origins count only on its own SSO
+
+`@better-auth/sso` (1.6.33) fetches an OIDC provider's discovery document at registration, and its token, userinfo and JWKS endpoints at every sign-in, from the platform host. Its own guard refuses an endpoint that is not publicly routable (`discovery_private_host`), **unless its origin is on the trusted-origins list**, and it fetches discovery only from a trusted origin. That list is one list for the whole instance: `resolveTrustedOrigins` in `auth.config.ts` merged the **Trusted origins** of every owner of every Organization, because a Self-hosted operator adds an internal IdP's origin there to let the plugin reach it, and the plugin asks one context-wide `isTrustedOrigin`. `SsoService.register` also cured a `discovery_private_host` refusal by adding the issuer's origin when "Trust this issuer" was ticked. No earlier ADR decided either; the merge predates hosted mode and was written for one operator who owns every Organization.
+
+On the Hosted instance (ADR-0049) every customer is a stranger to every other. So a paid customer could trust `http://169.254.169.254` or `http://127.0.0.1:4000`, register a provider there, and have the platform host fetch it, reading the answer back through the plugin's distinct discovery errors; at sign-in the box POSTed to whatever token endpoint was stored. And because the list is also what better-auth checks every request's `Origin` and every `callbackURL` against, one customer's origin was trusted on every other customer's sign-in.
+
+So, on the Hosted instance, for every Organization except the **Instance organization** (`OutboundAddressGuard`'s exemption, ADR-0013):
+
+- **An SSO provider's issuer and endpoints, and a trusted origin, must be public addresses** (`publicAddressOf`, the outbound rule every customer-supplied dial uses). They are refused with `OUTBOUND_ADDRESS_REFUSED` when saved: at register and update before the plugin is called, again on the endpoints a discovery document stored (the provider is removed if one fails), and on adding or renaming a trusted origin. A wildcard origin does not resolve and is refused.
+- **They are checked again at `POST /sign-in/sso` and at the OIDC callback**, on the stored row, before the plugin fetches anything, so a row saved before this rule and a name whose records changed since are refused too.
+- **A customer's trusted origins count only on its own SSO requests**: registering or editing its provider, a sign-in routed to its provider, and that provider's callbacks. Everywhere else the list is the configured `TRUSTED_ORIGINS`, `BETTER_AUTH_URL`'s origin and the Instance organization's own trusted origins.
+
+In every mode, "Trust this issuer" now cures only `discovery_untrusted_origin`. A `discovery_private_host` refusal is about where the box would be sent, not about the list, so it is never cured in passing: an operator who means to use an internal IdP adds its origin under Trusted origins on purpose, as the plugin's message says.
+
+A Self-hosted instance is otherwise unchanged: one operator owns every Organization there (ADR-0051's reasoning), its lists stay merged, and pointing SSO at an internal IdP is what the allowlist is for.
+
+## Considered Options
+
+- **Route the plugin's fetches through `OutboundAddressGuard.fetchFor`.** Preferred, and not possible: the plugin takes no fetch, hook or dispatcher. It calls `betterFetch`, better-auth's `fetchRefusingRedirects` and jose's `createRemoteJWKSet` directly. Every one of those refuses redirects, so a public endpoint cannot bounce the box inward; what remains is the moment between this check's DNS lookup and the plugin's own, which a name with a very short TTL could use. That moment is closed by a scoped fetch instead: `AuthController` runs a Hosted customer's SSO routes inside `OutboundAddressGuard.runWithGuardedFetch` (`auth/sso-dial-scope.ts`), which, for that request's async scope only, gives `globalThis.fetch` the guard's own dispatcher. `betterFetch` and jose read `globalThis.fetch` at every call, so the plugin's discovery, token, userinfo and JWKS connections dial the address the guard checked, and every other fetch in the process keeps the default dispatcher. The Instance organization's SSO is not scoped, as it is exempt everywhere else.
+- **Scope every Organization's list to its own SSO in both modes.** Rejected for now: a Self-hosted operator may have used a second Organization's list for a console origin, and nobody there is a stranger.
+- **Stop merging customer lists and keep the plugin's private-host check as the only guard.** Rejected: a customer's own SSO still runs with its own list trusted, so the trust bypass would still apply to its own flows.
+
+## Consequences
+
+- **What a Hosted customer loses:** an SSO provider or trusted origin on a private, loopback, link-local or metadata address, or on a name that does not resolve publicly. Their trusted origins no longer let a browser call `/api/auth` from that origin, or be a `callbackURL`, outside their own SSO flows. The console-domain check (Settings) counts only the Instance organization's list, which is what the gate now uses.
+- **What the Instance organization keeps:** internal IdPs and its trusted origins on every request, as before.
+- Each `/api/auth` request on the Hosted instance makes one more small query (the Instance organization and, for an SSO path, the provider's Organization).
+- `hosted-proven-domains.e2e-spec.ts` lifts the address rule, since its fake IdP listens on loopback; the hosted e2e specs that add `https://idp.example.com` stub the resolver.

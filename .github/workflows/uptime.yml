@@ -1,0 +1,42 @@
+# The outside uptime check of `docs/deploy.md` §11 "Alerting to ops": from off
+# the Hetzner box, request each Hosted instance's one unauthenticated health
+# route and fail unless it answers 200 with {"status":"ok"}. That one request
+# passes through DNS, the certificate, Traefik, the console's /backend proxy,
+# the API and Postgres. A failed scheduled run is how ops is paged: GitHub
+# mails a failed scheduled workflow to whoever last changed its schedule.
+#
+# Hourly, not tighter. The hostnames are the repository variable
+# HOSTED_INSTANCES (space-separated), kept out of the tree so the public repo
+# does not name the boxes; with it unset the job checks nothing and passes.
+name: uptime
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      HOSTED_INSTANCES: ${{ vars.HOSTED_INSTANCES }}
+    steps:
+      - name: Each Hosted instance answers /backend/settings/health
+        run: |
+          failed=0
+          for host in $HOSTED_INSTANCES; do
+            url="https://$host/backend/settings/health"
+            body=$(curl -sS --max-time 20 --retry 2 --retry-delay 10 -w '\n%{http_code}' "$url") || body=$'\n000'
+            code=${body##*$'\n'}
+            json=${body%$'\n'*}
+            if [ "$code" = 200 ] && [ "$(jq -r .status <<<"$json" 2>/dev/null)" = ok ]; then
+              echo "$host is up ✅"
+            else
+              echo "::error::$host did not answer 200 {\"status\":\"ok\"} (HTTP $code): $json"
+              failed=1
+            fi
+          done
+          exit "$failed"

@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: specified-feature-drafts-spec
+expected_outcome: |
+  The user says everything is decided, but two of their decisions clash with the repo: a Sonner
+  toast contradicts the rule that CopyButton confirms in place, and the Server page header does
+  not show the Server's name. Research catches both, says the size, and asks about each in the
+  question shape with a recommendation, then waits. Nothing is published.

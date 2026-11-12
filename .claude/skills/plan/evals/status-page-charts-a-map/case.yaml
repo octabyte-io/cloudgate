@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: status-page-charts-a-map
+expected_outcome: |
+  Research ties the feature to the existing Uptime checks and Incidents, the size is judged 
+  large, and the run follows the map path: it asks the destination questions first (or proposes a 
+  map with a destination, question issues, Not yet specified and Out of scope). Questions use the 
+  heading, lettered-options, Example and Recommend layout and end with a Reply line. It answers 
+  none of them and publishes nothing.

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."cloud_kind" ADD VALUE 'gcp';

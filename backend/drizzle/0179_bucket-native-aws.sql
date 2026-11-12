@@ -1,0 +1,1 @@
+ALTER TABLE "bucket" ADD COLUMN "native_aws" jsonb;

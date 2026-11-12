@@ -1,0 +1,1 @@
+ALTER TABLE "license_key" ADD COLUMN "lapse_reported_for" timestamp (3);

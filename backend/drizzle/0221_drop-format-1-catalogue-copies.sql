@@ -1,0 +1,20 @@
+-- ADR-0072: the Template catalogue is now a `catalogue.zip`, and
+-- `template_catalogue.body` holds that zip as base64. Every row saved before
+-- this migration holds a format-1 `catalogue.json` as text, which this
+-- Cloudgate refuses. Kept, such a row is worse than none: its `release` still
+-- names the copy, so a check that finds the address unchanged reads no body
+-- and serves the row, and every catalogue route answers a 502 ("cannot be
+-- read by this Cloudgate") until the address serves something new. The row
+-- for the old default address would merely be orphaned, since the default now
+-- names `catalogue.zip`; a mirror's row would be stuck.
+--
+-- Deleted rather than converted. A row is only a cache of what its address
+-- served: the next time someone opens the templates screen the address is
+-- read again, as on a fresh install, and a mirror still serving a
+-- `catalogue.json` is refused with that reason named. Converting would mean
+-- building a zip in SQL out of JSON this Cloudgate no longer reads, for a copy
+-- the next check fetches anyway.
+--
+-- Hand-written in the file `drizzle-kit generate --custom` prepared: there is
+-- no schema change, the column stays `text` (CODING_STANDARDS §2.6).
+DELETE FROM "template_catalogue";

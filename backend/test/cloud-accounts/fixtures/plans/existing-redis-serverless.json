@@ -1,0 +1,66 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "planned_values": {
+    "root_module": {}
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "root_module": {
+        "resources": [
+          {
+            "address": "data.aws_elasticache_serverless_cache.cache",
+            "mode": "data",
+            "type": "aws_elasticache_serverless_cache",
+            "name": "cache",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "arn": "arn:aws:elasticache:eu-central-1:123456789012:serverlesscache:acme-cache",
+              "cache_usage_limits": [],
+              "create_time": "2026-03-02T10:11:12Z",
+              "daily_snapshot_time": "03:00",
+              "description": "acme sessions",
+              "endpoint": [
+                {
+                  "address": "acme-cache-x1y2z3.serverless.euc1.cache.amazonaws.com",
+                  "port": 6379
+                }
+              ],
+              "engine": "valkey",
+              "full_engine_version": "8.0",
+              "kms_key_id": "",
+              "major_engine_version": "8",
+              "name": "acme-cache",
+              "reader_endpoint": [
+                {
+                  "address": "acme-cache-x1y2z3.serverless.euc1.cache.amazonaws.com",
+                  "port": 6380
+                }
+              ],
+              "security_group_ids": ["sg-0acme6379"],
+              "snapshot_retention_limit": 1,
+              "status": "available",
+              "subnet_ids": ["subnet-0acme1", "subnet-0acme2"],
+              "user_group_id": ""
+            },
+            "sensitive_values": {
+              "cache_usage_limits": [],
+              "endpoint": [{}],
+              "reader_endpoint": [{}],
+              "security_group_ids": [false],
+              "subnet_ids": [false, false]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {},
+  "timestamp": "2026-10-17T11:02:19Z",
+  "applyable": false,
+  "complete": true,
+  "errored": false
+}

@@ -1,0 +1,1 @@
+ALTER TABLE "environment_network" ADD COLUMN "private_dns_namespace_id" text;

@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: trailing-newline-diff-goes-red-first
+expected_outcome: |
+  The helper both screens share (the line diff) counts a trailing newline as a line. The run 
+  writes a co-located test that fails on exactly that symptom, watches it go red, fixes the line 
+  splitting, watches it go green, runs the touched tests and the type check, and commits one fix 
+  with its test and a message naming the cause. Nothing is pushed.

@@ -1,0 +1,1 @@
+ALTER TABLE "plan" ADD COLUMN "deploy_target" jsonb;

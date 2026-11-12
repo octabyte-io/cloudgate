@@ -1,0 +1,2 @@
+ALTER TABLE "bucket" ADD COLUMN "existing" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "bucket" ADD CONSTRAINT "bucket_existing_in_cloud" CHECK (NOT "bucket"."existing" OR "bucket"."cloud_account_id" IS NOT NULL);

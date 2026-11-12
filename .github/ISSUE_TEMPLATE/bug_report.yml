@@ -1,0 +1,48 @@
+name: Bug report
+description: Something in Cloudgate is broken or behaves wrongly.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Security problems go through SECURITY.md, not a public issue.**
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to …
+        2. Click …
+        3. See …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Cloudgate version
+      description: Shown under Settings > About, or the commit you run.
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where are you running it?
+      options:
+        - Self-hosted
+        - Hosted (cloudgate.octabyte.app)
+        - Local development
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Remove any secrets, tokens or private addresses first.
+      render: shell

@@ -1,0 +1,483 @@
+{
+  "cloudgate_fixture": {
+    "source": "the live walk by hand",
+    "how": "Recorded by `tofu show -json` from a real plan in the live Google Cloud project on 2026-11-06 (a walk by hand; OpenTofu 1.13.1, hashicorp/google 8.8.0), then rewritten to the stored files' sample ids (cloud_1, env_1, svc_1, svc_pg_1, svc_redis_1 and their states, project example-project-123 / 123456789012, region europe-west1, deployment ids dep_N) and with every secret value masked (the default certificate's key, the database password, the wired variables' URLs; the typed variable values were the stored files' sample strings). The redis's create on the applied network's private link: AUTH_DISABLED."
+  },
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "planned_values": {
+    "outputs": {
+      "address": {
+        "sensitive": false
+      },
+      "ca": {
+        "sensitive": true
+      },
+      "port": {
+        "sensitive": false
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "google_memorystore_instance.cache",
+          "mode": "managed",
+          "type": "google_memorystore_instance",
+          "name": "cache",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "acl_policy": null,
+            "authorization_mode": "AUTH_DISABLED",
+            "automated_backup_config": [
+              {
+                "fixed_frequency_schedule": [
+                  {
+                    "start_time": [
+                      {
+                        "hours": 3
+                      }
+                    ]
+                  }
+                ],
+                "retention": "86400s"
+              }
+            ],
+            "deletion_policy": "DELETE",
+            "deletion_protection_enabled": false,
+            "desired_auto_created_endpoints": [
+              {
+                "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+                "project_id": "example-project-123"
+              }
+            ],
+            "desired_psc_auto_connections": [],
+            "effective_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "iv5snyhcwnee"
+            },
+            "engine_configs": {
+              "maxmemory-policy": "noeviction"
+            },
+            "engine_version": "VALKEY_8_0",
+            "gcs_source": [],
+            "instance_id": "cloudgate-rpwjluzdxftp",
+            "kms_key": null,
+            "labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "iv5snyhcwnee"
+            },
+            "location": "europe-west1",
+            "maintenance_policy": [],
+            "maintenance_version": null,
+            "managed_backup_source": [],
+            "mode": "CLUSTER_DISABLED",
+            "node_type": "CUSTOM_PICO",
+            "project": "example-project-123",
+            "replica_count": 0,
+            "server_ca_mode": "GOOGLE_MANAGED_PER_INSTANCE_CA",
+            "server_ca_pool": null,
+            "shard_count": 1,
+            "terraform_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "iv5snyhcwnee"
+            },
+            "timeouts": null,
+            "transit_encryption_mode": "SERVER_AUTHENTICATION"
+          },
+          "sensitive_values": {
+            "automated_backup_config": [
+              {
+                "fixed_frequency_schedule": [
+                  {
+                    "start_time": [
+                      {}
+                    ]
+                  }
+                ]
+              }
+            ],
+            "available_maintenance_versions": [],
+            "cross_instance_replication_config": [],
+            "desired_auto_created_endpoints": [
+              {}
+            ],
+            "desired_psc_auto_connections": [],
+            "discovery_endpoints": [],
+            "effective_labels": {},
+            "endpoints": [],
+            "engine_configs": {},
+            "gcs_source": [],
+            "labels": {},
+            "maintenance_policy": [],
+            "maintenance_schedule": [],
+            "managed_backup_source": [],
+            "managed_server_ca": [],
+            "node_config": [],
+            "persistence_config": [],
+            "psc_attachment_details": [],
+            "psc_auto_connections": [],
+            "state_info": [],
+            "terraform_labels": {},
+            "zone_distribution_config": []
+          },
+          "identity": {
+            "instance_id": null,
+            "location": null,
+            "project": null
+          },
+          "identity_schema_version": 1
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "google_memorystore_instance.cache",
+      "mode": "managed",
+      "type": "google_memorystore_instance",
+      "name": "cache",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "acl_policy": null,
+          "authorization_mode": "AUTH_DISABLED",
+          "automated_backup_config": [
+            {
+              "fixed_frequency_schedule": [
+                {
+                  "start_time": [
+                    {
+                      "hours": 3
+                    }
+                  ]
+                }
+              ],
+              "retention": "86400s"
+            }
+          ],
+          "deletion_policy": "DELETE",
+          "deletion_protection_enabled": false,
+          "desired_auto_created_endpoints": [
+            {
+              "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+              "project_id": "example-project-123"
+            }
+          ],
+          "desired_psc_auto_connections": [],
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "iv5snyhcwnee"
+          },
+          "engine_configs": {
+            "maxmemory-policy": "noeviction"
+          },
+          "engine_version": "VALKEY_8_0",
+          "gcs_source": [],
+          "instance_id": "cloudgate-rpwjluzdxftp",
+          "kms_key": null,
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "iv5snyhcwnee"
+          },
+          "location": "europe-west1",
+          "maintenance_policy": [],
+          "maintenance_version": null,
+          "managed_backup_source": [],
+          "mode": "CLUSTER_DISABLED",
+          "node_type": "CUSTOM_PICO",
+          "project": "example-project-123",
+          "replica_count": 0,
+          "server_ca_mode": "GOOGLE_MANAGED_PER_INSTANCE_CA",
+          "server_ca_pool": null,
+          "shard_count": 1,
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "iv5snyhcwnee"
+          },
+          "timeouts": null,
+          "transit_encryption_mode": "SERVER_AUTHENTICATION"
+        },
+        "after_unknown": {
+          "automated_backup_config": [
+            {
+              "fixed_frequency_schedule": [
+                {
+                  "start_time": [
+                    {}
+                  ]
+                }
+              ]
+            }
+          ],
+          "available_maintenance_versions": true,
+          "backup_collection": true,
+          "create_time": true,
+          "cross_instance_replication_config": true,
+          "desired_auto_created_endpoints": [
+            {}
+          ],
+          "desired_psc_auto_connections": [],
+          "discovery_endpoints": true,
+          "effective_labels": {},
+          "effective_maintenance_version": true,
+          "endpoints": true,
+          "engine_configs": {},
+          "gcs_source": [],
+          "id": true,
+          "is_acl_policy_in_sync": true,
+          "labels": {},
+          "maintenance_policy": [],
+          "maintenance_schedule": true,
+          "managed_backup_source": [],
+          "managed_server_ca": true,
+          "name": true,
+          "node_config": true,
+          "persistence_config": true,
+          "psc_attachment_details": true,
+          "psc_auto_connections": true,
+          "state": true,
+          "state_info": true,
+          "terraform_labels": {},
+          "uid": true,
+          "update_time": true,
+          "zone_distribution_config": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "automated_backup_config": [
+            {
+              "fixed_frequency_schedule": [
+                {
+                  "start_time": [
+                    {}
+                  ]
+                }
+              ]
+            }
+          ],
+          "available_maintenance_versions": [],
+          "cross_instance_replication_config": [],
+          "desired_auto_created_endpoints": [
+            {}
+          ],
+          "desired_psc_auto_connections": [],
+          "discovery_endpoints": [],
+          "effective_labels": {},
+          "endpoints": [],
+          "engine_configs": {},
+          "gcs_source": [],
+          "labels": {},
+          "maintenance_policy": [],
+          "maintenance_schedule": [],
+          "managed_backup_source": [],
+          "managed_server_ca": [],
+          "node_config": [],
+          "persistence_config": [],
+          "psc_attachment_details": [],
+          "psc_auto_connections": [],
+          "state_info": [],
+          "terraform_labels": {},
+          "zone_distribution_config": []
+        },
+        "after_identity": {
+          "instance_id": null,
+          "location": null,
+          "project": null
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "address": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "ca": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": true,
+      "after_sensitive": true
+    },
+    "port": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "google": {
+        "name": "google",
+        "full_name": "registry.opentofu.org/hashicorp/google",
+        "version_constraint": "8.8.0",
+        "expressions": {
+          "add_terraform_attribution_label": {
+            "constant_value": false
+          },
+          "project": {
+            "constant_value": "example-project-123"
+          },
+          "region": {
+            "constant_value": "europe-west1"
+          }
+        }
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "address": {
+          "expression": {
+            "constant_value": "${try(one(flatten([for endpoint in google_memorystore_instance.cache.endpoints : [for connection in endpoint.connections : [for auto in connection.psc_auto_connection : auto.ip_address if auto.connection_type == \"CONNECTION_TYPE_PRIMARY\"]]])), \"\")}",
+            "references": [
+              "google_memorystore_instance.cache.endpoints",
+              "google_memorystore_instance.cache"
+            ]
+          }
+        },
+        "ca": {
+          "sensitive": true,
+          "expression": {
+            "constant_value": "${join(\"\", flatten([for ca in google_memorystore_instance.cache.managed_server_ca : [for chain in ca.ca_certs : chain.certificates]]))}",
+            "references": [
+              "google_memorystore_instance.cache.managed_server_ca",
+              "google_memorystore_instance.cache"
+            ]
+          }
+        },
+        "port": {
+          "expression": {
+            "constant_value": "${try(one(flatten([for endpoint in google_memorystore_instance.cache.endpoints : [for connection in endpoint.connections : [for auto in connection.psc_auto_connection : auto.port if auto.connection_type == \"CONNECTION_TYPE_PRIMARY\"]]])), \"\")}",
+            "references": [
+              "google_memorystore_instance.cache.endpoints",
+              "google_memorystore_instance.cache"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "google_memorystore_instance.cache",
+          "mode": "managed",
+          "type": "google_memorystore_instance",
+          "name": "cache",
+          "provider_config_key": "google",
+          "expressions": {
+            "authorization_mode": {
+              "constant_value": "AUTH_DISABLED"
+            },
+            "automated_backup_config": [
+              {
+                "fixed_frequency_schedule": [
+                  {
+                    "start_time": [
+                      {
+                        "hours": {
+                          "constant_value": 3
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "retention": {
+                  "constant_value": "86400s"
+                }
+              }
+            ],
+            "deletion_protection_enabled": {
+              "constant_value": false
+            },
+            "desired_auto_created_endpoints": [
+              {
+                "network": {
+                  "constant_value": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net"
+                },
+                "project_id": {
+                  "constant_value": "example-project-123"
+                }
+              }
+            ],
+            "engine_configs": {
+              "constant_value": {
+                "maxmemory-policy": "noeviction"
+              }
+            },
+            "engine_version": {
+              "constant_value": "VALKEY_8_0"
+            },
+            "instance_id": {
+              "constant_value": "cloudgate-rpwjluzdxftp"
+            },
+            "labels": {
+              "constant_value": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "iv5snyhcwnee"
+              }
+            },
+            "location": {
+              "constant_value": "europe-west1"
+            },
+            "mode": {
+              "constant_value": "CLUSTER_DISABLED"
+            },
+            "node_type": {
+              "constant_value": "CUSTOM_PICO"
+            },
+            "replica_count": {
+              "constant_value": 0
+            },
+            "server_ca_mode": {
+              "constant_value": "GOOGLE_MANAGED_PER_INSTANCE_CA"
+            },
+            "shard_count": {
+              "constant_value": 1
+            },
+            "transit_encryption_mode": {
+              "constant_value": "SERVER_AUTHENTICATION"
+            }
+          },
+          "schema_version": 0
+        }
+      ]
+    }
+  },
+  "relevant_attributes": [
+    {
+      "resource": "google_memorystore_instance.cache",
+      "attribute": [
+        "endpoints"
+      ]
+    },
+    {
+      "resource": "google_memorystore_instance.cache",
+      "attribute": [
+        "managed_server_ca"
+      ]
+    }
+  ],
+  "timestamp": "2026-11-06T17:53:40Z",
+  "errored": false
+}

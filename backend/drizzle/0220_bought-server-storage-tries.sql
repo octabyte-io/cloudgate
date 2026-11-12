@@ -1,0 +1,1 @@
+ALTER TABLE "bought_server" ADD COLUMN "storage_tries" integer DEFAULT 0 NOT NULL;

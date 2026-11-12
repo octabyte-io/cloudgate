@@ -1,0 +1,173 @@
+{
+  "format_version": "1.0",
+  "terraform_version": "1.13.1",
+  "values": {
+    "outputs": {
+      "service_arn": {
+        "sensitive": false,
+        "value": "arn:aws:ecs:eu-central-1:123456789012:service/cloudgate-env/cloudgate-svc_1",
+        "type": "string"
+      },
+      "database_url": {
+        "sensitive": true,
+        "value": "postgres://app:OUTPUT-SECRET-VALUE@db.example:5432/app",
+        "type": "string"
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_ecr_repository.image",
+          "mode": "managed",
+          "type": "aws_ecr_repository",
+          "name": "image",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "arn": "arn:aws:ecr:eu-central-1:123456789012:repository/cloudgate-svc_1",
+            "id": "cloudgate-svc_1",
+            "image_tag_mutability": "IMMUTABLE",
+            "name": "cloudgate-svc_1",
+            "region": "eu-central-1",
+            "registry_id": "123456789012",
+            "repository_url": "123456789012.dkr.ecr.eu-central-1.amazonaws.com/cloudgate-svc_1",
+            "tags": {
+              "Name": "web",
+              "cloudgate:address": "aws_ecr_repository.image"
+            },
+            "tags_all": {
+              "Name": "web",
+              "cloudgate:address": "aws_ecr_repository.image",
+              "cloudgate:cloud-account": "cla_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state-web"
+            }
+          },
+          "sensitive_values": { "tags": {}, "tags_all": {} }
+        },
+        {
+          "address": "aws_ssm_parameter.variable[\"API_KEY\"]",
+          "mode": "managed",
+          "type": "aws_ssm_parameter",
+          "name": "variable",
+          "index": "API_KEY",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "arn": "arn:aws:ssm:eu-central-1:123456789012:parameter/cloudgate/env_1/svc_1/API_KEY",
+            "id": "/cloudgate/env_1/svc_1/API_KEY",
+            "name": "/cloudgate/env_1/svc_1/API_KEY",
+            "region": "eu-central-1",
+            "type": "SecureString",
+            "value": "PARAMETER-SECRET-VALUE",
+            "insecure_value": null,
+            "tags": {
+              "Name": "web API_KEY",
+              "cloudgate:address": "aws_ssm_parameter.variable"
+            },
+            "tags_all": {
+              "Name": "web API_KEY",
+              "cloudgate:address": "aws_ssm_parameter.variable",
+              "cloudgate:cloud-account": "cla_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state-web"
+            }
+          },
+          "sensitive_values": { "value": true, "tags": {}, "tags_all": {} }
+        },
+        {
+          "address": "aws_ecs_task_definition.service",
+          "mode": "managed",
+          "type": "aws_ecs_task_definition",
+          "name": "service",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "arn": "arn:aws:ecs:eu-central-1:123456789012:task-definition/cloudgate-svc_1:3",
+            "id": "cloudgate-svc_1",
+            "container_definitions": "[{\"name\":\"app\",\"environment\":[{\"name\":\"PLAIN\",\"value\":\"TASK-DEFINITION-VALUE\"}]}]",
+            "cpu": "512",
+            "family": "cloudgate-svc_1",
+            "memory": "1024",
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "web",
+              "cloudgate:address": "aws_ecs_task_definition.service"
+            },
+            "tags_all": {
+              "Name": "web",
+              "cloudgate:address": "aws_ecs_task_definition.service",
+              "cloudgate:cloud-account": "cla_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state-web"
+            }
+          },
+          "sensitive_values": { "tags": {}, "tags_all": {} }
+        },
+        {
+          "address": "aws_security_group.service",
+          "mode": "managed",
+          "type": "aws_security_group",
+          "name": "service",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "arn": "arn:aws:ec2:eu-central-1:123456789012:security-group/sg-0service",
+            "id": "sg-0service",
+            "name": "cloudgate-svc_1",
+            "region": "eu-central-1",
+            "vpc_id": "vpc-0f00ba11",
+            "tags": {
+              "Name": "web",
+              "cloudgate:address": "aws_security_group.service"
+            },
+            "tags_all": {
+              "Name": "web",
+              "cloudgate:address": "aws_security_group.service",
+              "cloudgate:cloud-account": "cla_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state-web"
+            }
+          },
+          "sensitive_values": { "tags": {}, "tags_all": {} }
+        },
+        {
+          "address": "aws_iam_role.task",
+          "mode": "managed",
+          "type": "aws_iam_role",
+          "name": "task",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "arn": "arn:aws:iam::123456789012:role/cloudgate-task-svc_1",
+            "id": "cloudgate-task-svc_1",
+            "name": "cloudgate-task-svc_1",
+            "assume_role_policy": "{\"Version\":\"2012-10-17\"}",
+            "tags": { "cloudgate:address": "aws_iam_role.task" },
+            "tags_all": {
+              "cloudgate:address": "aws_iam_role.task",
+              "cloudgate:cloud-account": "cla_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state-web"
+            }
+          },
+          "sensitive_values": { "tags": {}, "tags_all": {} }
+        },
+        {
+          "address": "aws_iam_role_policy_attachment.task",
+          "mode": "managed",
+          "type": "aws_iam_role_policy_attachment",
+          "name": "task",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "id": "cloudgate-task-svc_1-20261017000000000000000001",
+            "policy_arn": "arn:aws:iam::123456789012:policy/cloudgate-task",
+            "role": "cloudgate-task-svc_1"
+          },
+          "sensitive_values": {}
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,67 @@
+[Unit]
+Description=Cloudgate backend (NestJS API on :4000)
+Documentation=https://github.com/octabyte-io/cloudgate
+After=network-online.target postgresql.service docker.service
+Wants=network-online.target
+# `Wants=`, not `Requires=`: with `Requires=`, a stop or restart of a unit named
+# on this line propagates to this one, so the API went down with its database
+# even though the pool's `error` listener means the process no longer crashes on
+# its own. That is a second, independent mechanism, and stopping the API is the
+# wrong answer to either — Postgres coming back should be all it takes, and the
+# same argument covers `docker.service`: restarting Docker should degrade
+# deployments, not stop the API. Under `Requires=` it was worse than a stop: a
+# control unit differing only in this keyword stayed `inactive` after
+# `systemctl start postgresql`, so the API needed starting by hand as well.
+# Demonstrated by `systemctl stop postgresql` and by `systemctl restart docker`.
+# Which command demonstrates it is platform-specific and easy to get wrong: see
+# docs/deploy.md §10 for the one to use and why the other proves nothing.
+# `After=` on line 4 is untouched, because boot ordering is what that line buys
+# and only stop-propagation is being given up.
+# `cloudgate-console.service` already carries no `Requires=` at all, so this makes
+# the two units consistent rather than newly divergent.
+Wants=postgresql.service docker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/cloudgate/backend
+EnvironmentFile=/etc/default/cloudgate-backend
+
+# RemoteExecService.execAsync inherits this unit's environment. Without
+# /usr/local/bin, `nixpacks` and `node` are simply not found, and the failure
+# surfaces as `nixpacks: not found` inside a deployment log rather than here.
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+ExecStart=/usr/local/bin/node dist/main
+
+# `always`, not `on-failure`. `on-failure` was chosen only because
+# `always` papered over the in-memory build queue orphaning a build; start-up
+# now queues waiting builds again and settles a cut-off one `error`, so a
+# restart orphans nothing. `systemctl stop` still stops the service.
+Restart=always
+RestartSec=5s
+
+# Deliberately unsandboxed: this process shells out to docker, git, ssh,
+# nixpacks, rclone and tail, writes /etc/cloudgate, and spawns ptys.
+
+# Stopping waits for Cloud runs (the Cloud runs spec, "Shutdown"). On SIGTERM the
+# backend sends each `tofu` child one interrupt, waits for it (killing it at 4
+# minutes), writes its last log line and settles its Deployment, then exits.
+# `TimeoutStopSec` gives that 5 minutes before systemd's SIGKILL.
+#
+# `KillMode=mixed`, not the default `control-group`, so the SIGTERM goes to the
+# backend alone: `tofu` reads a second interrupt as "abort now", which can
+# leave its state lock held, and under `control-group` systemd's SIGTERM would
+# be the first and the backend's the second. The SIGKILL that follows the
+# backend's exit still goes to the whole cgroup, so the pty children the
+# websocket gateways fork are reaped as before.
+KillMode=mixed
+TimeoutStopSec=5min
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cloudgate-backend
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,1 @@
+ALTER TABLE "compose" ADD COLUMN "cloud_delete" jsonb;

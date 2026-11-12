@@ -1,0 +1,8 @@
+{
+  "rootDir": ".",
+  "testRegex": ".moto-spec.ts$",
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "testEnvironment": "node",
+  "transform": { "^.+\\.ts$": "ts-jest" },
+  "testTimeout": 900000
+}

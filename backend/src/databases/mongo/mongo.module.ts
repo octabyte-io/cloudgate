@@ -1,0 +1,23 @@
+import { Module } from '@nestjs/common';
+import { ConsoleSavesModule } from '../../project-config/console-saves';
+import { ServiceHealthModule } from '../../service-health/service-health.module';
+import { volumeReleaseClockProvider } from '../common/database-ops';
+import { convergenceClockProvider } from '../common/database-convergence';
+import { MongoController } from './mongo.controller';
+import { MongoService } from './mongo.service';
+
+/** Feature module copied from the Phase 07 projects template. */
+@Module({
+  // `ServiceHealthModule` for the Stop hook.
+  // `ConsoleSavesModule` keeps a Cloudgate-kept Project config in step with
+  // each console Save.
+  imports: [ServiceHealthModule, ConsoleSavesModule],
+  controllers: [MongoController],
+  providers: [
+    MongoService,
+    volumeReleaseClockProvider,
+    convergenceClockProvider,
+  ],
+  exports: [MongoService],
+})
+export class MongoModule {}

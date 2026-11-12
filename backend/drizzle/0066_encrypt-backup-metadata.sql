@@ -1,0 +1,76 @@
+-- `backup.metadata` is what a **compose** backup stores its target
+-- engine's credentials in — the engine runs inside the user's stack, so there
+-- is no database row to read them from — and three of its four members are a
+-- password: `mariadb.databasePassword`, `mongo.databasePassword` and
+-- `mysql.databaseRootPassword`. `BackupsService.credentialsFor` hands them
+-- straight to the engine's `mariadb-dump --password=…`,
+-- `mysqldump --password=…` and `mongodump -p …`, on the dump path *and* the
+-- restore path. They sat in cleartext `jsonb`, so a `pg_dump`, a read replica
+-- or a backup tarball handed its reader working credentials for a database
+-- inside a customer's stack. The column becomes `encryptedJson` (ADR 0006):
+-- `text` at rest, holding `enc:v1:` + the blob's JSON.
+--
+-- **The asymmetry is what makes this a defect rather than a preference.** Every
+-- engine table's own copy of the identical value is already `encryptedText` —
+-- `mariadb.database_password`, `mongo`, `mysql`, `postgres`, `redis`,
+-- `libsql` — and the rest of `backups/` had classified this column the same
+-- way: `BackupListItem` is `Omit<Backup, 'metadata'>`, `listByService`
+-- projects it out with `columns: { metadata: false }`, and the comment over
+-- both says it "holds the stack engine's user and password". Only the column
+-- disagreed, which is the deploy-webhook secrets' failure mode one level down.
+--
+-- `src/backups/backup.schema.ts` carries the argument for converting the whole
+-- blob rather than lifting `databasePassword` into a column of its own, and
+-- for why nothing needed the non-secret fields in SQL: the only reader of this
+-- blob anywhere in `src` is `credentialsFor`, in the process, off a row
+-- already fetched. No `->`, no `->>`, no containment operator, no `where`, no
+-- ordering, and no index on `metadata` in any of the 66 migrations — which
+-- matters because an encrypted column cannot be looked up by value at all
+-- (AES-256-GCM under a random IV, and drizzle applies `toDriver` to the bound
+-- parameter too).
+--
+-- **Exactly as `drizzle-kit generate` emitted it, and that is a correction to
+-- what `0065` and ADR 0006 used to say about this conversion.** Both stated
+-- that `drizzle-kit` gets `jsonb` → `text` wrong in two ways, the second being
+-- that it writes a bare `SET DATA TYPE text` "which Postgres refuses on a
+-- `jsonb` column". **That half does not reproduce**, and both documents now
+-- carry the measurement instead. There is no `jsonb` → `text` entry in
+-- `pg_cast` at all; Postgres reaches a string-category target through the
+-- source type's output function (coercion via I/O, allowed in assignment
+-- context), so on PostgreSQL 17.11 `alter table … alter column c set data type
+-- text` on a `jsonb` column succeeds — checked directly, with a `jsonb`
+-- default present and without one, and a `NULL` row stays `NULL` either way.
+-- It also produces byte-for-byte what `::text` produces, because both call
+-- `jsonb_out`. The *"cannot be cast automatically … You might need to specify
+-- USING"* those documents quoted is the error for the reverse direction,
+-- `text` → `jsonb`, where coercion via I/O needs an explicit cast. The defect
+-- `0065` really hit is the *other* one: `SET DEFAULT [object Object]` is a
+-- syntax error, and `metrics_config` has a default while this column has
+-- none. So `0065`'s `USING "metrics_config"::text` was belt-and-braces rather
+-- than the cast Postgres demanded, and adding a `USING` here to match it would
+-- have shipped a redundant clause under a false sentence. The generated
+-- statement is the whole file, and
+-- `test/backups/backup-metadata-at-rest.e2e-spec.ts` applies it over a
+-- database whose history stops at `0065`, with a populated row and a `NULL`
+-- row, through the migrator that runs it in production.
+--
+-- **No `SET DEFAULT` pair at all, because this column has no default** — and
+-- cannot usefully be given one. A default that helped would have to *contain*
+-- the credentials, and a ciphertext baked into DDL is tied to whichever
+-- `APP_ENCRYPTION_SECRET` generated the migration and undecryptable on every
+-- other instance (ADR 0006). `NULL` is also what the column means on a
+-- database backup, which is every backup that is not a compose one.
+--
+-- **No data migration, and none is possible.** The key is
+-- `HMAC-SHA256(APP_ENCRYPTION_SECRET, 'cloudgate:db-encryption:v1')`, derived
+-- in the Node process; `db:migrate` is `drizzle-kit migrate`, which replays
+-- `.sql` and nothing else, and this database has no `pgcrypto` and no access
+-- to that variable. AES-256-GCM is not expressible in this statement.
+-- `decryptValue` returns a value without the `enc:v1:` prefix unchanged, so a
+-- converted row holding plain JSON still parses and reads back as the object
+-- it always was; every *write* after this migration goes through `toDriver`,
+-- so no path produces new cleartext and the residue closes on the next save of
+-- each row. A password that was already in a `pg_dump` wants rotating rather
+-- than re-encrypting — and a rotation is a write, which encrypts the row on
+-- the way past.
+ALTER TABLE "backup" ALTER COLUMN "metadata" SET DATA TYPE text;

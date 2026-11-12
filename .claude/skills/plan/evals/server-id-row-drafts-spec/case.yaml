@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: server-id-row-drafts-spec
+expected_outcome: |
+  Everything is decided and consistent with the repo. The run asks no design questions and drafts 
+  in the chat one spec (Problem, Solution, User stories, Implementation decisions, Testing 
+  decisions naming an existing similar test, Out of scope) with its ticket or tickets (What to 
+  build, Acceptance criteria, an agent or human label, blockers), with no file paths, then asks 
+  for one approval of both. Nothing is published.

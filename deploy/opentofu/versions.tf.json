@@ -1,0 +1,14 @@
+{
+  "terraform": {
+    "required_providers": {
+      "aws": {
+        "source": "registry.opentofu.org/hashicorp/aws",
+        "version": "6.69.1"
+      },
+      "google": {
+        "source": "registry.opentofu.org/hashicorp/google",
+        "version": "8.8.0"
+      }
+    }
+  }
+}

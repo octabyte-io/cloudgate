@@ -1,0 +1,1 @@
+ALTER TABLE "postgres" ADD COLUMN "rds_endpoint" jsonb;

@@ -1,0 +1,2457 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "planned_values": {
+    "outputs": {
+      "domain_certificates": {
+        "sensitive": false,
+        "type": [
+          "object",
+          {}
+        ],
+        "value": {}
+      },
+      "ecr_repository_url": {
+        "sensitive": false
+      },
+      "ecs_service_name": {
+        "sensitive": false,
+        "type": "string",
+        "value": "api-svc_1"
+      },
+      "log_group_name": {
+        "sensitive": false,
+        "type": "string",
+        "value": "/cloudgate/env_1/svc_1"
+      },
+      "target_group_arn": {
+        "sensitive": false
+      },
+      "task_role_arn": {
+        "sensitive": false
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_cloudwatch_log_group.service",
+          "mode": "managed",
+          "type": "aws_cloudwatch_log_group",
+          "name": "service",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "kms_key_id": null,
+            "name": "/cloudgate/env_1/svc_1",
+            "region": "eu-central-1",
+            "retention_in_days": 90,
+            "skip_destroy": false,
+            "tags": {
+              "Name": "cloudgate/api/logs",
+              "cloudgate:address": "aws_cloudwatch_log_group.service"
+            },
+            "tags_all": {
+              "Name": "cloudgate/api/logs",
+              "cloudgate:address": "aws_cloudwatch_log_group.service",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_web_1"
+            }
+          },
+          "sensitive_values": {
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": null,
+            "name": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_ecr_lifecycle_policy.service",
+          "mode": "managed",
+          "type": "aws_ecr_lifecycle_policy",
+          "name": "service",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "policy": "{\"rules\":[{\"action\":{\"type\":\"expire\"},\"description\":\"Expire half-pushed untagged images after a day\",\"rulePriority\":1,\"selection\":{\"countNumber\":1,\"countType\":\"sinceImagePushed\",\"countUnit\":\"days\",\"tagStatus\":\"untagged\"}}]}",
+            "region": "eu-central-1",
+            "repository": "cloudgate/svc_1"
+          },
+          "sensitive_values": {},
+          "identity": {
+            "account_id": null,
+            "region": null,
+            "repository": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_ecr_repository.service",
+          "mode": "managed",
+          "type": "aws_ecr_repository",
+          "name": "service",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "encryption_configuration": [],
+            "force_delete": true,
+            "image_scanning_configuration": [],
+            "image_tag_mutability": "IMMUTABLE",
+            "image_tag_mutability_exclusion_filter": [],
+            "name": "cloudgate/svc_1",
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "cloudgate/api/images",
+              "cloudgate:address": "aws_ecr_repository.service"
+            },
+            "tags_all": {
+              "Name": "cloudgate/api/images",
+              "cloudgate:address": "aws_ecr_repository.service",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_web_1"
+            },
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "encryption_configuration": [],
+            "image_scanning_configuration": [],
+            "image_tag_mutability_exclusion_filter": [],
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": null,
+            "name": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_ecs_service.service",
+          "mode": "managed",
+          "type": "aws_ecs_service",
+          "name": "service",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "alarms": [],
+            "capacity_provider_strategy": [],
+            "cluster": "arn:aws:ecs:eu-central-1:123456789012:cluster/cloudgate-stand-in",
+            "deployment_circuit_breaker": [],
+            "deployment_controller": [],
+            "deployment_maximum_percent": 200,
+            "deployment_minimum_healthy_percent": 100,
+            "desired_count": 1,
+            "enable_ecs_managed_tags": true,
+            "enable_execute_command": false,
+            "force_delete": null,
+            "force_new_deployment": true,
+            "health_check_grace_period_seconds": null,
+            "launch_type": "FARGATE",
+            "load_balancer": [
+              {
+                "advanced_configuration": [],
+                "container_name": "service",
+                "container_port": 4000,
+                "elb_name": ""
+              }
+            ],
+            "name": "api-svc_1",
+            "network_configuration": [
+              {
+                "assign_public_ip": true,
+                "subnets": [
+                  "subnet-cloudgate-stand-in-a",
+                  "subnet-cloudgate-stand-in-b"
+                ]
+              }
+            ],
+            "ordered_placement_strategy": [],
+            "placement_constraints": [],
+            "propagate_tags": "SERVICE",
+            "region": "eu-central-1",
+            "scheduling_strategy": "REPLICA",
+            "service_connect_configuration": [],
+            "service_registries": [],
+            "sigint_rollback": null,
+            "tags": {
+              "Name": "cloudgate/api/service",
+              "cloudgate:address": "aws_ecs_service.service"
+            },
+            "tags_all": {
+              "Name": "cloudgate/api/service",
+              "cloudgate:address": "aws_ecs_service.service",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_web_1"
+            },
+            "timeouts": null,
+            "triggers": {
+              "variables": "0000000000000000000000000000000000000000000000000000000000000001"
+            },
+            "volume_configuration": [],
+            "vpc_lattice_configurations": [],
+            "wait_for_steady_state": false
+          },
+          "sensitive_values": {
+            "alarms": [],
+            "capacity_provider_strategy": [],
+            "deployment_circuit_breaker": [],
+            "deployment_configuration": [],
+            "deployment_controller": [],
+            "load_balancer": [
+              {
+                "advanced_configuration": []
+              }
+            ],
+            "network_configuration": [
+              {
+                "security_groups": [],
+                "subnets": [
+                  false,
+                  false
+                ]
+              }
+            ],
+            "ordered_placement_strategy": [],
+            "placement_constraints": [],
+            "service_connect_configuration": [],
+            "service_registries": [],
+            "tags": {},
+            "tags_all": {},
+            "triggers": {
+              "variables": true
+            },
+            "volume_configuration": [],
+            "vpc_lattice_configurations": []
+          },
+          "identity": {
+            "account_id": null,
+            "cluster": null,
+            "name": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_ecs_task_definition.service",
+          "mode": "managed",
+          "type": "aws_ecs_task_definition",
+          "name": "service",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "cpu": "512",
+            "ephemeral_storage": [],
+            "execution_role_arn": "arn:aws:iam::123456789012:role/cloudgate/cloudgate-task-execution",
+            "family": "cloudgate-svc_1",
+            "ipc_mode": null,
+            "memory": "1024",
+            "network_mode": "awsvpc",
+            "pid_mode": null,
+            "placement_constraints": [],
+            "proxy_configuration": [],
+            "region": "eu-central-1",
+            "requires_compatibilities": [
+              "FARGATE"
+            ],
+            "runtime_platform": [
+              {
+                "cpu_architecture": "X86_64",
+                "operating_system_family": "LINUX"
+              }
+            ],
+            "skip_destroy": false,
+            "tags": {
+              "Name": "cloudgate/api/task",
+              "cloudgate:address": "aws_ecs_task_definition.service"
+            },
+            "tags_all": {
+              "Name": "cloudgate/api/task",
+              "cloudgate:address": "aws_ecs_task_definition.service",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_web_1"
+            },
+            "track_latest": false,
+            "volume": []
+          },
+          "sensitive_values": {
+            "ephemeral_storage": [],
+            "placement_constraints": [],
+            "proxy_configuration": [],
+            "requires_compatibilities": [
+              false
+            ],
+            "runtime_platform": [
+              {}
+            ],
+            "tags": {},
+            "tags_all": {},
+            "volume": []
+          },
+          "identity": {
+            "account_id": null,
+            "family": null,
+            "region": null,
+            "revision": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_iam_role.task",
+          "mode": "managed",
+          "type": "aws_iam_role",
+          "name": "task",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Condition\":{\"StringEquals\":{\"aws:SourceAccount\":\"123456789012\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ecs-tasks.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+            "description": null,
+            "force_detach_policies": false,
+            "max_session_duration": 3600,
+            "name": "cloudgate-svc_1",
+            "path": "/cloudgate/",
+            "permissions_boundary": "arn:aws:iam::123456789012:policy/cloudgate/cloudgate-task-boundary",
+            "tags": {
+              "Name": "cloudgate/api/task-role",
+              "cloudgate:address": "aws_iam_role.task"
+            },
+            "tags_all": {
+              "Name": "cloudgate/api/task-role",
+              "cloudgate:address": "aws_iam_role.task",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_web_1"
+            }
+          },
+          "sensitive_values": {
+            "inline_policy": [],
+            "managed_policy_arns": [],
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": null,
+            "name": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_lb_listener_rule.service",
+          "mode": "managed",
+          "type": "aws_lb_listener_rule",
+          "name": "service",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "action": [
+              {
+                "authenticate_cognito": [],
+                "authenticate_oidc": [],
+                "fixed_response": [],
+                "forward": [],
+                "jwt_validation": [],
+                "redirect": [],
+                "type": "forward"
+              }
+            ],
+            "condition": [
+              {
+                "host_header": [],
+                "http_header": [
+                  {
+                    "http_header_name": "X-Cloudgate-Service",
+                    "regex_values": [],
+                    "values": [
+                      "svc_1"
+                    ]
+                  }
+                ],
+                "http_request_method": [],
+                "path_pattern": [],
+                "query_string": [],
+                "source_ip": []
+              }
+            ],
+            "listener_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener/app/cloudgate-stand-in/0000000000000000/0000000000000000",
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "cloudgate/api/rule",
+              "cloudgate:address": "aws_lb_listener_rule.service"
+            },
+            "tags_all": {
+              "Name": "cloudgate/api/rule",
+              "cloudgate:address": "aws_lb_listener_rule.service",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_web_1"
+            },
+            "transform": []
+          },
+          "sensitive_values": {
+            "action": [
+              {
+                "authenticate_cognito": [],
+                "authenticate_oidc": [],
+                "fixed_response": [],
+                "forward": [],
+                "jwt_validation": [],
+                "redirect": []
+              }
+            ],
+            "condition": [
+              {
+                "host_header": [],
+                "http_header": [
+                  {
+                    "regex_values": [],
+                    "values": [
+                      false
+                    ]
+                  }
+                ],
+                "http_request_method": [],
+                "path_pattern": [],
+                "query_string": [],
+                "source_ip": []
+              }
+            ],
+            "tags": {},
+            "tags_all": {},
+            "transform": []
+          },
+          "identity": {
+            "arn": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_lb_target_group.service",
+          "mode": "managed",
+          "type": "aws_lb_target_group",
+          "name": "service",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "deregistration_delay": "30",
+            "health_check": [
+              {
+                "enabled": true,
+                "healthy_threshold": 3,
+                "interval": 30,
+                "matcher": "200-399",
+                "path": "/",
+                "port": "traffic-port",
+                "protocol": "HTTP",
+                "unhealthy_threshold": 3
+              }
+            ],
+            "lambda_multi_value_headers_enabled": false,
+            "name_prefix": "cg-",
+            "port": 4000,
+            "protocol": "HTTP",
+            "proxy_protocol_v2": false,
+            "region": "eu-central-1",
+            "slow_start": 0,
+            "tags": {
+              "Name": "cloudgate/api/targets",
+              "cloudgate:address": "aws_lb_target_group.service"
+            },
+            "tags_all": {
+              "Name": "cloudgate/api/targets",
+              "cloudgate:address": "aws_lb_target_group.service",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_web_1"
+            },
+            "target_control_port": null,
+            "target_type": "ip",
+            "vpc_id": "vpc-cloudgate-stand-in"
+          },
+          "sensitive_values": {
+            "health_check": [
+              {}
+            ],
+            "load_balancer_arns": [],
+            "stickiness": [],
+            "tags": {},
+            "tags_all": {},
+            "target_failover": [],
+            "target_group_health": [],
+            "target_health_state": []
+          },
+          "identity": {
+            "arn": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_security_group.service",
+          "mode": "managed",
+          "type": "aws_security_group",
+          "name": "service",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "description": "Cloudgate: a Service, reachable from its load balancer only",
+            "egress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "",
+                "from_port": 0,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "-1",
+                "security_groups": [],
+                "self": false,
+                "to_port": 0
+              }
+            ],
+            "ingress": [
+              {
+                "cidr_blocks": [],
+                "description": "",
+                "from_port": 4000,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [
+                  "sg-cloudgate-stand-in"
+                ],
+                "self": false,
+                "to_port": 4000
+              }
+            ],
+            "name": "cloudgate-service-svc_1",
+            "region": "eu-central-1",
+            "revoke_rules_on_delete": false,
+            "tags": {
+              "Name": "cloudgate/api/tasks",
+              "cloudgate:address": "aws_security_group.service"
+            },
+            "tags_all": {
+              "Name": "cloudgate/api/tasks",
+              "cloudgate:address": "aws_security_group.service",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_web_1"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-cloudgate-stand-in"
+          },
+          "sensitive_values": {
+            "egress": [
+              {
+                "cidr_blocks": [
+                  false
+                ],
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "security_groups": []
+              }
+            ],
+            "ingress": [
+              {
+                "cidr_blocks": [],
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "security_groups": [
+                  false
+                ]
+              }
+            ],
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": null,
+            "id": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_ssm_parameter.variable[\"API_KEY\"]",
+          "mode": "managed",
+          "type": "aws_ssm_parameter",
+          "name": "variable",
+          "index": "API_KEY",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "allowed_pattern": null,
+            "description": null,
+            "name": "/cloudgate/env_1/svc_1/API_KEY",
+            "overwrite": null,
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "cloudgate/api/variables/API_KEY",
+              "cloudgate:address": "aws_ssm_parameter.variable/API_KEY"
+            },
+            "tags_all": {
+              "Name": "cloudgate/api/variables/API_KEY",
+              "cloudgate:address": "aws_ssm_parameter.variable/API_KEY",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_web_1"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "hunter2-very-secret",
+            "value_wo": null,
+            "value_wo_version": null
+          },
+          "sensitive_values": {
+            "tags": {},
+            "tags_all": {},
+            "value": true,
+            "value_wo": true
+          },
+          "identity": {
+            "account_id": null,
+            "name": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_ssm_parameter.variable[\"BIG_CERT\"]",
+          "mode": "managed",
+          "type": "aws_ssm_parameter",
+          "name": "variable",
+          "index": "BIG_CERT",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "allowed_pattern": null,
+            "description": null,
+            "name": "/cloudgate/env_1/svc_1/BIG_CERT",
+            "overwrite": null,
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "cloudgate/api/variables/BIG_CERT",
+              "cloudgate:address": "aws_ssm_parameter.variable/BIG_CERT"
+            },
+            "tags_all": {
+              "Name": "cloudgate/api/variables/BIG_CERT",
+              "cloudgate:address": "aws_ssm_parameter.variable/BIG_CERT",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_web_1"
+            },
+            "tier": "Advanced",
+            "type": "SecureString",
+            "value": "-----BEGIN CERTIFICATE-----\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n-----END CERTIFICATE-----",
+            "value_wo": null,
+            "value_wo_version": null
+          },
+          "sensitive_values": {
+            "tags": {},
+            "tags_all": {},
+            "value": true,
+            "value_wo": true
+          },
+          "identity": {
+            "account_id": null,
+            "name": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "aws_cloudwatch_log_group.service",
+      "mode": "managed",
+      "type": "aws_cloudwatch_log_group",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "kms_key_id": null,
+          "name": "/cloudgate/env_1/svc_1",
+          "region": "eu-central-1",
+          "retention_in_days": 90,
+          "skip_destroy": false,
+          "tags": {
+            "Name": "cloudgate/api/logs",
+            "cloudgate:address": "aws_cloudwatch_log_group.service"
+          },
+          "tags_all": {
+            "Name": "cloudgate/api/logs",
+            "cloudgate:address": "aws_cloudwatch_log_group.service",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_web_1"
+          }
+        },
+        "after_unknown": {
+          "arn": true,
+          "deletion_protection_enabled": true,
+          "id": true,
+          "log_group_class": true,
+          "name_prefix": true,
+          "tags": {},
+          "tags_all": {}
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_identity": {
+          "account_id": null,
+          "name": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_ecr_lifecycle_policy.service",
+      "mode": "managed",
+      "type": "aws_ecr_lifecycle_policy",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "policy": "{\"rules\":[{\"action\":{\"type\":\"expire\"},\"description\":\"Expire half-pushed untagged images after a day\",\"rulePriority\":1,\"selection\":{\"countNumber\":1,\"countType\":\"sinceImagePushed\",\"countUnit\":\"days\",\"tagStatus\":\"untagged\"}}]}",
+          "region": "eu-central-1",
+          "repository": "cloudgate/svc_1"
+        },
+        "after_unknown": {
+          "id": true,
+          "registry_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {},
+        "after_identity": {
+          "account_id": null,
+          "region": null,
+          "repository": null
+        }
+      }
+    },
+    {
+      "address": "aws_ecr_repository.service",
+      "mode": "managed",
+      "type": "aws_ecr_repository",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "encryption_configuration": [],
+          "force_delete": true,
+          "image_scanning_configuration": [],
+          "image_tag_mutability": "IMMUTABLE",
+          "image_tag_mutability_exclusion_filter": [],
+          "name": "cloudgate/svc_1",
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/api/images",
+            "cloudgate:address": "aws_ecr_repository.service"
+          },
+          "tags_all": {
+            "Name": "cloudgate/api/images",
+            "cloudgate:address": "aws_ecr_repository.service",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_web_1"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "encryption_configuration": [],
+          "id": true,
+          "image_scanning_configuration": [],
+          "image_tag_mutability_exclusion_filter": [],
+          "registry_id": true,
+          "repository_url": true,
+          "tags": {},
+          "tags_all": {}
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "encryption_configuration": [],
+          "image_scanning_configuration": [],
+          "image_tag_mutability_exclusion_filter": [],
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_identity": {
+          "account_id": null,
+          "name": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_ecs_service.service",
+      "mode": "managed",
+      "type": "aws_ecs_service",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "alarms": [],
+          "capacity_provider_strategy": [],
+          "cluster": "arn:aws:ecs:eu-central-1:123456789012:cluster/cloudgate-stand-in",
+          "deployment_circuit_breaker": [],
+          "deployment_controller": [],
+          "deployment_maximum_percent": 200,
+          "deployment_minimum_healthy_percent": 100,
+          "desired_count": 1,
+          "enable_ecs_managed_tags": true,
+          "enable_execute_command": false,
+          "force_delete": null,
+          "force_new_deployment": true,
+          "health_check_grace_period_seconds": null,
+          "launch_type": "FARGATE",
+          "load_balancer": [
+            {
+              "advanced_configuration": [],
+              "container_name": "service",
+              "container_port": 4000,
+              "elb_name": ""
+            }
+          ],
+          "name": "api-svc_1",
+          "network_configuration": [
+            {
+              "assign_public_ip": true,
+              "subnets": [
+                "subnet-cloudgate-stand-in-a",
+                "subnet-cloudgate-stand-in-b"
+              ]
+            }
+          ],
+          "ordered_placement_strategy": [],
+          "placement_constraints": [],
+          "propagate_tags": "SERVICE",
+          "region": "eu-central-1",
+          "scheduling_strategy": "REPLICA",
+          "service_connect_configuration": [],
+          "service_registries": [],
+          "sigint_rollback": null,
+          "tags": {
+            "Name": "cloudgate/api/service",
+            "cloudgate:address": "aws_ecs_service.service"
+          },
+          "tags_all": {
+            "Name": "cloudgate/api/service",
+            "cloudgate:address": "aws_ecs_service.service",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_web_1"
+          },
+          "timeouts": null,
+          "triggers": {
+            "variables": "0000000000000000000000000000000000000000000000000000000000000001"
+          },
+          "volume_configuration": [],
+          "vpc_lattice_configurations": [],
+          "wait_for_steady_state": false
+        },
+        "after_unknown": {
+          "alarms": [],
+          "arn": true,
+          "availability_zone_rebalancing": true,
+          "capacity_provider_strategy": [],
+          "deployment_circuit_breaker": [],
+          "deployment_configuration": true,
+          "deployment_controller": [],
+          "iam_role": true,
+          "id": true,
+          "load_balancer": [
+            {
+              "advanced_configuration": [],
+              "target_group_arn": true
+            }
+          ],
+          "network_configuration": [
+            {
+              "security_groups": true,
+              "subnets": [
+                false,
+                false
+              ]
+            }
+          ],
+          "ordered_placement_strategy": [],
+          "placement_constraints": [],
+          "platform_version": true,
+          "service_connect_configuration": [],
+          "service_registries": [],
+          "tags": {},
+          "tags_all": {},
+          "task_definition": true,
+          "triggers": {},
+          "volume_configuration": [],
+          "vpc_lattice_configurations": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "alarms": [],
+          "capacity_provider_strategy": [],
+          "deployment_circuit_breaker": [],
+          "deployment_configuration": [],
+          "deployment_controller": [],
+          "load_balancer": [
+            {
+              "advanced_configuration": []
+            }
+          ],
+          "network_configuration": [
+            {
+              "security_groups": [],
+              "subnets": [
+                false,
+                false
+              ]
+            }
+          ],
+          "ordered_placement_strategy": [],
+          "placement_constraints": [],
+          "service_connect_configuration": [],
+          "service_registries": [],
+          "tags": {},
+          "tags_all": {},
+          "triggers": {
+            "variables": true
+          },
+          "volume_configuration": [],
+          "vpc_lattice_configurations": []
+        },
+        "after_identity": {
+          "account_id": null,
+          "cluster": null,
+          "name": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_ecs_task_definition.service",
+      "mode": "managed",
+      "type": "aws_ecs_task_definition",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "cpu": "512",
+          "ephemeral_storage": [],
+          "execution_role_arn": "arn:aws:iam::123456789012:role/cloudgate/cloudgate-task-execution",
+          "family": "cloudgate-svc_1",
+          "ipc_mode": null,
+          "memory": "1024",
+          "network_mode": "awsvpc",
+          "pid_mode": null,
+          "placement_constraints": [],
+          "proxy_configuration": [],
+          "region": "eu-central-1",
+          "requires_compatibilities": [
+            "FARGATE"
+          ],
+          "runtime_platform": [
+            {
+              "cpu_architecture": "X86_64",
+              "operating_system_family": "LINUX"
+            }
+          ],
+          "skip_destroy": false,
+          "tags": {
+            "Name": "cloudgate/api/task",
+            "cloudgate:address": "aws_ecs_task_definition.service"
+          },
+          "tags_all": {
+            "Name": "cloudgate/api/task",
+            "cloudgate:address": "aws_ecs_task_definition.service",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_web_1"
+          },
+          "track_latest": false,
+          "volume": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "arn_without_revision": true,
+          "container_definitions": true,
+          "enable_fault_injection": true,
+          "ephemeral_storage": [],
+          "id": true,
+          "placement_constraints": [],
+          "proxy_configuration": [],
+          "requires_compatibilities": [
+            false
+          ],
+          "revision": true,
+          "runtime_platform": [
+            {}
+          ],
+          "tags": {},
+          "tags_all": {},
+          "task_role_arn": true,
+          "volume": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "ephemeral_storage": [],
+          "placement_constraints": [],
+          "proxy_configuration": [],
+          "requires_compatibilities": [
+            false
+          ],
+          "runtime_platform": [
+            {}
+          ],
+          "tags": {},
+          "tags_all": {},
+          "volume": []
+        },
+        "after_identity": {
+          "account_id": null,
+          "family": null,
+          "region": null,
+          "revision": null
+        }
+      }
+    },
+    {
+      "address": "aws_iam_role.task",
+      "mode": "managed",
+      "type": "aws_iam_role",
+      "name": "task",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Condition\":{\"StringEquals\":{\"aws:SourceAccount\":\"123456789012\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ecs-tasks.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+          "description": null,
+          "force_detach_policies": false,
+          "max_session_duration": 3600,
+          "name": "cloudgate-svc_1",
+          "path": "/cloudgate/",
+          "permissions_boundary": "arn:aws:iam::123456789012:policy/cloudgate/cloudgate-task-boundary",
+          "tags": {
+            "Name": "cloudgate/api/task-role",
+            "cloudgate:address": "aws_iam_role.task"
+          },
+          "tags_all": {
+            "Name": "cloudgate/api/task-role",
+            "cloudgate:address": "aws_iam_role.task",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_web_1"
+          }
+        },
+        "after_unknown": {
+          "arn": true,
+          "create_date": true,
+          "id": true,
+          "inline_policy": true,
+          "managed_policy_arns": true,
+          "name_prefix": true,
+          "tags": {},
+          "tags_all": {},
+          "unique_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "inline_policy": [],
+          "managed_policy_arns": [],
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_identity": {
+          "account_id": null,
+          "name": null
+        }
+      }
+    },
+    {
+      "address": "aws_lb_listener_rule.service",
+      "mode": "managed",
+      "type": "aws_lb_listener_rule",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "action": [
+            {
+              "authenticate_cognito": [],
+              "authenticate_oidc": [],
+              "fixed_response": [],
+              "forward": [],
+              "jwt_validation": [],
+              "redirect": [],
+              "type": "forward"
+            }
+          ],
+          "condition": [
+            {
+              "host_header": [],
+              "http_header": [
+                {
+                  "http_header_name": "X-Cloudgate-Service",
+                  "regex_values": [],
+                  "values": [
+                    "svc_1"
+                  ]
+                }
+              ],
+              "http_request_method": [],
+              "path_pattern": [],
+              "query_string": [],
+              "source_ip": []
+            }
+          ],
+          "listener_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener/app/cloudgate-stand-in/0000000000000000/0000000000000000",
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/api/rule",
+            "cloudgate:address": "aws_lb_listener_rule.service"
+          },
+          "tags_all": {
+            "Name": "cloudgate/api/rule",
+            "cloudgate:address": "aws_lb_listener_rule.service",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_web_1"
+          },
+          "transform": []
+        },
+        "after_unknown": {
+          "action": [
+            {
+              "authenticate_cognito": [],
+              "authenticate_oidc": [],
+              "fixed_response": [],
+              "forward": [],
+              "jwt_validation": [],
+              "order": true,
+              "redirect": [],
+              "target_group_arn": true
+            }
+          ],
+          "arn": true,
+          "condition": [
+            {
+              "host_header": [],
+              "http_header": [
+                {
+                  "regex_values": [],
+                  "values": [
+                    false
+                  ]
+                }
+              ],
+              "http_request_method": [],
+              "path_pattern": [],
+              "query_string": [],
+              "source_ip": []
+            }
+          ],
+          "id": true,
+          "priority": true,
+          "tags": {},
+          "tags_all": {},
+          "transform": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "action": [
+            {
+              "authenticate_cognito": [],
+              "authenticate_oidc": [],
+              "fixed_response": [],
+              "forward": [],
+              "jwt_validation": [],
+              "redirect": []
+            }
+          ],
+          "condition": [
+            {
+              "host_header": [],
+              "http_header": [
+                {
+                  "regex_values": [],
+                  "values": [
+                    false
+                  ]
+                }
+              ],
+              "http_request_method": [],
+              "path_pattern": [],
+              "query_string": [],
+              "source_ip": []
+            }
+          ],
+          "tags": {},
+          "tags_all": {},
+          "transform": []
+        },
+        "after_identity": {
+          "arn": null
+        }
+      }
+    },
+    {
+      "address": "aws_lb_target_group.service",
+      "mode": "managed",
+      "type": "aws_lb_target_group",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "deregistration_delay": "30",
+          "health_check": [
+            {
+              "enabled": true,
+              "healthy_threshold": 3,
+              "interval": 30,
+              "matcher": "200-399",
+              "path": "/",
+              "port": "traffic-port",
+              "protocol": "HTTP",
+              "unhealthy_threshold": 3
+            }
+          ],
+          "lambda_multi_value_headers_enabled": false,
+          "name_prefix": "cg-",
+          "port": 4000,
+          "protocol": "HTTP",
+          "proxy_protocol_v2": false,
+          "region": "eu-central-1",
+          "slow_start": 0,
+          "tags": {
+            "Name": "cloudgate/api/targets",
+            "cloudgate:address": "aws_lb_target_group.service"
+          },
+          "tags_all": {
+            "Name": "cloudgate/api/targets",
+            "cloudgate:address": "aws_lb_target_group.service",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_web_1"
+          },
+          "target_control_port": null,
+          "target_type": "ip",
+          "vpc_id": "vpc-cloudgate-stand-in"
+        },
+        "after_unknown": {
+          "arn": true,
+          "arn_suffix": true,
+          "connection_termination": true,
+          "health_check": [
+            {
+              "timeout": true
+            }
+          ],
+          "id": true,
+          "ip_address_type": true,
+          "load_balancer_arns": true,
+          "load_balancing_algorithm_type": true,
+          "load_balancing_anomaly_mitigation": true,
+          "load_balancing_cross_zone_enabled": true,
+          "name": true,
+          "preserve_client_ip": true,
+          "protocol_version": true,
+          "stickiness": true,
+          "tags": {},
+          "tags_all": {},
+          "target_failover": true,
+          "target_group_health": true,
+          "target_health_state": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "health_check": [
+            {}
+          ],
+          "load_balancer_arns": [],
+          "stickiness": [],
+          "tags": {},
+          "tags_all": {},
+          "target_failover": [],
+          "target_group_health": [],
+          "target_health_state": []
+        },
+        "after_identity": {
+          "arn": null
+        }
+      }
+    },
+    {
+      "address": "aws_security_group.service",
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "description": "Cloudgate: a Service, reachable from its load balancer only",
+          "egress": [
+            {
+              "cidr_blocks": [
+                "0.0.0.0/0"
+              ],
+              "description": "",
+              "from_port": 0,
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "protocol": "-1",
+              "security_groups": [],
+              "self": false,
+              "to_port": 0
+            }
+          ],
+          "ingress": [
+            {
+              "cidr_blocks": [],
+              "description": "",
+              "from_port": 4000,
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "protocol": "tcp",
+              "security_groups": [
+                "sg-cloudgate-stand-in"
+              ],
+              "self": false,
+              "to_port": 4000
+            }
+          ],
+          "name": "cloudgate-service-svc_1",
+          "region": "eu-central-1",
+          "revoke_rules_on_delete": false,
+          "tags": {
+            "Name": "cloudgate/api/tasks",
+            "cloudgate:address": "aws_security_group.service"
+          },
+          "tags_all": {
+            "Name": "cloudgate/api/tasks",
+            "cloudgate:address": "aws_security_group.service",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_web_1"
+          },
+          "timeouts": null,
+          "vpc_id": "vpc-cloudgate-stand-in"
+        },
+        "after_unknown": {
+          "arn": true,
+          "egress": [
+            {
+              "cidr_blocks": [
+                false
+              ],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": []
+            }
+          ],
+          "id": true,
+          "ingress": [
+            {
+              "cidr_blocks": [],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": [
+                false
+              ]
+            }
+          ],
+          "name_prefix": true,
+          "owner_id": true,
+          "tags": {},
+          "tags_all": {}
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "egress": [
+            {
+              "cidr_blocks": [
+                false
+              ],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": []
+            }
+          ],
+          "ingress": [
+            {
+              "cidr_blocks": [],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": [
+                false
+              ]
+            }
+          ],
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_identity": {
+          "account_id": null,
+          "id": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_ssm_parameter.variable[\"API_KEY\"]",
+      "mode": "managed",
+      "type": "aws_ssm_parameter",
+      "name": "variable",
+      "index": "API_KEY",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "allowed_pattern": null,
+          "description": null,
+          "name": "/cloudgate/env_1/svc_1/API_KEY",
+          "overwrite": null,
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/api/variables/API_KEY",
+            "cloudgate:address": "aws_ssm_parameter.variable/API_KEY"
+          },
+          "tags_all": {
+            "Name": "cloudgate/api/variables/API_KEY",
+            "cloudgate:address": "aws_ssm_parameter.variable/API_KEY",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_web_1"
+          },
+          "tier": "Standard",
+          "type": "SecureString",
+          "value": "hunter2-very-secret",
+          "value_wo": null,
+          "value_wo_version": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "data_type": true,
+          "has_value_wo": true,
+          "id": true,
+          "insecure_value": true,
+          "key_id": true,
+          "tags": {},
+          "tags_all": {},
+          "version": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags": {},
+          "tags_all": {},
+          "value": true,
+          "value_wo": true
+        },
+        "after_identity": {
+          "account_id": null,
+          "name": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_ssm_parameter.variable[\"BIG_CERT\"]",
+      "mode": "managed",
+      "type": "aws_ssm_parameter",
+      "name": "variable",
+      "index": "BIG_CERT",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "allowed_pattern": null,
+          "description": null,
+          "name": "/cloudgate/env_1/svc_1/BIG_CERT",
+          "overwrite": null,
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/api/variables/BIG_CERT",
+            "cloudgate:address": "aws_ssm_parameter.variable/BIG_CERT"
+          },
+          "tags_all": {
+            "Name": "cloudgate/api/variables/BIG_CERT",
+            "cloudgate:address": "aws_ssm_parameter.variable/BIG_CERT",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_web_1"
+          },
+          "tier": "Advanced",
+          "type": "SecureString",
+          "value": "-----BEGIN CERTIFICATE-----\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n-----END CERTIFICATE-----",
+          "value_wo": null,
+          "value_wo_version": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "data_type": true,
+          "has_value_wo": true,
+          "id": true,
+          "insecure_value": true,
+          "key_id": true,
+          "tags": {},
+          "tags_all": {},
+          "version": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags": {},
+          "tags_all": {},
+          "value": true,
+          "value_wo": true
+        },
+        "after_identity": {
+          "account_id": null,
+          "name": null,
+          "region": null
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "domain_certificates": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": {},
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "ecr_repository_url": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "ecs_service_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "api-svc_1",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "log_group_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "/cloudgate/env_1/svc_1",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "target_group_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "task_role_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "outputs": {
+        "domain_certificates": {
+          "sensitive": false,
+          "value": {},
+          "type": [
+            "object",
+            {}
+          ]
+        },
+        "ecs_service_name": {
+          "sensitive": false,
+          "value": "api-svc_1",
+          "type": "string"
+        },
+        "log_group_name": {
+          "sensitive": false,
+          "value": "/cloudgate/env_1/svc_1",
+          "type": "string"
+        }
+      },
+      "root_module": {}
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "aws": {
+        "name": "aws",
+        "full_name": "registry.opentofu.org/hashicorp/aws",
+        "version_constraint": "6.69.1",
+        "expressions": {
+          "allowed_account_ids": {
+            "constant_value": [
+              "123456789012"
+            ]
+          },
+          "assume_role": [
+            {
+              "external_id": {
+                "constant_value": "moto-lane-external-id"
+              },
+              "role_arn": {
+                "constant_value": "arn:aws:iam::123456789012:role/cloudgate/cloudgate-deploy"
+              },
+              "session_name": {
+                "constant_value": "cloudgate"
+              }
+            }
+          ],
+          "default_tags": [
+            {
+              "tags": {
+                "constant_value": {
+                  "cloudgate:cloud-account": "cloud_1",
+                  "cloudgate:environment": "env_1",
+                  "cloudgate:state": "state_web_1"
+                }
+              }
+            }
+          ],
+          "endpoints": [
+            {
+              "acm": {
+                "constant_value": "http://moto:5000"
+              },
+              "ec2": {
+                "constant_value": "http://moto:5000"
+              },
+              "ecr": {
+                "constant_value": "http://moto:5000"
+              },
+              "ecs": {
+                "constant_value": "http://moto:5000"
+              },
+              "elbv2": {
+                "constant_value": "http://moto:5000"
+              },
+              "iam": {
+                "constant_value": "http://moto:5000"
+              },
+              "logs": {
+                "constant_value": "http://moto:5000"
+              },
+              "route53": {
+                "constant_value": "http://moto:5000"
+              },
+              "servicediscovery": {
+                "constant_value": "http://moto:5000"
+              },
+              "ssm": {
+                "constant_value": "http://moto:5000"
+              },
+              "sts": {
+                "constant_value": "http://moto:5000"
+              }
+            }
+          ],
+          "region": {
+            "constant_value": "eu-central-1"
+          }
+        }
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "domain_certificates": {
+          "expression": {
+            "constant_value": "${ {for key, certificate in aws_acm_certificate.domain : key => { arn = certificate.arn, validation = [for option in certificate.domain_validation_options : { name = option.resource_record_name, type = option.resource_record_type, value = option.resource_record_value }] }} }",
+            "references": [
+              "aws_acm_certificate.domain"
+            ]
+          }
+        },
+        "ecr_repository_url": {
+          "expression": {
+            "constant_value": "${aws_ecr_repository.service.repository_url}",
+            "references": [
+              "aws_ecr_repository.service",
+              "aws_ecr_repository.service.repository_url"
+            ]
+          }
+        },
+        "ecs_service_name": {
+          "expression": {
+            "constant_value": "${aws_ecs_service.service.name}",
+            "references": [
+              "aws_ecs_service.service",
+              "aws_ecs_service.service.name"
+            ]
+          }
+        },
+        "log_group_name": {
+          "expression": {
+            "constant_value": "${aws_cloudwatch_log_group.service.name}",
+            "references": [
+              "aws_cloudwatch_log_group.service",
+              "aws_cloudwatch_log_group.service.name"
+            ]
+          }
+        },
+        "target_group_arn": {
+          "expression": {
+            "constant_value": "${aws_lb_target_group.service.arn}",
+            "references": [
+              "aws_lb_target_group.service",
+              "aws_lb_target_group.service.arn"
+            ]
+          }
+        },
+        "task_role_arn": {
+          "expression": {
+            "constant_value": "${aws_iam_role.task.arn}",
+            "references": [
+              "aws_iam_role.task",
+              "aws_iam_role.task.arn"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "aws_acm_certificate.domain",
+          "mode": "managed",
+          "type": "aws_acm_certificate",
+          "name": "domain",
+          "provider_config_key": "aws",
+          "expressions": {
+            "domain_name": {
+              "constant_value": "${each.value.host}",
+              "references": [
+                "each.value",
+                "each.value.host"
+              ]
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "${each.value.name}",
+                "cloudgate:address": "aws_acm_certificate.domain/${each.key}"
+              },
+              "references": [
+                "each.key",
+                "each.value",
+                "each.value.name"
+              ]
+            },
+            "validation_method": {
+              "constant_value": "DNS"
+            }
+          },
+          "schema_version": 0,
+          "for_each_expression": {
+            "constant_value": {}
+          }
+        },
+        {
+          "address": "aws_cloudwatch_log_group.service",
+          "mode": "managed",
+          "type": "aws_cloudwatch_log_group",
+          "name": "service",
+          "provider_config_key": "aws",
+          "expressions": {
+            "name": {
+              "constant_value": "/cloudgate/env_1/svc_1"
+            },
+            "retention_in_days": {
+              "constant_value": 90
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/api/logs",
+                "cloudgate:address": "aws_cloudwatch_log_group.service"
+              }
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_ecr_lifecycle_policy.service",
+          "mode": "managed",
+          "type": "aws_ecr_lifecycle_policy",
+          "name": "service",
+          "provider_config_key": "aws",
+          "expressions": {
+            "policy": {
+              "constant_value": "{\"rules\":[{\"action\":{\"type\":\"expire\"},\"description\":\"Expire half-pushed untagged images after a day\",\"rulePriority\":1,\"selection\":{\"countNumber\":1,\"countType\":\"sinceImagePushed\",\"countUnit\":\"days\",\"tagStatus\":\"untagged\"}}]}"
+            },
+            "repository": {
+              "constant_value": "${aws_ecr_repository.service.name}",
+              "references": [
+                "aws_ecr_repository.service",
+                "aws_ecr_repository.service.name"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_ecr_repository.service",
+          "mode": "managed",
+          "type": "aws_ecr_repository",
+          "name": "service",
+          "provider_config_key": "aws",
+          "expressions": {
+            "force_delete": {
+              "constant_value": true
+            },
+            "image_tag_mutability": {
+              "constant_value": "IMMUTABLE"
+            },
+            "name": {
+              "constant_value": "cloudgate/svc_1"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/api/images",
+                "cloudgate:address": "aws_ecr_repository.service"
+              }
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_ecs_service.service",
+          "mode": "managed",
+          "type": "aws_ecs_service",
+          "name": "service",
+          "provider_config_key": "aws",
+          "expressions": {
+            "cluster": {
+              "constant_value": "arn:aws:ecs:eu-central-1:123456789012:cluster/cloudgate-stand-in"
+            },
+            "desired_count": {
+              "constant_value": 1
+            },
+            "enable_ecs_managed_tags": {
+              "constant_value": true
+            },
+            "force_new_deployment": {
+              "constant_value": true
+            },
+            "launch_type": {
+              "constant_value": "FARGATE"
+            },
+            "load_balancer": [
+              {
+                "container_name": {
+                  "constant_value": "service"
+                },
+                "container_port": {
+                  "constant_value": 4000
+                },
+                "target_group_arn": {
+                  "constant_value": "${aws_lb_target_group.service.arn}",
+                  "references": [
+                    "aws_lb_target_group.service",
+                    "aws_lb_target_group.service.arn"
+                  ]
+                }
+              }
+            ],
+            "name": {
+              "constant_value": "api-svc_1"
+            },
+            "network_configuration": [
+              {
+                "assign_public_ip": {
+                  "constant_value": true
+                },
+                "security_groups": {
+                  "constant_value": [
+                    "${aws_security_group.service.id}"
+                  ],
+                  "references": [
+                    "aws_security_group.service",
+                    "aws_security_group.service.id"
+                  ]
+                },
+                "subnets": {
+                  "constant_value": [
+                    "subnet-cloudgate-stand-in-a",
+                    "subnet-cloudgate-stand-in-b"
+                  ]
+                }
+              }
+            ],
+            "propagate_tags": {
+              "constant_value": "SERVICE"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/api/service",
+                "cloudgate:address": "aws_ecs_service.service"
+              }
+            },
+            "task_definition": {
+              "constant_value": "${aws_ecs_task_definition.service.arn}",
+              "references": [
+                "aws_ecs_task_definition.service",
+                "aws_ecs_task_definition.service.arn"
+              ]
+            },
+            "triggers": {
+              "constant_value": {
+                "variables": "${var.variables_digest}"
+              },
+              "references": [
+                "var.variables_digest"
+              ]
+            }
+          },
+          "schema_version": 1,
+          "depends_on": [
+            "aws_lb_listener_rule.service"
+          ]
+        },
+        {
+          "address": "aws_ecs_task_definition.service",
+          "mode": "managed",
+          "type": "aws_ecs_task_definition",
+          "name": "service",
+          "provider_config_key": "aws",
+          "expressions": {
+            "container_definitions": {
+              "constant_value": "[{\"command\":[\"dist/main.js\"],\"entryPoint\":[\"node\"],\"essential\":true,\"image\":\"${aws_ecr_repository.service.repository_url}:cloudgate-stand-in-new-image\",\"logConfiguration\":{\"logDriver\":\"awslogs\",\"options\":{\"awslogs-group\":\"${aws_cloudwatch_log_group.service.name}\",\"awslogs-region\":\"eu-central-1\",\"awslogs-stream-prefix\":\"service\"}},\"name\":\"service\",\"portMappings\":[{\"containerPort\":4000,\"protocol\":\"tcp\"}],\"secrets\":[{\"name\":\"API_KEY\",\"valueFrom\":\"arn:aws:ssm:eu-central-1:123456789012:parameter/cloudgate/env_1/svc_1/API_KEY\"},{\"name\":\"BIG_CERT\",\"valueFrom\":\"arn:aws:ssm:eu-central-1:123456789012:parameter/cloudgate/env_1/svc_1/BIG_CERT\"}]}]",
+              "references": [
+                "aws_cloudwatch_log_group.service",
+                "aws_cloudwatch_log_group.service.name",
+                "aws_ecr_repository.service",
+                "aws_ecr_repository.service.repository_url"
+              ]
+            },
+            "cpu": {
+              "constant_value": "512"
+            },
+            "execution_role_arn": {
+              "constant_value": "arn:aws:iam::123456789012:role/cloudgate/cloudgate-task-execution"
+            },
+            "family": {
+              "constant_value": "cloudgate-svc_1"
+            },
+            "memory": {
+              "constant_value": "1024"
+            },
+            "network_mode": {
+              "constant_value": "awsvpc"
+            },
+            "requires_compatibilities": {
+              "constant_value": [
+                "FARGATE"
+              ]
+            },
+            "runtime_platform": [
+              {
+                "cpu_architecture": {
+                  "constant_value": "X86_64"
+                },
+                "operating_system_family": {
+                  "constant_value": "LINUX"
+                }
+              }
+            ],
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/api/task",
+                "cloudgate:address": "aws_ecs_task_definition.service"
+              }
+            },
+            "task_role_arn": {
+              "constant_value": "${aws_iam_role.task.arn}",
+              "references": [
+                "aws_iam_role.task",
+                "aws_iam_role.task.arn"
+              ]
+            }
+          },
+          "schema_version": 1,
+          "depends_on": [
+            "aws_ssm_parameter.variable"
+          ]
+        },
+        {
+          "address": "aws_iam_role.task",
+          "mode": "managed",
+          "type": "aws_iam_role",
+          "name": "task",
+          "provider_config_key": "aws",
+          "expressions": {
+            "assume_role_policy": {
+              "constant_value": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Condition\":{\"StringEquals\":{\"aws:SourceAccount\":\"123456789012\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ecs-tasks.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}"
+            },
+            "name": {
+              "constant_value": "cloudgate-svc_1"
+            },
+            "path": {
+              "constant_value": "/cloudgate/"
+            },
+            "permissions_boundary": {
+              "constant_value": "arn:aws:iam::123456789012:policy/cloudgate/cloudgate-task-boundary"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/api/task-role",
+                "cloudgate:address": "aws_iam_role.task"
+              }
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_lb_listener_certificate.domain",
+          "mode": "managed",
+          "type": "aws_lb_listener_certificate",
+          "name": "domain",
+          "provider_config_key": "aws",
+          "expressions": {
+            "certificate_arn": {
+              "constant_value": "${aws_acm_certificate.domain[each.key].arn}",
+              "references": [
+                "aws_acm_certificate.domain",
+                "each.key"
+              ]
+            },
+            "listener_arn": {
+              "constant_value": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener/app/cloudgate-stand-in/0000000000000000/0000000000000000"
+            }
+          },
+          "schema_version": 0,
+          "for_each_expression": {
+            "constant_value": {}
+          }
+        },
+        {
+          "address": "aws_lb_listener_rule.domain",
+          "mode": "managed",
+          "type": "aws_lb_listener_rule",
+          "name": "domain",
+          "provider_config_key": "aws",
+          "expressions": {
+            "action": [
+              {
+                "target_group_arn": {
+                  "constant_value": "${aws_lb_target_group.service.arn}",
+                  "references": [
+                    "aws_lb_target_group.service",
+                    "aws_lb_target_group.service.arn"
+                  ]
+                },
+                "type": {
+                  "constant_value": "forward"
+                }
+              }
+            ],
+            "condition": [
+              {
+                "host_header": [
+                  {
+                    "values": {
+                      "constant_value": [
+                        "${each.value.host}"
+                      ],
+                      "references": [
+                        "each.value",
+                        "each.value.host"
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "path_pattern": [
+                  {
+                    "values": {
+                      "constant_value": "${each.value.paths}",
+                      "references": [
+                        "each.value",
+                        "each.value.paths"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ],
+            "listener_arn": {
+              "constant_value": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener/app/cloudgate-stand-in/0000000000000000/0000000000000000"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "${each.value.name}",
+                "cloudgate:address": "aws_lb_listener_rule.domain/${each.key}"
+              },
+              "references": [
+                "each.key",
+                "each.value",
+                "each.value.name"
+              ]
+            }
+          },
+          "schema_version": 0,
+          "for_each_expression": {
+            "constant_value": {}
+          }
+        },
+        {
+          "address": "aws_lb_listener_rule.service",
+          "mode": "managed",
+          "type": "aws_lb_listener_rule",
+          "name": "service",
+          "provider_config_key": "aws",
+          "expressions": {
+            "action": [
+              {
+                "target_group_arn": {
+                  "constant_value": "${aws_lb_target_group.service.arn}",
+                  "references": [
+                    "aws_lb_target_group.service",
+                    "aws_lb_target_group.service.arn"
+                  ]
+                },
+                "type": {
+                  "constant_value": "forward"
+                }
+              }
+            ],
+            "condition": [
+              {
+                "http_header": [
+                  {
+                    "http_header_name": {
+                      "constant_value": "X-Cloudgate-Service"
+                    },
+                    "values": {
+                      "constant_value": [
+                        "svc_1"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ],
+            "listener_arn": {
+              "constant_value": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener/app/cloudgate-stand-in/0000000000000000/0000000000000000"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/api/rule",
+                "cloudgate:address": "aws_lb_listener_rule.service"
+              }
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_lb_target_group.service",
+          "mode": "managed",
+          "type": "aws_lb_target_group",
+          "name": "service",
+          "provider_config_key": "aws",
+          "expressions": {
+            "deregistration_delay": {
+              "constant_value": "30"
+            },
+            "health_check": [
+              {
+                "enabled": {
+                  "constant_value": true
+                },
+                "matcher": {
+                  "constant_value": "200-399"
+                },
+                "path": {
+                  "constant_value": "/"
+                },
+                "port": {
+                  "constant_value": "traffic-port"
+                },
+                "protocol": {
+                  "constant_value": "HTTP"
+                }
+              }
+            ],
+            "name_prefix": {
+              "constant_value": "cg-"
+            },
+            "port": {
+              "constant_value": 4000
+            },
+            "protocol": {
+              "constant_value": "HTTP"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/api/targets",
+                "cloudgate:address": "aws_lb_target_group.service"
+              }
+            },
+            "target_type": {
+              "constant_value": "ip"
+            },
+            "vpc_id": {
+              "constant_value": "vpc-cloudgate-stand-in"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_security_group.service",
+          "mode": "managed",
+          "type": "aws_security_group",
+          "name": "service",
+          "provider_config_key": "aws",
+          "expressions": {
+            "description": {
+              "constant_value": "Cloudgate: a Service, reachable from its load balancer only"
+            },
+            "egress": {
+              "constant_value": [
+                {
+                  "cidr_blocks": [
+                    "0.0.0.0/0"
+                  ],
+                  "description": "",
+                  "from_port": 0,
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "protocol": "-1",
+                  "security_groups": [],
+                  "self": false,
+                  "to_port": 0
+                }
+              ]
+            },
+            "ingress": {
+              "constant_value": [
+                {
+                  "cidr_blocks": [],
+                  "description": "",
+                  "from_port": 4000,
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "protocol": "tcp",
+                  "security_groups": [
+                    "sg-cloudgate-stand-in"
+                  ],
+                  "self": false,
+                  "to_port": 4000
+                }
+              ]
+            },
+            "name": {
+              "constant_value": "cloudgate-service-svc_1"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/api/tasks",
+                "cloudgate:address": "aws_security_group.service"
+              }
+            },
+            "vpc_id": {
+              "constant_value": "vpc-cloudgate-stand-in"
+            }
+          },
+          "schema_version": 1
+        },
+        {
+          "address": "aws_ssm_parameter.variable",
+          "mode": "managed",
+          "type": "aws_ssm_parameter",
+          "name": "variable",
+          "provider_config_key": "aws",
+          "expressions": {
+            "name": {
+              "constant_value": "/cloudgate/env_1/svc_1/${each.key}",
+              "references": [
+                "each.key"
+              ]
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/api/variables/${each.key}",
+                "cloudgate:address": "aws_ssm_parameter.variable/${each.key}"
+              },
+              "references": [
+                "each.key",
+                "each.key"
+              ]
+            },
+            "tier": {
+              "constant_value": "${each.value}",
+              "references": [
+                "each.value"
+              ]
+            },
+            "type": {
+              "constant_value": "SecureString"
+            },
+            "value": {
+              "constant_value": "${local.variable_values[each.key]}",
+              "references": [
+                "each.key",
+                "local.variable_values"
+              ]
+            }
+          },
+          "schema_version": 0,
+          "for_each_expression": {
+            "constant_value": {
+              "API_KEY": "Standard",
+              "BIG_CERT": "Advanced"
+            }
+          }
+        }
+      ],
+      "variables": {
+        "variable_value_API_KEY": {
+          "type": "string",
+          "required": true,
+          "sensitive": true
+        },
+        "variable_value_BIG_CERT": {
+          "type": "string",
+          "required": true,
+          "sensitive": true
+        },
+        "variables_digest": {
+          "type": "string",
+          "required": true,
+          "sensitive": true
+        }
+      }
+    }
+  },
+  "relevant_attributes": [
+    {
+      "resource": "aws_acm_certificate.domain",
+      "attribute": []
+    },
+    {
+      "resource": "aws_cloudwatch_log_group.service",
+      "attribute": [
+        "name"
+      ]
+    },
+    {
+      "resource": "aws_ecr_repository.service",
+      "attribute": [
+        "name"
+      ]
+    },
+    {
+      "resource": "aws_ecr_repository.service",
+      "attribute": [
+        "repository_url"
+      ]
+    },
+    {
+      "resource": "aws_ecs_service.service",
+      "attribute": [
+        "name"
+      ]
+    },
+    {
+      "resource": "aws_ecs_task_definition.service",
+      "attribute": [
+        "arn"
+      ]
+    },
+    {
+      "resource": "aws_iam_role.task",
+      "attribute": [
+        "arn"
+      ]
+    },
+    {
+      "resource": "aws_lb_target_group.service",
+      "attribute": [
+        "arn"
+      ]
+    },
+    {
+      "resource": "aws_security_group.service",
+      "attribute": [
+        "id"
+      ]
+    }
+  ],
+  "timestamp": "2026-01-01T00:00:00Z",
+  "errored": false,
+  "resource_drift": []
+}

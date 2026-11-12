@@ -1,0 +1,67 @@
+[
+  {
+    "name": "plain lines, a comment and a blank line",
+    "blob": "# a comment\nA=1\n\nB=two",
+    "vars": { "A": "1", "B": "two" }
+  },
+  {
+    "name": "a double-quoted value spanning lines is one value",
+    "blob": "# U02 fixture\nUI_PROJECT_VAR=from-project\nUI_MULTI=\"line one\nline two\"",
+    "vars": { "UI_PROJECT_VAR": "from-project", "UI_MULTI": "line one\nline two" }
+  },
+  {
+    "name": "a continuation line holding = is not a variable of its own",
+    "blob": "A=1\nB=\"x\ny=z\"\nC=3",
+    "vars": { "A": "1", "B": "x\ny=z", "C": "3" }
+  },
+  {
+    "name": "a single-quoted value spanning lines is one value",
+    "blob": "PEM='-----BEGIN KEY-----\nabc=def\n-----END KEY-----'\nNEXT=1",
+    "vars": { "PEM": "-----BEGIN KEY-----\nabc=def\n-----END KEY-----", "NEXT": "1" }
+  },
+  {
+    "name": "\\n inside double quotes is a line break, inside single quotes it is not",
+    "blob": "D=\"a\\nb\"\nS='a\\nb'\nU=a\\nb",
+    "vars": { "D": "a\nb", "S": "a\\nb", "U": "a\\nb" }
+  },
+  {
+    "name": "quotes are stripped only as a matched pair",
+    "blob": "Q=\"quoted\"\nS='single'\nB=`back`\nAPOS=it's fine",
+    "vars": { "Q": "quoted", "S": "single", "B": "back", "APOS": "it's fine" }
+  },
+  {
+    "name": "an unquoted value ends at #, a quoted one keeps it",
+    "blob": "A=value # trailing comment\nB=\"has # inside\"\nC=#nothing",
+    "vars": { "A": "value", "B": "has # inside", "C": "" }
+  },
+  {
+    "name": "an empty value is a variable",
+    "blob": "EMPTY=\nQUOTED=\"\"",
+    "vars": { "EMPTY": "", "QUOTED": "" }
+  },
+  {
+    "name": "export prefix, spaces around =, and a colon separator",
+    "blob": "export EXPORTED=1\n  SPACED  =  two  \nCOLON: three",
+    "vars": { "EXPORTED": "1", "SPACED": "two", "COLON": "three" }
+  },
+  {
+    "name": "a repeated key is one variable, and the last value wins",
+    "blob": "A=first\nB=2\nA=second",
+    "vars": { "A": "second", "B": "2" }
+  },
+  {
+    "name": "CRLF line endings",
+    "blob": "A=1\r\nB=\"x\r\ny\"\r\nC=3",
+    "vars": { "A": "1", "B": "x\ny", "C": "3" }
+  },
+  {
+    "name": "a line with no = or : is not a variable",
+    "blob": "JUSTAWORD\nA=1",
+    "vars": { "A": "1" }
+  },
+  {
+    "name": "a value that is a reference",
+    "blob": "DB=${{project.DATABASE_URL}}",
+    "vars": { "DB": "${{project.DATABASE_URL}}" }
+  }
+]

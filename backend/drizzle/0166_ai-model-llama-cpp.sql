@@ -1,0 +1,1 @@
+ALTER TYPE "public"."inference_runtime" ADD VALUE 'llama.cpp';

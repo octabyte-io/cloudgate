@@ -1,0 +1,961 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   1. ROLE TOKENS — the single source of truth
+   ------------------------------------------------------------
+   Ported from frontend/docs/e-console.html:93-167. Read them
+   as roles, not colours. Every oklch value is verbatim from the
+   prototype; this file is the one place in the app allowed to hold
+   a literal colour, size or shadow.
+
+   One rename on the way in: the prototype calls its brand hue
+   --accent. shadcn already uses --accent for a neutral hover fill,
+   so ours is --brand*. The shadow trio is renamed too — --shadow /
+   --shadow-2 / --pop become --shadow-panel / --shadow-float /
+   --shadow-pop, because Tailwind's utility namespace is literally
+   --shadow-*, and a role token sharing a name with a theme key is
+   a trap for whoever edits this next.
+   ============================================================ */
+
+:root {
+  --ground: oklch(0.9875 0 0);
+  --panel: #fff;
+  --panel-2: oklch(0.982 0 0);
+  --raise: oklch(0.965 0 0);
+  --raise-2: oklch(0.935 0 0);
+  --line: oklch(0.922 0 0);
+  --line-2: oklch(0.86 0 0);
+  --tx: oklch(0.205 0 0);
+  --tx-2: oklch(0.44 0 0);
+  --tx-3: oklch(0.49 0 0);
+  --tx-4: oklch(0.68 0 0);
+  /* An input's placeholder: lighter than --tx-3, which made an
+     example read as a value already typed, and still 4.5:1 on --panel. */
+  --tx-ph: oklch(0.565 0 0);
+
+  --brand: oklch(0.53 0.2 285);
+  --brand-hi: oklch(0.47 0.2 285);
+  --brand-ring: oklch(0.44 0.19 285);
+  --brand-tx: oklch(0.47 0.2 285);
+  --brand-tint: oklch(0.968 0.017 285);
+  --brand-line: oklch(0.86 0.06 285);
+
+  --ok: oklch(0.47 0.13 155);
+  --ok-tint: oklch(0.965 0.03 155);
+  --ok-line: oklch(0.86 0.07 155);
+  --warn: oklch(0.51 0.12 68);
+  --warn-tint: oklch(0.968 0.045 78);
+  --warn-line: oklch(0.85 0.09 75);
+  --bad: oklch(0.52 0.2 27);
+  --bad-tint: oklch(0.968 0.028 27);
+  --bad-line: oklch(0.87 0.07 27);
+  --info: var(--brand-tx);
+  --info-tint: var(--brand-tint);
+  --info-line: var(--brand-line);
+
+  --shadow-panel: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-float:
+    0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07);
+  --shadow-pop:
+    0 12px 32px -10px rgb(0 0 0 / 0.2), 0 3px 8px -3px rgb(0 0 0 / 0.1);
+  --scrim: rgb(0 0 0 / 0.34);
+
+  --hatch: oklch(0.9 0 0);
+
+  /* A map: Buy a Server's world map of Locations. The sea is a breath of the
+     brand hue so the grey land reads as land, never as a disabled fill. */
+  --land: oklch(0.93 0 0);
+  --sea: oklch(0.985 0.004 285);
+
+  /* Categorical series — identity, not state. Section 1b below is why this
+     exists, and what the measured numbers are. */
+  --series-1: oklch(0.53 0.2 285);
+  --series-2: oklch(0.66 0.15 125);
+  --series-3: oklch(0.5 0.2 0);
+  --series-4: oklch(0.66 0.11 225);
+  --series-other: var(--tx-3);
+}
+
+.dark {
+  --ground: oklch(0.178 0 0);
+  --panel: oklch(0.216 0 0);
+  --panel-2: oklch(0.245 0 0);
+  --raise: oklch(0.275 0 0);
+  --raise-2: oklch(0.32 0 0);
+  --line: oklch(0.302 0 0);
+  --line-2: oklch(0.4 0 0);
+  --tx: oklch(0.97 0 0);
+  --tx-2: oklch(0.775 0 0);
+  --tx-3: oklch(0.695 0 0);
+  --tx-4: oklch(0.5 0 0);
+  --tx-ph: oklch(0.62 0 0);
+
+  /* L 0.555 rather than 0.585: white-on-brand lands at 4.50 exactly at
+     0.585, and a value sitting on the threshold is a value that fails
+     the first time anything nudges it. Do not round this up. */
+  --brand: oklch(0.555 0.2 285);
+  /* The prototype hovered *brighter* here (L 0.625) and never measured it:
+     white on it is 3.81:1, so a primary button that clears 5.13:1 at rest
+     fails the moment the pointer lands. Light mode already hovers *denser*
+     (0.53 → 0.47), so dark now does the same, by the same −0.06 step. Hover
+     means the same thing in both themes, and the label gets more contrast
+     rather than less. /dev/tokens measures it. */
+  --brand-hi: oklch(0.495 0.2 285);
+  --brand-ring: oklch(0.7 0.16 285);
+  --brand-tx: oklch(0.8 0.14 285);
+  --brand-tint: oklch(0.28 0.06 285);
+  --brand-line: oklch(0.42 0.11 285);
+
+  --ok: oklch(0.79 0.15 158);
+  --ok-tint: oklch(0.27 0.05 158);
+  --ok-line: oklch(0.4 0.08 158);
+  --warn: oklch(0.83 0.14 80);
+  --warn-tint: oklch(0.28 0.05 78);
+  --warn-line: oklch(0.42 0.08 78);
+  --bad: oklch(0.72 0.18 25);
+  --bad-tint: oklch(0.29 0.07 25);
+  --bad-line: oklch(0.44 0.11 25);
+  --info: var(--brand-tx);
+  --info-tint: var(--brand-tint);
+  --info-line: var(--brand-line);
+
+  --shadow-panel: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-float: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --shadow-pop:
+    0 16px 40px -12px rgb(0 0 0 / 0.7), 0 4px 10px -4px rgb(0 0 0 / 0.5);
+  --scrim: rgb(0 0 0 / 0.6);
+
+  --hatch: oklch(0.34 0 0);
+
+  --land: oklch(0.3 0 0);
+  --sea: oklch(0.2 0.01 285);
+
+  /* Dark is *selected*, not flipped: same four hues, each re-stepped into the
+     dark lightness band and re-validated against --panel. */
+  --series-1: oklch(0.555 0.2 285);
+  --series-2: oklch(0.65 0.15 125);
+  --series-3: oklch(0.55 0.2 0);
+  --series-4: oklch(0.65 0.11 225);
+  --series-other: var(--tx-3);
+}
+
+/* ============================================================
+   1a. THE WELL — one surface, both themes
+   ------------------------------------------------------------
+   A rack in a lit room still has black displays. A log well and a
+   run console stay near-black whichever theme the console is in:
+   this is the one place the light palette borrows from the dark
+   one (e-console.html:161-163, and the contract in
+   `.project/frontend-phases/00-INDEX.md`,
+   in git history at `c8e9bdfb`).
+
+   **F04 corrected the light values to match that.** F01 copied
+   `--well: oklch(0.978)` / `--well-tx: oklch(0.29)` out of the
+   prototype's *light* block — a near-white well with dark text —
+   while copying, three lines below, the comment that says wells
+   are near-black in both themes. The values and the sentence
+   above them disagreed, and every doc in the repo took the
+   sentence's side. So the well is declared **once**, here, after
+   `.dark` and outside it, because a token that does not switch
+   should not be written twice and left to stay equal by hand.
+
+   Which means the well needs its own status tones. `--ok`,
+   `--warn` and `--bad` are stepped against `--panel`; light
+   mode's `--ok` is oklch(0.47) and would be a dark green line on
+   a near-black background. So the well borrows the *dark*
+   palette's tones in both themes, measured against oklch(0.19):
+
+     --well-tx    13.69:1      --well-hl     9.32:1
+     --well-ok    10.12:1      --well-warn  10.76:1
+     --well-bad    6.78:1      dim (62%)     8.89:1
+
+   And a timestamp is information — which step ran when — not
+   decoration, so it gets a token of its own rather than `--tx-4`.
+   The prototype's own light-well timestamp measured 3.43:1 and
+   `--tx-4` on that well measured 2.72:1; neither clears text
+   contrast. oklch(0.6) on the well is 4.66:1.
+   ============================================================ */
+
+:root {
+  --well: oklch(0.19 0 0);
+  --well-tx: oklch(0.9 0 0);
+  --well-ts: oklch(0.6 0 0);
+  --well-ok: oklch(0.79 0.15 158);
+  --well-warn: oklch(0.83 0.14 80);
+  --well-bad: oklch(0.72 0.18 25);
+  --well-hl: oklch(0.8 0.14 285);
+
+  /* ------------------------------------------------------------
+     PAPER — the well's opposite, and declared here for the same
+     reason (F16).
+
+     A QR code is not a picture of some data, it is a thing a
+     phone camera has to decode, and the decoder's assumption is
+     dark modules on a light field. Plenty of scanners handle the
+     inversion; enough of them do not that a dark-mode enrolment
+     would be the one that "just doesn't work" for one person in
+     a team, on the screen that locks them out of their account
+     if they get it wrong.
+
+     So this is the second surface in the system that refuses to
+     switch with the theme, and it refuses for the same kind of
+     reason the well does: the content demands one specific
+     rendering. Near-white rather than pure white, so a bright
+     square on a dark page is a surface and not a flashlight —
+     `--paper-ink` on `--paper` measures 18.75:1, well past
+     anything the contract asks and past what any decoder needs.
+     ------------------------------------------------------------ */
+  --paper: oklch(0.97 0 0);
+  --paper-ink: oklch(0.16 0 0);
+}
+
+/* ============================================================
+   1b. THE SERIES RAMP — identity, where --chart-* is state
+   ------------------------------------------------------------
+   Added by F04. `--chart-1..5` (section 2) are brand / ok / warn /
+   bad / tx-4: a *status* set, and correct for what F04's telemetry
+   does with them — a plot goes `hot` on --chart-4 next to the word
+   "error", `mute` on --chart-5 next to "no data". Status colour for
+   state is exactly the dataviz skill's rule.
+
+   They are NOT a categorical ramp, and running the skill's
+   validator on them proves it rather than asserting it:
+
+     light  bad ↔ warn   ΔE  1.7 deutan · 13.1 normal   FAIL
+            chart-5      chroma 0, 2.88:1 on --panel     FAIL
+     dark   ok  ↔ warn   ΔE  7.5 protan                  floor
+            ok/warn/bad  L 0.79 / 0.83 / 0.72            off-band
+
+   A deuteranope cannot separate our amber from our red at all. So a
+   component that splits a total by its *parts* (SplitBar) takes the
+   four hues below instead — searched against the same validator,
+   with our three status hues (27 / 74 / 156) excluded so a segment
+   never reads as a state, and every slot clearing 3:1 on --panel:
+
+     light  #664fd8 #7da127 #b4065f #32a0c5
+            all-pairs ΔE 17.1 deutan · 20.1 normal · all ≥ 3:1
+     dark   #6d57e0 #7a9e23 #c5256d #2d9dc1
+            all-pairs ΔE 13.0 deutan · 19.9 normal · all ≥ 3:1
+
+   All-pairs, not merely adjacent — so the four survive being
+   re-ordered, filtered or read out of a legend.
+
+   Four is the honest maximum here: with the status hues reserved
+   and 3:1 required in both themes, no fifth hue clears all-pairs.
+   A fifth part is therefore not a fifth hue — it folds into
+   `--series-other`, which is --tx-3 and deliberately achromatic:
+   "Other" is a bucket, not an identity, and it always carries its
+   word. Never generate a hue for a sixth.
+   ============================================================ */
+
+/* ============================================================
+   2. shadcn ALIASES
+   ------------------------------------------------------------
+   Every base-nova component inherits the system for free. Declared
+   once: each one points at a role token, and the roles are what
+   .dark switches, so there is no second copy to keep in step.
+   ============================================================ */
+
+:root {
+  --background: var(--ground);
+  --foreground: var(--tx);
+  --card: var(--panel);
+  --card-foreground: var(--tx);
+  --popover: var(--panel);
+  --popover-foreground: var(--tx);
+  --primary: var(--brand);
+  --primary-foreground: #fff;
+  --secondary: var(--panel-2);
+  --secondary-foreground: var(--tx);
+  --muted: var(--panel-2);
+  --muted-foreground: var(--tx-2);
+  /* shadcn's "accent" is a neutral hover fill, not the brand. */
+  --accent: var(--raise);
+  --accent-foreground: var(--tx);
+  --destructive: var(--bad);
+  --destructive-foreground: #fff;
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--brand-ring);
+
+  --chart-1: var(--brand);
+  --chart-2: var(--ok);
+  --chart-3: var(--warn);
+  --chart-4: var(--bad);
+  --chart-5: var(--tx-4);
+
+  --sidebar: var(--panel);
+  --sidebar-foreground: var(--tx);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: #fff;
+  --sidebar-accent: var(--raise);
+  --sidebar-accent-foreground: var(--tx);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--brand-ring);
+
+  --radius: 0.5rem;
+}
+
+/* ============================================================
+   3a. THEME — colours, shadows, fonts
+   ------------------------------------------------------------
+   `inline` on purpose: the utility emits var(--role) rather than a
+   frozen value, so one class follows the theme across .dark.
+   ============================================================ */
+
+@theme inline {
+  --color-background: var(--ground);
+  --color-foreground: var(--tx);
+  --color-card: var(--panel);
+  --color-card-foreground: var(--tx);
+  --color-popover: var(--panel);
+  --color-popover-foreground: var(--tx);
+  --color-primary: var(--brand);
+  --color-primary-foreground: #fff;
+  --color-secondary: var(--panel-2);
+  --color-secondary-foreground: var(--tx);
+  --color-muted: var(--panel-2);
+  --color-muted-foreground: var(--tx-2);
+  --color-accent: var(--raise);
+  --color-accent-foreground: var(--tx);
+  --color-destructive: var(--bad);
+  --color-destructive-foreground: #fff;
+  --color-border: var(--line);
+  --color-input: var(--line);
+  --color-ring: var(--brand-ring);
+  --color-chart-1: var(--brand);
+  --color-chart-2: var(--ok);
+  --color-chart-3: var(--warn);
+  --color-chart-4: var(--bad);
+  --color-chart-5: var(--tx-4);
+  --color-sidebar: var(--panel);
+  --color-sidebar-foreground: var(--tx);
+  --color-sidebar-primary: var(--brand);
+  --color-sidebar-primary-foreground: #fff;
+  --color-sidebar-accent: var(--raise);
+  --color-sidebar-accent-foreground: var(--tx);
+  --color-sidebar-border: var(--line);
+  --color-sidebar-ring: var(--brand-ring);
+
+  /* surfaces */
+  --color-ground: var(--ground);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-raise: var(--raise);
+  --color-raise-2: var(--raise-2);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+
+  /* text */
+  --color-tx: var(--tx);
+  --color-tx-2: var(--tx-2);
+  --color-tx-3: var(--tx-3);
+  --color-tx-4: var(--tx-4);
+  --color-tx-ph: var(--tx-ph);
+
+  /* brand */
+  --color-brand: var(--brand);
+  --color-brand-hi: var(--brand-hi);
+  --color-brand-ring: var(--brand-ring);
+  --color-brand-tx: var(--brand-tx);
+  --color-brand-tint: var(--brand-tint);
+  --color-brand-line: var(--brand-line);
+
+  /* status */
+  --color-ok: var(--ok);
+  --color-ok-tint: var(--ok-tint);
+  --color-ok-line: var(--ok-line);
+  --color-warn: var(--warn);
+  --color-warn-tint: var(--warn-tint);
+  --color-warn-line: var(--warn-line);
+  --color-bad: var(--bad);
+  --color-bad-tint: var(--bad-tint);
+  --color-bad-line: var(--bad-line);
+  --color-info: var(--info);
+  --color-info-tint: var(--info-tint);
+  --color-info-line: var(--info-line);
+
+  /* Categorical series — fill-series-1, bg-series-3, stroke-series-other. */
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-series-4: var(--series-4);
+  --color-series-other: var(--series-other);
+
+  /* wells stay near-black in both themes; hatch means "not built yet" */
+  --color-well: var(--well);
+  --color-well-tx: var(--well-tx);
+  --color-well-ts: var(--well-ts);
+  --color-well-ok: var(--well-ok);
+  --color-well-warn: var(--well-warn);
+  --color-well-bad: var(--well-bad);
+  --color-well-hl: var(--well-hl);
+  --color-paper: var(--paper);
+  --color-paper-ink: var(--paper-ink);
+  --color-hatch: var(--hatch);
+  --color-land: var(--land);
+  --color-sea: var(--sea);
+  --color-scrim: var(--scrim);
+
+  --shadow-panel: var(--shadow-panel);
+  --shadow-float: var(--shadow-float);
+  --shadow-pop: var(--shadow-pop);
+}
+
+/* ============================================================
+   3b. THEME — type, geometry, radii
+   ------------------------------------------------------------
+   Not `inline`: these do not change with the theme, and emitting
+   them as real custom properties lets raw CSS and arbitrary values
+   (base-nova's `min(var(--radius-md),10px)`) read them.
+   ============================================================ */
+
+@theme {
+  --font-sans:
+    var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono:
+    var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  --font-heading: var(--font-sans);
+
+  /* Type scale — each step carries its whole recipe, so one class is the
+     decision. Weight is the one companion you may override (`font-medium`
+     on a rail item, `font-semibold` on a table head). Size, leading and
+     tracking are not yours to override. */
+  --text-disp: 30px; /* page title */
+  --text-disp--line-height: 1.16;
+  --text-disp--letter-spacing: -0.16px;
+  --text-disp--font-weight: 600;
+
+  --text-sect: 20px; /* section heading */
+  --text-sect--line-height: 1.25;
+  --text-sect--letter-spacing: -0.2px;
+  --text-sect--font-weight: 600;
+
+  --text-lead: 16px; /* lede */
+  --text-lead--line-height: 1.5;
+  --text-lead--letter-spacing: normal;
+  --text-lead--font-weight: 400;
+
+  --text-body: 14px; /* body copy and every control */
+  --text-body--line-height: 1.5;
+  --text-body--letter-spacing: normal;
+  --text-body--font-weight: 400;
+
+  --text-ui: 13px; /* the workhorse — rail items and table cells */
+  --text-ui--line-height: 1.4;
+  --text-ui--letter-spacing: normal;
+  --text-ui--font-weight: 400;
+
+  --text-meta: 12px; /* meta and captions */
+  --text-meta--line-height: 1.45;
+  --text-meta--letter-spacing: normal;
+  --text-meta--font-weight: 400;
+
+  --text-chip: 11px; /* mono chips, pills and badges */
+  --text-chip--line-height: 1;
+  --text-chip--letter-spacing: normal;
+  --text-chip--font-weight: 500;
+
+  /* The two figures. A readout's number is not body copy at a heavier weight:
+     it is the thing the eye lands on, so it gets its own step and its own
+     negative tracking (e-console.html:689, 723). `fig` is a stat tile's value,
+     `hero` the number a chart leads with. Both stay in the same sans as
+     everything else. */
+  --text-fig: 22px; /* the value in a stat tile */
+  --text-fig--line-height: 1.15;
+  --text-fig--letter-spacing: -0.3px;
+  --text-fig--font-weight: 600;
+
+  --text-hero: 26px; /* the number a chart leads with */
+  --text-hero--line-height: 1.15;
+  --text-hero--letter-spacing: -0.4px;
+  --text-hero--font-weight: 600;
+
+  /* The wordmark in the masthead (e-console.html:233-235). Not a step of the
+     reading scale and not available to anything else: a logotype is set once, to
+     its own measurements. 650 is a real Geist weight, and it is the reason this
+     cannot be `text-lead font-semibold` — 600 at 16px reads as a heading. */
+  --text-mark: 15px;
+  --text-mark--line-height: 1;
+  --text-mark--letter-spacing: -0.28px;
+  --text-mark--font-weight: 650;
+
+  /* Chart furniture, below the scale on purpose: an axis tick is a ruler
+     marking, not text anyone reads as prose (e-console.html:736, 746). It is
+     the only place in the app allowed under 11px, and it never carries a word
+     that is not repeated somewhere at a readable size. */
+  --text-tick: 10px;
+  --text-tick--line-height: 1;
+
+  /* Mono set small and right-aligned — a digest, a port, an IP in a key/value
+     row — reads loose at its nominal tracking (e-console.html:705). The one
+     tracking token in the app; everything else takes it from its type step. */
+  --tracking-mono: -0.2px;
+
+  /* Mono set in bulk needs more air than the type scale gives it. A log is
+     scanned in columns and a diff is read line by line, which is why the diff
+     gets the looser of the two (e-console.html:762, 784). */
+  --leading-log: 1.62;
+  --leading-diff: 1.75;
+
+  /* Not a step of the scale — the size a bare glyph (●, ○, ✕, ⊘) has to be
+     cut to so it reads as a mark beside an 11px word rather than as a
+     second, louder word (e-console.html:578). */
+  --text-glyph: 9px;
+  --text-glyph--line-height: 1;
+
+  /* Geometry, measured off the reference. Under --spacing-* so h-*, w-*,
+     max-w-* and gap-* all resolve: h-ctl, w-rail, max-w-col. */
+  --spacing-top: 56px; /* masthead */
+  --spacing-rail: 259px; /* scope rail, expanded */
+  --spacing-rail-c: 60px; /* scope rail, collapsed to an icon strip */
+  --spacing-aside: 336px; /* right rail */
+  --spacing-subnav: 216px; /* a screen's own section list, beside it (settings) */
+  --spacing-col: 1360px; /* page measure */
+  --spacing-ctl: 36px; /* control height */
+  --spacing-nav: 34px; /* rail item height */
+  --spacing-row: 40px; /* table row height */
+  --spacing-thead: 38px; /* table head row, and the tab strip */
+  --spacing-pill: 22px; /* status pill, switch track */
+  --spacing-chip: 21px; /* chip */
+  --spacing-pad: 32px; /* page gutter */
+  --spacing-pick: 210px; /* narrowest a radio card may get before it rewraps */
+  /* Narrowest a card in a self-fitting row of them may get before the row
+     rewraps (e-console.html:2822). Wider than --spacing-pick because these hold
+     a list of rows rather than a label and a sentence. */
+  --spacing-tile: 240px;
+  --spacing-modal-top: 8vh; /* a dialog sits high, not centred */
+  --spacing-modal-h: 84vh; /* and scrolls inside itself past this */
+  /* The rail as a drawer. The vw clamp is part of the value, not a second
+     decision: a 285px drawer on a 320px phone leaves no page to see behind it,
+     which is the whole point of a drawer over a replaced screen. */
+  --spacing-drawer: min(285px, 86vw);
+  --spacing-pal: 612px; /* the command palette */
+  --spacing-pal-top: 11vh; /* which sits higher than a dialog does */
+  --spacing-pal-list: min(
+    52vh,
+    420px
+  ); /* and scrolls its results, never the page */
+
+  /* Telemetry geometry (e-console.html:721-763). The plot frame is a fixed
+     height and a fluid width — that is why its stroke has to be
+     non-scaling. */
+  --spacing-plot: 96px; /* the plot frame */
+  --spacing-spark: 30px; /* an inline sparkline */
+  --spacing-chart-side: 118px; /* the label-and-number column beside a plot */
+  --spacing-log: 340px; /* a log well, before it scrolls inside itself */
+  /* A framed page (the Trace store's search): the viewport less the masthead,
+     tab strip and the settings card above it, never shorter than a usable
+     search form. */
+  --spacing-frame: max(24rem, calc(100dvh - 16rem));
+
+  /* max-w-* reads the --container-* namespace, not --spacing-*. The two
+     measures that bound a column need both names. */
+  --container-col: 1360px;
+  --container-aside: 336px;
+
+  /* Measures, in characters, because a line length is about the text and not
+     about the layout: a lede under a page title, and the one sentence in an
+     empty state (e-console.html:414, 843). */
+  --container-lede: 74ch;
+  --container-copy: 46ch;
+
+  /* The auth screens' one column (F06). In px and not ch, because unlike the
+     two above this measure is bounding a stack of 36px controls rather than a
+     line of prose — it is the form that has to feel right, and the labels above
+     it are short by design. */
+  --container-auth: 400px;
+
+  /* A one-time code, set wide enough that six digits are counted rather than
+     read as a number (F06). The second tracking token in the app, and like
+     `--tracking-mono` it exists because mono set for a *purpose* — counting, or
+     right-aligning — needs different tracking from mono set as text. */
+  --tracking-code: 0.32em;
+
+  /* Four of the reference's five breakpoints. Declared ascending, which is the
+     order Tailwind emits the variants in — get this wrong and `lbl:` loses to
+     `hd:` at 900px for no visible reason.
+     The masthead sheds its labels *before* it sheds its controls, which is why
+     `lbl` sits below `rail`: at 820px Ask, Support and the Organization name
+     are down to icons and initials, and the breadcrumb goes entirely because
+     the page title is right underneath it (e-console.html:983-994). */
+  --breakpoint-hd: 620px; /* a page header stacks, its actions go full-width */
+  --breakpoint-lbl: 820px; /* the masthead sheds labels, keeps controls */
+  --breakpoint-rail: 900px; /* the scope rail leaves the grid and becomes a drawer */
+  --breakpoint-cols: 1040px; /* main + aside becomes one column */
+
+  /* Radii chosen so base-nova's own class picks land on the prototype's
+     geometry: controls are rounded-lg (8px), cards and dialogs are
+     rounded-xl (12px), chips and rail items are rounded-md (6px). */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 20px;
+  --radius-4xl: 24px;
+  --radius-pill: 999px;
+
+  /* The tail cursor in a live log well (e-console.html:776-780). `steps(1)` so
+     it snaps rather than fades — a terminal caret does not breathe. It stops
+     under prefers-reduced-motion; see the block below. */
+  --animate-blink: blink 1.1s steps(1) infinite;
+
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  /* Motion. The console is an Operate surface, so motion is short, starts
+     fast and settles: it confirms that something happened and where it came
+     from, never decorates. Tailwind's stock `ease-out` is too soft to read as
+     a response, so these three curves are the only ones a component reaches
+     for (`ease-out-strong`, `ease-in-out-strong`, `ease-drawer`).
+     Durations stay on Tailwind's scale: 100 for a press or hover, 150 for a
+     menu, popover or tooltip, 200 for a dialog or an entering row, 300 for a
+     drawer or sheet. Nothing a person triggers often waits longer than 200. */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Content arriving: a panel after its skeleton, a row a mutation added, a
+     tab's body. A 4px rise plus a fade, so it reads as "this is new" without
+     moving anything the eye was already on. Use `animate-rise` once per
+     arriving block, never on every row of a long list. */
+  --animate-rise: rise 200ms var(--ease-out-strong) both;
+  /* Content replaced in place (a tab switch, a filter change): opacity only,
+     because the layout has not moved and a rise would suggest it had. */
+  --animate-fade: fade 150ms var(--ease-out-strong) both;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+  }
+}
+
+/* ============================================================
+   4. BASE
+   ============================================================ */
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply font-sans;
+    -webkit-text-size-adjust: 100%;
+    background: var(--ground);
+  }
+
+  body {
+    @apply bg-ground text-tx text-body antialiased;
+  }
+
+  /* Mono at the same px reads a size larger than the sans beside it. */
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+  }
+
+  /* An icon is a block, and it never stretches or shrinks in a flex row. */
+  svg {
+    display: block;
+    flex: none;
+  }
+
+  /* Focus is visible at all times, on the brand ring, everywhere. */
+  :focus-visible {
+    outline: 2px solid var(--brand-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-md);
+  }
+}
+
+/* Reduced motion degrades to a settled, honest snapshot — the run
+   finishes, the cursor stops, nothing merely runs faster.
+   (e-console.html:1042-1051) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Said out loud rather than left to the rule above. A caret that has been
+     collapsed to a 0.001ms single iteration *happens* to land on opacity 1,
+     which is the settled state we want — but "happens to" is not a contract,
+     and the one thing a live log must not do is lose its cursor
+     (e-console.html:1049). */
+  [data-slot="log-cursor"] {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}
+
+/* ============================================================
+   5. UTILITIES
+   ============================================================ */
+
+/* The hatch means "does not exist yet", never "disabled for you". */
+@utility hatch {
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--hatch) 0 1px,
+    transparent 1px 7px
+  );
+}
+
+/* "Not read": a stretch of a chart the read never reached, so its zeros are
+   unknown rather than quiet. Warn-tinted and wider than `hatch`, which means
+   "does not exist yet" — this exists, Cloudgate just didn't look. */
+@utility unread-stripes {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 6px,
+    var(--warn-tint) 6px 12px
+  );
+}
+
+/* Figures that change in place must not reflow the row they sit in. */
+@utility num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Chart strokes. A plot's viewBox is stretched to the panel's width
+   (`preserveAspectRatio="none"`), which scales everything drawn in it —
+   including the width of a line and the length of a dash. These three keep the
+   ink at the size it was specified (e-console.html:729-735).
+
+   Named without a Tailwind prefix on purpose: a utility called `stroke-fixed`
+   would be classified as a *stroke colour* by tailwind-merge and silently
+   dropped next to `stroke-chart-1`, which is the trap F03 documented in
+   `lib/utils.ts`. */
+@utility nonscaling {
+  vector-effect: non-scaling-stroke;
+}
+
+/* The plot's gridlines, and the two places a line means "not solid data": a
+   sparkline's baseline and a series that has stopped reporting. */
+@utility dash-grid {
+  stroke-dasharray: 3 4;
+}
+
+@utility dash-thin {
+  stroke-dasharray: 2 3;
+}
+
+/* A strip that scrolls sideways on purpose — a tab bar, a wide table head —
+   and says so by clipping at its own edge rather than by growing a bar the
+   page never asked for. The strip still scrolls with a wheel, a trackpad and
+   the keyboard; only the bar is gone (e-console.html:487-488). */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ============================================================
+   6. INERT — one rule, deliberately unlayered
+   ------------------------------------------------------------
+   "This control is inert" and "this control looks inert" cannot
+   drift apart, because they are the same attribute
+   (e-console.html:506-511).
+
+   `aria-disabled` rather than `disabled`, for *actions* — a
+   button, a menu row, a radio card. It keeps the control
+   focusable, so a keyboard user can reach it and hear why it is
+   off, and Base UI still swallows the click. Our Button asks for
+   it by defaulting `focusableWhenDisabled`.
+
+   Form *inputs* keep the native `disabled` attribute, which is
+   the right answer for them: a disabled input should not be
+   focused, and must not be submitted. shadcn already styles that
+   case, and it is the only other disabled spelling in the app.
+
+   Unlayered on purpose. Tailwind's utilities live in a layer, so
+   a rule inside `@layer base` could never beat `bg-brand` on a
+   disabled primary button. Unlayered CSS outranks every layer,
+   which is exactly the authority this rule needs.
+   ============================================================ */
+
+[aria-disabled="true"] {
+  cursor: not-allowed;
+  color: var(--tx-3);
+}
+
+[data-slot="button"][aria-disabled="true"],
+[data-slot="pick"][aria-disabled="true"] {
+  background: var(--panel-2);
+  color: var(--tx-3);
+}
+
+/* The flattening stops at the focus ring. An inert control is still in the
+   tab order, and base-nova draws its ring as a box-shadow with a border to
+   match — so a blanket `box-shadow: none` here would leave a control you can
+   reach but cannot see, which is worse than one you cannot reach at all. */
+[data-slot="button"][aria-disabled="true"]:not(:focus-visible),
+[data-slot="pick"][aria-disabled="true"]:not(:focus-visible) {
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+/* The card's own title is the one part of it that carries its own colour. */
+[data-slot="pick"][aria-disabled="true"] [data-slot="pick-title"] {
+  color: var(--tx-3);
+}
+
+/* A placeholder is an example, and has to look like one. At --tx-3
+   it sat close enough to a typed value that an empty, red-outlined field read
+   as filled right above "needs a name". Unlayered for the same reason as the
+   block above: the vendored inputs carry `placeholder:text-tx-3` as a layered
+   utility, and this outranks it without forking `components/ui/*`. */
+::placeholder {
+  color: var(--tx-ph);
+  opacity: 1;
+}
+
+/* ============================================================
+   7. THE SHELL — where the rail's width comes from
+   ------------------------------------------------------------
+   Added by F05 (e-console.html:295-302, 995-1019).
+
+   The rail's collapsed state is an *attribute on <html>*, not React
+   state, for the same reason next-themes puts the theme there: it
+   is read from localStorage by a blocking script before first
+   paint, so the rail opens at the width the operator left it at
+   rather than snapping 259px → 60px after hydration. React reads
+   the same attribute back through `useSyncExternalStore`, so the
+   toggle's label and the layout can never disagree.
+
+   Below the `rail` breakpoint the collapsed state is *ignored*
+   outright — a drawer is never an icon strip, and there is no
+   grid column for it to be one in.
+   ============================================================ */
+
+:root {
+  --rail-w: var(--spacing-rail);
+}
+
+@media (width >= 900px) {
+  html[data-rail="collapsed"] {
+    --rail-w: var(--spacing-rail-c);
+  }
+}
+
+/* Two of the reference's own reductions at the same width (e-console.html:998).
+   Both are re-declarations of an existing token rather than new ones, so every
+   `px-pad` and `text-disp` already in the app follows without being touched: a
+   32px gutter costs a phone a fifth of its width, and a 30px page title next to
+   a 380px measure is a title that wraps to three lines. */
+@media (width < 900px) {
+  :root {
+    --spacing-pad: 16px;
+    --text-disp: 24px;
+  }
+}
+
+/* "The rail is currently an icon strip." One variant rather than a pair of
+   conditions at every call site, because every one of the ~six things that
+   hide when the rail narrows must hide under exactly the same circumstances —
+   and reappear when the rail becomes a drawer. */
+@custom-variant railc {
+  @media (width >= 900px) {
+    html[data-rail="collapsed"] & {
+      @slot;
+    }
+  }
+}
+
+/* The masthead row and the body row. `minmax(0,1fr)`, never the default
+   `auto`: an auto grid column cannot shrink below its items' min-content, and
+   the masthead's min-content is wider than a phone. This one declaration is
+   what keeps 380px honest (e-console.html:209-216). */
+@utility shell-grid {
+  /* The third row is the docked terminal (section 7b): `auto`, so a
+     closed Dock is a row of nothing and the body keeps the whole height. */
+  grid-template-rows: var(--spacing-top) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Rail + main, until the rail leaves the grid entirely and slides *over* the
+   page. It never pushes it, so nothing reflows while the drawer opens. */
+@utility shell-body {
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+
+  @media (width < 900px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ============================================================
+   7b. THE DOCKED TERMINAL — where its height comes from
+   ------------------------------------------------------------
+   The rail's mechanism again: the dragged height (`--dock-h`) and the
+   view (`data-dock`: minimised or maximised) are on <html>, written
+   before first paint by `DOCK_INIT_SCRIPT` (`dock-state.ts`), so the
+   panel is the shape it was left in with nothing jumping.
+
+   The height is the panel's, never the terminal's: the emulator is
+   measured off the well inside it, and refits when it changes.
+
+   It never covers the masthead — maximised is the viewport less it —
+   and below the `rail` breakpoint, where the rail is a drawer, an open
+   Dock is full-screen under the masthead rather than a strip of a
+   phone. The drag handle goes wherever a dragged height means nothing.
+   ============================================================ */
+
+.dock-panel {
+  height: min(var(--dock-h, 18rem), calc(100dvh - var(--spacing-top)));
+}
+
+html[data-dock="maximised"] .dock-panel {
+  height: calc(100dvh - var(--spacing-top));
+}
+
+html[data-dock="minimised"] .dock-panel {
+  height: auto;
+}
+
+html[data-dock="minimised"] .dock-body,
+html[data-dock] .dock-handle {
+  display: none;
+}
+
+@media (width < 900px) {
+  html:not([data-dock="minimised"]) .dock-panel {
+    position: fixed;
+    inset: var(--spacing-top) 0 0 0;
+    z-index: 20;
+    height: auto;
+  }
+
+  .dock-handle {
+    display: none;
+  }
+}

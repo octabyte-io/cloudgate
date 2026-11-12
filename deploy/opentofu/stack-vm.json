@@ -1,0 +1,6 @@
+{
+  "ubuntu_aws": "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-20261017",
+  "ubuntu_gcp": "ubuntu-2404-noble-amd64-v20261105",
+  "docker_engine": "5:29.9.2-1~ubuntu.24.04~noble",
+  "compose_plugin": "5.6.1-1~ubuntu.24.04~noble"
+}

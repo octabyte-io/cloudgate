@@ -1,0 +1,162 @@
+# A type-check gate, plus a lint gate.
+#
+# An earlier cleanup cleared 79 `tsc --noEmit` errors out of the test tree, and
+# that pile had grown from ~10 to 83 unnoticed. It went unnoticed because
+# nothing in the normal loop looks: ts-jest does not fail a run on a type error,
+# so `pnpm test` and `pnpm test:e2e` stay green while the count climbs, and a
+# genuine error next to the pile is invisible. Hence a gate rather than a
+# convention.
+#
+# The e2e suites and the `test:db` lane are not run here, deliberately. They are
+# Testcontainers-backed, need a Docker daemon, and the e2e run takes ~5 minutes
+# at the `--maxWorkers=2` it requires to be reliable; running them is a separate
+# decision with a separate cost. It was priced on 2026-09-10 — about 20 minutes
+# of e2e on this runner — and the answer is `e2e.yml`, which runs both on every
+# `v*` release tag instead of every push.
+#
+# The unit lanes are not in that category, and the `unit` job runs them. When
+# this comment was first written it excluded "the suites" whole, and the
+# backend's unit lane then did need Docker: three of its files took the e2e
+# `globalSetup` and its Postgres. Those were moved out and the lane made
+# lock-free, so it is ~25 s of `jest` and nothing else. It is also where every
+# census gate in `backend/test/coding-standards/` lives, and a gate that only
+# fires for whoever remembers to run the lane is the gap H-131 named: a
+# cross-file standard is only enforced for the person running the whole suite.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  typecheck:
+    name: Type-check and lint
+    runs-on: ubuntu-latest
+    # The backend's `tsc` and its type-aware eslint both outgrew Node's default
+    # heap on this runner: each died at ~2 GB with "JavaScript heap out of
+    # memory" (exit 134) before reporting a single finding, so the job passed
+    # nothing. A local run of either peaks at ~1.6 GB.
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@v4
+
+      # Version comes from the root package.json `packageManager` field, so CI
+      # and a local clone cannot drift apart.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # The census gate for dependency build scripts. pnpm 10 skips any
+      # dependency's install script not named in pnpm-workspace.yaml, and when
+      # one is in neither `onlyBuiltDependencies` nor `ignoredBuiltDependencies`
+      # it prints a boxed "Ignored build scripts ... Run pnpm approve-builds"
+      # warning — which deploy/install.sh shows every operator, telling them to
+      # rewrite the checked-out workspace file. `strict-dep-builds` turns that
+      # same condition into ERR_PNPM_IGNORED_BUILDS and a non-zero exit, so a
+      # new dependency with a build script fails here until it is put in one
+      # list or the other on purpose. pnpm's own exit code, not a grep of its
+      # output, so there is no pipe to mask it. CI only: an operator's install
+      # of a commit this job passed cannot hit it.
+      - name: Install (fails on an unplaced dependency build script)
+        run: pnpm install --frozen-lockfile --config.strict-dep-builds=true
+
+      # Both workspaces: backend/tsconfig.json covers src/ and test/, which is
+      # where the pile lived.
+      #
+      # The frontend's `typecheck` runs `next typegen` before `tsc`, and this
+      # step is why. Next generates the global route types (`PageProps` and its
+      # kin) into `.next/`, which every working copy has from its last `next dev`
+      # and no fresh checkout does. So a bare `tsc --noEmit` passed locally and
+      # failed here on one line — `accept-invitation/[id]/page.tsx`, TS2304 —
+      # on every run this workflow ever made, 129 of 129 from 2026-08-11 to
+      # 2026-09-10. Every step below this one had therefore never run.
+      - name: Type-check
+        run: pnpm -r run typecheck
+
+      # Lint, check-only in both workspaces.
+      #
+      # This step needed a script change to be possible at all. `backend`'s
+      # `lint` used to end in `--fix`, which is not a gate: it rewrites the
+      # checkout and then reports success on everything it just rewrote, so the
+      # job would pass whatever the code looked like. A gate has to be able to
+      # fail, so `lint` is now check-only in both workspaces and `lint:fix` is
+      # the mutating one. Anyone reaching for a lint script in CI now gets the
+      # safe one by default.
+      #
+      # `frontend` had no working lint to gate either: every run died at config
+      # load on a missing `eslint-plugin-import`. Nothing was wrong with the
+      # config or the lockfile — both name the plugin correctly, via
+      # `eslint-config-next`, which depends on it. The local `node_modules` was
+      # simply half-written: an install left `eslint-config-next`'s private
+      # `node_modules` pointing at virtual-store directories that no longer
+      # existed, and dangling symlinks resolve as "module not found". A plain
+      # `pnpm install` fixed it and changed no manifest.
+      #
+      # That is the second reason this step earns its place. Nothing in the
+      # normal loop notices a lint that cannot start — a config-load crash and a
+      # clean run are both just "not a violation report" unless someone reads
+      # the output. Running it here, on a `--frozen-lockfile` install of a fresh
+      # checkout, means a tree where lint cannot run fails the build instead of
+      # silently protecting nothing.
+      - name: Lint
+        run: pnpm -r run lint
+
+      # The one shell file this repo ships, parsed. It would NOT have caught
+      # an earlier heredoc bug — a backtick in an unquoted heredoc is valid bash
+      # and `bash -n` passes — so this is a floor, not the guard for that class;
+      # the guard is in backend/test/servers/server-setup.spec.ts.
+      - name: Shell scripts parse
+        run: bash -n deploy/install.sh
+
+  unit:
+    name: Unit lanes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Docker-free and lock-free (docs/testing.md). It carries
+      # the census gates in test/coding-standards/ and `test/openapi/`, which
+      # asserts that the checked-in backend/openapi.json still matches what the
+      # DTOs generate — that used to be this workflow's one test step.
+      #
+      # Linux is the point, not a detail. Several specs execute the shell the
+      # product emits, and `/bin/sh` is bash on macOS and dash on Ubuntu. The
+      # first Linux run of this lane (2026-09-10, node:24 in a container) red
+      # six tests in backup-shell-safety.spec.ts that had only ever been green
+      # on a Mac, because the spec ran a `pipefail` script under `sh` where the
+      # product hands it to bash.
+      #
+      # And this runner has 2 vCPUs, so the lane's `maxWorkers: "50%"` is one
+      # worker and jest runs it **in-band** — which no development machine does.
+      # In-band, anything that logs after its file has finished sets the main
+      # process's exit code to 1 (jest-runner's `freezeConsole`), so the run
+      # fails with every test green. The second run of this job did exactly that
+      # (openapi.spec.ts, fixed in 02af102). Reproduce locally with
+      # `npx jest --maxWorkers=1`, not by re-running the default.
+      - name: Backend unit lane
+        run: pnpm --filter backend test
+
+      # Vitest: the console, the Next server's own helpers, and the custom
+      # eslint rules' tests. Runs even when the backend lane is red, so one
+      # failure does not hide the other.
+      - name: Frontend tests
+        if: ${{ !cancelled() }}
+        run: pnpm --filter frontend test
+
+      # Vitest: the Cloudgate CLI's pure rules (output, exit codes, Instance
+      # choice), no server. What the built command does against an Instance is
+      # backend/test/cli/cli.e2e-spec.ts, in the e2e run (CLI spec).
+      - name: CLI tests
+        if: ${{ !cancelled() }}
+        run: pnpm --filter @octabyte-io/cloudgate test

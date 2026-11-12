@@ -1,0 +1,636 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "planned_values": {
+    "outputs": {
+      "bucket_arn": {
+        "sensitive": false
+      },
+      "bucket_name": {
+        "sensitive": false,
+        "type": "string",
+        "value": "uploads-k3f9a2qd-123456789012-eu-central-1-an"
+      },
+      "bucket_region": {
+        "sensitive": false
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_s3_bucket.bucket",
+          "mode": "managed",
+          "type": "aws_s3_bucket",
+          "name": "bucket",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "bucket": "uploads-k3f9a2qd-123456789012-eu-central-1-an",
+            "bucket_namespace": "account-regional",
+            "force_destroy": false,
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "cloudgate/uploads/bucket",
+              "cloudgate:address": "aws_s3_bucket.bucket"
+            },
+            "tags_all": {
+              "Name": "cloudgate/uploads/bucket",
+              "cloudgate:address": "aws_s3_bucket.bucket",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_bucket_1"
+            },
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "cors_rule": [],
+            "grant": [],
+            "lifecycle_rule": [],
+            "logging": [],
+            "object_lock_configuration": [],
+            "replication_configuration": [],
+            "server_side_encryption_configuration": [],
+            "tags": {},
+            "tags_all": {},
+            "versioning": [],
+            "website": []
+          },
+          "identity": {
+            "account_id": null,
+            "bucket": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_s3_bucket_ownership_controls.bucket",
+          "mode": "managed",
+          "type": "aws_s3_bucket_ownership_controls",
+          "name": "bucket",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "region": "eu-central-1",
+            "rule": [
+              {
+                "object_ownership": "BucketOwnerEnforced"
+              }
+            ]
+          },
+          "sensitive_values": {
+            "rule": [
+              {}
+            ]
+          },
+          "identity": {
+            "account_id": null,
+            "bucket": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_s3_bucket_public_access_block.bucket",
+          "mode": "managed",
+          "type": "aws_s3_bucket_public_access_block",
+          "name": "bucket",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "block_public_acls": true,
+            "block_public_policy": true,
+            "ignore_public_acls": true,
+            "region": "eu-central-1",
+            "restrict_public_buckets": true,
+            "skip_destroy": null
+          },
+          "sensitive_values": {},
+          "identity": {
+            "account_id": null,
+            "bucket": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_s3_bucket_server_side_encryption_configuration.bucket",
+          "mode": "managed",
+          "type": "aws_s3_bucket_server_side_encryption_configuration",
+          "name": "bucket",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "expected_bucket_owner": null,
+            "region": "eu-central-1",
+            "rule": [
+              {
+                "apply_server_side_encryption_by_default": [
+                  {
+                    "sse_algorithm": "AES256"
+                  }
+                ]
+              }
+            ]
+          },
+          "sensitive_values": {
+            "rule": [
+              {
+                "apply_server_side_encryption_by_default": [
+                  {}
+                ],
+                "blocked_encryption_types": []
+              }
+            ]
+          },
+          "identity": {
+            "account_id": null,
+            "bucket": null,
+            "region": null
+          },
+          "identity_schema_version": 1
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "aws_s3_bucket.bucket",
+      "mode": "managed",
+      "type": "aws_s3_bucket",
+      "name": "bucket",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "bucket": "uploads-k3f9a2qd-123456789012-eu-central-1-an",
+          "bucket_namespace": "account-regional",
+          "force_destroy": false,
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/uploads/bucket",
+            "cloudgate:address": "aws_s3_bucket.bucket"
+          },
+          "tags_all": {
+            "Name": "cloudgate/uploads/bucket",
+            "cloudgate:address": "aws_s3_bucket.bucket",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_bucket_1"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {
+          "acceleration_status": true,
+          "acl": true,
+          "arn": true,
+          "bucket_domain_name": true,
+          "bucket_prefix": true,
+          "bucket_region": true,
+          "bucket_regional_domain_name": true,
+          "cors_rule": true,
+          "grant": true,
+          "hosted_zone_id": true,
+          "id": true,
+          "lifecycle_rule": true,
+          "logging": true,
+          "object_lock_configuration": true,
+          "object_lock_enabled": true,
+          "policy": true,
+          "replication_configuration": true,
+          "request_payer": true,
+          "server_side_encryption_configuration": true,
+          "tags": {},
+          "tags_all": {},
+          "versioning": true,
+          "website": true,
+          "website_domain": true,
+          "website_endpoint": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "cors_rule": [],
+          "grant": [],
+          "lifecycle_rule": [],
+          "logging": [],
+          "object_lock_configuration": [],
+          "replication_configuration": [],
+          "server_side_encryption_configuration": [],
+          "tags": {},
+          "tags_all": {},
+          "versioning": [],
+          "website": []
+        },
+        "after_identity": {
+          "account_id": null,
+          "bucket": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_s3_bucket_ownership_controls.bucket",
+      "mode": "managed",
+      "type": "aws_s3_bucket_ownership_controls",
+      "name": "bucket",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "region": "eu-central-1",
+          "rule": [
+            {
+              "object_ownership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "after_unknown": {
+          "bucket": true,
+          "id": true,
+          "rule": [
+            {}
+          ]
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "rule": [
+            {}
+          ]
+        },
+        "after_identity": {
+          "account_id": null,
+          "bucket": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_s3_bucket_public_access_block.bucket",
+      "mode": "managed",
+      "type": "aws_s3_bucket_public_access_block",
+      "name": "bucket",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "block_public_acls": true,
+          "block_public_policy": true,
+          "ignore_public_acls": true,
+          "region": "eu-central-1",
+          "restrict_public_buckets": true,
+          "skip_destroy": null
+        },
+        "after_unknown": {
+          "bucket": true,
+          "id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {},
+        "after_identity": {
+          "account_id": null,
+          "bucket": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_s3_bucket_server_side_encryption_configuration.bucket",
+      "mode": "managed",
+      "type": "aws_s3_bucket_server_side_encryption_configuration",
+      "name": "bucket",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "expected_bucket_owner": null,
+          "region": "eu-central-1",
+          "rule": [
+            {
+              "apply_server_side_encryption_by_default": [
+                {
+                  "sse_algorithm": "AES256"
+                }
+              ]
+            }
+          ]
+        },
+        "after_unknown": {
+          "bucket": true,
+          "id": true,
+          "rule": [
+            {
+              "apply_server_side_encryption_by_default": [
+                {
+                  "kms_master_key_id": true
+                }
+              ],
+              "blocked_encryption_types": true,
+              "bucket_key_enabled": true
+            }
+          ]
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "rule": [
+            {
+              "apply_server_side_encryption_by_default": [
+                {}
+              ],
+              "blocked_encryption_types": []
+            }
+          ]
+        },
+        "after_identity": {
+          "account_id": null,
+          "bucket": null,
+          "region": null
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "bucket_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "bucket_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "uploads-k3f9a2qd-123456789012-eu-central-1-an",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "bucket_region": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "outputs": {
+        "bucket_name": {
+          "sensitive": false,
+          "value": "uploads-k3f9a2qd-123456789012-eu-central-1-an",
+          "type": "string"
+        }
+      },
+      "root_module": {}
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "aws": {
+        "name": "aws",
+        "full_name": "registry.opentofu.org/hashicorp/aws",
+        "version_constraint": "6.69.1",
+        "expressions": {
+          "allowed_account_ids": {
+            "constant_value": [
+              "123456789012"
+            ]
+          },
+          "assume_role": [
+            {
+              "external_id": {
+                "constant_value": "moto-lane-external-id"
+              },
+              "role_arn": {
+                "constant_value": "arn:aws:iam::123456789012:role/cloudgate/cloudgate-deploy"
+              },
+              "session_name": {
+                "constant_value": "cloudgate"
+              }
+            }
+          ],
+          "default_tags": [
+            {
+              "tags": {
+                "constant_value": {
+                  "cloudgate:cloud-account": "cloud_1",
+                  "cloudgate:environment": "env_1",
+                  "cloudgate:state": "state_bucket_1"
+                }
+              }
+            }
+          ],
+          "endpoints": [
+            {
+              "iam": {
+                "constant_value": "http://moto:5000"
+              },
+              "s3": {
+                "constant_value": "http://moto:5000"
+              },
+              "s3control": {
+                "constant_value": "http://moto:5000"
+              },
+              "sts": {
+                "constant_value": "http://moto:5000"
+              }
+            }
+          ],
+          "region": {
+            "constant_value": "eu-central-1"
+          },
+          "s3_use_path_style": {
+            "constant_value": true
+          }
+        }
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "bucket_arn": {
+          "expression": {
+            "constant_value": "${aws_s3_bucket.bucket.arn}",
+            "references": [
+              "aws_s3_bucket.bucket",
+              "aws_s3_bucket.bucket.arn"
+            ]
+          }
+        },
+        "bucket_name": {
+          "expression": {
+            "constant_value": "${aws_s3_bucket.bucket.bucket}",
+            "references": [
+              "aws_s3_bucket.bucket",
+              "aws_s3_bucket.bucket.bucket"
+            ]
+          }
+        },
+        "bucket_region": {
+          "expression": {
+            "constant_value": "${aws_s3_bucket.bucket.bucket_region}",
+            "references": [
+              "aws_s3_bucket.bucket",
+              "aws_s3_bucket.bucket.bucket_region"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "aws_s3_bucket.bucket",
+          "mode": "managed",
+          "type": "aws_s3_bucket",
+          "name": "bucket",
+          "provider_config_key": "aws",
+          "expressions": {
+            "bucket": {
+              "constant_value": "uploads-k3f9a2qd-123456789012-eu-central-1-an"
+            },
+            "bucket_namespace": {
+              "constant_value": "account-regional"
+            },
+            "force_destroy": {
+              "constant_value": false
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/uploads/bucket",
+                "cloudgate:address": "aws_s3_bucket.bucket"
+              }
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_s3_bucket_ownership_controls.bucket",
+          "mode": "managed",
+          "type": "aws_s3_bucket_ownership_controls",
+          "name": "bucket",
+          "provider_config_key": "aws",
+          "expressions": {
+            "bucket": {
+              "constant_value": "${aws_s3_bucket.bucket.id}",
+              "references": [
+                "aws_s3_bucket.bucket",
+                "aws_s3_bucket.bucket.id"
+              ]
+            },
+            "rule": [
+              {
+                "object_ownership": {
+                  "constant_value": "BucketOwnerEnforced"
+                }
+              }
+            ]
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_s3_bucket_public_access_block.bucket",
+          "mode": "managed",
+          "type": "aws_s3_bucket_public_access_block",
+          "name": "bucket",
+          "provider_config_key": "aws",
+          "expressions": {
+            "block_public_acls": {
+              "constant_value": true
+            },
+            "block_public_policy": {
+              "constant_value": true
+            },
+            "bucket": {
+              "constant_value": "${aws_s3_bucket.bucket.id}",
+              "references": [
+                "aws_s3_bucket.bucket",
+                "aws_s3_bucket.bucket.id"
+              ]
+            },
+            "ignore_public_acls": {
+              "constant_value": true
+            },
+            "restrict_public_buckets": {
+              "constant_value": true
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_s3_bucket_server_side_encryption_configuration.bucket",
+          "mode": "managed",
+          "type": "aws_s3_bucket_server_side_encryption_configuration",
+          "name": "bucket",
+          "provider_config_key": "aws",
+          "expressions": {
+            "bucket": {
+              "constant_value": "${aws_s3_bucket.bucket.id}",
+              "references": [
+                "aws_s3_bucket.bucket",
+                "aws_s3_bucket.bucket.id"
+              ]
+            },
+            "rule": [
+              {
+                "apply_server_side_encryption_by_default": [
+                  {
+                    "sse_algorithm": {
+                      "constant_value": "AES256"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "schema_version": 0
+        }
+      ]
+    }
+  },
+  "relevant_attributes": [
+    {
+      "resource": "aws_s3_bucket.bucket",
+      "attribute": [
+        "arn"
+      ]
+    },
+    {
+      "resource": "aws_s3_bucket.bucket",
+      "attribute": [
+        "bucket"
+      ]
+    },
+    {
+      "resource": "aws_s3_bucket.bucket",
+      "attribute": [
+        "bucket_region"
+      ]
+    },
+    {
+      "resource": "aws_s3_bucket.bucket",
+      "attribute": [
+        "id"
+      ]
+    }
+  ],
+  "timestamp": "2026-01-01T00:00:00Z",
+  "errored": false,
+  "resource_drift": []
+}

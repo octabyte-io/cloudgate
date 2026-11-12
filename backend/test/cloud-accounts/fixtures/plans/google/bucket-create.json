@@ -1,0 +1,612 @@
+{
+  "cloudgate_fixture": {
+    "source": "the live walk by hand",
+    "how": "Recorded by `tofu show -json` from a real plan in the live Google Cloud project on 2026-11-06 (a walk by hand, step 11; OpenTofu 1.13.1, hashicorp/google 8.8.0), then rewritten to the stored files' sample ids (cloud_1, env_1, the Service and state ids this file stored before, project example-project-123 / 123456789012, region europe-west1). A bucket on Cloud Storage with no origin trusted, its own service account, that account's objectUser binding on it and its HMAC key, before its first Apply."
+  },
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "planned_values": {
+    "outputs": {
+      "access_key_id": {
+        "sensitive": false
+      },
+      "bucket_name": {
+        "sensitive": false,
+        "type": "string",
+        "value": "cloudgate-33lu2dv74xuy-k3f9a2qd"
+      },
+      "secret_access_key": {
+        "sensitive": true
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "google_service_account.bucket",
+          "mode": "managed",
+          "type": "google_service_account",
+          "name": "bucket",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "account_id": "cloudgate-33lu2dv74xuy",
+            "create_ignore_already_exists": null,
+            "deletion_policy": "DELETE",
+            "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_bucket_1",
+            "disabled": false,
+            "display_name": null,
+            "email": "cloudgate-33lu2dv74xuy@example-project-123.iam.gserviceaccount.com",
+            "member": "serviceAccount:cloudgate-33lu2dv74xuy@example-project-123.iam.gserviceaccount.com",
+            "project": "example-project-123",
+            "timeouts": null
+          },
+          "sensitive_values": {},
+          "identity": {
+            "email": null,
+            "project": null
+          },
+          "identity_schema_version": 1
+        },
+        {
+          "address": "google_storage_bucket.bucket",
+          "mode": "managed",
+          "type": "google_storage_bucket",
+          "name": "bucket",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 4,
+          "values": {
+            "autoclass": [],
+            "cors": [],
+            "custom_placement_config": [],
+            "default_event_based_hold": null,
+            "deletion_policy": "DELETE",
+            "effective_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "asv6r4jerrrf"
+            },
+            "enable_object_retention": null,
+            "encryption": [],
+            "force_destroy": false,
+            "hierarchical_namespace": [],
+            "ip_filter": [],
+            "labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "asv6r4jerrrf"
+            },
+            "lifecycle_rule": [],
+            "location": "EUROPE-WEST1",
+            "logging": [],
+            "name": "cloudgate-33lu2dv74xuy-k3f9a2qd",
+            "public_access_prevention": "enforced",
+            "requester_pays": null,
+            "retention_policy": [],
+            "soft_delete_policy": [
+              {
+                "retention_duration_seconds": 0
+              }
+            ],
+            "storage_class": "STANDARD",
+            "terraform_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "asv6r4jerrrf"
+            },
+            "timeouts": null,
+            "uniform_bucket_level_access": true
+          },
+          "sensitive_values": {
+            "autoclass": [],
+            "cors": [],
+            "custom_placement_config": [],
+            "effective_labels": {},
+            "encryption": [],
+            "hierarchical_namespace": [],
+            "ip_filter": [],
+            "labels": {},
+            "lifecycle_rule": [],
+            "logging": [],
+            "retention_policy": [],
+            "soft_delete_policy": [
+              {}
+            ],
+            "terraform_labels": {},
+            "versioning": [],
+            "website": []
+          },
+          "identity": {
+            "name": null,
+            "project": null
+          },
+          "identity_schema_version": 1
+        },
+        {
+          "address": "google_storage_bucket_iam_member.object_user",
+          "mode": "managed",
+          "type": "google_storage_bucket_iam_member",
+          "name": "object_user",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "bucket": "cloudgate-33lu2dv74xuy-k3f9a2qd",
+            "condition": [],
+            "member": "serviceAccount:cloudgate-33lu2dv74xuy@example-project-123.iam.gserviceaccount.com",
+            "role": "roles/storage.objectUser",
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "condition": []
+          }
+        },
+        {
+          "address": "google_storage_hmac_key.key",
+          "mode": "managed",
+          "type": "google_storage_hmac_key",
+          "name": "key",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "deletion_policy": "DELETE",
+            "project": "example-project-123",
+            "service_account_email": "cloudgate-33lu2dv74xuy@example-project-123.iam.gserviceaccount.com",
+            "state": "ACTIVE",
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "secret": true
+          },
+          "identity": {
+            "access_id": null,
+            "project": null
+          },
+          "identity_schema_version": 1
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "google_service_account.bucket",
+      "mode": "managed",
+      "type": "google_service_account",
+      "name": "bucket",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "account_id": "cloudgate-33lu2dv74xuy",
+          "create_ignore_already_exists": null,
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_bucket_1",
+          "disabled": false,
+          "display_name": null,
+          "email": "cloudgate-33lu2dv74xuy@example-project-123.iam.gserviceaccount.com",
+          "member": "serviceAccount:cloudgate-33lu2dv74xuy@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123",
+          "timeouts": null
+        },
+        "after_unknown": {
+          "id": true,
+          "name": true,
+          "unique_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {},
+        "after_identity": {
+          "email": null,
+          "project": null
+        }
+      }
+    },
+    {
+      "address": "google_storage_bucket.bucket",
+      "mode": "managed",
+      "type": "google_storage_bucket",
+      "name": "bucket",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "autoclass": [],
+          "cors": [],
+          "custom_placement_config": [],
+          "default_event_based_hold": null,
+          "deletion_policy": "DELETE",
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "asv6r4jerrrf"
+          },
+          "enable_object_retention": null,
+          "encryption": [],
+          "force_destroy": false,
+          "hierarchical_namespace": [],
+          "ip_filter": [],
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "asv6r4jerrrf"
+          },
+          "lifecycle_rule": [],
+          "location": "EUROPE-WEST1",
+          "logging": [],
+          "name": "cloudgate-33lu2dv74xuy-k3f9a2qd",
+          "public_access_prevention": "enforced",
+          "requester_pays": null,
+          "retention_policy": [],
+          "soft_delete_policy": [
+            {
+              "retention_duration_seconds": 0
+            }
+          ],
+          "storage_class": "STANDARD",
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "asv6r4jerrrf"
+          },
+          "timeouts": null,
+          "uniform_bucket_level_access": true
+        },
+        "after_unknown": {
+          "autoclass": [],
+          "cors": [],
+          "custom_placement_config": [],
+          "effective_labels": {},
+          "encryption": [],
+          "hierarchical_namespace": [],
+          "id": true,
+          "ip_filter": [],
+          "labels": {},
+          "lifecycle_rule": [],
+          "logging": [],
+          "project": true,
+          "project_number": true,
+          "retention_policy": [],
+          "rpo": true,
+          "self_link": true,
+          "soft_delete_policy": [
+            {
+              "effective_time": true
+            }
+          ],
+          "terraform_labels": {},
+          "time_created": true,
+          "updated": true,
+          "url": true,
+          "versioning": true,
+          "website": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "autoclass": [],
+          "cors": [],
+          "custom_placement_config": [],
+          "effective_labels": {},
+          "encryption": [],
+          "hierarchical_namespace": [],
+          "ip_filter": [],
+          "labels": {},
+          "lifecycle_rule": [],
+          "logging": [],
+          "retention_policy": [],
+          "soft_delete_policy": [
+            {}
+          ],
+          "terraform_labels": {},
+          "versioning": [],
+          "website": []
+        },
+        "after_identity": {
+          "name": null,
+          "project": null
+        }
+      }
+    },
+    {
+      "address": "google_storage_bucket_iam_member.object_user",
+      "mode": "managed",
+      "type": "google_storage_bucket_iam_member",
+      "name": "object_user",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "bucket": "cloudgate-33lu2dv74xuy-k3f9a2qd",
+          "condition": [],
+          "member": "serviceAccount:cloudgate-33lu2dv74xuy@example-project-123.iam.gserviceaccount.com",
+          "role": "roles/storage.objectUser",
+          "timeouts": null
+        },
+        "after_unknown": {
+          "condition": [],
+          "etag": true,
+          "id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "condition": []
+        }
+      }
+    },
+    {
+      "address": "google_storage_hmac_key.key",
+      "mode": "managed",
+      "type": "google_storage_hmac_key",
+      "name": "key",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "deletion_policy": "DELETE",
+          "project": "example-project-123",
+          "service_account_email": "cloudgate-33lu2dv74xuy@example-project-123.iam.gserviceaccount.com",
+          "state": "ACTIVE",
+          "timeouts": null
+        },
+        "after_unknown": {
+          "access_id": true,
+          "id": true,
+          "secret": true,
+          "time_created": true,
+          "updated": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "secret": true
+        },
+        "after_identity": {
+          "access_id": null,
+          "project": null
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "access_key_id": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "bucket_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "cloudgate-33lu2dv74xuy-k3f9a2qd",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "secret_access_key": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": true,
+      "after_sensitive": true
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "outputs": {
+        "bucket_name": {
+          "sensitive": false,
+          "value": "cloudgate-33lu2dv74xuy-k3f9a2qd",
+          "type": "string"
+        }
+      },
+      "root_module": {}
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "google": {
+        "name": "google",
+        "full_name": "registry.opentofu.org/hashicorp/google",
+        "version_constraint": "8.8.0",
+        "expressions": {
+          "add_terraform_attribution_label": {
+            "constant_value": false
+          },
+          "project": {
+            "constant_value": "example-project-123"
+          },
+          "region": {
+            "constant_value": "europe-west1"
+          }
+        }
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "access_key_id": {
+          "expression": {
+            "constant_value": "${google_storage_hmac_key.key.access_id}",
+            "references": [
+              "google_storage_hmac_key.key.access_id",
+              "google_storage_hmac_key.key"
+            ]
+          }
+        },
+        "bucket_name": {
+          "expression": {
+            "constant_value": "${google_storage_bucket.bucket.name}",
+            "references": [
+              "google_storage_bucket.bucket.name",
+              "google_storage_bucket.bucket"
+            ]
+          }
+        },
+        "secret_access_key": {
+          "sensitive": true,
+          "expression": {
+            "constant_value": "${google_storage_hmac_key.key.secret}",
+            "references": [
+              "google_storage_hmac_key.key.secret",
+              "google_storage_hmac_key.key"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "google_service_account.bucket",
+          "mode": "managed",
+          "type": "google_service_account",
+          "name": "bucket",
+          "provider_config_key": "google",
+          "expressions": {
+            "account_id": {
+              "constant_value": "cloudgate-33lu2dv74xuy"
+            },
+            "description": {
+              "constant_value": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_bucket_1"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "google_storage_bucket.bucket",
+          "mode": "managed",
+          "type": "google_storage_bucket",
+          "name": "bucket",
+          "provider_config_key": "google",
+          "expressions": {
+            "force_destroy": {
+              "constant_value": false
+            },
+            "labels": {
+              "constant_value": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "asv6r4jerrrf"
+              }
+            },
+            "location": {
+              "constant_value": "EUROPE-WEST1"
+            },
+            "name": {
+              "constant_value": "cloudgate-33lu2dv74xuy-k3f9a2qd"
+            },
+            "public_access_prevention": {
+              "constant_value": "enforced"
+            },
+            "soft_delete_policy": [
+              {
+                "retention_duration_seconds": {
+                  "constant_value": 0
+                }
+              }
+            ],
+            "uniform_bucket_level_access": {
+              "constant_value": true
+            }
+          },
+          "schema_version": 4
+        },
+        {
+          "address": "google_storage_bucket_iam_member.object_user",
+          "mode": "managed",
+          "type": "google_storage_bucket_iam_member",
+          "name": "object_user",
+          "provider_config_key": "google",
+          "expressions": {
+            "bucket": {
+              "constant_value": "${google_storage_bucket.bucket.name}",
+              "references": [
+                "google_storage_bucket.bucket.name",
+                "google_storage_bucket.bucket"
+              ]
+            },
+            "member": {
+              "constant_value": "${google_service_account.bucket.member}",
+              "references": [
+                "google_service_account.bucket.member",
+                "google_service_account.bucket"
+              ]
+            },
+            "role": {
+              "constant_value": "roles/storage.objectUser"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "google_storage_hmac_key.key",
+          "mode": "managed",
+          "type": "google_storage_hmac_key",
+          "name": "key",
+          "provider_config_key": "google",
+          "expressions": {
+            "service_account_email": {
+              "constant_value": "${google_service_account.bucket.email}",
+              "references": [
+                "google_service_account.bucket.email",
+                "google_service_account.bucket"
+              ]
+            },
+            "state": {
+              "constant_value": "ACTIVE"
+            }
+          },
+          "schema_version": 0
+        }
+      ]
+    }
+  },
+  "relevant_attributes": [
+    {
+      "resource": "google_service_account.bucket",
+      "attribute": [
+        "email"
+      ]
+    },
+    {
+      "resource": "google_service_account.bucket",
+      "attribute": [
+        "member"
+      ]
+    },
+    {
+      "resource": "google_storage_bucket.bucket",
+      "attribute": [
+        "name"
+      ]
+    },
+    {
+      "resource": "google_storage_hmac_key.key",
+      "attribute": [
+        "secret"
+      ]
+    },
+    {
+      "resource": "google_storage_hmac_key.key",
+      "attribute": [
+        "access_id"
+      ]
+    }
+  ],
+  "timestamp": "2026-11-06T18:00:48Z",
+  "errored": false
+}

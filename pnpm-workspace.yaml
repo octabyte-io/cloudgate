@@ -1,0 +1,38 @@
+packages:
+  - frontend
+  - backend
+  - api-schemas
+  - cli
+
+# pnpm 10 runs no dependency's install script unless it is named here, and it
+# prints a boxed "Ignored build scripts ... Run pnpm approve-builds" warning for
+# every one that is in neither this list nor `ignoredBuiltDependencies` below.
+# That warning reaches the operator through deploy/install.sh, and following it
+# would rewrite this file in the checkout. So every dependency with a
+# build script is in exactly one of the two lists, and CI installs with
+# `strict-dep-builds`, which fails on the same condition (.github/workflows/
+# ci.yml): a new one has to be placed on purpose.
+onlyBuiltDependencies:
+  - esbuild
+  - node-pty
+  - sharp
+  - "@tailwindcss/oxide"
+  - "@nestjs/core"
+  - unrs-resolver
+
+# Left unbuilt on purpose. None of these scripts produces anything Cloudgate
+# needs at runtime.
+ignoredBuiltDependencies:
+  # Install-time telemetry (postinstall `report.js` phones scarf.sh), pulled in
+  # by swagger-ui-dist. Running it would report every install.
+  - "@scarf/scarf"
+  # ssh2's optional native CPU-feature probe (node-gyp). ssh2 wraps its require
+  # in a try/catch and only uses it to rank cipher preferences.
+  - cpu-features
+  # A postinstall that only warns when a dependent pins protobufjs with the
+  # wrong semver prefix; it builds nothing. Reached through dockerode's gRPC.
+  - protobufjs
+  # Builds an optional native crypto binding with node-gyp. ssh2 falls back to
+  # Node's own crypto when it is absent (`bindingAvailable: false`), which is
+  # how every SSH connection Cloudgate makes has always run.
+  - ssh2

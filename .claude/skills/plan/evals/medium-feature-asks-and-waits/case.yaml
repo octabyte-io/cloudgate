@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: medium-feature-asks-and-waits
+expected_outcome: |
+  Researches the sidebar, Projects and member data first, says the feature is small or medium, then asks at most three numbered questions, each with the question, a real-world example and a recommendation, and stops to wait for the answers. Nothing is written to GitHub, no spec or tickets are drafted, and no question asks for a fact the code answers.

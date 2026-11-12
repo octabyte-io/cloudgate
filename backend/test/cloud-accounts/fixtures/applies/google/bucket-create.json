@@ -1,0 +1,23 @@
+{
+  "cloudgate_fixture": {
+    "source": "the live walk by hand",
+    "how": "Recorded by `tofu output -json` from a real apply in the live Google Cloud project on 2026-11-06 (a walk by hand, step 11; OpenTofu 1.13.1, hashicorp/google 8.8.0), then rewritten to the stored files' sample ids (cloud_1, env_1, the Service and state ids this file stored before, project example-project-123 / 123456789012, region europe-west1), with the HMAC key masked (its access id in Google's GOOG1E form, its secret a stand-in). The outputs of the bucket create above."
+  },
+  "outputs": {
+    "access_key_id": {
+      "sensitive": false,
+      "type": "string",
+      "value": "GOOG1EXAMPLEXAMPLEXAMPLEXAMPLEXAMPLEXAMPLEXAMPLEXAMPLEXAMPLE"
+    },
+    "bucket_name": {
+      "sensitive": false,
+      "type": "string",
+      "value": "cloudgate-33lu2dv74xuy-k3f9a2qd"
+    },
+    "secret_access_key": {
+      "sensitive": true,
+      "type": "string",
+      "value": "masked-hmac-secret-for-the-stored-files"
+    }
+  }
+}

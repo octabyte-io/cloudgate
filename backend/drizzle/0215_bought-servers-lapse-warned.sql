@@ -1,0 +1,1 @@
+ALTER TABLE "subscription" ADD COLUMN "bought_servers_lapse_warned_at" timestamp (3);

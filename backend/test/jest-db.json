@@ -1,0 +1,5 @@
+{
+  "preset": "<rootDir>/test/jest-preset.js",
+  "rootDir": "..",
+  "testRegex": "test/(harness|common/trust-proxy|db/columns)\\.spec\\.ts$"
+}

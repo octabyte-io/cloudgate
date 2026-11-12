@@ -1,0 +1,913 @@
+{
+  "cloudgate_fixture": {
+    "source": "the live walk by hand",
+    "how": "Recorded by `tofu show -json` from a real plan in the live Google Cloud project on 2026-11-06 (a walk by hand on deploy role version 5; OpenTofu 1.13.1, hashicorp/google 8.8.0), then rewritten to the stored files' sample ids (cloud_1, env_1, the redis svc_existing_redis_1 and its state state_existing_redis_1, project example-project-123 / 123456789012, region europe-west1), and the instance's two service attachments to the sample ones the specs name (Google named the real ones' tenant project by its number, projects/<number>/…/gcp-memorystore-auto-<id>-psc-sa and -psc-sa-2); nothing in it is secret and nothing was masked. The existing Valkey rd-ex's plan: Cloudgate's two PSC endpoints (address and forwarding rule each), the primary's and the reader's. Its Apply passed on role version 5."
+  },
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "planned_values": {
+    "outputs": {
+      "primary_address": {
+        "sensitive": false
+      },
+      "primary_name": {
+        "sensitive": false,
+        "type": "string",
+        "value": "cloudgate-f3gtu4y7gg2f-psc-0"
+      },
+      "primary_psc_connection_id": {
+        "sensitive": false
+      },
+      "reader_address": {
+        "sensitive": false
+      },
+      "reader_name": {
+        "sensitive": false,
+        "type": "string",
+        "value": "cloudgate-f3gtu4y7gg2f-psc-1"
+      },
+      "reader_psc_connection_id": {
+        "sensitive": false
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "google_compute_address.primary",
+          "mode": "managed",
+          "type": "google_compute_address",
+          "name": "primary",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "address_type": "INTERNAL",
+            "deletion_policy": "DELETE",
+            "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_existing_redis_1",
+            "effective_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "r4c4t5emf7fc"
+            },
+            "ip_collection": null,
+            "ip_version": null,
+            "ipv6_endpoint_type": null,
+            "labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "r4c4t5emf7fc"
+            },
+            "name": "cloudgate-f3gtu4y7gg2f-psc-0",
+            "network": null,
+            "project": "example-project-123",
+            "region": "europe-west1",
+            "subnetwork": "projects/example-project-123/regions/europe-west1/subnetworks/cloudgate-w33lemwkholw-psc",
+            "terraform_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "r4c4t5emf7fc"
+            },
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "effective_labels": {},
+            "labels": {},
+            "terraform_labels": {},
+            "users": []
+          },
+          "identity": {
+            "name": null,
+            "project": null,
+            "region": null
+          },
+          "identity_schema_version": 1
+        },
+        {
+          "address": "google_compute_address.reader",
+          "mode": "managed",
+          "type": "google_compute_address",
+          "name": "reader",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "address_type": "INTERNAL",
+            "deletion_policy": "DELETE",
+            "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_existing_redis_1",
+            "effective_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "r4c4t5emf7fc"
+            },
+            "ip_collection": null,
+            "ip_version": null,
+            "ipv6_endpoint_type": null,
+            "labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "r4c4t5emf7fc"
+            },
+            "name": "cloudgate-f3gtu4y7gg2f-psc-1",
+            "network": null,
+            "project": "example-project-123",
+            "region": "europe-west1",
+            "subnetwork": "projects/example-project-123/regions/europe-west1/subnetworks/cloudgate-w33lemwkholw-psc",
+            "terraform_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "r4c4t5emf7fc"
+            },
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "effective_labels": {},
+            "labels": {},
+            "terraform_labels": {},
+            "users": []
+          },
+          "identity": {
+            "name": null,
+            "project": null,
+            "region": null
+          },
+          "identity_schema_version": 1
+        },
+        {
+          "address": "google_compute_forwarding_rule.primary",
+          "mode": "managed",
+          "type": "google_compute_forwarding_rule",
+          "name": "primary",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "all_ports": null,
+            "allow_global_access": null,
+            "allow_psc_global_access": null,
+            "backend_service": null,
+            "deletion_policy": "DELETE",
+            "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_existing_redis_1",
+            "effective_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "r4c4t5emf7fc"
+            },
+            "ip_collection": null,
+            "is_mirroring_collector": null,
+            "labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "r4c4t5emf7fc"
+            },
+            "load_balancing_scheme": "",
+            "name": "cloudgate-f3gtu4y7gg2f-psc-0",
+            "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+            "no_automate_dns_zone": null,
+            "ports": null,
+            "project": "example-project-123",
+            "recreate_closed_psc": false,
+            "region": "europe-west1",
+            "service_label": null,
+            "source_ip_ranges": null,
+            "target": "projects/y1a2b3c4d5e6f7-tp/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-a1b2-psc-sa",
+            "terraform_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "r4c4t5emf7fc"
+            },
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "effective_labels": {},
+            "labels": {},
+            "service_directory_registrations": [],
+            "terraform_labels": {}
+          },
+          "identity": {
+            "name": null,
+            "project": null,
+            "region": null
+          },
+          "identity_schema_version": 1
+        },
+        {
+          "address": "google_compute_forwarding_rule.reader",
+          "mode": "managed",
+          "type": "google_compute_forwarding_rule",
+          "name": "reader",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "all_ports": null,
+            "allow_global_access": null,
+            "allow_psc_global_access": null,
+            "backend_service": null,
+            "deletion_policy": "DELETE",
+            "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_existing_redis_1",
+            "effective_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "r4c4t5emf7fc"
+            },
+            "ip_collection": null,
+            "is_mirroring_collector": null,
+            "labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "r4c4t5emf7fc"
+            },
+            "load_balancing_scheme": "",
+            "name": "cloudgate-f3gtu4y7gg2f-psc-1",
+            "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+            "no_automate_dns_zone": null,
+            "ports": null,
+            "project": "example-project-123",
+            "recreate_closed_psc": false,
+            "region": "europe-west1",
+            "service_label": null,
+            "source_ip_ranges": null,
+            "target": "projects/y1a2b3c4d5e6f7-tp/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-a1b2-psc-sa-2",
+            "terraform_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "r4c4t5emf7fc"
+            },
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "effective_labels": {},
+            "labels": {},
+            "service_directory_registrations": [],
+            "terraform_labels": {}
+          },
+          "identity": {
+            "name": null,
+            "project": null,
+            "region": null
+          },
+          "identity_schema_version": 1
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "google_compute_address.primary",
+      "mode": "managed",
+      "type": "google_compute_address",
+      "name": "primary",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "address_type": "INTERNAL",
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_existing_redis_1",
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "r4c4t5emf7fc"
+          },
+          "ip_collection": null,
+          "ip_version": null,
+          "ipv6_endpoint_type": null,
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "r4c4t5emf7fc"
+          },
+          "name": "cloudgate-f3gtu4y7gg2f-psc-0",
+          "network": null,
+          "project": "example-project-123",
+          "region": "europe-west1",
+          "subnetwork": "projects/example-project-123/regions/europe-west1/subnetworks/cloudgate-w33lemwkholw-psc",
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "r4c4t5emf7fc"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {
+          "address": true,
+          "address_id": true,
+          "creation_timestamp": true,
+          "effective_labels": {},
+          "id": true,
+          "label_fingerprint": true,
+          "labels": {},
+          "network_tier": true,
+          "prefix_length": true,
+          "purpose": true,
+          "self_link": true,
+          "terraform_labels": {},
+          "users": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "effective_labels": {},
+          "labels": {},
+          "terraform_labels": {},
+          "users": []
+        },
+        "after_identity": {
+          "name": null,
+          "project": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "google_compute_address.reader",
+      "mode": "managed",
+      "type": "google_compute_address",
+      "name": "reader",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "address_type": "INTERNAL",
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_existing_redis_1",
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "r4c4t5emf7fc"
+          },
+          "ip_collection": null,
+          "ip_version": null,
+          "ipv6_endpoint_type": null,
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "r4c4t5emf7fc"
+          },
+          "name": "cloudgate-f3gtu4y7gg2f-psc-1",
+          "network": null,
+          "project": "example-project-123",
+          "region": "europe-west1",
+          "subnetwork": "projects/example-project-123/regions/europe-west1/subnetworks/cloudgate-w33lemwkholw-psc",
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "r4c4t5emf7fc"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {
+          "address": true,
+          "address_id": true,
+          "creation_timestamp": true,
+          "effective_labels": {},
+          "id": true,
+          "label_fingerprint": true,
+          "labels": {},
+          "network_tier": true,
+          "prefix_length": true,
+          "purpose": true,
+          "self_link": true,
+          "terraform_labels": {},
+          "users": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "effective_labels": {},
+          "labels": {},
+          "terraform_labels": {},
+          "users": []
+        },
+        "after_identity": {
+          "name": null,
+          "project": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "google_compute_forwarding_rule.primary",
+      "mode": "managed",
+      "type": "google_compute_forwarding_rule",
+      "name": "primary",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "all_ports": null,
+          "allow_global_access": null,
+          "allow_psc_global_access": null,
+          "backend_service": null,
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_existing_redis_1",
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "r4c4t5emf7fc"
+          },
+          "ip_collection": null,
+          "is_mirroring_collector": null,
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "r4c4t5emf7fc"
+          },
+          "load_balancing_scheme": "",
+          "name": "cloudgate-f3gtu4y7gg2f-psc-0",
+          "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+          "no_automate_dns_zone": null,
+          "ports": null,
+          "project": "example-project-123",
+          "recreate_closed_psc": false,
+          "region": "europe-west1",
+          "service_label": null,
+          "source_ip_ranges": null,
+          "target": "projects/y1a2b3c4d5e6f7-tp/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-a1b2-psc-sa",
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "r4c4t5emf7fc"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {
+          "base_forwarding_rule": true,
+          "creation_timestamp": true,
+          "effective_labels": {},
+          "forwarding_rule_id": true,
+          "id": true,
+          "ip_address": true,
+          "ip_protocol": true,
+          "ip_version": true,
+          "label_fingerprint": true,
+          "labels": {},
+          "network_tier": true,
+          "port_range": true,
+          "psc_connection_id": true,
+          "psc_connection_status": true,
+          "self_link": true,
+          "service_directory_registrations": true,
+          "service_name": true,
+          "subnetwork": true,
+          "terraform_labels": {}
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "effective_labels": {},
+          "labels": {},
+          "service_directory_registrations": [],
+          "terraform_labels": {}
+        },
+        "after_identity": {
+          "name": null,
+          "project": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "google_compute_forwarding_rule.reader",
+      "mode": "managed",
+      "type": "google_compute_forwarding_rule",
+      "name": "reader",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "all_ports": null,
+          "allow_global_access": null,
+          "allow_psc_global_access": null,
+          "backend_service": null,
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_existing_redis_1",
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "r4c4t5emf7fc"
+          },
+          "ip_collection": null,
+          "is_mirroring_collector": null,
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "r4c4t5emf7fc"
+          },
+          "load_balancing_scheme": "",
+          "name": "cloudgate-f3gtu4y7gg2f-psc-1",
+          "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+          "no_automate_dns_zone": null,
+          "ports": null,
+          "project": "example-project-123",
+          "recreate_closed_psc": false,
+          "region": "europe-west1",
+          "service_label": null,
+          "source_ip_ranges": null,
+          "target": "projects/y1a2b3c4d5e6f7-tp/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-a1b2-psc-sa-2",
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "r4c4t5emf7fc"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {
+          "base_forwarding_rule": true,
+          "creation_timestamp": true,
+          "effective_labels": {},
+          "forwarding_rule_id": true,
+          "id": true,
+          "ip_address": true,
+          "ip_protocol": true,
+          "ip_version": true,
+          "label_fingerprint": true,
+          "labels": {},
+          "network_tier": true,
+          "port_range": true,
+          "psc_connection_id": true,
+          "psc_connection_status": true,
+          "self_link": true,
+          "service_directory_registrations": true,
+          "service_name": true,
+          "subnetwork": true,
+          "terraform_labels": {}
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "effective_labels": {},
+          "labels": {},
+          "service_directory_registrations": [],
+          "terraform_labels": {}
+        },
+        "after_identity": {
+          "name": null,
+          "project": null,
+          "region": null
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "primary_address": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "primary_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "cloudgate-f3gtu4y7gg2f-psc-0",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "primary_psc_connection_id": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "reader_address": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "reader_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "cloudgate-f3gtu4y7gg2f-psc-1",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "reader_psc_connection_id": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "outputs": {
+        "primary_name": {
+          "sensitive": false,
+          "value": "cloudgate-f3gtu4y7gg2f-psc-0",
+          "type": "string"
+        },
+        "reader_name": {
+          "sensitive": false,
+          "value": "cloudgate-f3gtu4y7gg2f-psc-1",
+          "type": "string"
+        }
+      },
+      "root_module": {}
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "google": {
+        "name": "google",
+        "full_name": "registry.opentofu.org/hashicorp/google",
+        "version_constraint": "8.8.0",
+        "expressions": {
+          "add_terraform_attribution_label": {
+            "constant_value": false
+          },
+          "project": {
+            "constant_value": "example-project-123"
+          },
+          "region": {
+            "constant_value": "europe-west1"
+          }
+        }
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "primary_address": {
+          "expression": {
+            "constant_value": "${google_compute_address.primary.address}",
+            "references": [
+              "google_compute_address.primary.address",
+              "google_compute_address.primary"
+            ]
+          }
+        },
+        "primary_name": {
+          "expression": {
+            "constant_value": "${google_compute_forwarding_rule.primary.name}",
+            "references": [
+              "google_compute_forwarding_rule.primary.name",
+              "google_compute_forwarding_rule.primary"
+            ]
+          }
+        },
+        "primary_psc_connection_id": {
+          "expression": {
+            "constant_value": "${google_compute_forwarding_rule.primary.psc_connection_id}",
+            "references": [
+              "google_compute_forwarding_rule.primary.psc_connection_id",
+              "google_compute_forwarding_rule.primary"
+            ]
+          }
+        },
+        "reader_address": {
+          "expression": {
+            "constant_value": "${google_compute_address.reader.address}",
+            "references": [
+              "google_compute_address.reader.address",
+              "google_compute_address.reader"
+            ]
+          }
+        },
+        "reader_name": {
+          "expression": {
+            "constant_value": "${google_compute_forwarding_rule.reader.name}",
+            "references": [
+              "google_compute_forwarding_rule.reader.name",
+              "google_compute_forwarding_rule.reader"
+            ]
+          }
+        },
+        "reader_psc_connection_id": {
+          "expression": {
+            "constant_value": "${google_compute_forwarding_rule.reader.psc_connection_id}",
+            "references": [
+              "google_compute_forwarding_rule.reader.psc_connection_id",
+              "google_compute_forwarding_rule.reader"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "google_compute_address.primary",
+          "mode": "managed",
+          "type": "google_compute_address",
+          "name": "primary",
+          "provider_config_key": "google",
+          "expressions": {
+            "address_type": {
+              "constant_value": "INTERNAL"
+            },
+            "description": {
+              "constant_value": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_existing_redis_1"
+            },
+            "labels": {
+              "constant_value": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "r4c4t5emf7fc"
+              }
+            },
+            "name": {
+              "constant_value": "cloudgate-f3gtu4y7gg2f-psc-0"
+            },
+            "region": {
+              "constant_value": "europe-west1"
+            },
+            "subnetwork": {
+              "constant_value": "projects/example-project-123/regions/europe-west1/subnetworks/cloudgate-w33lemwkholw-psc"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "google_compute_address.reader",
+          "mode": "managed",
+          "type": "google_compute_address",
+          "name": "reader",
+          "provider_config_key": "google",
+          "expressions": {
+            "address_type": {
+              "constant_value": "INTERNAL"
+            },
+            "description": {
+              "constant_value": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_existing_redis_1"
+            },
+            "labels": {
+              "constant_value": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "r4c4t5emf7fc"
+              }
+            },
+            "name": {
+              "constant_value": "cloudgate-f3gtu4y7gg2f-psc-1"
+            },
+            "region": {
+              "constant_value": "europe-west1"
+            },
+            "subnetwork": {
+              "constant_value": "projects/example-project-123/regions/europe-west1/subnetworks/cloudgate-w33lemwkholw-psc"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "google_compute_forwarding_rule.primary",
+          "mode": "managed",
+          "type": "google_compute_forwarding_rule",
+          "name": "primary",
+          "provider_config_key": "google",
+          "expressions": {
+            "description": {
+              "constant_value": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_existing_redis_1"
+            },
+            "ip_address": {
+              "constant_value": "${google_compute_address.primary.id}",
+              "references": [
+                "google_compute_address.primary.id",
+                "google_compute_address.primary"
+              ]
+            },
+            "labels": {
+              "constant_value": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "r4c4t5emf7fc"
+              }
+            },
+            "load_balancing_scheme": {
+              "constant_value": ""
+            },
+            "name": {
+              "constant_value": "cloudgate-f3gtu4y7gg2f-psc-0"
+            },
+            "network": {
+              "constant_value": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net"
+            },
+            "region": {
+              "constant_value": "europe-west1"
+            },
+            "target": {
+              "constant_value": "projects/y1a2b3c4d5e6f7-tp/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-a1b2-psc-sa"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "google_compute_forwarding_rule.reader",
+          "mode": "managed",
+          "type": "google_compute_forwarding_rule",
+          "name": "reader",
+          "provider_config_key": "google",
+          "expressions": {
+            "description": {
+              "constant_value": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_existing_redis_1"
+            },
+            "ip_address": {
+              "constant_value": "${google_compute_address.reader.id}",
+              "references": [
+                "google_compute_address.reader.id",
+                "google_compute_address.reader"
+              ]
+            },
+            "labels": {
+              "constant_value": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "r4c4t5emf7fc"
+              }
+            },
+            "load_balancing_scheme": {
+              "constant_value": ""
+            },
+            "name": {
+              "constant_value": "cloudgate-f3gtu4y7gg2f-psc-1"
+            },
+            "network": {
+              "constant_value": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net"
+            },
+            "region": {
+              "constant_value": "europe-west1"
+            },
+            "target": {
+              "constant_value": "projects/y1a2b3c4d5e6f7-tp/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-a1b2-psc-sa-2"
+            }
+          },
+          "schema_version": 0
+        }
+      ]
+    }
+  },
+  "relevant_attributes": [
+    {
+      "resource": "google_compute_address.primary",
+      "attribute": [
+        "address"
+      ]
+    },
+    {
+      "resource": "google_compute_address.primary",
+      "attribute": [
+        "id"
+      ]
+    },
+    {
+      "resource": "google_compute_address.reader",
+      "attribute": [
+        "id"
+      ]
+    },
+    {
+      "resource": "google_compute_address.reader",
+      "attribute": [
+        "address"
+      ]
+    },
+    {
+      "resource": "google_compute_forwarding_rule.primary",
+      "attribute": [
+        "name"
+      ]
+    },
+    {
+      "resource": "google_compute_forwarding_rule.primary",
+      "attribute": [
+        "psc_connection_id"
+      ]
+    },
+    {
+      "resource": "google_compute_forwarding_rule.reader",
+      "attribute": [
+        "name"
+      ]
+    },
+    {
+      "resource": "google_compute_forwarding_rule.reader",
+      "attribute": [
+        "psc_connection_id"
+      ]
+    }
+  ],
+  "timestamp": "2026-11-06T17:40:02Z",
+  "errored": false
+}

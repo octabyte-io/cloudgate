@@ -1,0 +1,1720 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "planned_values": {
+    "outputs": {
+      "endpoint_address": {
+        "sensitive": false,
+        "type": "string",
+        "value": "cloudgate-svcx1.aaaaaaaaaa.eu-central-1.rds.amazonaws.com"
+      },
+      "endpoint_port": {
+        "sensitive": false,
+        "type": "number",
+        "value": 5432
+      },
+      "instance_identifier": {
+        "sensitive": false,
+        "type": "string",
+        "value": "cloudgate-svcx1"
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_db_instance.database",
+          "mode": "managed",
+          "type": "aws_db_instance",
+          "name": "database",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 2,
+          "values": {
+            "address": "cloudgate-svcx1.aaaaaaaaaa.eu-central-1.rds.amazonaws.com",
+            "allocated_storage": 50,
+            "allow_major_version_upgrade": false,
+            "apply_immediately": true,
+            "arn": "arn:aws:rds:eu-central-1:123456789012:db:cloudgate-svcx1",
+            "auto_minor_version_upgrade": true,
+            "availability_zone": "eu-central-1a",
+            "backup_retention_period": 14,
+            "backup_target": "",
+            "backup_window": "13:14-13:44",
+            "blue_green_update": [],
+            "ca_cert_identifier": "rds-ca-default",
+            "character_set_name": "",
+            "copy_tags_to_snapshot": true,
+            "custom_iam_instance_profile": "",
+            "customer_owned_ip_enabled": false,
+            "database_insights_mode": "",
+            "db_name": "shop",
+            "db_subnet_group_name": "cloudgate-svcx1",
+            "dedicated_log_volume": false,
+            "delete_automated_backups": true,
+            "deletion_protection": true,
+            "domain": "",
+            "domain_auth_secret_arn": "",
+            "domain_dns_ips": [],
+            "domain_fqdn": "",
+            "domain_iam_role_name": "",
+            "domain_ou": "",
+            "enabled_cloudwatch_logs_exports": [],
+            "endpoint": "cloudgate-svcx1.aaaaaaaaaa.eu-central-1.rds.amazonaws.com:5432",
+            "engine": "postgres",
+            "engine_lifecycle_support": "",
+            "engine_version": "17",
+            "engine_version_actual": "17",
+            "final_snapshot_identifier": "shop-production-pg-1-final-2026-10-17",
+            "hosted_zone_id": "",
+            "iam_database_authentication_enabled": false,
+            "id": "db-M5ENSHXFPU6XHZ4G4ZEI5QIO2U",
+            "identifier": "cloudgate-svcx1",
+            "identifier_prefix": "",
+            "instance_class": "db.t4g.micro",
+            "iops": 0,
+            "kms_key_id": "default_kms_key_id",
+            "latest_restorable_time": "2026-01-01T00:00:00Z",
+            "license_model": "general-public-license",
+            "listener_endpoint": [],
+            "maintenance_window": "wed:06:38-wed:07:08",
+            "manage_master_user_password": null,
+            "master_user_secret": [],
+            "master_user_secret_kms_key_id": null,
+            "max_allocated_storage": 400,
+            "monitoring_interval": 0,
+            "monitoring_role_arn": "",
+            "multi_az": true,
+            "nchar_character_set_name": "",
+            "network_type": "",
+            "option_group_name": "default:postgres-17",
+            "parameter_group_name": "default.postgres",
+            "password": "moto-lane-master-password",
+            "password_wo": null,
+            "password_wo_version": null,
+            "performance_insights_enabled": false,
+            "performance_insights_kms_key_id": "",
+            "performance_insights_retention_period": 0,
+            "port": 5432,
+            "publicly_accessible": false,
+            "region": "eu-central-1",
+            "replica_mode": "",
+            "replicas": [],
+            "replicate_source_db": "",
+            "resource_id": "db-M5ENSHXFPU6XHZ4G4ZEI5QIO2U",
+            "restore_to_point_in_time": [],
+            "s3_import": [],
+            "skip_final_snapshot": false,
+            "snapshot_identifier": null,
+            "status": "available",
+            "storage_encrypted": true,
+            "storage_throughput": 0,
+            "storage_type": "gp3",
+            "tags": {
+              "Name": "cloudgate/pg-1/database",
+              "cloudgate:address": "aws_db_instance.database"
+            },
+            "tags_all": {
+              "Name": "cloudgate/pg-1/database",
+              "cloudgate:address": "aws_db_instance.database",
+              "cloudgate:cloud-account": "ca_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "st_pg_1"
+            },
+            "timeouts": null,
+            "timezone": "",
+            "upgrade_rollout_order": "",
+            "upgrade_storage_config": null,
+            "username": "shop",
+            "vpc_security_group_ids": [
+              "sg-00000000000000004"
+            ],
+            "warning_event_categories": null
+          },
+          "sensitive_values": {
+            "blue_green_update": [],
+            "domain_dns_ips": [],
+            "enabled_cloudwatch_logs_exports": [],
+            "listener_endpoint": [],
+            "master_user_secret": [],
+            "password": true,
+            "password_wo": true,
+            "replicas": [],
+            "restore_to_point_in_time": [],
+            "s3_import": [],
+            "tags": {},
+            "tags_all": {},
+            "vpc_security_group_ids": [
+              false
+            ]
+          },
+          "identity": {
+            "account_id": "123456789012",
+            "identifier": "cloudgate-svcx1",
+            "region": "eu-central-1"
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_db_subnet_group.database",
+          "mode": "managed",
+          "type": "aws_db_subnet_group",
+          "name": "database",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "arn": "arn:aws:rds:eu-central-1:123456789012:subgrp:cloudgate-svcx1",
+            "description": "Cloudgate: the Environment network private subnets",
+            "id": "cloudgate-svcx1",
+            "name": "cloudgate-svcx1",
+            "name_prefix": "",
+            "region": "eu-central-1",
+            "subnet_ids": [
+              "subnet-00000000000000002",
+              "subnet-00000000000000003"
+            ],
+            "supported_network_types": [],
+            "tags": {
+              "Name": "cloudgate/pg-1/subnets",
+              "cloudgate:address": "aws_db_subnet_group.database"
+            },
+            "tags_all": {
+              "Name": "cloudgate/pg-1/subnets",
+              "cloudgate:address": "aws_db_subnet_group.database",
+              "cloudgate:cloud-account": "ca_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "st_pg_1"
+            },
+            "vpc_id": "vpc-00000000000000001"
+          },
+          "sensitive_values": {
+            "subnet_ids": [
+              false,
+              false
+            ],
+            "supported_network_types": [],
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": "123456789012",
+            "name": "cloudgate-svcx1",
+            "region": "eu-central-1"
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_security_group.database",
+          "mode": "managed",
+          "type": "aws_security_group",
+          "name": "database",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "arn": "arn:aws:ec2:eu-central-1:123456789012:security-group/sg-00000000000000004",
+            "description": "Cloudgate: a database, reachable from the Services of the Environment only",
+            "egress": [],
+            "id": "sg-00000000000000004",
+            "ingress": [
+              {
+                "cidr_blocks": [
+                  "10.80.0.0/20"
+                ],
+                "description": "",
+                "from_port": 5432,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 5432
+              },
+              {
+                "cidr_blocks": [
+                  "10.80.16.0/20"
+                ],
+                "description": "",
+                "from_port": 5432,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 5432
+              }
+            ],
+            "name": "cloudgate-database-svc_1",
+            "name_prefix": "",
+            "owner_id": "123456789012",
+            "region": "eu-central-1",
+            "revoke_rules_on_delete": false,
+            "tags": {
+              "Name": "cloudgate/pg-1/database",
+              "cloudgate:address": "aws_security_group.database"
+            },
+            "tags_all": {
+              "Name": "cloudgate/pg-1/database",
+              "cloudgate:address": "aws_security_group.database",
+              "cloudgate:cloud-account": "ca_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "st_pg_1"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-00000000000000001"
+          },
+          "sensitive_values": {
+            "egress": [],
+            "ingress": [
+              {
+                "cidr_blocks": [
+                  false
+                ],
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "security_groups": []
+              },
+              {
+                "cidr_blocks": [
+                  false
+                ],
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "security_groups": []
+              }
+            ],
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": "123456789012",
+            "id": "sg-00000000000000004",
+            "region": "eu-central-1"
+          },
+          "identity_schema_version": 0
+        }
+      ]
+    }
+  },
+  "resource_drift": [
+    {
+      "address": "aws_db_instance.database",
+      "mode": "managed",
+      "type": "aws_db_instance",
+      "name": "database",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "address": "cloudgate-svcx1.aaaaaaaaaa.eu-central-1.rds.amazonaws.com",
+          "allocated_storage": 20,
+          "allow_major_version_upgrade": false,
+          "apply_immediately": true,
+          "arn": "arn:aws:rds:eu-central-1:123456789012:db:cloudgate-svcx1",
+          "auto_minor_version_upgrade": true,
+          "availability_zone": "eu-central-1a",
+          "backup_retention_period": 7,
+          "backup_target": "",
+          "backup_window": "13:14-13:44",
+          "blue_green_update": [],
+          "ca_cert_identifier": "rds-ca-default",
+          "character_set_name": "",
+          "copy_tags_to_snapshot": true,
+          "custom_iam_instance_profile": "",
+          "customer_owned_ip_enabled": false,
+          "database_insights_mode": "",
+          "db_name": "shop",
+          "db_subnet_group_name": "cloudgate-svcx1",
+          "dedicated_log_volume": false,
+          "delete_automated_backups": true,
+          "deletion_protection": true,
+          "domain": "",
+          "domain_auth_secret_arn": "",
+          "domain_dns_ips": null,
+          "domain_fqdn": "",
+          "domain_iam_role_name": "",
+          "domain_ou": "",
+          "enabled_cloudwatch_logs_exports": null,
+          "endpoint": "cloudgate-svcx1.aaaaaaaaaa.eu-central-1.rds.amazonaws.com:5432",
+          "engine": "postgres",
+          "engine_lifecycle_support": "",
+          "engine_version": "17",
+          "engine_version_actual": "17",
+          "final_snapshot_identifier": "shop-production-pg-1-final-2026-10-17",
+          "hosted_zone_id": "",
+          "iam_database_authentication_enabled": false,
+          "id": "db-M5ENSHXFPU6XHZ4G4ZEI5QIO2U",
+          "identifier": "cloudgate-svcx1",
+          "identifier_prefix": "",
+          "instance_class": "db.t4g.micro",
+          "iops": 0,
+          "kms_key_id": "default_kms_key_id",
+          "latest_restorable_time": "2026-01-01T00:00:00Z",
+          "license_model": "general-public-license",
+          "listener_endpoint": [],
+          "maintenance_window": "wed:06:38-wed:07:08",
+          "manage_master_user_password": null,
+          "master_user_secret": [],
+          "master_user_secret_kms_key_id": null,
+          "max_allocated_storage": 200,
+          "monitoring_interval": 0,
+          "monitoring_role_arn": "",
+          "multi_az": false,
+          "nchar_character_set_name": "",
+          "network_type": "",
+          "option_group_name": "default:postgres-17",
+          "parameter_group_name": "default.postgres",
+          "password": "moto-lane-master-password",
+          "password_wo": null,
+          "password_wo_version": null,
+          "performance_insights_enabled": false,
+          "performance_insights_kms_key_id": "",
+          "performance_insights_retention_period": 0,
+          "port": 5432,
+          "publicly_accessible": false,
+          "region": "eu-central-1",
+          "replica_mode": "",
+          "replicas": [],
+          "replicate_source_db": "",
+          "resource_id": "db-M5ENSHXFPU6XHZ4G4ZEI5QIO2U",
+          "restore_to_point_in_time": [],
+          "s3_import": [],
+          "skip_final_snapshot": false,
+          "snapshot_identifier": null,
+          "status": "available",
+          "storage_encrypted": true,
+          "storage_throughput": 0,
+          "storage_type": "gp3",
+          "tags": {
+            "Name": "cloudgate/pg-1/database",
+            "cloudgate:address": "aws_db_instance.database"
+          },
+          "tags_all": {
+            "Name": "cloudgate/pg-1/database",
+            "cloudgate:address": "aws_db_instance.database",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_pg_1"
+          },
+          "timeouts": null,
+          "timezone": "",
+          "upgrade_rollout_order": "",
+          "upgrade_storage_config": null,
+          "username": "shop",
+          "vpc_security_group_ids": [
+            "sg-00000000000000004"
+          ],
+          "warning_event_categories": null
+        },
+        "after": {
+          "address": "cloudgate-svcx1.aaaaaaaaaa.eu-central-1.rds.amazonaws.com",
+          "allocated_storage": 20,
+          "allow_major_version_upgrade": false,
+          "apply_immediately": true,
+          "arn": "arn:aws:rds:eu-central-1:123456789012:db:cloudgate-svcx1",
+          "auto_minor_version_upgrade": true,
+          "availability_zone": "eu-central-1a",
+          "backup_retention_period": 7,
+          "backup_target": "",
+          "backup_window": "13:14-13:44",
+          "blue_green_update": [],
+          "ca_cert_identifier": "rds-ca-default",
+          "character_set_name": "",
+          "copy_tags_to_snapshot": true,
+          "custom_iam_instance_profile": "",
+          "customer_owned_ip_enabled": false,
+          "database_insights_mode": "",
+          "db_name": "shop",
+          "db_subnet_group_name": "cloudgate-svcx1",
+          "dedicated_log_volume": false,
+          "delete_automated_backups": true,
+          "deletion_protection": true,
+          "domain": "",
+          "domain_auth_secret_arn": "",
+          "domain_dns_ips": [],
+          "domain_fqdn": "",
+          "domain_iam_role_name": "",
+          "domain_ou": "",
+          "enabled_cloudwatch_logs_exports": [],
+          "endpoint": "cloudgate-svcx1.aaaaaaaaaa.eu-central-1.rds.amazonaws.com:5432",
+          "engine": "postgres",
+          "engine_lifecycle_support": "",
+          "engine_version": "17",
+          "engine_version_actual": "17",
+          "final_snapshot_identifier": "shop-production-pg-1-final-2026-10-17",
+          "hosted_zone_id": "",
+          "iam_database_authentication_enabled": false,
+          "id": "db-M5ENSHXFPU6XHZ4G4ZEI5QIO2U",
+          "identifier": "cloudgate-svcx1",
+          "identifier_prefix": "",
+          "instance_class": "db.t4g.micro",
+          "iops": 0,
+          "kms_key_id": "default_kms_key_id",
+          "latest_restorable_time": "2026-01-01T00:00:00Z",
+          "license_model": "general-public-license",
+          "listener_endpoint": [],
+          "maintenance_window": "wed:06:38-wed:07:08",
+          "manage_master_user_password": null,
+          "master_user_secret": [],
+          "master_user_secret_kms_key_id": null,
+          "max_allocated_storage": 200,
+          "monitoring_interval": 0,
+          "monitoring_role_arn": "",
+          "multi_az": false,
+          "nchar_character_set_name": "",
+          "network_type": "",
+          "option_group_name": "default:postgres-17",
+          "parameter_group_name": "default.postgres",
+          "password": "moto-lane-master-password",
+          "password_wo": null,
+          "password_wo_version": null,
+          "performance_insights_enabled": false,
+          "performance_insights_kms_key_id": "",
+          "performance_insights_retention_period": 0,
+          "port": 5432,
+          "publicly_accessible": false,
+          "region": "eu-central-1",
+          "replica_mode": "",
+          "replicas": [],
+          "replicate_source_db": "",
+          "resource_id": "db-M5ENSHXFPU6XHZ4G4ZEI5QIO2U",
+          "restore_to_point_in_time": [],
+          "s3_import": [],
+          "skip_final_snapshot": false,
+          "snapshot_identifier": null,
+          "status": "available",
+          "storage_encrypted": true,
+          "storage_throughput": 0,
+          "storage_type": "gp3",
+          "tags": {
+            "Name": "cloudgate/pg-1/database",
+            "cloudgate:address": "aws_db_instance.database"
+          },
+          "tags_all": {
+            "Name": "cloudgate/pg-1/database",
+            "cloudgate:address": "aws_db_instance.database",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_pg_1"
+          },
+          "timeouts": null,
+          "timezone": "",
+          "upgrade_rollout_order": "",
+          "upgrade_storage_config": null,
+          "username": "shop",
+          "vpc_security_group_ids": [
+            "sg-00000000000000004"
+          ],
+          "warning_event_categories": null
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "blue_green_update": [],
+          "listener_endpoint": [],
+          "master_user_secret": [],
+          "password": true,
+          "password_wo": true,
+          "replicas": [],
+          "restore_to_point_in_time": [],
+          "s3_import": [],
+          "tags": {},
+          "tags_all": {},
+          "vpc_security_group_ids": [
+            false
+          ]
+        },
+        "after_sensitive": {
+          "blue_green_update": [],
+          "domain_dns_ips": [],
+          "enabled_cloudwatch_logs_exports": [],
+          "listener_endpoint": [],
+          "master_user_secret": [],
+          "password": true,
+          "password_wo": true,
+          "replicas": [],
+          "restore_to_point_in_time": [],
+          "s3_import": [],
+          "tags": {},
+          "tags_all": {},
+          "vpc_security_group_ids": [
+            false
+          ]
+        },
+        "before_identity": {
+          "account_id": "123456789012",
+          "identifier": "cloudgate-svcx1",
+          "region": "eu-central-1"
+        },
+        "after_identity": {
+          "account_id": "123456789012",
+          "identifier": "cloudgate-svcx1",
+          "region": "eu-central-1"
+        }
+      }
+    }
+  ],
+  "resource_changes": [
+    {
+      "address": "aws_db_instance.database",
+      "mode": "managed",
+      "type": "aws_db_instance",
+      "name": "database",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "address": "cloudgate-svcx1.aaaaaaaaaa.eu-central-1.rds.amazonaws.com",
+          "allocated_storage": 20,
+          "allow_major_version_upgrade": false,
+          "apply_immediately": true,
+          "arn": "arn:aws:rds:eu-central-1:123456789012:db:cloudgate-svcx1",
+          "auto_minor_version_upgrade": true,
+          "availability_zone": "eu-central-1a",
+          "backup_retention_period": 7,
+          "backup_target": "",
+          "backup_window": "13:14-13:44",
+          "blue_green_update": [],
+          "ca_cert_identifier": "rds-ca-default",
+          "character_set_name": "",
+          "copy_tags_to_snapshot": true,
+          "custom_iam_instance_profile": "",
+          "customer_owned_ip_enabled": false,
+          "database_insights_mode": "",
+          "db_name": "shop",
+          "db_subnet_group_name": "cloudgate-svcx1",
+          "dedicated_log_volume": false,
+          "delete_automated_backups": true,
+          "deletion_protection": true,
+          "domain": "",
+          "domain_auth_secret_arn": "",
+          "domain_dns_ips": [],
+          "domain_fqdn": "",
+          "domain_iam_role_name": "",
+          "domain_ou": "",
+          "enabled_cloudwatch_logs_exports": [],
+          "endpoint": "cloudgate-svcx1.aaaaaaaaaa.eu-central-1.rds.amazonaws.com:5432",
+          "engine": "postgres",
+          "engine_lifecycle_support": "",
+          "engine_version": "17",
+          "engine_version_actual": "17",
+          "final_snapshot_identifier": "shop-production-pg-1-final-2026-10-17",
+          "hosted_zone_id": "",
+          "iam_database_authentication_enabled": false,
+          "id": "db-M5ENSHXFPU6XHZ4G4ZEI5QIO2U",
+          "identifier": "cloudgate-svcx1",
+          "identifier_prefix": "",
+          "instance_class": "db.t4g.micro",
+          "iops": 0,
+          "kms_key_id": "default_kms_key_id",
+          "latest_restorable_time": "2026-01-01T00:00:00Z",
+          "license_model": "general-public-license",
+          "listener_endpoint": [],
+          "maintenance_window": "wed:06:38-wed:07:08",
+          "manage_master_user_password": null,
+          "master_user_secret": [],
+          "master_user_secret_kms_key_id": null,
+          "max_allocated_storage": 200,
+          "monitoring_interval": 0,
+          "monitoring_role_arn": "",
+          "multi_az": false,
+          "nchar_character_set_name": "",
+          "network_type": "",
+          "option_group_name": "default:postgres-17",
+          "parameter_group_name": "default.postgres",
+          "password": "moto-lane-master-password",
+          "password_wo": null,
+          "password_wo_version": null,
+          "performance_insights_enabled": false,
+          "performance_insights_kms_key_id": "",
+          "performance_insights_retention_period": 0,
+          "port": 5432,
+          "publicly_accessible": false,
+          "region": "eu-central-1",
+          "replica_mode": "",
+          "replicas": [],
+          "replicate_source_db": "",
+          "resource_id": "db-M5ENSHXFPU6XHZ4G4ZEI5QIO2U",
+          "restore_to_point_in_time": [],
+          "s3_import": [],
+          "skip_final_snapshot": false,
+          "snapshot_identifier": null,
+          "status": "available",
+          "storage_encrypted": true,
+          "storage_throughput": 0,
+          "storage_type": "gp3",
+          "tags": {
+            "Name": "cloudgate/pg-1/database",
+            "cloudgate:address": "aws_db_instance.database"
+          },
+          "tags_all": {
+            "Name": "cloudgate/pg-1/database",
+            "cloudgate:address": "aws_db_instance.database",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_pg_1"
+          },
+          "timeouts": null,
+          "timezone": "",
+          "upgrade_rollout_order": "",
+          "upgrade_storage_config": null,
+          "username": "shop",
+          "vpc_security_group_ids": [
+            "sg-00000000000000004"
+          ],
+          "warning_event_categories": null
+        },
+        "after": {
+          "address": "cloudgate-svcx1.aaaaaaaaaa.eu-central-1.rds.amazonaws.com",
+          "allocated_storage": 50,
+          "allow_major_version_upgrade": false,
+          "apply_immediately": true,
+          "arn": "arn:aws:rds:eu-central-1:123456789012:db:cloudgate-svcx1",
+          "auto_minor_version_upgrade": true,
+          "availability_zone": "eu-central-1a",
+          "backup_retention_period": 14,
+          "backup_target": "",
+          "backup_window": "13:14-13:44",
+          "blue_green_update": [],
+          "ca_cert_identifier": "rds-ca-default",
+          "character_set_name": "",
+          "copy_tags_to_snapshot": true,
+          "custom_iam_instance_profile": "",
+          "customer_owned_ip_enabled": false,
+          "database_insights_mode": "",
+          "db_name": "shop",
+          "db_subnet_group_name": "cloudgate-svcx1",
+          "dedicated_log_volume": false,
+          "delete_automated_backups": true,
+          "deletion_protection": true,
+          "domain": "",
+          "domain_auth_secret_arn": "",
+          "domain_dns_ips": [],
+          "domain_fqdn": "",
+          "domain_iam_role_name": "",
+          "domain_ou": "",
+          "enabled_cloudwatch_logs_exports": [],
+          "endpoint": "cloudgate-svcx1.aaaaaaaaaa.eu-central-1.rds.amazonaws.com:5432",
+          "engine": "postgres",
+          "engine_lifecycle_support": "",
+          "engine_version": "17",
+          "engine_version_actual": "17",
+          "final_snapshot_identifier": "shop-production-pg-1-final-2026-10-17",
+          "hosted_zone_id": "",
+          "iam_database_authentication_enabled": false,
+          "id": "db-M5ENSHXFPU6XHZ4G4ZEI5QIO2U",
+          "identifier": "cloudgate-svcx1",
+          "identifier_prefix": "",
+          "instance_class": "db.t4g.micro",
+          "iops": 0,
+          "kms_key_id": "default_kms_key_id",
+          "latest_restorable_time": "2026-01-01T00:00:00Z",
+          "license_model": "general-public-license",
+          "listener_endpoint": [],
+          "maintenance_window": "wed:06:38-wed:07:08",
+          "manage_master_user_password": null,
+          "master_user_secret": [],
+          "master_user_secret_kms_key_id": null,
+          "max_allocated_storage": 400,
+          "monitoring_interval": 0,
+          "monitoring_role_arn": "",
+          "multi_az": true,
+          "nchar_character_set_name": "",
+          "network_type": "",
+          "option_group_name": "default:postgres-17",
+          "parameter_group_name": "default.postgres",
+          "password": "moto-lane-master-password",
+          "password_wo": null,
+          "password_wo_version": null,
+          "performance_insights_enabled": false,
+          "performance_insights_kms_key_id": "",
+          "performance_insights_retention_period": 0,
+          "port": 5432,
+          "publicly_accessible": false,
+          "region": "eu-central-1",
+          "replica_mode": "",
+          "replicas": [],
+          "replicate_source_db": "",
+          "resource_id": "db-M5ENSHXFPU6XHZ4G4ZEI5QIO2U",
+          "restore_to_point_in_time": [],
+          "s3_import": [],
+          "skip_final_snapshot": false,
+          "snapshot_identifier": null,
+          "status": "available",
+          "storage_encrypted": true,
+          "storage_throughput": 0,
+          "storage_type": "gp3",
+          "tags": {
+            "Name": "cloudgate/pg-1/database",
+            "cloudgate:address": "aws_db_instance.database"
+          },
+          "tags_all": {
+            "Name": "cloudgate/pg-1/database",
+            "cloudgate:address": "aws_db_instance.database",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_pg_1"
+          },
+          "timeouts": null,
+          "timezone": "",
+          "upgrade_rollout_order": "",
+          "upgrade_storage_config": null,
+          "username": "shop",
+          "vpc_security_group_ids": [
+            "sg-00000000000000004"
+          ],
+          "warning_event_categories": null
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "blue_green_update": [],
+          "domain_dns_ips": [],
+          "enabled_cloudwatch_logs_exports": [],
+          "listener_endpoint": [],
+          "master_user_secret": [],
+          "password": true,
+          "password_wo": true,
+          "replicas": [],
+          "restore_to_point_in_time": [],
+          "s3_import": [],
+          "tags": {},
+          "tags_all": {},
+          "vpc_security_group_ids": [
+            false
+          ]
+        },
+        "after_sensitive": {
+          "blue_green_update": [],
+          "domain_dns_ips": [],
+          "enabled_cloudwatch_logs_exports": [],
+          "listener_endpoint": [],
+          "master_user_secret": [],
+          "password": true,
+          "password_wo": true,
+          "replicas": [],
+          "restore_to_point_in_time": [],
+          "s3_import": [],
+          "tags": {},
+          "tags_all": {},
+          "vpc_security_group_ids": [
+            false
+          ]
+        },
+        "before_identity": {
+          "account_id": "123456789012",
+          "identifier": "cloudgate-svcx1",
+          "region": "eu-central-1"
+        },
+        "after_identity": {
+          "account_id": "123456789012",
+          "identifier": "cloudgate-svcx1",
+          "region": "eu-central-1"
+        }
+      }
+    },
+    {
+      "address": "aws_db_subnet_group.database",
+      "mode": "managed",
+      "type": "aws_db_subnet_group",
+      "name": "database",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "arn": "arn:aws:rds:eu-central-1:123456789012:subgrp:cloudgate-svcx1",
+          "description": "Cloudgate: the Environment network private subnets",
+          "id": "cloudgate-svcx1",
+          "name": "cloudgate-svcx1",
+          "name_prefix": "",
+          "region": "eu-central-1",
+          "subnet_ids": [
+            "subnet-00000000000000002",
+            "subnet-00000000000000003"
+          ],
+          "supported_network_types": [],
+          "tags": {
+            "Name": "cloudgate/pg-1/subnets",
+            "cloudgate:address": "aws_db_subnet_group.database"
+          },
+          "tags_all": {
+            "Name": "cloudgate/pg-1/subnets",
+            "cloudgate:address": "aws_db_subnet_group.database",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_pg_1"
+          },
+          "vpc_id": "vpc-00000000000000001"
+        },
+        "after": {
+          "arn": "arn:aws:rds:eu-central-1:123456789012:subgrp:cloudgate-svcx1",
+          "description": "Cloudgate: the Environment network private subnets",
+          "id": "cloudgate-svcx1",
+          "name": "cloudgate-svcx1",
+          "name_prefix": "",
+          "region": "eu-central-1",
+          "subnet_ids": [
+            "subnet-00000000000000002",
+            "subnet-00000000000000003"
+          ],
+          "supported_network_types": [],
+          "tags": {
+            "Name": "cloudgate/pg-1/subnets",
+            "cloudgate:address": "aws_db_subnet_group.database"
+          },
+          "tags_all": {
+            "Name": "cloudgate/pg-1/subnets",
+            "cloudgate:address": "aws_db_subnet_group.database",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_pg_1"
+          },
+          "vpc_id": "vpc-00000000000000001"
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "subnet_ids": [
+            false,
+            false
+          ],
+          "supported_network_types": [],
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_sensitive": {
+          "subnet_ids": [
+            false,
+            false
+          ],
+          "supported_network_types": [],
+          "tags": {},
+          "tags_all": {}
+        },
+        "before_identity": {
+          "account_id": "123456789012",
+          "name": "cloudgate-svcx1",
+          "region": "eu-central-1"
+        },
+        "after_identity": {
+          "account_id": "123456789012",
+          "name": "cloudgate-svcx1",
+          "region": "eu-central-1"
+        }
+      }
+    },
+    {
+      "address": "aws_security_group.database",
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "database",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "arn": "arn:aws:ec2:eu-central-1:123456789012:security-group/sg-00000000000000004",
+          "description": "Cloudgate: a database, reachable from the Services of the Environment only",
+          "egress": [],
+          "id": "sg-00000000000000004",
+          "ingress": [
+            {
+              "cidr_blocks": [
+                "10.80.0.0/20"
+              ],
+              "description": "",
+              "from_port": 5432,
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "protocol": "tcp",
+              "security_groups": [],
+              "self": false,
+              "to_port": 5432
+            },
+            {
+              "cidr_blocks": [
+                "10.80.16.0/20"
+              ],
+              "description": "",
+              "from_port": 5432,
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "protocol": "tcp",
+              "security_groups": [],
+              "self": false,
+              "to_port": 5432
+            }
+          ],
+          "name": "cloudgate-database-svc_1",
+          "name_prefix": "",
+          "owner_id": "123456789012",
+          "region": "eu-central-1",
+          "revoke_rules_on_delete": false,
+          "tags": {
+            "Name": "cloudgate/pg-1/database",
+            "cloudgate:address": "aws_security_group.database"
+          },
+          "tags_all": {
+            "Name": "cloudgate/pg-1/database",
+            "cloudgate:address": "aws_security_group.database",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_pg_1"
+          },
+          "timeouts": null,
+          "vpc_id": "vpc-00000000000000001"
+        },
+        "after": {
+          "arn": "arn:aws:ec2:eu-central-1:123456789012:security-group/sg-00000000000000004",
+          "description": "Cloudgate: a database, reachable from the Services of the Environment only",
+          "egress": [],
+          "id": "sg-00000000000000004",
+          "ingress": [
+            {
+              "cidr_blocks": [
+                "10.80.0.0/20"
+              ],
+              "description": "",
+              "from_port": 5432,
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "protocol": "tcp",
+              "security_groups": [],
+              "self": false,
+              "to_port": 5432
+            },
+            {
+              "cidr_blocks": [
+                "10.80.16.0/20"
+              ],
+              "description": "",
+              "from_port": 5432,
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "protocol": "tcp",
+              "security_groups": [],
+              "self": false,
+              "to_port": 5432
+            }
+          ],
+          "name": "cloudgate-database-svc_1",
+          "name_prefix": "",
+          "owner_id": "123456789012",
+          "region": "eu-central-1",
+          "revoke_rules_on_delete": false,
+          "tags": {
+            "Name": "cloudgate/pg-1/database",
+            "cloudgate:address": "aws_security_group.database"
+          },
+          "tags_all": {
+            "Name": "cloudgate/pg-1/database",
+            "cloudgate:address": "aws_security_group.database",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_pg_1"
+          },
+          "timeouts": null,
+          "vpc_id": "vpc-00000000000000001"
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "egress": [],
+          "ingress": [
+            {
+              "cidr_blocks": [
+                false
+              ],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": []
+            },
+            {
+              "cidr_blocks": [
+                false
+              ],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": []
+            }
+          ],
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_sensitive": {
+          "egress": [],
+          "ingress": [
+            {
+              "cidr_blocks": [
+                false
+              ],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": []
+            },
+            {
+              "cidr_blocks": [
+                false
+              ],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": []
+            }
+          ],
+          "tags": {},
+          "tags_all": {}
+        },
+        "before_identity": {
+          "account_id": "123456789012",
+          "id": "sg-00000000000000004",
+          "region": "eu-central-1"
+        },
+        "after_identity": {
+          "account_id": "123456789012",
+          "id": "sg-00000000000000004",
+          "region": "eu-central-1"
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "endpoint_address": {
+      "actions": [
+        "no-op"
+      ],
+      "before": "cloudgate-svcx1.aaaaaaaaaa.eu-central-1.rds.amazonaws.com",
+      "after": "cloudgate-svcx1.aaaaaaaaaa.eu-central-1.rds.amazonaws.com",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "endpoint_port": {
+      "actions": [
+        "no-op"
+      ],
+      "before": 5432,
+      "after": 5432,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "instance_identifier": {
+      "actions": [
+        "no-op"
+      ],
+      "before": "cloudgate-svcx1",
+      "after": "cloudgate-svcx1",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "outputs": {
+        "endpoint_address": {
+          "sensitive": false,
+          "value": "cloudgate-svcx1.aaaaaaaaaa.eu-central-1.rds.amazonaws.com",
+          "type": "string"
+        },
+        "endpoint_port": {
+          "sensitive": false,
+          "value": 5432,
+          "type": "number"
+        },
+        "instance_identifier": {
+          "sensitive": false,
+          "value": "cloudgate-svcx1",
+          "type": "string"
+        }
+      },
+      "root_module": {
+        "resources": [
+          {
+            "address": "aws_db_instance.database",
+            "mode": "managed",
+            "type": "aws_db_instance",
+            "name": "database",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 2,
+            "values": {
+              "address": "cloudgate-svcx1.aaaaaaaaaa.eu-central-1.rds.amazonaws.com",
+              "allocated_storage": 20,
+              "allow_major_version_upgrade": false,
+              "apply_immediately": true,
+              "arn": "arn:aws:rds:eu-central-1:123456789012:db:cloudgate-svcx1",
+              "auto_minor_version_upgrade": true,
+              "availability_zone": "eu-central-1a",
+              "backup_retention_period": 7,
+              "backup_target": "",
+              "backup_window": "13:14-13:44",
+              "blue_green_update": [],
+              "ca_cert_identifier": "rds-ca-default",
+              "character_set_name": "",
+              "copy_tags_to_snapshot": true,
+              "custom_iam_instance_profile": "",
+              "customer_owned_ip_enabled": false,
+              "database_insights_mode": "",
+              "db_name": "shop",
+              "db_subnet_group_name": "cloudgate-svcx1",
+              "dedicated_log_volume": false,
+              "delete_automated_backups": true,
+              "deletion_protection": true,
+              "domain": "",
+              "domain_auth_secret_arn": "",
+              "domain_dns_ips": [],
+              "domain_fqdn": "",
+              "domain_iam_role_name": "",
+              "domain_ou": "",
+              "enabled_cloudwatch_logs_exports": [],
+              "endpoint": "cloudgate-svcx1.aaaaaaaaaa.eu-central-1.rds.amazonaws.com:5432",
+              "engine": "postgres",
+              "engine_lifecycle_support": "",
+              "engine_version": "17",
+              "engine_version_actual": "17",
+              "final_snapshot_identifier": "shop-production-pg-1-final-2026-10-17",
+              "hosted_zone_id": "",
+              "iam_database_authentication_enabled": false,
+              "id": "db-M5ENSHXFPU6XHZ4G4ZEI5QIO2U",
+              "identifier": "cloudgate-svcx1",
+              "identifier_prefix": "",
+              "instance_class": "db.t4g.micro",
+              "iops": 0,
+              "kms_key_id": "default_kms_key_id",
+              "latest_restorable_time": "2026-01-01T00:00:00Z",
+              "license_model": "general-public-license",
+              "listener_endpoint": [],
+              "maintenance_window": "wed:06:38-wed:07:08",
+              "manage_master_user_password": null,
+              "master_user_secret": [],
+              "master_user_secret_kms_key_id": null,
+              "max_allocated_storage": 200,
+              "monitoring_interval": 0,
+              "monitoring_role_arn": "",
+              "multi_az": false,
+              "nchar_character_set_name": "",
+              "network_type": "",
+              "option_group_name": "default:postgres-17",
+              "parameter_group_name": "default.postgres",
+              "password": "moto-lane-master-password",
+              "password_wo": null,
+              "password_wo_version": null,
+              "performance_insights_enabled": false,
+              "performance_insights_kms_key_id": "",
+              "performance_insights_retention_period": 0,
+              "port": 5432,
+              "publicly_accessible": false,
+              "region": "eu-central-1",
+              "replica_mode": "",
+              "replicas": [],
+              "replicate_source_db": "",
+              "resource_id": "db-M5ENSHXFPU6XHZ4G4ZEI5QIO2U",
+              "restore_to_point_in_time": [],
+              "s3_import": [],
+              "skip_final_snapshot": false,
+              "snapshot_identifier": null,
+              "status": "available",
+              "storage_encrypted": true,
+              "storage_throughput": 0,
+              "storage_type": "gp3",
+              "tags": {
+                "Name": "cloudgate/pg-1/database",
+                "cloudgate:address": "aws_db_instance.database"
+              },
+              "tags_all": {
+                "Name": "cloudgate/pg-1/database",
+                "cloudgate:address": "aws_db_instance.database",
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_pg_1"
+              },
+              "timeouts": null,
+              "timezone": "",
+              "upgrade_rollout_order": "",
+              "upgrade_storage_config": null,
+              "username": "shop",
+              "vpc_security_group_ids": [
+                "sg-00000000000000004"
+              ],
+              "warning_event_categories": null
+            },
+            "sensitive_values": {
+              "blue_green_update": [],
+              "domain_dns_ips": [],
+              "enabled_cloudwatch_logs_exports": [],
+              "listener_endpoint": [],
+              "master_user_secret": [],
+              "password": true,
+              "password_wo": true,
+              "replicas": [],
+              "restore_to_point_in_time": [],
+              "s3_import": [],
+              "tags": {},
+              "tags_all": {},
+              "vpc_security_group_ids": [
+                false
+              ]
+            },
+            "depends_on": [
+              "aws_db_subnet_group.database",
+              "aws_security_group.database"
+            ],
+            "identity": {
+              "account_id": "123456789012",
+              "identifier": "cloudgate-svcx1",
+              "region": "eu-central-1"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_db_subnet_group.database",
+            "mode": "managed",
+            "type": "aws_db_subnet_group",
+            "name": "database",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "arn": "arn:aws:rds:eu-central-1:123456789012:subgrp:cloudgate-svcx1",
+              "description": "Cloudgate: the Environment network private subnets",
+              "id": "cloudgate-svcx1",
+              "name": "cloudgate-svcx1",
+              "name_prefix": "",
+              "region": "eu-central-1",
+              "subnet_ids": [
+                "subnet-00000000000000002",
+                "subnet-00000000000000003"
+              ],
+              "supported_network_types": [],
+              "tags": {
+                "Name": "cloudgate/pg-1/subnets",
+                "cloudgate:address": "aws_db_subnet_group.database"
+              },
+              "tags_all": {
+                "Name": "cloudgate/pg-1/subnets",
+                "cloudgate:address": "aws_db_subnet_group.database",
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_pg_1"
+              },
+              "vpc_id": "vpc-00000000000000001"
+            },
+            "sensitive_values": {
+              "subnet_ids": [
+                false,
+                false
+              ],
+              "supported_network_types": [],
+              "tags": {},
+              "tags_all": {}
+            },
+            "identity": {
+              "account_id": "123456789012",
+              "name": "cloudgate-svcx1",
+              "region": "eu-central-1"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_security_group.database",
+            "mode": "managed",
+            "type": "aws_security_group",
+            "name": "database",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 1,
+            "values": {
+              "arn": "arn:aws:ec2:eu-central-1:123456789012:security-group/sg-00000000000000004",
+              "description": "Cloudgate: a database, reachable from the Services of the Environment only",
+              "egress": [],
+              "id": "sg-00000000000000004",
+              "ingress": [
+                {
+                  "cidr_blocks": [
+                    "10.80.0.0/20"
+                  ],
+                  "description": "",
+                  "from_port": 5432,
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "protocol": "tcp",
+                  "security_groups": [],
+                  "self": false,
+                  "to_port": 5432
+                },
+                {
+                  "cidr_blocks": [
+                    "10.80.16.0/20"
+                  ],
+                  "description": "",
+                  "from_port": 5432,
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "protocol": "tcp",
+                  "security_groups": [],
+                  "self": false,
+                  "to_port": 5432
+                }
+              ],
+              "name": "cloudgate-database-svc_1",
+              "name_prefix": "",
+              "owner_id": "123456789012",
+              "region": "eu-central-1",
+              "revoke_rules_on_delete": false,
+              "tags": {
+                "Name": "cloudgate/pg-1/database",
+                "cloudgate:address": "aws_security_group.database"
+              },
+              "tags_all": {
+                "Name": "cloudgate/pg-1/database",
+                "cloudgate:address": "aws_security_group.database",
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_pg_1"
+              },
+              "timeouts": null,
+              "vpc_id": "vpc-00000000000000001"
+            },
+            "sensitive_values": {
+              "egress": [],
+              "ingress": [
+                {
+                  "cidr_blocks": [
+                    false
+                  ],
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "security_groups": []
+                },
+                {
+                  "cidr_blocks": [
+                    false
+                  ],
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "security_groups": []
+                }
+              ],
+              "tags": {},
+              "tags_all": {}
+            },
+            "identity": {
+              "account_id": "123456789012",
+              "id": "sg-00000000000000004",
+              "region": "eu-central-1"
+            },
+            "identity_schema_version": 0
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "aws": {
+        "name": "aws",
+        "full_name": "registry.opentofu.org/hashicorp/aws",
+        "version_constraint": "6.69.1",
+        "expressions": {
+          "allowed_account_ids": {
+            "constant_value": [
+              "123456789012"
+            ]
+          },
+          "assume_role": [
+            {
+              "external_id": {
+                "constant_value": "moto-lane-external-id"
+              },
+              "role_arn": {
+                "constant_value": "arn:aws:iam::123456789012:role/cloudgate/cloudgate-deploy"
+              },
+              "session_name": {
+                "constant_value": "cloudgate"
+              }
+            }
+          ],
+          "default_tags": [
+            {
+              "tags": {
+                "constant_value": {
+                  "cloudgate:cloud-account": "ca_1",
+                  "cloudgate:environment": "env_1",
+                  "cloudgate:state": "st_pg_1"
+                }
+              }
+            }
+          ],
+          "endpoints": [
+            {
+              "ec2": {
+                "constant_value": "http://moto:5000"
+              },
+              "elasticache": {
+                "constant_value": "http://moto:5000"
+              },
+              "iam": {
+                "constant_value": "http://moto:5000"
+              },
+              "rds": {
+                "constant_value": "http://moto:5000"
+              },
+              "sts": {
+                "constant_value": "http://moto:5000"
+              }
+            }
+          ],
+          "region": {
+            "constant_value": "eu-central-1"
+          }
+        }
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "endpoint_address": {
+          "expression": {
+            "constant_value": "${aws_db_instance.database.address}",
+            "references": [
+              "aws_db_instance.database",
+              "aws_db_instance.database.address"
+            ]
+          }
+        },
+        "endpoint_port": {
+          "expression": {
+            "constant_value": "${aws_db_instance.database.port}",
+            "references": [
+              "aws_db_instance.database",
+              "aws_db_instance.database.port"
+            ]
+          }
+        },
+        "instance_identifier": {
+          "expression": {
+            "constant_value": "${aws_db_instance.database.identifier}",
+            "references": [
+              "aws_db_instance.database",
+              "aws_db_instance.database.identifier"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "aws_db_instance.database",
+          "mode": "managed",
+          "type": "aws_db_instance",
+          "name": "database",
+          "provider_config_key": "aws",
+          "expressions": {
+            "allocated_storage": {
+              "constant_value": 50
+            },
+            "allow_major_version_upgrade": {
+              "constant_value": false
+            },
+            "apply_immediately": {
+              "constant_value": true
+            },
+            "auto_minor_version_upgrade": {
+              "constant_value": true
+            },
+            "backup_retention_period": {
+              "constant_value": 14
+            },
+            "copy_tags_to_snapshot": {
+              "constant_value": true
+            },
+            "db_name": {
+              "constant_value": "shop"
+            },
+            "db_subnet_group_name": {
+              "constant_value": "${aws_db_subnet_group.database.name}",
+              "references": [
+                "aws_db_subnet_group.database",
+                "aws_db_subnet_group.database.name"
+              ]
+            },
+            "delete_automated_backups": {
+              "constant_value": true
+            },
+            "deletion_protection": {
+              "constant_value": true
+            },
+            "engine": {
+              "constant_value": "postgres"
+            },
+            "engine_version": {
+              "constant_value": "17"
+            },
+            "final_snapshot_identifier": {
+              "constant_value": "shop-production-pg-1-final-2026-10-17"
+            },
+            "identifier": {
+              "constant_value": "cloudgate-svcx1"
+            },
+            "instance_class": {
+              "constant_value": "db.t4g.micro"
+            },
+            "max_allocated_storage": {
+              "constant_value": 400
+            },
+            "multi_az": {
+              "constant_value": true
+            },
+            "password": {
+              "constant_value": "${var.master_password}",
+              "references": [
+                "var.master_password"
+              ]
+            },
+            "port": {
+              "constant_value": 5432
+            },
+            "publicly_accessible": {
+              "constant_value": false
+            },
+            "skip_final_snapshot": {
+              "constant_value": false
+            },
+            "storage_encrypted": {
+              "constant_value": true
+            },
+            "storage_type": {
+              "constant_value": "gp3"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/pg-1/database",
+                "cloudgate:address": "aws_db_instance.database"
+              }
+            },
+            "username": {
+              "constant_value": "shop"
+            },
+            "vpc_security_group_ids": {
+              "constant_value": [
+                "${aws_security_group.database.id}"
+              ],
+              "references": [
+                "aws_security_group.database",
+                "aws_security_group.database.id"
+              ]
+            }
+          },
+          "schema_version": 2
+        },
+        {
+          "address": "aws_db_subnet_group.database",
+          "mode": "managed",
+          "type": "aws_db_subnet_group",
+          "name": "database",
+          "provider_config_key": "aws",
+          "expressions": {
+            "description": {
+              "constant_value": "Cloudgate: the Environment network private subnets"
+            },
+            "name": {
+              "constant_value": "cloudgate-svcx1"
+            },
+            "subnet_ids": {
+              "constant_value": [
+                "subnet-00000000000000002",
+                "subnet-00000000000000003"
+              ]
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/pg-1/subnets",
+                "cloudgate:address": "aws_db_subnet_group.database"
+              }
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_security_group.database",
+          "mode": "managed",
+          "type": "aws_security_group",
+          "name": "database",
+          "provider_config_key": "aws",
+          "expressions": {
+            "description": {
+              "constant_value": "Cloudgate: a database, reachable from the Services of the Environment only"
+            },
+            "egress": {
+              "constant_value": []
+            },
+            "ingress": {
+              "constant_value": [
+                {
+                  "cidr_blocks": [
+                    "10.80.0.0/20"
+                  ],
+                  "description": "",
+                  "from_port": 5432,
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "protocol": "tcp",
+                  "security_groups": [],
+                  "self": false,
+                  "to_port": 5432
+                },
+                {
+                  "cidr_blocks": [
+                    "10.80.16.0/20"
+                  ],
+                  "description": "",
+                  "from_port": 5432,
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "protocol": "tcp",
+                  "security_groups": [],
+                  "self": false,
+                  "to_port": 5432
+                }
+              ]
+            },
+            "name": {
+              "constant_value": "cloudgate-database-svc_1"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/pg-1/database",
+                "cloudgate:address": "aws_security_group.database"
+              }
+            },
+            "vpc_id": {
+              "constant_value": "vpc-00000000000000001"
+            }
+          },
+          "schema_version": 1
+        }
+      ],
+      "variables": {
+        "master_password": {
+          "type": "string",
+          "required": true,
+          "sensitive": true
+        }
+      }
+    }
+  },
+  "relevant_attributes": [
+    {
+      "resource": "aws_db_subnet_group.database",
+      "attribute": [
+        "name"
+      ]
+    },
+    {
+      "resource": "aws_security_group.database",
+      "attribute": [
+        "id"
+      ]
+    }
+  ],
+  "timestamp": "2026-01-01T00:00:00Z",
+  "errored": false
+}

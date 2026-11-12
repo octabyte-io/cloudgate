@@ -1,0 +1,28 @@
+{
+  "cloudgate_fixture": {
+    "source": "the live walk by hand",
+    "how": "Recorded by `tofu output -json` from a real apply in the live Google Cloud project on 2026-11-06 (a walk by hand, step 10; OpenTofu 1.13.1, hashicorp/google 8.8.0), then rewritten to the stored files' sample ids (cloud_1, env_1 and the Service and state ids this file stored before, project example-project-123 / 123456789012, region europe-west1, and the stored instance's DNS name); the instance's own CA is a public certificate and kept as given. The `tofu output -json` of the mysql my-1's apply on Cloud SQL."
+  },
+  "outputs": {
+    "ca": {
+      "sensitive": true,
+      "type": "string",
+      "value": "-----BEGIN CERTIFICATE-----\nMIIDcTCCAlmgAwIBAgIBADANBgkqhkiG9w0BAQsFADBwMS0wKwYDVQQuEyRlZGNm\nZjUzYi00YjM4LTQ3MDgtYjAwNS0xNjk5MjM4ZTdlM2IxHDAaBgNVBAMTE0Nsb3Vk\nIFNRTCBTZXJ2ZXIgQ0ExFDASBgNVBAoTC0dvb2dsZSwgSW5jMQswCQYDVQQGEwJV\nUzAeFw0yNjExMDYxODAyMjRaFw0zNjExMDMxODAzMjRaMHAxLTArBgNVBC4TJGVk\nY2ZmNTNiLTRiMzgtNDcwOC1iMDA1LTE2OTkyMzhlN2UzYjEcMBoGA1UEAxMTQ2xv\ndWQgU1FMIFNlcnZlciBDQTEUMBIGA1UEChMLR29vZ2xlLCBJbmMxCzAJBgNVBAYT\nAlVTMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtWyq3x/g5KuDLczL\nto9ByfeQIW0TN9L7ChdoZiWHbr10p2OHETiqz+F/PpxwysukmM31MKGhmx0cYw7p\nCa3x4aEzp6gTViC5mAVeKuGEF3ARzA/opVJsqckvYs5Ll+yjjRX59TFtIH1z2lvF\nVv7g5PgMDpvMl2rzDzvLtVRfGGpNF2l4Nd9qF3oEln/eeqsVXAhF7CQwnBVkarrU\nfBp9IbRPE7nVnDvsnn45517mZPvsYaGY5pv7TdQjGFxhsYVGpSSD54QoygZN+dd8\naC4bV2x48qrjfzHwl0Jc1h033a7VCEdL8emznLHyfIB34ggm2uiZ1CG8qiJqUooI\ntbRIiwIDAQABoxYwFDASBgNVHRMBAf8ECDAGAQH/AgEAMA0GCSqGSIb3DQEBCwUA\nA4IBAQCkyY3P6jAqNQtZ6yj3TnS+qCR2zvGpF8zVYvF+9ZGAS64NUC8YHVBfji+5\n9uFn5V2ld67rFNceYi4smAHk14hFLWnKacHnybyippjPJYh36w0mqYO9dHwkBoO5\nICSYu7l+AQMNqFxs7tjiMZrtqg+IpqK6NC+8e9MTm5bTbpvjbBg5Yx6k7F6mfp6z\njnZtuXqW77G5+vknxO3tSZ/pjkG+bFk8dy9o5YyJqIXLgSIRls6mhuXTG41zNs2p\nsXxVog71kZYYDDHQYHsGNEKKulVqHwpVJcFTL+Z54qa8oT3C0KmrbT4rs/VmOCxH\nNCou/JPHPHRnckE6HxAhcNFFVUGP\n-----END CERTIFICATE-----"
+    },
+    "dns_name": {
+      "sensitive": false,
+      "type": "string",
+      "value": "3f2a9c81d6e4.1idghei1xv0vf.europe-west1.sql-psc.goog"
+    },
+    "instance_name": {
+      "sensitive": false,
+      "type": "string",
+      "value": "cloudgate-nnkgm3a7uurj"
+    },
+    "private_address": {
+      "sensitive": false,
+      "type": "string",
+      "value": "10.64.16.2"
+    }
+  }
+}

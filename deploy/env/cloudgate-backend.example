@@ -1,0 +1,190 @@
+# /etc/default/cloudgate-backend — mode 0600, root:root
+#
+# Deliberately NOT under CLOUDGATE_DIRECTORY, and neither is
+# /etc/default/cloudgate-secrets. A past bug made every file in that tree
+# readable by any authenticated user through /listen-deployment; that is closed (ADR-0007),
+# but the platform directory is still where every path-taking read is aimed, and
+# this file holds the database password and both signing secrets.
+#
+# `deploy/install.sh` generates this file. The values below are placeholders.
+# Every key the backend's zod schema (backend/src/common/config/env.schema.ts)
+# marks required is present; boot aborts if one is missing.
+
+NODE_ENV=production
+PORT=4000
+
+# Required.
+DATABASE_URL=postgresql://cloudgate:<generated>@127.0.0.1:5432/cloudgate
+# The Infrastructure state login a Cloud run's tofu uses: it reaches only the
+# infrastructure_state schema. install.sh creates it.
+INFRASTRUCTURE_STATE_DATABASE_URL=postgresql://cloudgate_state:<generated>@127.0.0.1:5432/cloudgate
+
+# Required, minimum 32 characters each. `openssl rand -hex 32`.
+APP_ENCRYPTION_SECRET=<openssl rand -hex 32>
+BETTER_AUTH_SECRET=<openssl rand -hex 32>
+
+# The CONSOLE's origin, not this service's. better-auth trusts this origin for
+# free, which is the whole of the trusted-origin configuration on a single-host
+# install.
+BETTER_AUTH_URL=http://<public-host>:3000
+
+# Both empty on purpose.
+#
+# TRUSTED_ORIGINS: adding the bare address as a second trusted origin would let
+# sign-in succeed at an address whose build-time-inlined NEXT_PUBLIC_API_URL
+# points somewhere else — a console that signs you in and then shows no logs.
+# Each entry must be a bare browser origin (scheme + host [+ port], no path, no
+# trailing slash) or boot fails.
+#
+# CORS_ALLOWED_ORIGINS: empty means an empty array is handed to `cors`, which is
+# deliberate — a falsy value would restore `Access-Control-Allow-Origin: *`, and
+# browsers refuse that alongside credentials. The console proxies same-origin
+# through its own rewrite, so no cross-origin browser client exists.
+TRUSTED_ORIGINS=
+CORS_ALLOWED_ORIGINS=
+
+# Keep this at the default on a host install.sh set up. The pin is this
+# installer's own Traefik config, not the backend — three keys in it are read
+# by Traefik inside its container, where the tree exists only at the fixed
+# bind target. The backend's root itself is relocatable. The long version
+# is the comment above CLOUDGATE_DIR in deploy/install.sh.
+CLOUDGATE_DIRECTORY=/etc/cloudgate
+
+# The one definition of the Traefik version, and pinning it here is the only way
+# to move it. An earlier fix collapsed the two constants that used to disagree — one in
+# server-setup.ts, one in TraefikSetupService — into a single export from
+# backend/src/servers/server-setup.ts, which traefik-setup.service.ts imports and
+# re-exports; both paths default to 3.6.7 now and can no longer diverge.
+#
+# That constant is read at *import* time from the process environment
+# (server-setup.ts:35), so a `.env` file does not reach it — only this file does,
+# because systemd puts it in the unit's environment before Node starts.
+TRAEFIK_VERSION=3.6.7
+
+# OpenTofu and the providers, for Cloud accounts (ADR-0030): AWS's, and
+# Google's (hashicorp/google). Written by deploy/install.sh, which installed
+# them here and checked them: OpenTofu against OPENTOFU_SHA256, each provider
+# against deploy/opentofu/.terraform.lock.hcl.
+# A Cloud run takes providers from this mirror only and never downloads one.
+# Not knobs: the checkout pins them, and they move forward only (docs/deploy.md §7).
+OPENTOFU_VERSION=1.13.1
+OPENTOFU_BINARY=/usr/local/share/cloudgate/opentofu/bin/tofu
+OPENTOFU_PROVIDER_MIRROR=/usr/local/share/cloudgate/opentofu/providers
+AWS_PROVIDER_VERSION=6.69.1
+GOOGLE_PROVIDER_VERSION=8.8.0
+
+# The Session Manager plugin a Stack VM on AWS is reached through (ADR-0070),
+# installed and checked by deploy/install.sh at its pin. Unset, the backend
+# looks for `session-manager-plugin` on PATH.
+SESSION_MANAGER_PLUGIN=/usr/local/share/cloudgate/session-manager-plugin/bin/session-manager-plugin
+# A Stack VM on Google Cloud needs no helper here: the backend speaks IAP's
+# TCP-forwarding relay itself, over its pinned `ws` client (no gcloud).
+
+# The json-file retention cap on every container Cloudgate creates.
+# 10m x 3 = 30 MB each. Nothing set one, so every container ran unbounded on the
+# stock driver — and Traefik's own log is on at INFO, where an ACME
+# retry loop against a misconfigured domain writes until the disk is full.
+# `deploy/install.sh` writes the same two values here and passes them to the
+# Traefik it starts, so the installer's container and the backend's agree.
+# max-size takes Docker's unit suffixes (10m, 512k, 1g); the daemon validates it.
+CONTAINER_LOG_MAX_SIZE=10m
+CONTAINER_LOG_MAX_FILE=3
+
+# Empty on purpose, and empty is the safe value.
+#
+# TRUST_PROXY names the hops in front of the backend that may say who the caller
+# is. Unset, nothing is trusted: Express's `req.ip` is the socket peer, and the
+# address every session records is one the caller cannot choose. On this install
+# that is NOT enough, and the reason is the one thing about this topology worth
+# knowing: the console's /api/auth/* and /backend/* rewrites are a
+# SERVER-SIDE proxy, so the socket peer is the console process and not the
+# browser. Unset, every console user's session recorded this host's own address
+# and they all shared one sign-in rate-limit bucket. The console forwards the
+# browser in x-forwarded-for and reaches the backend over loopback, and
+# `loopback` below is what lets that hop be stepped past and the person
+# recorded.
+#
+# Set it only when something really terminates the connection first: Traefik, an
+# nginx in front, a cloud load balancer. Until you do, better-auth records the
+# hop rather than the person — it reads `x-forwarded-for` and only that, and it
+# throws away any chain longer than one entry whose hops are not named here.
+# Express syntax, comma-separated: `loopback`, `uniquelocal`, `linklocal`, an IP
+# or CIDR list (`TRUST_PROXY=10.0.0.0/8`), or a hop count (`TRUST_PROXY=1`) —
+# and a hop count must be the only entry, because a list of counts names a
+# position in a chain there is only one of and so trusts nothing at all.
+# A bad entry aborts boot rather than silently trusting nothing.
+#
+# **Do not set it to `true`, and there is no `true`.** A blanket trust would let
+# any caller stamp their own address on their session and on the login entry in
+# the audit trail — an audit column that lies is worse than one that is blank.
+#
+# **Give the proxy's address or range, never a hop count.** A forwarded
+# header is believed only when this key names an address *and* the connection
+# carrying it was made from inside that address: the backend adds the address it
+# was really connected from to the end of the chain, so a header arriving from
+# anywhere else is ignored and that address is recorded instead. A count names a
+# position in the chain rather than an address, leaves nothing to check against,
+# and is therefore treated exactly like naming no proxy at all. Nothing is ever
+# refused over any of this — a request whose header is ignored is still served.
+#
+# A count also collapses the sign-in throttle. better-auth limits
+# /sign-in, /sign-up and /change-password by the address it resolved, and with a
+# count that address is the proxy's on every request — so one small budget is
+# shared by every user at once, and an outsider can keep it spent. The backend
+# warns about this at boot on a hop count, and warns once per address when a
+# forwarded header reaches it from outside the range you declared, which is the
+# sign that something can reach the backend without going through your proxy.
+# Both are warnings and neither refuses anything.
+#
+# `loopback` is what the installer writes, and the two must agree — the console
+# is a proxy in front of this backend whether or not anyone thinks of it as one.
+TRUST_PROXY=loopback
+
+# Optional, unset on this install:
+#   LOG_LEVEL         (defaults to info)
+#   MAIL_PROVIDER     smtp | resend — unset means no mail; invitations are
+#                     tested through the copyable /accept-invitation/<id> link
+#   HOSTED_MODE       unset (off) for self-hosting; `true` only on the Hosted
+#                     instance, which then refuses to start without
+#                     STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
+#                     STARTER_PLAN_PRICE_ID, BUSINESS_PLAN_PRICE_ID,
+#                     ADD_ON_PRICE_ID,
+#                     MAIL_PROVIDER=resend, MAIL_FROM_ADDRESS, RESEND_API_KEY,
+#                     SITE_URL, TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY
+#                     (ADR-0049). It replaced IS_CLOUD, and a
+#                     backend that still finds IS_CLOUD set refuses to start.
+#                     The first start records the mode in the database and a
+#                     later start that disagrees refuses; change it on purpose
+#                     with `node dist/commands/set-instance-mode.js --mode
+#                     <hosted|self-hosted>`.
+#   SITE_URL, STRIPE_*, *_PRICE_ID    billing, Hosted instance only; ignored
+#                     when self-hosted
+#   HETZNER_EUR_API_TOKEN, HETZNER_USD_API_TOKEN    Bought Servers (ADR-0071),
+#                     Hosted instance only and optional: the EUR account's
+#                     read & write token makes the machines, the empty USD
+#                     account's read-only token supplies the prices. Without
+#                     both the instance starts and offers no Buy a Server.
+#   BOUGHT_SERVER_REVERSE_DNS_DOMAIN  the Octabyte domain a Bought Server's
+#                     reverse DNS is named under; unset keeps the provider's
+#   TRAEFIK_PORT / TRAEFIK_SSL_PORT / TRAEFIK_HTTP3_PORT   default 80/443/443
+#   CLOUDGATE_TEMPLATES_URL           the Template catalogue's catalogue.zip
+#                     (ADR-0062, ADR-0072). Defaults to the newest
+#                     octabyte-io/cg-templates release:
+#                     https://github.com/octabyte-io/cg-templates/releases/latest/download/catalogue.zip
+#                     which needs outbound https to github.com and to GitHub's
+#                     release-download host, release-assets.githubusercontent.com.
+#                     Set it to the http/https address of your own copy of a
+#                     release's catalogue.zip on a network that blocks GitHub
+#                     (a mirrored catalogue.json is refused), or to `off` to
+#                     turn templates off (the Templates screen says so). Only
+#                     the backend fetches it, and it is never a request field.
+#   CLOUDGATE_TEMPLATES_BASE_URL      no longer read (ADR-0066): the
+#                     template.toml reader it fed is gone. While it is set and
+#                     CLOUDGATE_TEMPLATES_URL is not, templates are off and the
+#                     startup log says so. Remove it, or set
+#                     CLOUDGATE_TEMPLATES_URL.
+#   LICENSE_SERVER_URL                the licence service activation, validation
+#                     and deactivation are sent to. Defaults to
+#                     https://licenses-api.cloudgate.dev, which is what a hosted
+#                     install wants; set it to point a self-hosted install at
+#                     its own service, or to work around an outage of that one.

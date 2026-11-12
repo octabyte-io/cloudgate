@@ -1,0 +1,18 @@
+{
+  "cloudgate_fixture": {
+    "source": "the live walk by hand",
+    "how": "Recorded by `tofu output -json` from a real apply in the live Google Cloud project on 2026-11-06 (a walk by hand, step 10; OpenTofu 1.13.1, hashicorp/google 8.8.0), then rewritten to the stored files' sample ids (project example-project-123, region europe-west1). A Worker's first apply: its worker pool's name and its repository's URL."
+  },
+  "outputs": {
+    "repository_url": {
+      "sensitive": false,
+      "type": "string",
+      "value": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-ausyuuc4hp53"
+    },
+    "worker_pool_name": {
+      "sensitive": false,
+      "type": "string",
+      "value": "cloudgate-ausyuuc4hp53"
+    }
+  }
+}

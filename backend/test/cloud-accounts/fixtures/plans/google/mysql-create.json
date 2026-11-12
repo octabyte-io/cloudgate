@@ -1,0 +1,917 @@
+{
+  "cloudgate_fixture": {
+    "source": "the live walk by hand",
+    "how": "Recorded by `tofu show -json` from a real plan in the live Google Cloud project on 2026-11-06 (a walk by hand, step 10; OpenTofu 1.13.1, hashicorp/google 8.8.0), then rewritten to the stored files' sample ids (cloud_1, env_1 and the Service and state ids this file stored before, project example-project-123 / 123456789012, region europe-west1) and with every secret value masked (the root and user passwords). The mysql my-1's create on Cloud SQL (user and database my_1, size xsmall: MYSQL_8_4 on db-g1-small)."
+  },
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "variables": {
+    "root_password": {
+      "value": "not-a-real-root-password"
+    },
+    "user_password": {
+      "value": "not-a-real-password"
+    }
+  },
+  "planned_values": {
+    "outputs": {
+      "ca": {
+        "sensitive": true
+      },
+      "dns_name": {
+        "sensitive": false
+      },
+      "instance_name": {
+        "sensitive": false,
+        "type": "string",
+        "value": "cloudgate-nnkgm3a7uurj"
+      },
+      "private_address": {
+        "sensitive": false
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "google_sql_database.database",
+          "mode": "managed",
+          "type": "google_sql_database",
+          "name": "database",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "deletion_policy": "ABANDON",
+            "instance": "cloudgate-nnkgm3a7uurj",
+            "name": "my_1",
+            "project": "example-project-123",
+            "timeouts": null
+          },
+          "sensitive_values": {},
+          "identity": {
+            "instance": null,
+            "name": null,
+            "project": null
+          },
+          "identity_schema_version": 1
+        },
+        {
+          "address": "google_sql_database_instance.database",
+          "mode": "managed",
+          "type": "google_sql_database_instance",
+          "name": "database",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "backupdr_backup": null,
+            "clone": [],
+            "database_version": "MYSQL_8_4",
+            "deletion_policy": "DELETE",
+            "deletion_protection": true,
+            "final_backup_description": null,
+            "include_replicas_for_major_version_upgrade": null,
+            "name": "cloudgate-nnkgm3a7uurj",
+            "point_in_time_restore_context": [],
+            "project": "example-project-123",
+            "region": "europe-west1",
+            "restore_backup_context": [],
+            "root_password": "not-a-real-root-password",
+            "root_password_wo": null,
+            "root_password_wo_version": null,
+            "settings": [
+              {
+                "activation_policy": "ALWAYS",
+                "active_directory_config": [],
+                "advanced_machine_features": [],
+                "auto_upgrade_enabled": null,
+                "availability_type": "ZONAL",
+                "backup_configuration": [
+                  {
+                    "backup_retention_settings": [
+                      {
+                        "retained_backups": 7,
+                        "retention_unit": "COUNT"
+                      }
+                    ],
+                    "binary_log_enabled": true,
+                    "enabled": true,
+                    "location": null,
+                    "point_in_time_recovery_enabled": null,
+                    "transaction_log_retention_days": 7
+                  }
+                ],
+                "collation": null,
+                "database_flags": [],
+                "deletion_protection_enabled": true,
+                "deny_maintenance_period": [],
+                "disk_autoresize": true,
+                "disk_autoresize_limit": 0,
+                "edition": "ENTERPRISE",
+                "enable_dataplex_integration": null,
+                "enable_google_ml_integration": null,
+                "entraid_config": [],
+                "final_backup_config": [],
+                "ip_configuration": [
+                  {
+                    "allocated_ip_range": null,
+                    "authorized_networks": [],
+                    "custom_subject_alternative_names": null,
+                    "enable_private_path_for_google_cloud_services": null,
+                    "ipv4_enabled": false,
+                    "private_network": null,
+                    "psc_config": [
+                      {
+                        "allowed_consumer_projects": [
+                          "example-project-123"
+                        ],
+                        "network_attachment_uri": "",
+                        "psc_auto_connections": [
+                          {
+                            "consumer_network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+                            "consumer_service_project_id": "example-project-123"
+                          }
+                        ],
+                        "psc_auto_dns_enabled": true,
+                        "psc_enabled": true
+                      }
+                    ],
+                    "server_ca_mode": "GOOGLE_MANAGED_INTERNAL_CA",
+                    "server_ca_pool": null,
+                    "server_certificate_rotation_mode": null,
+                    "ssl_mode": "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
+                  }
+                ],
+                "maintenance_window": [],
+                "password_validation_policy": [],
+                "pricing_plan": "PER_USE",
+                "retain_backups_on_delete": true,
+                "sql_server_audit_config": [],
+                "tier": "db-g1-small",
+                "time_zone": null,
+                "user_labels": {
+                  "cloudgate-cloud-account": "lqinodt54kzk",
+                  "cloudgate-environment": "w33lemwkholw",
+                  "cloudgate-state": "2b2x4qicb5ov"
+                }
+              }
+            ],
+            "switch_transaction_logs_to_cloud_storage_enabled": null,
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "available_maintenance_versions": [],
+            "clone": [],
+            "dns_names": [],
+            "ip_address": [],
+            "point_in_time_restore_context": [],
+            "replica_configuration": [],
+            "replica_names": [],
+            "replication_cluster": [],
+            "restore_backup_context": [],
+            "root_password": true,
+            "server_ca_cert": true,
+            "settings": [
+              {
+                "active_directory_config": [],
+                "advanced_machine_features": [],
+                "backup_configuration": [
+                  {
+                    "backup_retention_settings": [
+                      {}
+                    ]
+                  }
+                ],
+                "connection_pool_config": [],
+                "data_cache_config": [],
+                "database_flags": [],
+                "deny_maintenance_period": [],
+                "entraid_config": [],
+                "final_backup_config": [],
+                "insights_config": [],
+                "ip_configuration": [
+                  {
+                    "authorized_networks": [],
+                    "psc_config": [
+                      {
+                        "allowed_consumer_projects": [
+                          false
+                        ],
+                        "psc_auto_connections": [
+                          {}
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "location_preference": [],
+                "maintenance_window": [],
+                "password_validation_policy": [],
+                "read_pool_auto_scale_config": [],
+                "sql_server_audit_config": [],
+                "user_labels": {}
+              }
+            ]
+          }
+        },
+        {
+          "address": "google_sql_user.user",
+          "mode": "managed",
+          "type": "google_sql_user",
+          "name": "user",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 1,
+          "values": {
+            "database_roles": null,
+            "deletion_policy": "ABANDON",
+            "instance": "cloudgate-nnkgm3a7uurj",
+            "name": "my_1",
+            "password": "not-a-real-password",
+            "password_policy": [],
+            "password_wo": null,
+            "password_wo_version": null,
+            "project": "example-project-123",
+            "timeouts": null,
+            "type": null
+          },
+          "sensitive_values": {
+            "password": true,
+            "password_policy": [],
+            "sql_server_user_details": []
+          },
+          "identity": {
+            "host": null,
+            "instance": null,
+            "name": null,
+            "project": null
+          },
+          "identity_schema_version": 1
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "google_sql_database.database",
+      "mode": "managed",
+      "type": "google_sql_database",
+      "name": "database",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "deletion_policy": "ABANDON",
+          "instance": "cloudgate-nnkgm3a7uurj",
+          "name": "my_1",
+          "project": "example-project-123",
+          "timeouts": null
+        },
+        "after_unknown": {
+          "charset": true,
+          "collation": true,
+          "id": true,
+          "self_link": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {},
+        "after_identity": {
+          "instance": null,
+          "name": null,
+          "project": null
+        }
+      }
+    },
+    {
+      "address": "google_sql_database_instance.database",
+      "mode": "managed",
+      "type": "google_sql_database_instance",
+      "name": "database",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "backupdr_backup": null,
+          "clone": [],
+          "database_version": "MYSQL_8_4",
+          "deletion_policy": "DELETE",
+          "deletion_protection": true,
+          "final_backup_description": null,
+          "include_replicas_for_major_version_upgrade": null,
+          "name": "cloudgate-nnkgm3a7uurj",
+          "point_in_time_restore_context": [],
+          "project": "example-project-123",
+          "region": "europe-west1",
+          "restore_backup_context": [],
+          "root_password": "not-a-real-root-password",
+          "root_password_wo": null,
+          "root_password_wo_version": null,
+          "settings": [
+            {
+              "activation_policy": "ALWAYS",
+              "active_directory_config": [],
+              "advanced_machine_features": [],
+              "auto_upgrade_enabled": null,
+              "availability_type": "ZONAL",
+              "backup_configuration": [
+                {
+                  "backup_retention_settings": [
+                    {
+                      "retained_backups": 7,
+                      "retention_unit": "COUNT"
+                    }
+                  ],
+                  "binary_log_enabled": true,
+                  "enabled": true,
+                  "location": null,
+                  "point_in_time_recovery_enabled": null,
+                  "transaction_log_retention_days": 7
+                }
+              ],
+              "collation": null,
+              "database_flags": [],
+              "deletion_protection_enabled": true,
+              "deny_maintenance_period": [],
+              "disk_autoresize": true,
+              "disk_autoresize_limit": 0,
+              "edition": "ENTERPRISE",
+              "enable_dataplex_integration": null,
+              "enable_google_ml_integration": null,
+              "entraid_config": [],
+              "final_backup_config": [],
+              "ip_configuration": [
+                {
+                  "allocated_ip_range": null,
+                  "authorized_networks": [],
+                  "custom_subject_alternative_names": null,
+                  "enable_private_path_for_google_cloud_services": null,
+                  "ipv4_enabled": false,
+                  "private_network": null,
+                  "psc_config": [
+                    {
+                      "allowed_consumer_projects": [
+                        "example-project-123"
+                      ],
+                      "network_attachment_uri": "",
+                      "psc_auto_connections": [
+                        {
+                          "consumer_network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+                          "consumer_service_project_id": "example-project-123"
+                        }
+                      ],
+                      "psc_auto_dns_enabled": true,
+                      "psc_enabled": true
+                    }
+                  ],
+                  "server_ca_mode": "GOOGLE_MANAGED_INTERNAL_CA",
+                  "server_ca_pool": null,
+                  "server_certificate_rotation_mode": null,
+                  "ssl_mode": "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
+                }
+              ],
+              "maintenance_window": [],
+              "password_validation_policy": [],
+              "pricing_plan": "PER_USE",
+              "retain_backups_on_delete": true,
+              "sql_server_audit_config": [],
+              "tier": "db-g1-small",
+              "time_zone": null,
+              "user_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "2b2x4qicb5ov"
+              }
+            }
+          ],
+          "switch_transaction_logs_to_cloud_storage_enabled": null,
+          "timeouts": null
+        },
+        "after_unknown": {
+          "available_maintenance_versions": true,
+          "clone": [],
+          "connection_name": true,
+          "dns_name": true,
+          "dns_names": true,
+          "encryption_confidential_mode": true,
+          "encryption_key_name": true,
+          "enforce_new_sql_network_architecture": true,
+          "first_ip_address": true,
+          "id": true,
+          "instance_type": true,
+          "ip_address": true,
+          "maintenance_version": true,
+          "master_instance_name": true,
+          "node_count": true,
+          "point_in_time_restore_context": [],
+          "private_ip_address": true,
+          "psc_service_attachment_link": true,
+          "public_ip_address": true,
+          "replica_configuration": true,
+          "replica_names": true,
+          "replication_cluster": true,
+          "restore_backup_context": [],
+          "self_link": true,
+          "server_ca_cert": true,
+          "service_account_email_address": true,
+          "settings": [
+            {
+              "active_directory_config": [],
+              "advanced_machine_features": [],
+              "backup_configuration": [
+                {
+                  "backup_retention_settings": [
+                    {}
+                  ],
+                  "backup_tier": true,
+                  "start_time": true
+                }
+              ],
+              "connection_pool_config": true,
+              "connector_enforcement": true,
+              "data_api_access": true,
+              "data_cache_config": true,
+              "data_disk_provisioned_iops": true,
+              "data_disk_provisioned_throughput": true,
+              "database_flags": [],
+              "deny_maintenance_period": [],
+              "disk_size": true,
+              "disk_type": true,
+              "effective_availability_type": true,
+              "entraid_config": [],
+              "final_backup_config": [],
+              "insights_config": true,
+              "ip_configuration": [
+                {
+                  "authorized_networks": [],
+                  "psc_config": [
+                    {
+                      "allowed_consumer_projects": [
+                        false
+                      ],
+                      "psc_auto_connection_policy_enabled": true,
+                      "psc_auto_connections": [
+                        {
+                          "consumer_network_status": true,
+                          "instance_auto_dns_status": true,
+                          "ip_address": true,
+                          "service_connection_policy": true,
+                          "service_connection_policy_creation_result": true,
+                          "status": true,
+                          "write_endpoint_auto_dns_status": true
+                        }
+                      ],
+                      "psc_write_endpoint_dns_enabled": true
+                    }
+                  ]
+                }
+              ],
+              "location_preference": true,
+              "maintenance_window": [],
+              "password_validation_policy": [],
+              "read_pool_auto_scale_config": true,
+              "replication_lag_max_seconds": true,
+              "sql_server_audit_config": [],
+              "user_labels": {},
+              "version": true
+            }
+          ]
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "available_maintenance_versions": [],
+          "clone": [],
+          "dns_names": [],
+          "ip_address": [],
+          "point_in_time_restore_context": [],
+          "replica_configuration": [],
+          "replica_names": [],
+          "replication_cluster": [],
+          "restore_backup_context": [],
+          "root_password": true,
+          "server_ca_cert": true,
+          "settings": [
+            {
+              "active_directory_config": [],
+              "advanced_machine_features": [],
+              "backup_configuration": [
+                {
+                  "backup_retention_settings": [
+                    {}
+                  ]
+                }
+              ],
+              "connection_pool_config": [],
+              "data_cache_config": [],
+              "database_flags": [],
+              "deny_maintenance_period": [],
+              "entraid_config": [],
+              "final_backup_config": [],
+              "insights_config": [],
+              "ip_configuration": [
+                {
+                  "authorized_networks": [],
+                  "psc_config": [
+                    {
+                      "allowed_consumer_projects": [
+                        false
+                      ],
+                      "psc_auto_connections": [
+                        {}
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "location_preference": [],
+              "maintenance_window": [],
+              "password_validation_policy": [],
+              "read_pool_auto_scale_config": [],
+              "sql_server_audit_config": [],
+              "user_labels": {}
+            }
+          ]
+        }
+      }
+    },
+    {
+      "address": "google_sql_user.user",
+      "mode": "managed",
+      "type": "google_sql_user",
+      "name": "user",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "database_roles": null,
+          "deletion_policy": "ABANDON",
+          "instance": "cloudgate-nnkgm3a7uurj",
+          "name": "my_1",
+          "password": "not-a-real-password",
+          "password_policy": [],
+          "password_wo": null,
+          "password_wo_version": null,
+          "project": "example-project-123",
+          "timeouts": null,
+          "type": null
+        },
+        "after_unknown": {
+          "host": true,
+          "iam_email": true,
+          "id": true,
+          "password_policy": [],
+          "sql_server_user_details": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "password": true,
+          "password_policy": [],
+          "sql_server_user_details": []
+        },
+        "after_identity": {
+          "host": null,
+          "instance": null,
+          "name": null,
+          "project": null
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "ca": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": true,
+      "after_sensitive": true
+    },
+    "dns_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "instance_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "cloudgate-nnkgm3a7uurj",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "private_address": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "outputs": {
+        "instance_name": {
+          "sensitive": false,
+          "value": "cloudgate-nnkgm3a7uurj",
+          "type": "string"
+        }
+      },
+      "root_module": {}
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "google": {
+        "name": "google",
+        "full_name": "registry.opentofu.org/hashicorp/google",
+        "version_constraint": "8.8.0",
+        "expressions": {
+          "add_terraform_attribution_label": {
+            "constant_value": false
+          },
+          "project": {
+            "constant_value": "example-project-123"
+          },
+          "region": {
+            "constant_value": "europe-west1"
+          }
+        }
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "ca": {
+          "sensitive": true,
+          "expression": {
+            "constant_value": "${google_sql_database_instance.database.server_ca_cert[0].cert}",
+            "references": [
+              "google_sql_database_instance.database.server_ca_cert[0].cert",
+              "google_sql_database_instance.database.server_ca_cert[0]",
+              "google_sql_database_instance.database.server_ca_cert",
+              "google_sql_database_instance.database"
+            ]
+          }
+        },
+        "dns_name": {
+          "expression": {
+            "constant_value": "${try(one([for entry in google_sql_database_instance.database.dns_names : entry.name if entry.connection_type == \"PRIVATE_SERVICE_CONNECT\" && endswith(trimsuffix(entry.name, \".\"), \".sql-psc.goog\")]), \"\")}",
+            "references": [
+              "google_sql_database_instance.database.dns_names",
+              "google_sql_database_instance.database"
+            ]
+          }
+        },
+        "instance_name": {
+          "expression": {
+            "constant_value": "${google_sql_database_instance.database.name}",
+            "references": [
+              "google_sql_database_instance.database.name",
+              "google_sql_database_instance.database"
+            ]
+          }
+        },
+        "private_address": {
+          "expression": {
+            "constant_value": "${try(one(flatten([for config in google_sql_database_instance.database.settings[0].ip_configuration[0].psc_config : [for connection in config.psc_auto_connections : connection.ip_address]])), \"\")}",
+            "references": [
+              "google_sql_database_instance.database.settings[0].ip_configuration[0].psc_config",
+              "google_sql_database_instance.database.settings[0].ip_configuration[0]",
+              "google_sql_database_instance.database.settings[0].ip_configuration",
+              "google_sql_database_instance.database.settings[0]",
+              "google_sql_database_instance.database.settings",
+              "google_sql_database_instance.database"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "google_sql_database.database",
+          "mode": "managed",
+          "type": "google_sql_database",
+          "name": "database",
+          "provider_config_key": "google",
+          "expressions": {
+            "deletion_policy": {
+              "constant_value": "ABANDON"
+            },
+            "instance": {
+              "constant_value": "${google_sql_database_instance.database.name}",
+              "references": [
+                "google_sql_database_instance.database.name",
+                "google_sql_database_instance.database"
+              ]
+            },
+            "name": {
+              "constant_value": "my_1"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "google_sql_database_instance.database",
+          "mode": "managed",
+          "type": "google_sql_database_instance",
+          "name": "database",
+          "provider_config_key": "google",
+          "expressions": {
+            "database_version": {
+              "constant_value": "MYSQL_8_4"
+            },
+            "deletion_protection": {
+              "constant_value": true
+            },
+            "name": {
+              "constant_value": "cloudgate-nnkgm3a7uurj"
+            },
+            "region": {
+              "constant_value": "europe-west1"
+            },
+            "root_password": {
+              "constant_value": "${var.root_password}",
+              "references": [
+                "var.root_password"
+              ]
+            },
+            "settings": [
+              {
+                "backup_configuration": [
+                  {
+                    "backup_retention_settings": [
+                      {
+                        "retained_backups": {
+                          "constant_value": 7
+                        },
+                        "retention_unit": {
+                          "constant_value": "COUNT"
+                        }
+                      }
+                    ],
+                    "binary_log_enabled": {
+                      "constant_value": true
+                    },
+                    "enabled": {
+                      "constant_value": true
+                    },
+                    "transaction_log_retention_days": {
+                      "constant_value": 7
+                    }
+                  }
+                ],
+                "deletion_protection_enabled": {
+                  "constant_value": true
+                },
+                "edition": {
+                  "constant_value": "ENTERPRISE"
+                },
+                "ip_configuration": [
+                  {
+                    "ipv4_enabled": {
+                      "constant_value": false
+                    },
+                    "psc_config": [
+                      {
+                        "allowed_consumer_projects": {
+                          "constant_value": [
+                            "example-project-123"
+                          ]
+                        },
+                        "psc_auto_connections": [
+                          {
+                            "consumer_network": {
+                              "constant_value": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net"
+                            },
+                            "consumer_service_project_id": {
+                              "constant_value": "example-project-123"
+                            }
+                          }
+                        ],
+                        "psc_auto_dns_enabled": {
+                          "constant_value": true
+                        },
+                        "psc_enabled": {
+                          "constant_value": true
+                        }
+                      }
+                    ],
+                    "server_ca_mode": {
+                      "constant_value": "GOOGLE_MANAGED_INTERNAL_CA"
+                    },
+                    "ssl_mode": {
+                      "constant_value": "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
+                    }
+                  }
+                ],
+                "retain_backups_on_delete": {
+                  "constant_value": true
+                },
+                "tier": {
+                  "constant_value": "db-g1-small"
+                },
+                "user_labels": {
+                  "constant_value": {
+                    "cloudgate-cloud-account": "lqinodt54kzk",
+                    "cloudgate-environment": "w33lemwkholw",
+                    "cloudgate-state": "2b2x4qicb5ov"
+                  }
+                }
+              }
+            ]
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "google_sql_user.user",
+          "mode": "managed",
+          "type": "google_sql_user",
+          "name": "user",
+          "provider_config_key": "google",
+          "expressions": {
+            "deletion_policy": {
+              "constant_value": "ABANDON"
+            },
+            "instance": {
+              "constant_value": "${google_sql_database_instance.database.name}",
+              "references": [
+                "google_sql_database_instance.database.name",
+                "google_sql_database_instance.database"
+              ]
+            },
+            "name": {
+              "constant_value": "my_1"
+            },
+            "password": {
+              "constant_value": "${var.user_password}",
+              "references": [
+                "var.user_password"
+              ]
+            }
+          },
+          "schema_version": 1
+        }
+      ],
+      "variables": {
+        "root_password": {
+          "type": "string",
+          "required": true,
+          "sensitive": true
+        },
+        "user_password": {
+          "type": "string",
+          "required": true,
+          "sensitive": true
+        }
+      }
+    }
+  },
+  "relevant_attributes": [
+    {
+      "resource": "google_sql_database_instance.database",
+      "attribute": [
+        "name"
+      ]
+    },
+    {
+      "resource": "google_sql_database_instance.database",
+      "attribute": [
+        "settings",
+        0,
+        "ip_configuration",
+        0,
+        "psc_config"
+      ]
+    },
+    {
+      "resource": "google_sql_database_instance.database",
+      "attribute": [
+        "server_ca_cert",
+        0,
+        "cert"
+      ]
+    },
+    {
+      "resource": "google_sql_database_instance.database",
+      "attribute": [
+        "dns_names"
+      ]
+    }
+  ],
+  "timestamp": "2026-11-06T17:58:52Z",
+  "errored": false
+}

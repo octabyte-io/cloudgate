@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: maintenance-flow-gets-a-page
+expected_outcome: |
+  A one-or-two-sentence answer first, then a self-contained HTML page (the flow has several 
+  steps) tracing a git push from the webhook through the maintenance check to the 409 and the 
+  queue claim, each step citing its file, in plain words. Nothing in the repo is changed.

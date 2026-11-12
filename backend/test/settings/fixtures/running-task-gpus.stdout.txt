@@ -1,0 +1,3 @@
+h45im9whj1opzfk5lrj57j8y3 [{"NamedResourceSpec":{"Kind":"GPU","Value":"GPU-fake-uuid-1"}}]
+q7cf8ph62j30i7fpyq4xq4zpz [{"NamedResourceSpec":{"Kind":"GPU","Value":"GPU-fake-uuid-2"}}]
+nvv4fcib7b81n4yg135o5dnqq null

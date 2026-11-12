@@ -1,0 +1,1 @@
+ALTER TABLE "bucket" ADD COLUMN "google_project_number" text;

@@ -1,0 +1,31 @@
+{
+  "name": "api-schemas",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Plain zod schemas shared by the backend and the Cloudgate CLI (ADR 0046).",
+  "license": "Elastic-2.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "source": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "zod": "^4.4.3"
+  }
+}

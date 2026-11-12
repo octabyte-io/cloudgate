@@ -1,0 +1,1 @@
+ALTER TABLE "application" ADD COLUMN "requested_preview_limit" integer DEFAULT 3 NOT NULL;

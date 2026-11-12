@@ -1,0 +1,128 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "planned_values": {
+    "root_module": {}
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "root_module": {
+        "resources": [
+          {
+            "address": "data.aws_elasticache_cluster.cache",
+            "mode": "data",
+            "type": "aws_elasticache_cluster",
+            "name": "cache",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "arn": "arn:aws:elasticache:eu-central-1:123456789012:cluster:acme-cache-001",
+              "availability_zone": "eu-central-1a",
+              "cache_nodes": [
+                {
+                  "address": "acme-cache-001.acme-cache.x1y2z3.euc1.cache.amazonaws.com",
+                  "availability_zone": "eu-central-1a",
+                  "id": "0001",
+                  "outpost_arn": "",
+                  "port": 6379
+                }
+              ],
+              "cluster_address": null,
+              "cluster_id": "acme-cache-001",
+              "configuration_endpoint": null,
+              "engine": "valkey",
+              "engine_version": "8.0.1",
+              "id": "acme-cache-001",
+              "ip_discovery": "ipv4",
+              "log_delivery_configuration": [],
+              "maintenance_window": "sun:05:00-sun:06:00",
+              "network_type": "ipv4",
+              "node_type": "cache.t4g.small",
+              "notification_topic_arn": "",
+              "num_cache_nodes": 1,
+              "parameter_group_name": "default.valkey8",
+              "port": 6379,
+              "preferred_outpost_arn": "",
+              "replication_group_id": "acme-cache",
+              "security_group_ids": ["sg-0acme6379"],
+              "snapshot_retention_limit": 1,
+              "snapshot_window": "03:00-04:00",
+              "subnet_group_name": "acme-cache-private",
+              "tags": {
+                "Team": "shop"
+              }
+            },
+            "sensitive_values": {
+              "cache_nodes": [{}],
+              "log_delivery_configuration": [],
+              "security_group_ids": [false],
+              "tags": {}
+            }
+          },
+          {
+            "address": "data.aws_elasticache_replication_group.cache",
+            "mode": "data",
+            "type": "aws_elasticache_replication_group",
+            "name": "cache",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "arn": "arn:aws:elasticache:eu-central-1:123456789012:replicationgroup:acme-cache",
+              "auth_token_enabled": true,
+              "automatic_failover_enabled": false,
+              "cluster_mode": "disabled",
+              "configuration_endpoint_address": "",
+              "description": "acme queues",
+              "id": "acme-cache",
+              "log_delivery_configuration": [],
+              "member_clusters": ["acme-cache-001"],
+              "multi_az_enabled": false,
+              "node_type": "cache.t4g.small",
+              "num_cache_clusters": 1,
+              "num_node_groups": 1,
+              "port": 6379,
+              "primary_endpoint_address": "master.acme-cache.x1y2z3.euc1.cache.amazonaws.com",
+              "reader_endpoint_address": "replica.acme-cache.x1y2z3.euc1.cache.amazonaws.com",
+              "replicas_per_node_group": 0,
+              "replication_group_id": "acme-cache",
+              "snapshot_retention_limit": 1,
+              "snapshot_window": "03:00-04:00"
+            },
+            "sensitive_values": {
+              "log_delivery_configuration": [],
+              "member_clusters": [false]
+            }
+          },
+          {
+            "address": "data.aws_elasticache_subnet_group.cache",
+            "mode": "data",
+            "type": "aws_elasticache_subnet_group",
+            "name": "cache",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "arn": "arn:aws:elasticache:eu-central-1:123456789012:subnetgroup:acme-cache-private",
+              "description": "acme private subnets",
+              "id": "acme-cache-private",
+              "name": "acme-cache-private",
+              "subnet_ids": ["subnet-0acme1", "subnet-0acme2"],
+              "tags": {},
+              "vpc_id": "vpc-0f00ba11"
+            },
+            "sensitive_values": {
+              "subnet_ids": [false, false],
+              "tags": {}
+            }
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {},
+  "timestamp": "2026-10-17T11:02:17Z",
+  "applyable": false,
+  "complete": true,
+  "errored": false
+}

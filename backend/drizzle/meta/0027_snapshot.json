@@ -1,0 +1,4884 @@
+{
+  "id": "f92f9565-68e0-4ae4-9dd1-1e4cd9538aaf",
+  "prevId": "64575c30-af4d-4695-bee1-29f39d44d112",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.application": {
+      "name": "application",
+      "schema": "",
+      "columns": {
+        "application_id": {
+          "name": "application_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "app_name": {
+          "name": "app_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "env": {
+          "name": "env",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "build_args": {
+          "name": "build_args",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "build_secrets": {
+          "name": "build_secrets",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "watch_paths": {
+          "name": "watch_paths",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory_reservation": {
+          "name": "memory_reservation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory_limit": {
+          "name": "memory_limit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpu_reservation": {
+          "name": "cpu_reservation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpu_limit": {
+          "name": "cpu_limit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "command": {
+          "name": "command",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "args": {
+          "name": "args",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_type": {
+          "name": "source_type",
+          "type": "source_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'github'"
+        },
+        "clean_cache": {
+          "name": "clean_cache",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "repository": {
+          "name": "repository",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "owner": {
+          "name": "owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "branch": {
+          "name": "branch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "build_path": {
+          "name": "build_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'/'"
+        },
+        "trigger_type": {
+          "name": "trigger_type",
+          "type": "trigger_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'push'"
+        },
+        "auto_deploy": {
+          "name": "auto_deploy",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitlab_project_id": {
+          "name": "gitlab_project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitlab_repository": {
+          "name": "gitlab_repository",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitlab_owner": {
+          "name": "gitlab_owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitlab_branch": {
+          "name": "gitlab_branch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitlab_build_path": {
+          "name": "gitlab_build_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'/'"
+        },
+        "gitlab_path_namespace": {
+          "name": "gitlab_path_namespace",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitea_repository": {
+          "name": "gitea_repository",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitea_owner": {
+          "name": "gitea_owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitea_branch": {
+          "name": "gitea_branch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitea_build_path": {
+          "name": "gitea_build_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'/'"
+        },
+        "bitbucket_repository": {
+          "name": "bitbucket_repository",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bitbucket_repository_slug": {
+          "name": "bitbucket_repository_slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bitbucket_owner": {
+          "name": "bitbucket_owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bitbucket_branch": {
+          "name": "bitbucket_branch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bitbucket_build_path": {
+          "name": "bitbucket_build_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'/'"
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "docker_image": {
+          "name": "docker_image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "registry_url": {
+          "name": "registry_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "custom_git_url": {
+          "name": "custom_git_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "custom_git_branch": {
+          "name": "custom_git_branch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "custom_git_build_path": {
+          "name": "custom_git_build_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "custom_git_ssh_key_id": {
+          "name": "custom_git_ssh_key_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "enable_submodules": {
+          "name": "enable_submodules",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "dockerfile": {
+          "name": "dockerfile",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'Dockerfile'"
+        },
+        "docker_context_path": {
+          "name": "docker_context_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "docker_build_stage": {
+          "name": "docker_build_stage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "drop_build_path": {
+          "name": "drop_build_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "health_check_swarm": {
+          "name": "health_check_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "restart_policy_swarm": {
+          "name": "restart_policy_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "placement_swarm": {
+          "name": "placement_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "update_config_swarm": {
+          "name": "update_config_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rollback_config_swarm": {
+          "name": "rollback_config_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mode_swarm": {
+          "name": "mode_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "labels_swarm": {
+          "name": "labels_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "network_swarm": {
+          "name": "network_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stop_grace_period_swarm": {
+          "name": "stop_grace_period_swarm",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "endpoint_spec_swarm": {
+          "name": "endpoint_spec_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ulimits_swarm": {
+          "name": "ulimits_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rollback_active": {
+          "name": "rollback_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_preview_deployments_active": {
+          "name": "is_preview_deployments_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "preview_wildcard": {
+          "name": "preview_wildcard",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "replicas": {
+          "name": "replicas",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "application_status": {
+          "name": "application_status",
+          "type": "application_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'idle'"
+        },
+        "build_type": {
+          "name": "build_type",
+          "type": "build_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'nixpacks'"
+        },
+        "railpack_version": {
+          "name": "railpack_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0.15.4'"
+        },
+        "heroku_version": {
+          "name": "heroku_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'24'"
+        },
+        "publish_directory": {
+          "name": "publish_directory",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_static_spa": {
+          "name": "is_static_spa",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "create_env_file": {
+          "name": "create_env_file",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "registry_id": {
+          "name": "registry_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "build_registry_id": {
+          "name": "build_registry_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "environment_id": {
+          "name": "environment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "github_id": {
+          "name": "github_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitlab_id": {
+          "name": "gitlab_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitea_id": {
+          "name": "gitea_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bitbucket_id": {
+          "name": "bitbucket_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "server_id": {
+          "name": "server_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "build_server_id": {
+          "name": "build_server_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "application_custom_git_ssh_key_id_ssh_key_ssh_key_id_fk": {
+          "name": "application_custom_git_ssh_key_id_ssh_key_ssh_key_id_fk",
+          "tableFrom": "application",
+          "tableTo": "ssh_key",
+          "columnsFrom": [
+            "custom_git_ssh_key_id"
+          ],
+          "columnsTo": [
+            "ssh_key_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "application_registry_id_registry_registry_id_fk": {
+          "name": "application_registry_id_registry_registry_id_fk",
+          "tableFrom": "application",
+          "tableTo": "registry",
+          "columnsFrom": [
+            "registry_id"
+          ],
+          "columnsTo": [
+            "registry_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "application_build_registry_id_registry_registry_id_fk": {
+          "name": "application_build_registry_id_registry_registry_id_fk",
+          "tableFrom": "application",
+          "tableTo": "registry",
+          "columnsFrom": [
+            "build_registry_id"
+          ],
+          "columnsTo": [
+            "registry_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "application_environment_id_environment_environment_id_fk": {
+          "name": "application_environment_id_environment_environment_id_fk",
+          "tableFrom": "application",
+          "tableTo": "environment",
+          "columnsFrom": [
+            "environment_id"
+          ],
+          "columnsTo": [
+            "environment_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "application_github_id_github_github_id_fk": {
+          "name": "application_github_id_github_github_id_fk",
+          "tableFrom": "application",
+          "tableTo": "github",
+          "columnsFrom": [
+            "github_id"
+          ],
+          "columnsTo": [
+            "github_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "application_gitlab_id_gitlab_gitlab_id_fk": {
+          "name": "application_gitlab_id_gitlab_gitlab_id_fk",
+          "tableFrom": "application",
+          "tableTo": "gitlab",
+          "columnsFrom": [
+            "gitlab_id"
+          ],
+          "columnsTo": [
+            "gitlab_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "application_gitea_id_gitea_gitea_id_fk": {
+          "name": "application_gitea_id_gitea_gitea_id_fk",
+          "tableFrom": "application",
+          "tableTo": "gitea",
+          "columnsFrom": [
+            "gitea_id"
+          ],
+          "columnsTo": [
+            "gitea_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "application_bitbucket_id_bitbucket_bitbucket_id_fk": {
+          "name": "application_bitbucket_id_bitbucket_bitbucket_id_fk",
+          "tableFrom": "application",
+          "tableTo": "bitbucket",
+          "columnsFrom": [
+            "bitbucket_id"
+          ],
+          "columnsTo": [
+            "bitbucket_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "application_server_id_server_server_id_fk": {
+          "name": "application_server_id_server_server_id_fk",
+          "tableFrom": "application",
+          "tableTo": "server",
+          "columnsFrom": [
+            "server_id"
+          ],
+          "columnsTo": [
+            "server_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "application_build_server_id_server_server_id_fk": {
+          "name": "application_build_server_id_server_server_id_fk",
+          "tableFrom": "application",
+          "tableTo": "server",
+          "columnsFrom": [
+            "build_server_id"
+          ],
+          "columnsTo": [
+            "server_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "application_app_name_unique": {
+          "name": "application_app_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "app_name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.account": {
+      "name": "account",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_id": {
+          "name": "provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_token": {
+          "name": "id_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "access_token_expires_at": {
+          "name": "access_token_expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token_expires_at": {
+          "name": "refresh_token_expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "account_user_id_user_id_fk": {
+          "name": "account_user_id_user_id_fk",
+          "tableFrom": "account",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.apikey": {
+      "name": "apikey",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start": {
+          "name": "start",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prefix": {
+          "name": "prefix",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "config_id": {
+          "name": "config_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'default'"
+        },
+        "reference_id": {
+          "name": "reference_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "refill_interval": {
+          "name": "refill_interval",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refill_amount": {
+          "name": "refill_amount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_refill_at": {
+          "name": "last_refill_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_limit_enabled": {
+          "name": "rate_limit_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_limit_time_window": {
+          "name": "rate_limit_time_window",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_limit_max": {
+          "name": "rate_limit_max",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_count": {
+          "name": "request_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "remaining": {
+          "name": "remaining",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_request": {
+          "name": "last_request",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "permissions": {
+          "name": "permissions",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "apikey_reference_id_user_id_fk": {
+          "name": "apikey_reference_id_user_id_fk",
+          "tableFrom": "apikey",
+          "tableTo": "user",
+          "columnsFrom": [
+            "reference_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.session": {
+      "name": "session",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "impersonated_by": {
+          "name": "impersonated_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "active_organization_id": {
+          "name": "active_organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "active_team_id": {
+          "name": "active_team_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "session_user_id_user_id_fk": {
+          "name": "session_user_id_user_id_fk",
+          "tableFrom": "session",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "session_token_unique": {
+          "name": "session_token_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.two_factor": {
+      "name": "two_factor",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "secret": {
+          "name": "secret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "backup_codes": {
+          "name": "backup_codes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "verified": {
+          "name": "verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "failed_verification_count": {
+          "name": "failed_verification_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locked_until": {
+          "name": "locked_until",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "two_factor_user_id_user_id_fk": {
+          "name": "two_factor_user_id_user_id_fk",
+          "tableFrom": "two_factor",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user": {
+      "name": "user",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "firstName": {
+          "name": "firstName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "lastName": {
+          "name": "lastName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email_verified": {
+          "name": "email_verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "image": {
+          "name": "image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "two_factor_enabled": {
+          "name": "two_factor_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'user'"
+        },
+        "banned": {
+          "name": "banned",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ban_reason": {
+          "name": "ban_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ban_expires": {
+          "name": "ban_expires",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "user_email_unique": {
+          "name": "user_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.verification": {
+      "name": "verification",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "identifier": {
+          "name": "identifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.compose": {
+      "name": "compose",
+      "schema": "",
+      "columns": {
+        "compose_id": {
+          "name": "compose_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "app_name": {
+          "name": "app_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "env": {
+          "name": "env",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "compose_file": {
+          "name": "compose_file",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_type": {
+          "name": "source_type",
+          "type": "source_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'github'"
+        },
+        "compose_type": {
+          "name": "compose_type",
+          "type": "compose_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'docker-compose'"
+        },
+        "repository": {
+          "name": "repository",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "owner": {
+          "name": "owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "branch": {
+          "name": "branch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "trigger_type": {
+          "name": "trigger_type",
+          "type": "trigger_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'push'"
+        },
+        "auto_deploy": {
+          "name": "auto_deploy",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitlab_project_id": {
+          "name": "gitlab_project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitlab_repository": {
+          "name": "gitlab_repository",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitlab_owner": {
+          "name": "gitlab_owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitlab_branch": {
+          "name": "gitlab_branch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitlab_path_namespace": {
+          "name": "gitlab_path_namespace",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitea_repository": {
+          "name": "gitea_repository",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitea_owner": {
+          "name": "gitea_owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitea_branch": {
+          "name": "gitea_branch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bitbucket_repository": {
+          "name": "bitbucket_repository",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bitbucket_repository_slug": {
+          "name": "bitbucket_repository_slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bitbucket_owner": {
+          "name": "bitbucket_owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bitbucket_branch": {
+          "name": "bitbucket_branch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "custom_git_url": {
+          "name": "custom_git_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "custom_git_branch": {
+          "name": "custom_git_branch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "custom_git_ssh_key_id": {
+          "name": "custom_git_ssh_key_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "command": {
+          "name": "command",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "enable_submodules": {
+          "name": "enable_submodules",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "compose_path": {
+          "name": "compose_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'./docker-compose.yml'"
+        },
+        "isolated_deployment": {
+          "name": "isolated_deployment",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "watch_paths": {
+          "name": "watch_paths",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "compose_status": {
+          "name": "compose_status",
+          "type": "application_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'idle'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "environment_id": {
+          "name": "environment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "github_id": {
+          "name": "github_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitlab_id": {
+          "name": "gitlab_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gitea_id": {
+          "name": "gitea_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bitbucket_id": {
+          "name": "bitbucket_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "server_id": {
+          "name": "server_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "compose_custom_git_ssh_key_id_ssh_key_ssh_key_id_fk": {
+          "name": "compose_custom_git_ssh_key_id_ssh_key_ssh_key_id_fk",
+          "tableFrom": "compose",
+          "tableTo": "ssh_key",
+          "columnsFrom": [
+            "custom_git_ssh_key_id"
+          ],
+          "columnsTo": [
+            "ssh_key_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "compose_environment_id_environment_environment_id_fk": {
+          "name": "compose_environment_id_environment_environment_id_fk",
+          "tableFrom": "compose",
+          "tableTo": "environment",
+          "columnsFrom": [
+            "environment_id"
+          ],
+          "columnsTo": [
+            "environment_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "compose_github_id_github_github_id_fk": {
+          "name": "compose_github_id_github_github_id_fk",
+          "tableFrom": "compose",
+          "tableTo": "github",
+          "columnsFrom": [
+            "github_id"
+          ],
+          "columnsTo": [
+            "github_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "compose_gitlab_id_gitlab_gitlab_id_fk": {
+          "name": "compose_gitlab_id_gitlab_gitlab_id_fk",
+          "tableFrom": "compose",
+          "tableTo": "gitlab",
+          "columnsFrom": [
+            "gitlab_id"
+          ],
+          "columnsTo": [
+            "gitlab_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "compose_gitea_id_gitea_gitea_id_fk": {
+          "name": "compose_gitea_id_gitea_gitea_id_fk",
+          "tableFrom": "compose",
+          "tableTo": "gitea",
+          "columnsFrom": [
+            "gitea_id"
+          ],
+          "columnsTo": [
+            "gitea_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "compose_bitbucket_id_bitbucket_bitbucket_id_fk": {
+          "name": "compose_bitbucket_id_bitbucket_bitbucket_id_fk",
+          "tableFrom": "compose",
+          "tableTo": "bitbucket",
+          "columnsFrom": [
+            "bitbucket_id"
+          ],
+          "columnsTo": [
+            "bitbucket_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "compose_server_id_server_server_id_fk": {
+          "name": "compose_server_id_server_server_id_fk",
+          "tableFrom": "compose",
+          "tableTo": "server",
+          "columnsFrom": [
+            "server_id"
+          ],
+          "columnsTo": [
+            "server_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "compose_app_name_unique": {
+          "name": "compose_app_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "app_name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.libsql": {
+      "name": "libsql",
+      "schema": "",
+      "columns": {
+        "libsql_id": {
+          "name": "libsql_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "app_name": {
+          "name": "app_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "database_user": {
+          "name": "database_user",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "database_password": {
+          "name": "database_password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sqld_node": {
+          "name": "sqld_node",
+          "type": "sqld_node",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'primary'"
+        },
+        "sqld_primary_url": {
+          "name": "sqld_primary_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "enable_namespaces": {
+          "name": "enable_namespaces",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "docker_image": {
+          "name": "docker_image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ghcr.io/tursodatabase/libsql-server:v0.24.32'"
+        },
+        "command": {
+          "name": "command",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "args": {
+          "name": "args",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "env": {
+          "name": "env",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory_reservation": {
+          "name": "memory_reservation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory_limit": {
+          "name": "memory_limit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpu_reservation": {
+          "name": "cpu_reservation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpu_limit": {
+          "name": "cpu_limit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "external_port": {
+          "name": "external_port",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "external_grpc_port": {
+          "name": "external_grpc_port",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "external_admin_port": {
+          "name": "external_admin_port",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "application_status": {
+          "name": "application_status",
+          "type": "application_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'idle'"
+        },
+        "health_check_swarm": {
+          "name": "health_check_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "restart_policy_swarm": {
+          "name": "restart_policy_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "placement_swarm": {
+          "name": "placement_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "update_config_swarm": {
+          "name": "update_config_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rollback_config_swarm": {
+          "name": "rollback_config_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mode_swarm": {
+          "name": "mode_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "labels_swarm": {
+          "name": "labels_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "network_swarm": {
+          "name": "network_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stop_grace_period_swarm": {
+          "name": "stop_grace_period_swarm",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "endpoint_spec_swarm": {
+          "name": "endpoint_spec_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ulimits_swarm": {
+          "name": "ulimits_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "replicas": {
+          "name": "replicas",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "environment_id": {
+          "name": "environment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "server_id": {
+          "name": "server_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "libsql_environment_id_environment_environment_id_fk": {
+          "name": "libsql_environment_id_environment_environment_id_fk",
+          "tableFrom": "libsql",
+          "tableTo": "environment",
+          "columnsFrom": [
+            "environment_id"
+          ],
+          "columnsTo": [
+            "environment_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "libsql_server_id_server_server_id_fk": {
+          "name": "libsql_server_id_server_server_id_fk",
+          "tableFrom": "libsql",
+          "tableTo": "server",
+          "columnsFrom": [
+            "server_id"
+          ],
+          "columnsTo": [
+            "server_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "libsql_app_name_unique": {
+          "name": "libsql_app_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "app_name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.mariadb": {
+      "name": "mariadb",
+      "schema": "",
+      "columns": {
+        "mariadb_id": {
+          "name": "mariadb_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "app_name": {
+          "name": "app_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "database_name": {
+          "name": "database_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "database_user": {
+          "name": "database_user",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "database_password": {
+          "name": "database_password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "database_root_password": {
+          "name": "database_root_password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "docker_image": {
+          "name": "docker_image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'mariadb:6'"
+        },
+        "command": {
+          "name": "command",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "args": {
+          "name": "args",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "env": {
+          "name": "env",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory_reservation": {
+          "name": "memory_reservation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory_limit": {
+          "name": "memory_limit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpu_reservation": {
+          "name": "cpu_reservation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpu_limit": {
+          "name": "cpu_limit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "external_port": {
+          "name": "external_port",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "application_status": {
+          "name": "application_status",
+          "type": "application_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'idle'"
+        },
+        "health_check_swarm": {
+          "name": "health_check_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "restart_policy_swarm": {
+          "name": "restart_policy_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "placement_swarm": {
+          "name": "placement_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "update_config_swarm": {
+          "name": "update_config_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rollback_config_swarm": {
+          "name": "rollback_config_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mode_swarm": {
+          "name": "mode_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "labels_swarm": {
+          "name": "labels_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "network_swarm": {
+          "name": "network_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stop_grace_period_swarm": {
+          "name": "stop_grace_period_swarm",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "endpoint_spec_swarm": {
+          "name": "endpoint_spec_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ulimits_swarm": {
+          "name": "ulimits_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "replicas": {
+          "name": "replicas",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "environment_id": {
+          "name": "environment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "server_id": {
+          "name": "server_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "mariadb_environment_id_environment_environment_id_fk": {
+          "name": "mariadb_environment_id_environment_environment_id_fk",
+          "tableFrom": "mariadb",
+          "tableTo": "environment",
+          "columnsFrom": [
+            "environment_id"
+          ],
+          "columnsTo": [
+            "environment_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "mariadb_server_id_server_server_id_fk": {
+          "name": "mariadb_server_id_server_server_id_fk",
+          "tableFrom": "mariadb",
+          "tableTo": "server",
+          "columnsFrom": [
+            "server_id"
+          ],
+          "columnsTo": [
+            "server_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "mariadb_app_name_unique": {
+          "name": "mariadb_app_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "app_name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.mongo": {
+      "name": "mongo",
+      "schema": "",
+      "columns": {
+        "mongo_id": {
+          "name": "mongo_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "app_name": {
+          "name": "app_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "database_user": {
+          "name": "database_user",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "database_password": {
+          "name": "database_password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "docker_image": {
+          "name": "docker_image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'mongo:8'"
+        },
+        "command": {
+          "name": "command",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "args": {
+          "name": "args",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "env": {
+          "name": "env",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory_reservation": {
+          "name": "memory_reservation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory_limit": {
+          "name": "memory_limit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpu_reservation": {
+          "name": "cpu_reservation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpu_limit": {
+          "name": "cpu_limit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "external_port": {
+          "name": "external_port",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "application_status": {
+          "name": "application_status",
+          "type": "application_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'idle'"
+        },
+        "health_check_swarm": {
+          "name": "health_check_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "restart_policy_swarm": {
+          "name": "restart_policy_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "placement_swarm": {
+          "name": "placement_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "update_config_swarm": {
+          "name": "update_config_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rollback_config_swarm": {
+          "name": "rollback_config_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mode_swarm": {
+          "name": "mode_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "labels_swarm": {
+          "name": "labels_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "network_swarm": {
+          "name": "network_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stop_grace_period_swarm": {
+          "name": "stop_grace_period_swarm",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "endpoint_spec_swarm": {
+          "name": "endpoint_spec_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ulimits_swarm": {
+          "name": "ulimits_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "replicas": {
+          "name": "replicas",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "replica_sets": {
+          "name": "replica_sets",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "environment_id": {
+          "name": "environment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "server_id": {
+          "name": "server_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "mongo_environment_id_environment_environment_id_fk": {
+          "name": "mongo_environment_id_environment_environment_id_fk",
+          "tableFrom": "mongo",
+          "tableTo": "environment",
+          "columnsFrom": [
+            "environment_id"
+          ],
+          "columnsTo": [
+            "environment_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "mongo_server_id_server_server_id_fk": {
+          "name": "mongo_server_id_server_server_id_fk",
+          "tableFrom": "mongo",
+          "tableTo": "server",
+          "columnsFrom": [
+            "server_id"
+          ],
+          "columnsTo": [
+            "server_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "mongo_app_name_unique": {
+          "name": "mongo_app_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "app_name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.mysql": {
+      "name": "mysql",
+      "schema": "",
+      "columns": {
+        "mysql_id": {
+          "name": "mysql_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "app_name": {
+          "name": "app_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "database_name": {
+          "name": "database_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "database_user": {
+          "name": "database_user",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "database_password": {
+          "name": "database_password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "database_root_password": {
+          "name": "database_root_password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "docker_image": {
+          "name": "docker_image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'mysql:8'"
+        },
+        "command": {
+          "name": "command",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "args": {
+          "name": "args",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "env": {
+          "name": "env",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory_reservation": {
+          "name": "memory_reservation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory_limit": {
+          "name": "memory_limit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpu_reservation": {
+          "name": "cpu_reservation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpu_limit": {
+          "name": "cpu_limit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "external_port": {
+          "name": "external_port",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "application_status": {
+          "name": "application_status",
+          "type": "application_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'idle'"
+        },
+        "health_check_swarm": {
+          "name": "health_check_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "restart_policy_swarm": {
+          "name": "restart_policy_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "placement_swarm": {
+          "name": "placement_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "update_config_swarm": {
+          "name": "update_config_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rollback_config_swarm": {
+          "name": "rollback_config_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mode_swarm": {
+          "name": "mode_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "labels_swarm": {
+          "name": "labels_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "network_swarm": {
+          "name": "network_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stop_grace_period_swarm": {
+          "name": "stop_grace_period_swarm",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "endpoint_spec_swarm": {
+          "name": "endpoint_spec_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ulimits_swarm": {
+          "name": "ulimits_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "replicas": {
+          "name": "replicas",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "environment_id": {
+          "name": "environment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "server_id": {
+          "name": "server_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "mysql_environment_id_environment_environment_id_fk": {
+          "name": "mysql_environment_id_environment_environment_id_fk",
+          "tableFrom": "mysql",
+          "tableTo": "environment",
+          "columnsFrom": [
+            "environment_id"
+          ],
+          "columnsTo": [
+            "environment_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "mysql_server_id_server_server_id_fk": {
+          "name": "mysql_server_id_server_server_id_fk",
+          "tableFrom": "mysql",
+          "tableTo": "server",
+          "columnsFrom": [
+            "server_id"
+          ],
+          "columnsTo": [
+            "server_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "mysql_app_name_unique": {
+          "name": "mysql_app_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "app_name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.postgres": {
+      "name": "postgres",
+      "schema": "",
+      "columns": {
+        "postgres_id": {
+          "name": "postgres_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "app_name": {
+          "name": "app_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "database_name": {
+          "name": "database_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "database_user": {
+          "name": "database_user",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "database_password": {
+          "name": "database_password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "docker_image": {
+          "name": "docker_image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'postgres:18'"
+        },
+        "command": {
+          "name": "command",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "args": {
+          "name": "args",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "env": {
+          "name": "env",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory_reservation": {
+          "name": "memory_reservation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory_limit": {
+          "name": "memory_limit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpu_reservation": {
+          "name": "cpu_reservation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpu_limit": {
+          "name": "cpu_limit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "external_port": {
+          "name": "external_port",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "application_status": {
+          "name": "application_status",
+          "type": "application_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'idle'"
+        },
+        "health_check_swarm": {
+          "name": "health_check_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "restart_policy_swarm": {
+          "name": "restart_policy_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "placement_swarm": {
+          "name": "placement_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "update_config_swarm": {
+          "name": "update_config_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rollback_config_swarm": {
+          "name": "rollback_config_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mode_swarm": {
+          "name": "mode_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "labels_swarm": {
+          "name": "labels_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "network_swarm": {
+          "name": "network_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stop_grace_period_swarm": {
+          "name": "stop_grace_period_swarm",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "endpoint_spec_swarm": {
+          "name": "endpoint_spec_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ulimits_swarm": {
+          "name": "ulimits_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "replicas": {
+          "name": "replicas",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "environment_id": {
+          "name": "environment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "server_id": {
+          "name": "server_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "postgres_environment_id_environment_environment_id_fk": {
+          "name": "postgres_environment_id_environment_environment_id_fk",
+          "tableFrom": "postgres",
+          "tableTo": "environment",
+          "columnsFrom": [
+            "environment_id"
+          ],
+          "columnsTo": [
+            "environment_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "postgres_server_id_server_server_id_fk": {
+          "name": "postgres_server_id_server_server_id_fk",
+          "tableFrom": "postgres",
+          "tableTo": "server",
+          "columnsFrom": [
+            "server_id"
+          ],
+          "columnsTo": [
+            "server_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "postgres_app_name_unique": {
+          "name": "postgres_app_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "app_name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.redis": {
+      "name": "redis",
+      "schema": "",
+      "columns": {
+        "redis_id": {
+          "name": "redis_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "app_name": {
+          "name": "app_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "database_password": {
+          "name": "database_password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "docker_image": {
+          "name": "docker_image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'redis:8'"
+        },
+        "command": {
+          "name": "command",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "args": {
+          "name": "args",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "env": {
+          "name": "env",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory_reservation": {
+          "name": "memory_reservation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory_limit": {
+          "name": "memory_limit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpu_reservation": {
+          "name": "cpu_reservation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpu_limit": {
+          "name": "cpu_limit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "external_port": {
+          "name": "external_port",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "application_status": {
+          "name": "application_status",
+          "type": "application_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'idle'"
+        },
+        "health_check_swarm": {
+          "name": "health_check_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "restart_policy_swarm": {
+          "name": "restart_policy_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "placement_swarm": {
+          "name": "placement_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "update_config_swarm": {
+          "name": "update_config_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rollback_config_swarm": {
+          "name": "rollback_config_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mode_swarm": {
+          "name": "mode_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "labels_swarm": {
+          "name": "labels_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "network_swarm": {
+          "name": "network_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stop_grace_period_swarm": {
+          "name": "stop_grace_period_swarm",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "endpoint_spec_swarm": {
+          "name": "endpoint_spec_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ulimits_swarm": {
+          "name": "ulimits_swarm",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "replicas": {
+          "name": "replicas",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "environment_id": {
+          "name": "environment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "server_id": {
+          "name": "server_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "redis_environment_id_environment_environment_id_fk": {
+          "name": "redis_environment_id_environment_environment_id_fk",
+          "tableFrom": "redis",
+          "tableTo": "environment",
+          "columnsFrom": [
+            "environment_id"
+          ],
+          "columnsTo": [
+            "environment_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "redis_server_id_server_server_id_fk": {
+          "name": "redis_server_id_server_server_id_fk",
+          "tableFrom": "redis",
+          "tableTo": "server",
+          "columnsFrom": [
+            "server_id"
+          ],
+          "columnsTo": [
+            "server_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "redis_app_name_unique": {
+          "name": "redis_app_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "app_name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.deployment": {
+      "name": "deployment",
+      "schema": "",
+      "columns": {
+        "deployment_id": {
+          "name": "deployment_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "deployment_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "log_path": {
+          "name": "log_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "application_id": {
+          "name": "application_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "compose_id": {
+          "name": "compose_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "deployment_application_id_application_application_id_fk": {
+          "name": "deployment_application_id_application_application_id_fk",
+          "tableFrom": "deployment",
+          "tableTo": "application",
+          "columnsFrom": [
+            "application_id"
+          ],
+          "columnsTo": [
+            "application_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "deployment_compose_id_compose_compose_id_fk": {
+          "name": "deployment_compose_id_compose_compose_id_fk",
+          "tableFrom": "deployment",
+          "tableTo": "compose",
+          "columnsFrom": [
+            "compose_id"
+          ],
+          "columnsTo": [
+            "compose_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.environment": {
+      "name": "environment",
+      "schema": "",
+      "columns": {
+        "environment_id": {
+          "name": "environment_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "env": {
+          "name": "env",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "environment_project_id_project_project_id_fk": {
+          "name": "environment_project_id_project_project_id_fk",
+          "tableFrom": "environment",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "project_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.git_provider": {
+      "name": "git_provider",
+      "schema": "",
+      "columns": {
+        "git_provider_id": {
+          "name": "git_provider_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_type": {
+          "name": "provider_type",
+          "type": "git_provider_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'github'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "git_provider_organization_id_organization_id_fk": {
+          "name": "git_provider_organization_id_organization_id_fk",
+          "tableFrom": "git_provider",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bitbucket": {
+      "name": "bitbucket",
+      "schema": "",
+      "columns": {
+        "bitbucket_id": {
+          "name": "bitbucket_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "bitbucket_username": {
+          "name": "bitbucket_username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bitbucket_email": {
+          "name": "bitbucket_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "app_password": {
+          "name": "app_password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "api_token": {
+          "name": "api_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bitbucket_workspace_name": {
+          "name": "bitbucket_workspace_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "git_provider_id": {
+          "name": "git_provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "bitbucket_git_provider_id_git_provider_git_provider_id_fk": {
+          "name": "bitbucket_git_provider_id_git_provider_git_provider_id_fk",
+          "tableFrom": "bitbucket",
+          "tableTo": "git_provider",
+          "columnsFrom": [
+            "git_provider_id"
+          ],
+          "columnsTo": [
+            "git_provider_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.gitea": {
+      "name": "gitea",
+      "schema": "",
+      "columns": {
+        "gitea_id": {
+          "name": "gitea_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "gitea_url": {
+          "name": "gitea_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'https://gitea.com'"
+        },
+        "gitea_internal_url": {
+          "name": "gitea_internal_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "redirect_uri": {
+          "name": "redirect_uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "client_id": {
+          "name": "client_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "client_secret": {
+          "name": "client_secret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scopes": {
+          "name": "scopes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'repo,repo:status,read:user,read:org'"
+        },
+        "last_authenticated_at": {
+          "name": "last_authenticated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "git_provider_id": {
+          "name": "git_provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "gitea_git_provider_id_git_provider_git_provider_id_fk": {
+          "name": "gitea_git_provider_id_git_provider_git_provider_id_fk",
+          "tableFrom": "gitea",
+          "tableTo": "git_provider",
+          "columnsFrom": [
+            "git_provider_id"
+          ],
+          "columnsTo": [
+            "git_provider_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.github": {
+      "name": "github",
+      "schema": "",
+      "columns": {
+        "github_id": {
+          "name": "github_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "app_name": {
+          "name": "app_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "app_id": {
+          "name": "app_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "client_id": {
+          "name": "client_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "client_secret": {
+          "name": "client_secret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "installation_id": {
+          "name": "installation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "private_key": {
+          "name": "private_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "webhook_secret": {
+          "name": "webhook_secret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "git_provider_id": {
+          "name": "git_provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "github_git_provider_id_git_provider_git_provider_id_fk": {
+          "name": "github_git_provider_id_git_provider_git_provider_id_fk",
+          "tableFrom": "github",
+          "tableTo": "git_provider",
+          "columnsFrom": [
+            "git_provider_id"
+          ],
+          "columnsTo": [
+            "git_provider_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.gitlab": {
+      "name": "gitlab",
+      "schema": "",
+      "columns": {
+        "gitlab_id": {
+          "name": "gitlab_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "gitlab_url": {
+          "name": "gitlab_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'https://gitlab.com'"
+        },
+        "gitlab_internal_url": {
+          "name": "gitlab_internal_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "application_id": {
+          "name": "application_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "redirect_uri": {
+          "name": "redirect_uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "secret": {
+          "name": "secret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "group_name": {
+          "name": "group_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "git_provider_id": {
+          "name": "git_provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "gitlab_git_provider_id_git_provider_git_provider_id_fk": {
+          "name": "gitlab_git_provider_id_git_provider_git_provider_id_fk",
+          "tableFrom": "gitlab",
+          "tableTo": "git_provider",
+          "columnsFrom": [
+            "git_provider_id"
+          ],
+          "columnsTo": [
+            "git_provider_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.invitation": {
+      "name": "invitation",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "team_id": {
+          "name": "team_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "inviter_id": {
+          "name": "inviter_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "invitation_organization_id_organization_id_fk": {
+          "name": "invitation_organization_id_organization_id_fk",
+          "tableFrom": "invitation",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "invitation_inviter_id_user_id_fk": {
+          "name": "invitation_inviter_id_user_id_fk",
+          "tableFrom": "invitation",
+          "tableTo": "user",
+          "columnsFrom": [
+            "inviter_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.member": {
+      "name": "member",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_default": {
+          "name": "is_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "accessed_projects": {
+          "name": "accessed_projects",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
+        },
+        "accessed_services": {
+          "name": "accessed_services",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
+        },
+        "accessed_environments": {
+          "name": "accessed_environments",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "member_organization_id_organization_id_fk": {
+          "name": "member_organization_id_organization_id_fk",
+          "tableFrom": "member",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "member_user_id_user_id_fk": {
+          "name": "member_user_id_user_id_fk",
+          "tableFrom": "member",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.organization": {
+      "name": "organization",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "logo": {
+          "name": "logo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "organization_owner_id_user_id_fk": {
+          "name": "organization_owner_id_user_id_fk",
+          "tableFrom": "organization",
+          "tableTo": "user",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "organization_slug_unique": {
+          "name": "organization_slug_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.team": {
+      "name": "team",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "team_organization_id_organization_id_fk": {
+          "name": "team_organization_id_organization_id_fk",
+          "tableFrom": "team",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.team_member": {
+      "name": "team_member",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "team_id": {
+          "name": "team_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "team_member_team_id_team_id_fk": {
+          "name": "team_member_team_id_team_id_fk",
+          "tableFrom": "team_member",
+          "tableTo": "team",
+          "columnsFrom": [
+            "team_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "team_member_user_id_user_id_fk": {
+          "name": "team_member_user_id_user_id_fk",
+          "tableFrom": "team_member",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.preview_deployment": {
+      "name": "preview_deployment",
+      "schema": "",
+      "columns": {
+        "preview_deployment_id": {
+          "name": "preview_deployment_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "branch": {
+          "name": "branch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pull_request_id": {
+          "name": "pull_request_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pull_request_number": {
+          "name": "pull_request_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pull_request_title": {
+          "name": "pull_request_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pull_request_url": {
+          "name": "pull_request_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "app_name": {
+          "name": "app_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "domain": {
+          "name": "domain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "preview_status": {
+          "name": "preview_status",
+          "type": "application_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'idle'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "application_id": {
+          "name": "application_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "preview_deployment_application_id_application_application_id_fk": {
+          "name": "preview_deployment_application_id_application_application_id_fk",
+          "tableFrom": "preview_deployment",
+          "tableTo": "application",
+          "columnsFrom": [
+            "application_id"
+          ],
+          "columnsTo": [
+            "application_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "preview_deployment_app_name_unique": {
+          "name": "preview_deployment_app_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "app_name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.project": {
+      "name": "project",
+      "schema": "",
+      "columns": {
+        "project_id": {
+          "name": "project_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "env": {
+          "name": "env",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "project_organization_id_organization_id_fk": {
+          "name": "project_organization_id_organization_id_fk",
+          "tableFrom": "project",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.registry": {
+      "name": "registry",
+      "schema": "",
+      "columns": {
+        "registry_id": {
+          "name": "registry_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "image_prefix": {
+          "name": "image_prefix",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "registry_type": {
+          "name": "registry_type",
+          "type": "registry_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'cloud'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "registry_organization_id_organization_id_fk": {
+          "name": "registry_organization_id_organization_id_fk",
+          "tableFrom": "registry",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rollback": {
+      "name": "rollback",
+      "schema": "",
+      "columns": {
+        "rollback_id": {
+          "name": "rollback_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "deployment_id": {
+          "name": "deployment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "serial",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "image": {
+          "name": "image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "full_context": {
+          "name": "full_context",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rollback_deployment_id_deployment_deployment_id_fk": {
+          "name": "rollback_deployment_id_deployment_deployment_id_fk",
+          "tableFrom": "rollback",
+          "tableTo": "deployment",
+          "columnsFrom": [
+            "deployment_id"
+          ],
+          "columnsTo": [
+            "deployment_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.server": {
+      "name": "server",
+      "schema": "",
+      "columns": {
+        "server_id": {
+          "name": "server_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "port": {
+          "name": "port",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'root'"
+        },
+        "server_status": {
+          "name": "server_status",
+          "type": "server_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "server_type": {
+          "name": "server_type",
+          "type": "server_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'deploy'"
+        },
+        "command": {
+          "name": "command",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "ssh_key_id": {
+          "name": "ssh_key_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metrics_config": {
+          "name": "metrics_config",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{\"server\":{\"type\":\"Remote\",\"refreshRate\":60,\"port\":4500,\"token\":\"\",\"urlCallback\":\"\",\"cronJob\":\"\",\"retentionDays\":2,\"thresholds\":{\"cpu\":0,\"memory\":0}},\"containers\":{\"refreshRate\":60,\"services\":{\"include\":[],\"exclude\":[]}}}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "server_ssh_key_id_ssh_key_ssh_key_id_fk": {
+          "name": "server_ssh_key_id_ssh_key_ssh_key_id_fk",
+          "tableFrom": "server",
+          "tableTo": "ssh_key",
+          "columnsFrom": [
+            "ssh_key_id"
+          ],
+          "columnsTo": [
+            "ssh_key_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "server_organization_id_organization_id_fk": {
+          "name": "server_organization_id_organization_id_fk",
+          "tableFrom": "server",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ssh_key": {
+      "name": "ssh_key",
+      "schema": "",
+      "columns": {
+        "ssh_key_id": {
+          "name": "ssh_key_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "public_key": {
+          "name": "public_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "private_key": {
+          "name": "private_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_used_at": {
+          "name": "last_used_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ssh_key_organization_id_organization_id_fk": {
+          "name": "ssh_key_organization_id_organization_id_fk",
+          "tableFrom": "ssh_key",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.project_tag": {
+      "name": "project_tag",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tag_id": {
+          "name": "tag_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "project_tag_project_id_project_project_id_fk": {
+          "name": "project_tag_project_id_project_project_id_fk",
+          "tableFrom": "project_tag",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "project_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "project_tag_tag_id_tag_tag_id_fk": {
+          "name": "project_tag_tag_id_tag_tag_id_fk",
+          "tableFrom": "project_tag",
+          "tableTo": "tag",
+          "columnsFrom": [
+            "tag_id"
+          ],
+          "columnsTo": [
+            "tag_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "unique_project_tag": {
+          "name": "unique_project_tag",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "tag_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.tag": {
+      "name": "tag",
+      "schema": "",
+      "columns": {
+        "tag_id": {
+          "name": "tag_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "color": {
+          "name": "color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "tag_organization_id_organization_id_fk": {
+          "name": "tag_organization_id_organization_id_fk",
+          "tableFrom": "tag",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "unique_org_tag_name": {
+          "name": "unique_org_tag_name",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.application_status": {
+      "name": "application_status",
+      "schema": "public",
+      "values": [
+        "idle",
+        "running",
+        "done",
+        "error"
+      ]
+    },
+    "public.build_type": {
+      "name": "build_type",
+      "schema": "public",
+      "values": [
+        "dockerfile",
+        "heroku_buildpacks",
+        "paketo_buildpacks",
+        "nixpacks",
+        "static",
+        "railpack"
+      ]
+    },
+    "public.service_type": {
+      "name": "service_type",
+      "schema": "public",
+      "values": [
+        "application",
+        "postgres",
+        "mysql",
+        "mariadb",
+        "mongo",
+        "redis",
+        "compose",
+        "libsql"
+      ]
+    },
+    "public.trigger_type": {
+      "name": "trigger_type",
+      "schema": "public",
+      "values": [
+        "push",
+        "tag"
+      ]
+    },
+    "public.compose_type": {
+      "name": "compose_type",
+      "schema": "public",
+      "values": [
+        "docker-compose",
+        "stack"
+      ]
+    },
+    "public.database_type": {
+      "name": "database_type",
+      "schema": "public",
+      "values": [
+        "postgres",
+        "mariadb",
+        "mysql",
+        "mongo",
+        "web-server",
+        "libsql"
+      ]
+    },
+    "public.sqld_node": {
+      "name": "sqld_node",
+      "schema": "public",
+      "values": [
+        "primary",
+        "replica"
+      ]
+    },
+    "public.deployment_status": {
+      "name": "deployment_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "running",
+        "done",
+        "error",
+        "cancelled"
+      ]
+    },
+    "public.git_provider_type": {
+      "name": "git_provider_type",
+      "schema": "public",
+      "values": [
+        "github",
+        "gitlab",
+        "bitbucket",
+        "gitea"
+      ]
+    },
+    "public.source_type": {
+      "name": "source_type",
+      "schema": "public",
+      "values": [
+        "docker",
+        "git",
+        "github",
+        "gitlab",
+        "bitbucket",
+        "gitea",
+        "drop",
+        "raw"
+      ]
+    },
+    "public.registry_type": {
+      "name": "registry_type",
+      "schema": "public",
+      "values": [
+        "selfHosted",
+        "cloud"
+      ]
+    },
+    "public.server_status": {
+      "name": "server_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "inactive"
+      ]
+    },
+    "public.server_type": {
+      "name": "server_type",
+      "schema": "public",
+      "values": [
+        "deploy",
+        "build"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

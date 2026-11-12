@@ -1,0 +1,53 @@
+{
+  "name": "@octabyte-io/cloudgate",
+  "version": "0.0.2-beta.2",
+  "description": "Deploy a folder to Cloudgate from your terminal.",
+  "license": "Elastic-2.0",
+  "type": "module",
+  "bin": {
+    "cloudgate": "bin/cloudgate.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "CHANGELOG.md",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/octabyte-io/cloudgate.git",
+    "directory": "cli"
+  },
+  "homepage": "https://github.com/octabyte-io/cloudgate/tree/main/cli#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint \"{src,test,bin,scripts}/**/*.{ts,js}\" build.mjs eslint.config.mjs vitest.config.ts",
+    "lint:fix": "eslint \"{src,test,bin,scripts}/**/*.{ts,js}\" build.mjs eslint.config.mjs vitest.config.ts --fix",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/node": "^24.0.0",
+    "api-schemas": "workspace:*",
+    "esbuild": "^0.28.1",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-prettier": "^5.2.2",
+    "globals": "^17.0.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0",
+    "vitest": "^4.1.10",
+    "zod": "^4.4.3"
+  },
+  "optionalDependencies": {
+    "@napi-rs/keyring": "2.1.2"
+  }
+}

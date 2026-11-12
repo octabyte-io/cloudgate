@@ -1,0 +1,38 @@
+{
+  "cloudgate_fixture": {
+    "source": "the live walk by hand",
+    "how": "Recorded by `tofu output -json` from a real apply in the live Google Cloud project on 2026-11-06 (a walk by hand on deploy role version 5; OpenTofu 1.13.1, hashicorp/google 8.8.0), then rewritten to the stored files' sample ids (the redis svc_existing_redis_1, project example-project-123 / 123456789012, region europe-west1), and the endpoints' addresses 10.64.16.4 and 10.64.16.5 to the sample 10.64.16.20 and 10.64.16.21 the specs name; the PSC connection ids are Google's own, kept as given. Nothing in it is secret. The `tofu output -json` of the existing Valkey rd-ex's endpoints Apply; the --add-endpoints command Cloudgate built from these outputs was accepted by Google as shown, in 73 s, and both rules turned ACCEPTED."
+  },
+  "outputs": {
+    "primary_address": {
+      "sensitive": false,
+      "type": "string",
+      "value": "10.64.16.20"
+    },
+    "primary_name": {
+      "sensitive": false,
+      "type": "string",
+      "value": "cloudgate-f3gtu4y7gg2f-psc-0"
+    },
+    "primary_psc_connection_id": {
+      "sensitive": false,
+      "type": "string",
+      "value": "104652174033686532"
+    },
+    "reader_address": {
+      "sensitive": false,
+      "type": "string",
+      "value": "10.64.16.21"
+    },
+    "reader_name": {
+      "sensitive": false,
+      "type": "string",
+      "value": "cloudgate-f3gtu4y7gg2f-psc-1"
+    },
+    "reader_psc_connection_id": {
+      "sensitive": false,
+      "type": "string",
+      "value": "104652174033686533"
+    }
+  }
+}

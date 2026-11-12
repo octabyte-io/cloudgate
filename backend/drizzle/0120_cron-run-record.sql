@@ -1,0 +1,2 @@
+ALTER TABLE "deployment" ADD COLUMN "cron_run" jsonb;--> statement-breakpoint
+ALTER TABLE "deployment" ADD CONSTRAINT "deployment_cron_run_has_an_application" CHECK ("cron_run" IS NULL OR "application_id" IS NOT NULL);

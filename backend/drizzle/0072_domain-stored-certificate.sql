@@ -1,0 +1,1 @@
+ALTER TYPE "public"."certificate_type" ADD VALUE 'stored';

@@ -1,0 +1,5034 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "planned_values": {
+    "outputs": {
+      "domain_certificates": {
+        "sensitive": false
+      },
+      "image_id": {
+        "sensitive": false,
+        "type": "string",
+        "value": "ami-00000001"
+      },
+      "instance_id": {
+        "sensitive": false,
+        "type": "string",
+        "value": "i-00000000000000006"
+      },
+      "private_ip": {
+        "sensitive": false,
+        "type": "string",
+        "value": "10.80.128.4"
+      },
+      "zone": {
+        "sensitive": false,
+        "type": "string",
+        "value": "eu-central-1a"
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_acm_certificate.domain[\"dom_admin-1\"]",
+          "mode": "managed",
+          "type": "aws_acm_certificate",
+          "name": "domain",
+          "index": "dom_admin-1",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "certificate_authority_arn": null,
+            "certificate_body": null,
+            "certificate_chain": null,
+            "domain_name": "admin.example.com",
+            "domain_validation_options": [
+              {
+                "domain_name": "admin.example.com"
+              }
+            ],
+            "early_renewal_duration": null,
+            "private_key": null,
+            "private_key_wo": null,
+            "private_key_wo_version": null,
+            "region": "eu-central-1",
+            "subject_alternative_names": [
+              "admin.example.com"
+            ],
+            "tags": {
+              "Name": "cloudgate/analytics/domain/admin.example.com",
+              "cloudgate:address": "aws_acm_certificate.domain/dom_admin-1"
+            },
+            "tags_all": {
+              "Name": "cloudgate/analytics/domain/admin.example.com",
+              "cloudgate:address": "aws_acm_certificate.domain/dom_admin-1",
+              "cloudgate:cloud-account": "ca_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "st_stack_1"
+            },
+            "validation_method": "DNS",
+            "validation_option": []
+          },
+          "sensitive_values": {
+            "domain_validation_options": [
+              {}
+            ],
+            "options": [],
+            "private_key": true,
+            "renewal_summary": [],
+            "subject_alternative_names": [
+              false
+            ],
+            "tags": {},
+            "tags_all": {},
+            "validation_emails": [],
+            "validation_option": []
+          },
+          "identity": {
+            "arn": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_acm_certificate.domain[\"dom_app-1\"]",
+          "mode": "managed",
+          "type": "aws_acm_certificate",
+          "name": "domain",
+          "index": "dom_app-1",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "arn": "arn:aws:acm:eu-central-1:123456789012:certificate/00000000-0000-4000-8000-000000000001",
+            "certificate_authority_arn": "",
+            "certificate_body": null,
+            "certificate_chain": null,
+            "domain_name": "app.example.com",
+            "domain_validation_options": [
+              {
+                "domain_name": "app.example.com",
+                "resource_record_name": "_00000000000000000000000000000001.app.example.com.",
+                "resource_record_type": "CNAME",
+                "resource_record_value": "_00000000000000000000000000000002.ykybfrwcxw.acm-validations.aws."
+              }
+            ],
+            "early_renewal_duration": "",
+            "id": "arn:aws:acm:eu-central-1:123456789012:certificate/00000000-0000-4000-8000-000000000001",
+            "key_algorithm": "RSA_2048",
+            "not_after": "2026-01-01T00:00:00Z",
+            "not_before": "2026-01-01T00:00:00Z",
+            "options": [
+              {
+                "certificate_transparency_logging_preference": "ENABLED",
+                "export": "DISABLED"
+              }
+            ],
+            "pending_renewal": false,
+            "private_key": null,
+            "private_key_wo": null,
+            "private_key_wo_version": null,
+            "region": "eu-central-1",
+            "renewal_eligibility": "INELIGIBLE",
+            "renewal_summary": [],
+            "status": "PENDING_VALIDATION",
+            "subject_alternative_names": [
+              "app.example.com"
+            ],
+            "tags": {
+              "Name": "cloudgate/analytics/domain/app.example.com",
+              "cloudgate:address": "aws_acm_certificate.domain/dom_app-1"
+            },
+            "tags_all": {
+              "Name": "cloudgate/analytics/domain/app.example.com",
+              "cloudgate:address": "aws_acm_certificate.domain/dom_app-1",
+              "cloudgate:cloud-account": "ca_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "st_stack_1"
+            },
+            "type": "AMAZON_ISSUED",
+            "validation_emails": [],
+            "validation_method": "DNS",
+            "validation_option": []
+          },
+          "sensitive_values": {
+            "domain_validation_options": [
+              {}
+            ],
+            "options": [
+              {}
+            ],
+            "private_key": true,
+            "renewal_summary": [],
+            "subject_alternative_names": [
+              false
+            ],
+            "tags": {},
+            "tags_all": {},
+            "validation_emails": [],
+            "validation_option": []
+          },
+          "identity": {
+            "arn": "arn:aws:acm:eu-central-1:123456789012:certificate/00000000-0000-4000-8000-000000000001"
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_iam_instance_profile.stack_vm",
+          "mode": "managed",
+          "type": "aws_iam_instance_profile",
+          "name": "stack_vm",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "arn": "arn:aws:iam::123456789012:instance-profile/cloudgate/stack-vm/cloudgate-stack-vm-svcxstackx1",
+            "create_date": "2026-01-01T00:00:00Z",
+            "id": "cloudgate-stack-vm-svcxstackx1",
+            "name": "cloudgate-stack-vm-svcxstackx1",
+            "name_prefix": "",
+            "path": "/cloudgate/stack-vm/",
+            "role": "cloudgate-stack-vm-svcxstackx1",
+            "tags": {
+              "Name": "cloudgate/analytics/stack-vm",
+              "cloudgate:address": "aws_iam_instance_profile.stack_vm"
+            },
+            "tags_all": {
+              "Name": "cloudgate/analytics/stack-vm",
+              "cloudgate:address": "aws_iam_instance_profile.stack_vm",
+              "cloudgate:cloud-account": "ca_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "st_stack_1"
+            },
+            "unique_id": "9a1qrpzinee1rqx9idgp"
+          },
+          "sensitive_values": {
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": "123456789012",
+            "name": "cloudgate-stack-vm-svcxstackx1"
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_iam_role.stack_vm",
+          "mode": "managed",
+          "type": "aws_iam_role",
+          "name": "stack_vm",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "arn": "arn:aws:iam::123456789012:role/cloudgate/stack-vm/cloudgate-stack-vm-svcxstackx1",
+            "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ec2.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+            "create_date": "2026-01-01T00:00:00Z",
+            "description": "Cloudgate: a Stack VM, reached through Session Manager",
+            "force_detach_policies": false,
+            "id": "cloudgate-stack-vm-svcxstackx1",
+            "inline_policy": [],
+            "managed_policy_arns": [
+              "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+            ],
+            "max_session_duration": 3600,
+            "name": "cloudgate-stack-vm-svcxstackx1",
+            "name_prefix": "",
+            "path": "/cloudgate/stack-vm/",
+            "permissions_boundary": "",
+            "tags": {
+              "Name": "cloudgate/analytics/stack-vm",
+              "cloudgate:address": "aws_iam_role.stack_vm"
+            },
+            "tags_all": {
+              "Name": "cloudgate/analytics/stack-vm",
+              "cloudgate:address": "aws_iam_role.stack_vm",
+              "cloudgate:cloud-account": "ca_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "st_stack_1"
+            },
+            "unique_id": "AROA00000000000000002"
+          },
+          "sensitive_values": {
+            "inline_policy": [],
+            "managed_policy_arns": [
+              false
+            ],
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": "123456789012",
+            "name": "cloudgate-stack-vm-svcxstackx1"
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_instance.stack_vm",
+          "mode": "managed",
+          "type": "aws_instance",
+          "name": "stack_vm",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 2,
+          "values": {
+            "ami": "ami-00000001",
+            "arn": "arn:aws:ec2:eu-central-1:123456789012:instance/i-00000000000000006",
+            "associate_public_ip_address": true,
+            "availability_zone": "eu-central-1a",
+            "capacity_reservation_specification": [],
+            "cpu_options": [],
+            "credit_specification": [
+              {
+                "cpu_credits": "standard"
+              }
+            ],
+            "disable_api_stop": false,
+            "disable_api_termination": false,
+            "ebs_block_device": [
+              {
+                "delete_on_termination": false,
+                "device_name": "/dev/sdf",
+                "encrypted": true,
+                "iops": 3000,
+                "kms_key_id": "arn:aws:kms:eu-central-1:123456789012:key/00000000-0000-4000-8000-000000000002",
+                "snapshot_id": "",
+                "tags": {
+                  "Name": "cloudgate/analytics/data",
+                  "cloudgate:address": "aws_ebs_volume.data",
+                  "cloudgate:cloud-account": "ca_1",
+                  "cloudgate:environment": "env_1",
+                  "cloudgate:stack-vm-data": "st_stack_1",
+                  "cloudgate:state": "st_stack_1"
+                },
+                "tags_all": {
+                  "Name": "cloudgate/analytics/data",
+                  "cloudgate:address": "aws_ebs_volume.data",
+                  "cloudgate:cloud-account": "ca_1",
+                  "cloudgate:environment": "env_1",
+                  "cloudgate:stack-vm-data": "st_stack_1",
+                  "cloudgate:state": "st_stack_1"
+                },
+                "throughput": 0,
+                "volume_id": "vol-00000000000000005",
+                "volume_size": 20,
+                "volume_type": "gp3"
+              }
+            ],
+            "ebs_optimized": false,
+            "enable_primary_ipv6": null,
+            "enclave_options": [],
+            "ephemeral_block_device": [],
+            "force_destroy": false,
+            "get_password_data": false,
+            "hibernation": false,
+            "host_id": "",
+            "host_resource_group_arn": null,
+            "iam_instance_profile": "cloudgate-stack-vm-svcxstackx1",
+            "id": "i-00000000000000006",
+            "instance_initiated_shutdown_behavior": "stop",
+            "instance_lifecycle": "",
+            "instance_market_options": [],
+            "instance_state": "running",
+            "instance_type": "t3.small",
+            "ipv6_address_count": 0,
+            "ipv6_addresses": [],
+            "key_name": "",
+            "launch_template": [],
+            "maintenance_options": [],
+            "metadata_options": [
+              {
+                "http_endpoint": "enabled",
+                "http_protocol_ipv6": "disabled",
+                "http_put_response_hop_limit": 1,
+                "http_tokens": "required",
+                "instance_metadata_tags": "disabled"
+              }
+            ],
+            "monitoring": false,
+            "network_interface": [],
+            "outpost_arn": "",
+            "password_data": "",
+            "placement_group": "",
+            "placement_group_id": "",
+            "placement_partition_number": 0,
+            "primary_network_interface": [
+              {
+                "delete_on_termination": false,
+                "network_interface_id": "eni-00000000000000007"
+              }
+            ],
+            "primary_network_interface_id": "eni-00000000000000007",
+            "private_dns": "ip-10-80-128-4.eu-central-1.compute.internal",
+            "private_dns_name_options": [],
+            "private_ip": "10.80.128.4",
+            "public_dns": "",
+            "public_ip": "",
+            "region": "eu-central-1",
+            "root_block_device": [
+              {
+                "delete_on_termination": true,
+                "device_name": "/dev/sda1",
+                "encrypted": true,
+                "iops": 3000,
+                "kms_key_id": "arn:aws:kms:eu-central-1:123456789012:key/00000000-0000-4000-8000-000000000002",
+                "tags": {},
+                "tags_all": {
+                  "cloudgate:cloud-account": "ca_1",
+                  "cloudgate:environment": "env_1",
+                  "cloudgate:state": "st_stack_1"
+                },
+                "throughput": 0,
+                "volume_id": "vol-00000000000000008",
+                "volume_size": 8,
+                "volume_type": "gp3"
+              }
+            ],
+            "secondary_network_interface": [],
+            "secondary_private_ips": [],
+            "security_groups": [],
+            "source_dest_check": true,
+            "spot_instance_request_id": "",
+            "subnet_id": "subnet-00000000000000002",
+            "tags": {
+              "Name": "cloudgate/analytics/stack-vm",
+              "cloudgate:address": "aws_instance.stack_vm"
+            },
+            "tags_all": {
+              "Name": "cloudgate/analytics/stack-vm",
+              "cloudgate:address": "aws_instance.stack_vm",
+              "cloudgate:cloud-account": "ca_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "st_stack_1"
+            },
+            "tenancy": "default",
+            "timeouts": null,
+            "user_data": "#cloud-config\npackage_update: true\npackages:\n  - ca-certificates\n  - curl\n  - unattended-upgrades\nwrite_files:\n  - path: /usr/local/sbin/cloudgate-data-disk\n    permissions: '0755'\n    content: |\n      #!/bin/bash\n      set -euo pipefail\n      root=\"$(lsblk -no PKNAME \"$(findmnt -no SOURCE /)\")\"\n      disk=\"\"\n      for _ in $(seq 1 120); do\n        for candidate in $(lsblk -dno NAME,TYPE | awk '$2 == \"disk\" {print $1}'); do\n          if [ \"$candidate\" != \"$root\" ] && [ -z \"$(lsblk -no MOUNTPOINT \"/dev/$candidate\" | tr -d '[:space:]')\" ]; then\n            disk=\"/dev/$candidate\"\n            break 2\n          fi\n        done\n        sleep 5\n      done\n      if [ -z \"$disk\" ]; then\n        echo \"cloudgate: no data disk was attached\" >&2\n        exit 1\n      fi\n      if ! blkid \"$disk\" >/dev/null 2>&1; then\n        mkfs.ext4 -L cloudgate-data \"$disk\"\n      fi\n      uuid=\"$(blkid -s UUID -o value \"$disk\")\"\n      mkdir -p /var/lib/docker/volumes\n      if ! grep -q \"$uuid\" /etc/fstab; then\n        echo \"UUID=$uuid /var/lib/docker/volumes ext4 defaults,nofail 0 2\" >> /etc/fstab\n      fi\n      mount -a\n  - path: /etc/apt/apt.conf.d/20auto-upgrades\n    permissions: '0644'\n    content: |\n      APT::Periodic::Update-Package-Lists \"1\";\n      APT::Periodic::Unattended-Upgrade \"1\";\n  - path: /etc/apt/apt.conf.d/52cloudgate-unattended-upgrades\n    permissions: '0644'\n    content: |\n      Unattended-Upgrade::Automatic-Reboot \"false\";\nruncmd:\n  - /usr/local/sbin/cloudgate-data-disk\n  - install -m 0755 -d /etc/apt/keyrings\n  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc\n  - chmod a+r /etc/apt/keyrings/docker.asc\n  - echo \"deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable\" > /etc/apt/sources.list.d/docker.list\n  - apt-get update\n  - DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce=5:29.9.2-1~ubuntu.24.04~noble docker-ce-cli=5:29.9.2-1~ubuntu.24.04~noble containerd.io docker-compose-plugin=5.6.1-1~ubuntu.24.04~noble\n  - apt-mark hold docker-ce docker-ce-cli docker-compose-plugin\n  - systemctl enable --now docker\n  - docker network inspect cloudgate-network >/dev/null 2>&1 || docker network create cloudgate-network\n",
+            "user_data_base64": null,
+            "user_data_replace_on_change": false,
+            "volume_tags": null,
+            "vpc_security_group_ids": [
+              "sg-00000000000000009"
+            ]
+          },
+          "sensitive_values": {
+            "capacity_reservation_specification": [],
+            "cpu_options": [],
+            "credit_specification": [
+              {}
+            ],
+            "ebs_block_device": [
+              {
+                "tags": {},
+                "tags_all": {}
+              }
+            ],
+            "enclave_options": [],
+            "ephemeral_block_device": [],
+            "instance_market_options": [],
+            "ipv6_addresses": [],
+            "launch_template": [],
+            "maintenance_options": [],
+            "metadata_options": [
+              {}
+            ],
+            "network_interface": [],
+            "primary_network_interface": [
+              {}
+            ],
+            "private_dns_name_options": [],
+            "root_block_device": [
+              {
+                "tags": {},
+                "tags_all": {}
+              }
+            ],
+            "secondary_network_interface": [],
+            "secondary_private_ips": [],
+            "security_groups": [],
+            "tags": {},
+            "tags_all": {},
+            "vpc_security_group_ids": [
+              false
+            ]
+          },
+          "identity": {
+            "account_id": "123456789012",
+            "id": "i-00000000000000006",
+            "region": "eu-central-1"
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_lb_listener_rule.domain[\"dom_admin\"]",
+          "mode": "managed",
+          "type": "aws_lb_listener_rule",
+          "name": "domain",
+          "index": "dom_admin",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "action": [
+              {
+                "authenticate_cognito": [],
+                "authenticate_oidc": [],
+                "fixed_response": [],
+                "forward": [],
+                "jwt_validation": [],
+                "redirect": [],
+                "type": "forward"
+              }
+            ],
+            "condition": [
+              {
+                "host_header": [
+                  {
+                    "regex_values": [],
+                    "values": [
+                      "admin.example.com"
+                    ]
+                  }
+                ],
+                "http_header": [],
+                "http_request_method": [],
+                "path_pattern": [],
+                "query_string": [],
+                "source_ip": []
+              },
+              {
+                "host_header": [],
+                "http_header": [],
+                "http_request_method": [],
+                "path_pattern": [
+                  {
+                    "regex_values": [],
+                    "values": [
+                      "/*"
+                    ]
+                  }
+                ],
+                "query_string": [],
+                "source_ip": []
+              }
+            ],
+            "listener_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener/app/cg-00000000000000000000000001/0000000000000001/0000000000000002",
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "cloudgate/analytics/domain/admin.example.com",
+              "cloudgate:address": "aws_lb_listener_rule.domain/dom_admin"
+            },
+            "tags_all": {
+              "Name": "cloudgate/analytics/domain/admin.example.com",
+              "cloudgate:address": "aws_lb_listener_rule.domain/dom_admin",
+              "cloudgate:cloud-account": "ca_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "st_stack_1"
+            },
+            "transform": []
+          },
+          "sensitive_values": {
+            "action": [
+              {
+                "authenticate_cognito": [],
+                "authenticate_oidc": [],
+                "fixed_response": [],
+                "forward": [],
+                "jwt_validation": [],
+                "redirect": []
+              }
+            ],
+            "condition": [
+              {
+                "host_header": [
+                  {
+                    "regex_values": [],
+                    "values": [
+                      false
+                    ]
+                  }
+                ],
+                "http_header": [],
+                "http_request_method": [],
+                "path_pattern": [],
+                "query_string": [],
+                "source_ip": []
+              },
+              {
+                "host_header": [],
+                "http_header": [],
+                "http_request_method": [],
+                "path_pattern": [
+                  {
+                    "regex_values": [],
+                    "values": [
+                      false
+                    ]
+                  }
+                ],
+                "query_string": [],
+                "source_ip": []
+              }
+            ],
+            "tags": {},
+            "tags_all": {},
+            "transform": []
+          },
+          "identity": {
+            "arn": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_lb_listener_rule.domain[\"dom_app\"]",
+          "mode": "managed",
+          "type": "aws_lb_listener_rule",
+          "name": "domain",
+          "index": "dom_app",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "action": [
+              {
+                "authenticate_cognito": [],
+                "authenticate_oidc": [],
+                "fixed_response": [],
+                "forward": [],
+                "jwt_validation": [],
+                "order": 1,
+                "redirect": [],
+                "target_group_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+                "type": "forward"
+              }
+            ],
+            "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener-rule/app/cg-00000000000000000000000001/0000000000000001/0000000000000002/0000000000000004",
+            "condition": [
+              {
+                "host_header": [
+                  {
+                    "regex_values": [],
+                    "values": [
+                      "app.example.com"
+                    ]
+                  }
+                ],
+                "http_header": [],
+                "http_request_method": [],
+                "path_pattern": [],
+                "query_string": [],
+                "source_ip": []
+              },
+              {
+                "host_header": [],
+                "http_header": [],
+                "http_request_method": [],
+                "path_pattern": [
+                  {
+                    "regex_values": [],
+                    "values": [
+                      "/*"
+                    ]
+                  }
+                ],
+                "query_string": [],
+                "source_ip": []
+              }
+            ],
+            "id": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener-rule/app/cg-00000000000000000000000001/0000000000000001/0000000000000002/0000000000000004",
+            "listener_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener/app/cg-00000000000000000000000001/0000000000000001/0000000000000002",
+            "priority": 1,
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "cloudgate/analytics/domain/app.example.com",
+              "cloudgate:address": "aws_lb_listener_rule.domain/dom_app"
+            },
+            "tags_all": {
+              "Name": "cloudgate/analytics/domain/app.example.com",
+              "cloudgate:address": "aws_lb_listener_rule.domain/dom_app",
+              "cloudgate:cloud-account": "ca_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "st_stack_1"
+            },
+            "transform": []
+          },
+          "sensitive_values": {
+            "action": [
+              {
+                "authenticate_cognito": [],
+                "authenticate_oidc": [],
+                "fixed_response": [],
+                "forward": [],
+                "jwt_validation": [],
+                "redirect": []
+              }
+            ],
+            "condition": [
+              {
+                "host_header": [
+                  {
+                    "regex_values": [],
+                    "values": [
+                      false
+                    ]
+                  }
+                ],
+                "http_header": [],
+                "http_request_method": [],
+                "path_pattern": [],
+                "query_string": [],
+                "source_ip": []
+              },
+              {
+                "host_header": [],
+                "http_header": [],
+                "http_request_method": [],
+                "path_pattern": [
+                  {
+                    "regex_values": [],
+                    "values": [
+                      false
+                    ]
+                  }
+                ],
+                "query_string": [],
+                "source_ip": []
+              }
+            ],
+            "tags": {},
+            "tags_all": {},
+            "transform": []
+          },
+          "identity": {
+            "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener-rule/app/cg-00000000000000000000000001/0000000000000001/0000000000000002/0000000000000004"
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_lb_target_group.stack_vm[\"3000\"]",
+          "mode": "managed",
+          "type": "aws_lb_target_group",
+          "name": "stack_vm",
+          "index": "3000",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+            "arn_suffix": "targetgroup/cg-00000000000000000000000002/0000000000000003",
+            "connection_termination": null,
+            "deregistration_delay": "30",
+            "health_check": [
+              {
+                "enabled": true,
+                "healthy_threshold": 3,
+                "interval": 30,
+                "matcher": "200-499",
+                "path": "/",
+                "port": "traffic-port",
+                "protocol": "HTTP",
+                "timeout": 5,
+                "unhealthy_threshold": 3
+              }
+            ],
+            "id": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+            "ip_address_type": "ipv4",
+            "lambda_multi_value_headers_enabled": false,
+            "load_balancer_arns": [
+              "arn:aws:elasticloadbalancing:eu-central-1:123456789012:loadbalancer/app/cg-00000000000000000000000001/0000000000000001"
+            ],
+            "load_balancing_algorithm_type": "round_robin",
+            "load_balancing_anomaly_mitigation": null,
+            "load_balancing_cross_zone_enabled": "use_load_balancer_configuration",
+            "name": "cg-00000000000000000000000002",
+            "name_prefix": "cg-",
+            "port": 3000,
+            "preserve_client_ip": null,
+            "protocol": "HTTP",
+            "protocol_version": "HTTP1",
+            "proxy_protocol_v2": false,
+            "region": "eu-central-1",
+            "slow_start": 0,
+            "stickiness": [
+              {
+                "cookie_duration": 0,
+                "cookie_name": "",
+                "enabled": false,
+                "type": "lb_cookie"
+              }
+            ],
+            "tags": {
+              "Name": "cloudgate/analytics/targets/3000",
+              "cloudgate:address": "aws_lb_target_group.stack_vm/3000"
+            },
+            "tags_all": {
+              "Name": "cloudgate/analytics/targets/3000",
+              "cloudgate:address": "aws_lb_target_group.stack_vm/3000",
+              "cloudgate:cloud-account": "ca_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "st_stack_1"
+            },
+            "target_control_port": 0,
+            "target_failover": [
+              {
+                "on_deregistration": null,
+                "on_unhealthy": null
+              }
+            ],
+            "target_group_health": [
+              {
+                "dns_failover": [
+                  {
+                    "minimum_healthy_targets_count": null,
+                    "minimum_healthy_targets_percentage": null
+                  }
+                ],
+                "unhealthy_state_routing": [
+                  {
+                    "minimum_healthy_targets_count": null,
+                    "minimum_healthy_targets_percentage": null
+                  }
+                ]
+              }
+            ],
+            "target_health_state": [
+              {
+                "enable_unhealthy_connection_termination": null,
+                "unhealthy_draining_interval": null
+              }
+            ],
+            "target_type": "instance",
+            "vpc_id": "vpc-00000000000000001"
+          },
+          "sensitive_values": {
+            "health_check": [
+              {}
+            ],
+            "load_balancer_arns": [
+              false
+            ],
+            "stickiness": [
+              {}
+            ],
+            "tags": {},
+            "tags_all": {},
+            "target_failover": [
+              {}
+            ],
+            "target_group_health": [
+              {
+                "dns_failover": [
+                  {}
+                ],
+                "unhealthy_state_routing": [
+                  {}
+                ]
+              }
+            ],
+            "target_health_state": [
+              {}
+            ]
+          },
+          "identity": {
+            "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003"
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_lb_target_group.stack_vm[\"8080\"]",
+          "mode": "managed",
+          "type": "aws_lb_target_group",
+          "name": "stack_vm",
+          "index": "8080",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "deregistration_delay": "30",
+            "health_check": [
+              {
+                "enabled": true,
+                "healthy_threshold": 3,
+                "interval": 30,
+                "matcher": "200-499",
+                "path": "/",
+                "port": "traffic-port",
+                "protocol": "HTTP",
+                "unhealthy_threshold": 3
+              }
+            ],
+            "lambda_multi_value_headers_enabled": false,
+            "name_prefix": "cg-",
+            "port": 8080,
+            "protocol": "HTTP",
+            "proxy_protocol_v2": false,
+            "region": "eu-central-1",
+            "slow_start": 0,
+            "tags": {
+              "Name": "cloudgate/analytics/targets/8080",
+              "cloudgate:address": "aws_lb_target_group.stack_vm/8080"
+            },
+            "tags_all": {
+              "Name": "cloudgate/analytics/targets/8080",
+              "cloudgate:address": "aws_lb_target_group.stack_vm/8080",
+              "cloudgate:cloud-account": "ca_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "st_stack_1"
+            },
+            "target_control_port": null,
+            "target_type": "instance",
+            "vpc_id": "vpc-00000000000000001"
+          },
+          "sensitive_values": {
+            "health_check": [
+              {}
+            ],
+            "load_balancer_arns": [],
+            "stickiness": [],
+            "tags": {},
+            "tags_all": {},
+            "target_failover": [],
+            "target_group_health": [],
+            "target_health_state": []
+          },
+          "identity": {
+            "arn": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_lb_target_group_attachment.stack_vm[\"3000\"]",
+          "mode": "managed",
+          "type": "aws_lb_target_group_attachment",
+          "name": "stack_vm",
+          "index": "3000",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "availability_zone": null,
+            "id": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003,i-00000000000000006,3000",
+            "port": 3000,
+            "quic_server_id": null,
+            "region": "eu-central-1",
+            "target_group_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+            "target_id": "i-00000000000000006"
+          },
+          "sensitive_values": {},
+          "identity": {
+            "account_id": "123456789012",
+            "availability_zone": null,
+            "port": 3000,
+            "quic_server_id": null,
+            "region": "eu-central-1",
+            "target_group_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+            "target_id": "i-00000000000000006"
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_lb_target_group_attachment.stack_vm[\"8080\"]",
+          "mode": "managed",
+          "type": "aws_lb_target_group_attachment",
+          "name": "stack_vm",
+          "index": "8080",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "availability_zone": null,
+            "port": 8080,
+            "quic_server_id": null,
+            "region": "eu-central-1",
+            "target_id": "i-00000000000000006"
+          },
+          "sensitive_values": {},
+          "identity": {
+            "account_id": null,
+            "availability_zone": null,
+            "port": null,
+            "quic_server_id": null,
+            "region": null,
+            "target_group_arn": null,
+            "target_id": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_security_group.stack_vm",
+          "mode": "managed",
+          "type": "aws_security_group",
+          "name": "stack_vm",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "arn": "arn:aws:ec2:eu-central-1:123456789012:security-group/sg-00000000000000009",
+            "description": "Cloudgate: the Stack VM of a Compose stack, reached through Session Manager",
+            "egress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "",
+                "from_port": 0,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "-1",
+                "security_groups": [],
+                "self": false,
+                "to_port": 0
+              }
+            ],
+            "id": "sg-00000000000000009",
+            "ingress": [
+              {
+                "cidr_blocks": [],
+                "description": "The load balancer, to a Domain of the stack",
+                "from_port": 3000,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [
+                  "sg-00000000000000004"
+                ],
+                "self": false,
+                "to_port": 3000
+              },
+              {
+                "cidr_blocks": [],
+                "description": "The load balancer, to a Domain of the stack",
+                "from_port": 8080,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [
+                  "sg-00000000000000004"
+                ],
+                "self": false,
+                "to_port": 8080
+              }
+            ],
+            "name": "cloudgate-stack-vm-svc_stack_1",
+            "name_prefix": "",
+            "owner_id": "123456789012",
+            "region": "eu-central-1",
+            "revoke_rules_on_delete": false,
+            "tags": {
+              "Name": "cloudgate/analytics/stack-vm",
+              "cloudgate:address": "aws_security_group.stack_vm"
+            },
+            "tags_all": {
+              "Name": "cloudgate/analytics/stack-vm",
+              "cloudgate:address": "aws_security_group.stack_vm",
+              "cloudgate:cloud-account": "ca_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "st_stack_1"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-00000000000000001"
+          },
+          "sensitive_values": {
+            "egress": [
+              {
+                "cidr_blocks": [
+                  false
+                ],
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "security_groups": []
+              }
+            ],
+            "ingress": [
+              {
+                "cidr_blocks": [],
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "security_groups": [
+                  false
+                ]
+              },
+              {
+                "cidr_blocks": [],
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "security_groups": [
+                  false
+                ]
+              }
+            ],
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": "123456789012",
+            "id": "sg-00000000000000009",
+            "region": "eu-central-1"
+          },
+          "identity_schema_version": 0
+        }
+      ]
+    }
+  },
+  "resource_drift": [
+    {
+      "address": "aws_lb_target_group.stack_vm[\"3000\"]",
+      "mode": "managed",
+      "type": "aws_lb_target_group",
+      "name": "stack_vm",
+      "index": "3000",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+          "arn_suffix": "targetgroup/cg-00000000000000000000000002/0000000000000003",
+          "connection_termination": null,
+          "deregistration_delay": "30",
+          "health_check": [
+            {
+              "enabled": true,
+              "healthy_threshold": 3,
+              "interval": 30,
+              "matcher": "200-499",
+              "path": "/",
+              "port": "traffic-port",
+              "protocol": "HTTP",
+              "timeout": 5,
+              "unhealthy_threshold": 3
+            }
+          ],
+          "id": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+          "ip_address_type": "ipv4",
+          "lambda_multi_value_headers_enabled": false,
+          "load_balancer_arns": [],
+          "load_balancing_algorithm_type": "round_robin",
+          "load_balancing_anomaly_mitigation": null,
+          "load_balancing_cross_zone_enabled": "use_load_balancer_configuration",
+          "name": "cg-00000000000000000000000002",
+          "name_prefix": "cg-",
+          "port": 3000,
+          "preserve_client_ip": null,
+          "protocol": "HTTP",
+          "protocol_version": "HTTP1",
+          "proxy_protocol_v2": false,
+          "region": "eu-central-1",
+          "slow_start": 0,
+          "stickiness": [
+            {
+              "cookie_duration": 0,
+              "cookie_name": "",
+              "enabled": false,
+              "type": "lb_cookie"
+            }
+          ],
+          "tags": {
+            "Name": "cloudgate/analytics/targets/3000",
+            "cloudgate:address": "aws_lb_target_group.stack_vm/3000"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/targets/3000",
+            "cloudgate:address": "aws_lb_target_group.stack_vm/3000",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "target_control_port": 0,
+          "target_failover": [
+            {
+              "on_deregistration": null,
+              "on_unhealthy": null
+            }
+          ],
+          "target_group_health": [
+            {
+              "dns_failover": [
+                {
+                  "minimum_healthy_targets_count": null,
+                  "minimum_healthy_targets_percentage": null
+                }
+              ],
+              "unhealthy_state_routing": [
+                {
+                  "minimum_healthy_targets_count": null,
+                  "minimum_healthy_targets_percentage": null
+                }
+              ]
+            }
+          ],
+          "target_health_state": [
+            {
+              "enable_unhealthy_connection_termination": null,
+              "unhealthy_draining_interval": null
+            }
+          ],
+          "target_type": "instance",
+          "vpc_id": "vpc-00000000000000001"
+        },
+        "after": {
+          "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+          "arn_suffix": "targetgroup/cg-00000000000000000000000002/0000000000000003",
+          "connection_termination": null,
+          "deregistration_delay": "30",
+          "health_check": [
+            {
+              "enabled": true,
+              "healthy_threshold": 3,
+              "interval": 30,
+              "matcher": "200-499",
+              "path": "/",
+              "port": "traffic-port",
+              "protocol": "HTTP",
+              "timeout": 5,
+              "unhealthy_threshold": 3
+            }
+          ],
+          "id": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+          "ip_address_type": "ipv4",
+          "lambda_multi_value_headers_enabled": false,
+          "load_balancer_arns": [
+            "arn:aws:elasticloadbalancing:eu-central-1:123456789012:loadbalancer/app/cg-00000000000000000000000001/0000000000000001"
+          ],
+          "load_balancing_algorithm_type": "round_robin",
+          "load_balancing_anomaly_mitigation": null,
+          "load_balancing_cross_zone_enabled": "use_load_balancer_configuration",
+          "name": "cg-00000000000000000000000002",
+          "name_prefix": "cg-",
+          "port": 3000,
+          "preserve_client_ip": null,
+          "protocol": "HTTP",
+          "protocol_version": "HTTP1",
+          "proxy_protocol_v2": false,
+          "region": "eu-central-1",
+          "slow_start": 0,
+          "stickiness": [
+            {
+              "cookie_duration": 0,
+              "cookie_name": "",
+              "enabled": false,
+              "type": "lb_cookie"
+            }
+          ],
+          "tags": {
+            "Name": "cloudgate/analytics/targets/3000",
+            "cloudgate:address": "aws_lb_target_group.stack_vm/3000"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/targets/3000",
+            "cloudgate:address": "aws_lb_target_group.stack_vm/3000",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "target_control_port": 0,
+          "target_failover": [
+            {
+              "on_deregistration": null,
+              "on_unhealthy": null
+            }
+          ],
+          "target_group_health": [
+            {
+              "dns_failover": [
+                {
+                  "minimum_healthy_targets_count": null,
+                  "minimum_healthy_targets_percentage": null
+                }
+              ],
+              "unhealthy_state_routing": [
+                {
+                  "minimum_healthy_targets_count": null,
+                  "minimum_healthy_targets_percentage": null
+                }
+              ]
+            }
+          ],
+          "target_health_state": [
+            {
+              "enable_unhealthy_connection_termination": null,
+              "unhealthy_draining_interval": null
+            }
+          ],
+          "target_type": "instance",
+          "vpc_id": "vpc-00000000000000001"
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "health_check": [
+            {}
+          ],
+          "load_balancer_arns": [],
+          "stickiness": [
+            {}
+          ],
+          "tags": {},
+          "tags_all": {},
+          "target_failover": [
+            {}
+          ],
+          "target_group_health": [
+            {
+              "dns_failover": [
+                {}
+              ],
+              "unhealthy_state_routing": [
+                {}
+              ]
+            }
+          ],
+          "target_health_state": [
+            {}
+          ]
+        },
+        "after_sensitive": {
+          "health_check": [
+            {}
+          ],
+          "load_balancer_arns": [
+            false
+          ],
+          "stickiness": [
+            {}
+          ],
+          "tags": {},
+          "tags_all": {},
+          "target_failover": [
+            {}
+          ],
+          "target_group_health": [
+            {
+              "dns_failover": [
+                {}
+              ],
+              "unhealthy_state_routing": [
+                {}
+              ]
+            }
+          ],
+          "target_health_state": [
+            {}
+          ]
+        },
+        "before_identity": {
+          "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003"
+        },
+        "after_identity": {
+          "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003"
+        }
+      }
+    }
+  ],
+  "resource_changes": [
+    {
+      "address": "aws_acm_certificate.domain[\"dom_admin-1\"]",
+      "mode": "managed",
+      "type": "aws_acm_certificate",
+      "name": "domain",
+      "index": "dom_admin-1",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "certificate_authority_arn": null,
+          "certificate_body": null,
+          "certificate_chain": null,
+          "domain_name": "admin.example.com",
+          "domain_validation_options": [
+            {
+              "domain_name": "admin.example.com"
+            }
+          ],
+          "early_renewal_duration": null,
+          "private_key": null,
+          "private_key_wo": null,
+          "private_key_wo_version": null,
+          "region": "eu-central-1",
+          "subject_alternative_names": [
+            "admin.example.com"
+          ],
+          "tags": {
+            "Name": "cloudgate/analytics/domain/admin.example.com",
+            "cloudgate:address": "aws_acm_certificate.domain/dom_admin-1"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/domain/admin.example.com",
+            "cloudgate:address": "aws_acm_certificate.domain/dom_admin-1",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "validation_method": "DNS",
+          "validation_option": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "domain_validation_options": [
+            {
+              "resource_record_name": true,
+              "resource_record_type": true,
+              "resource_record_value": true
+            }
+          ],
+          "id": true,
+          "key_algorithm": true,
+          "not_after": true,
+          "not_before": true,
+          "options": true,
+          "pending_renewal": true,
+          "renewal_eligibility": true,
+          "renewal_summary": true,
+          "status": true,
+          "subject_alternative_names": [
+            false
+          ],
+          "tags": {},
+          "tags_all": {},
+          "type": true,
+          "validation_emails": true,
+          "validation_option": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "domain_validation_options": [
+            {}
+          ],
+          "options": [],
+          "private_key": true,
+          "renewal_summary": [],
+          "subject_alternative_names": [
+            false
+          ],
+          "tags": {},
+          "tags_all": {},
+          "validation_emails": [],
+          "validation_option": []
+        },
+        "after_identity": {
+          "arn": null
+        }
+      }
+    },
+    {
+      "address": "aws_acm_certificate.domain[\"dom_app-1\"]",
+      "mode": "managed",
+      "type": "aws_acm_certificate",
+      "name": "domain",
+      "index": "dom_app-1",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "arn": "arn:aws:acm:eu-central-1:123456789012:certificate/00000000-0000-4000-8000-000000000001",
+          "certificate_authority_arn": "",
+          "certificate_body": null,
+          "certificate_chain": null,
+          "domain_name": "app.example.com",
+          "domain_validation_options": [
+            {
+              "domain_name": "app.example.com",
+              "resource_record_name": "_00000000000000000000000000000001.app.example.com.",
+              "resource_record_type": "CNAME",
+              "resource_record_value": "_00000000000000000000000000000002.ykybfrwcxw.acm-validations.aws."
+            }
+          ],
+          "early_renewal_duration": "",
+          "id": "arn:aws:acm:eu-central-1:123456789012:certificate/00000000-0000-4000-8000-000000000001",
+          "key_algorithm": "RSA_2048",
+          "not_after": "2026-01-01T00:00:00Z",
+          "not_before": "2026-01-01T00:00:00Z",
+          "options": [
+            {
+              "certificate_transparency_logging_preference": "ENABLED",
+              "export": "DISABLED"
+            }
+          ],
+          "pending_renewal": false,
+          "private_key": null,
+          "private_key_wo": null,
+          "private_key_wo_version": null,
+          "region": "eu-central-1",
+          "renewal_eligibility": "INELIGIBLE",
+          "renewal_summary": [],
+          "status": "PENDING_VALIDATION",
+          "subject_alternative_names": [
+            "app.example.com"
+          ],
+          "tags": {
+            "Name": "cloudgate/analytics/domain/app.example.com",
+            "cloudgate:address": "aws_acm_certificate.domain/dom_app-1"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/domain/app.example.com",
+            "cloudgate:address": "aws_acm_certificate.domain/dom_app-1",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "type": "AMAZON_ISSUED",
+          "validation_emails": [],
+          "validation_method": "DNS",
+          "validation_option": []
+        },
+        "after": {
+          "arn": "arn:aws:acm:eu-central-1:123456789012:certificate/00000000-0000-4000-8000-000000000001",
+          "certificate_authority_arn": "",
+          "certificate_body": null,
+          "certificate_chain": null,
+          "domain_name": "app.example.com",
+          "domain_validation_options": [
+            {
+              "domain_name": "app.example.com",
+              "resource_record_name": "_00000000000000000000000000000001.app.example.com.",
+              "resource_record_type": "CNAME",
+              "resource_record_value": "_00000000000000000000000000000002.ykybfrwcxw.acm-validations.aws."
+            }
+          ],
+          "early_renewal_duration": "",
+          "id": "arn:aws:acm:eu-central-1:123456789012:certificate/00000000-0000-4000-8000-000000000001",
+          "key_algorithm": "RSA_2048",
+          "not_after": "2026-01-01T00:00:00Z",
+          "not_before": "2026-01-01T00:00:00Z",
+          "options": [
+            {
+              "certificate_transparency_logging_preference": "ENABLED",
+              "export": "DISABLED"
+            }
+          ],
+          "pending_renewal": false,
+          "private_key": null,
+          "private_key_wo": null,
+          "private_key_wo_version": null,
+          "region": "eu-central-1",
+          "renewal_eligibility": "INELIGIBLE",
+          "renewal_summary": [],
+          "status": "PENDING_VALIDATION",
+          "subject_alternative_names": [
+            "app.example.com"
+          ],
+          "tags": {
+            "Name": "cloudgate/analytics/domain/app.example.com",
+            "cloudgate:address": "aws_acm_certificate.domain/dom_app-1"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/domain/app.example.com",
+            "cloudgate:address": "aws_acm_certificate.domain/dom_app-1",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "type": "AMAZON_ISSUED",
+          "validation_emails": [],
+          "validation_method": "DNS",
+          "validation_option": []
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "domain_validation_options": [
+            {}
+          ],
+          "options": [
+            {}
+          ],
+          "private_key": true,
+          "renewal_summary": [],
+          "subject_alternative_names": [
+            false
+          ],
+          "tags": {},
+          "tags_all": {},
+          "validation_emails": [],
+          "validation_option": []
+        },
+        "after_sensitive": {
+          "domain_validation_options": [
+            {}
+          ],
+          "options": [
+            {}
+          ],
+          "private_key": true,
+          "renewal_summary": [],
+          "subject_alternative_names": [
+            false
+          ],
+          "tags": {},
+          "tags_all": {},
+          "validation_emails": [],
+          "validation_option": []
+        },
+        "before_identity": {
+          "arn": "arn:aws:acm:eu-central-1:123456789012:certificate/00000000-0000-4000-8000-000000000001"
+        },
+        "after_identity": {
+          "arn": "arn:aws:acm:eu-central-1:123456789012:certificate/00000000-0000-4000-8000-000000000001"
+        }
+      }
+    },
+    {
+      "address": "aws_iam_instance_profile.stack_vm",
+      "mode": "managed",
+      "type": "aws_iam_instance_profile",
+      "name": "stack_vm",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "arn": "arn:aws:iam::123456789012:instance-profile/cloudgate/stack-vm/cloudgate-stack-vm-svcxstackx1",
+          "create_date": "2026-01-01T00:00:00Z",
+          "id": "cloudgate-stack-vm-svcxstackx1",
+          "name": "cloudgate-stack-vm-svcxstackx1",
+          "name_prefix": "",
+          "path": "/cloudgate/stack-vm/",
+          "role": "cloudgate-stack-vm-svcxstackx1",
+          "tags": {
+            "Name": "cloudgate/analytics/stack-vm",
+            "cloudgate:address": "aws_iam_instance_profile.stack_vm"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/stack-vm",
+            "cloudgate:address": "aws_iam_instance_profile.stack_vm",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "unique_id": "9a1qrpzinee1rqx9idgp"
+        },
+        "after": {
+          "arn": "arn:aws:iam::123456789012:instance-profile/cloudgate/stack-vm/cloudgate-stack-vm-svcxstackx1",
+          "create_date": "2026-01-01T00:00:00Z",
+          "id": "cloudgate-stack-vm-svcxstackx1",
+          "name": "cloudgate-stack-vm-svcxstackx1",
+          "name_prefix": "",
+          "path": "/cloudgate/stack-vm/",
+          "role": "cloudgate-stack-vm-svcxstackx1",
+          "tags": {
+            "Name": "cloudgate/analytics/stack-vm",
+            "cloudgate:address": "aws_iam_instance_profile.stack_vm"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/stack-vm",
+            "cloudgate:address": "aws_iam_instance_profile.stack_vm",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "unique_id": "9a1qrpzinee1rqx9idgp"
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_sensitive": {
+          "tags": {},
+          "tags_all": {}
+        },
+        "before_identity": {
+          "account_id": "123456789012",
+          "name": "cloudgate-stack-vm-svcxstackx1"
+        },
+        "after_identity": {
+          "account_id": "123456789012",
+          "name": "cloudgate-stack-vm-svcxstackx1"
+        }
+      }
+    },
+    {
+      "address": "aws_iam_role.stack_vm",
+      "mode": "managed",
+      "type": "aws_iam_role",
+      "name": "stack_vm",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "arn": "arn:aws:iam::123456789012:role/cloudgate/stack-vm/cloudgate-stack-vm-svcxstackx1",
+          "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ec2.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+          "create_date": "2026-01-01T00:00:00Z",
+          "description": "Cloudgate: a Stack VM, reached through Session Manager",
+          "force_detach_policies": false,
+          "id": "cloudgate-stack-vm-svcxstackx1",
+          "inline_policy": [],
+          "managed_policy_arns": [
+            "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+          ],
+          "max_session_duration": 3600,
+          "name": "cloudgate-stack-vm-svcxstackx1",
+          "name_prefix": "",
+          "path": "/cloudgate/stack-vm/",
+          "permissions_boundary": "",
+          "tags": {
+            "Name": "cloudgate/analytics/stack-vm",
+            "cloudgate:address": "aws_iam_role.stack_vm"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/stack-vm",
+            "cloudgate:address": "aws_iam_role.stack_vm",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "unique_id": "AROA00000000000000002"
+        },
+        "after": {
+          "arn": "arn:aws:iam::123456789012:role/cloudgate/stack-vm/cloudgate-stack-vm-svcxstackx1",
+          "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ec2.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+          "create_date": "2026-01-01T00:00:00Z",
+          "description": "Cloudgate: a Stack VM, reached through Session Manager",
+          "force_detach_policies": false,
+          "id": "cloudgate-stack-vm-svcxstackx1",
+          "inline_policy": [],
+          "managed_policy_arns": [
+            "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+          ],
+          "max_session_duration": 3600,
+          "name": "cloudgate-stack-vm-svcxstackx1",
+          "name_prefix": "",
+          "path": "/cloudgate/stack-vm/",
+          "permissions_boundary": "",
+          "tags": {
+            "Name": "cloudgate/analytics/stack-vm",
+            "cloudgate:address": "aws_iam_role.stack_vm"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/stack-vm",
+            "cloudgate:address": "aws_iam_role.stack_vm",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "unique_id": "AROA00000000000000002"
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "inline_policy": [],
+          "managed_policy_arns": [
+            false
+          ],
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_sensitive": {
+          "inline_policy": [],
+          "managed_policy_arns": [
+            false
+          ],
+          "tags": {},
+          "tags_all": {}
+        },
+        "before_identity": {
+          "account_id": "123456789012",
+          "name": "cloudgate-stack-vm-svcxstackx1"
+        },
+        "after_identity": {
+          "account_id": "123456789012",
+          "name": "cloudgate-stack-vm-svcxstackx1"
+        }
+      }
+    },
+    {
+      "address": "aws_instance.stack_vm",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "stack_vm",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "ami": "ami-00000001",
+          "arn": "arn:aws:ec2:eu-central-1:123456789012:instance/i-00000000000000006",
+          "associate_public_ip_address": true,
+          "availability_zone": "eu-central-1a",
+          "capacity_reservation_specification": [],
+          "cpu_options": [],
+          "credit_specification": [
+            {
+              "cpu_credits": "standard"
+            }
+          ],
+          "disable_api_stop": false,
+          "disable_api_termination": false,
+          "ebs_block_device": [
+            {
+              "delete_on_termination": false,
+              "device_name": "/dev/sdf",
+              "encrypted": true,
+              "iops": 3000,
+              "kms_key_id": "arn:aws:kms:eu-central-1:123456789012:key/00000000-0000-4000-8000-000000000002",
+              "snapshot_id": "",
+              "tags": {
+                "Name": "cloudgate/analytics/data",
+                "cloudgate:address": "aws_ebs_volume.data",
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:stack-vm-data": "st_stack_1",
+                "cloudgate:state": "st_stack_1"
+              },
+              "tags_all": {
+                "Name": "cloudgate/analytics/data",
+                "cloudgate:address": "aws_ebs_volume.data",
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:stack-vm-data": "st_stack_1",
+                "cloudgate:state": "st_stack_1"
+              },
+              "throughput": 0,
+              "volume_id": "vol-00000000000000005",
+              "volume_size": 20,
+              "volume_type": "gp3"
+            }
+          ],
+          "ebs_optimized": false,
+          "enable_primary_ipv6": null,
+          "enclave_options": [],
+          "ephemeral_block_device": [],
+          "force_destroy": false,
+          "get_password_data": false,
+          "hibernation": false,
+          "host_id": "",
+          "host_resource_group_arn": null,
+          "iam_instance_profile": "cloudgate-stack-vm-svcxstackx1",
+          "id": "i-00000000000000006",
+          "instance_initiated_shutdown_behavior": "stop",
+          "instance_lifecycle": "",
+          "instance_market_options": [],
+          "instance_state": "running",
+          "instance_type": "t3.small",
+          "ipv6_address_count": 0,
+          "ipv6_addresses": [],
+          "key_name": "",
+          "launch_template": [],
+          "maintenance_options": [],
+          "metadata_options": [
+            {
+              "http_endpoint": "enabled",
+              "http_protocol_ipv6": "disabled",
+              "http_put_response_hop_limit": 1,
+              "http_tokens": "required",
+              "instance_metadata_tags": "disabled"
+            }
+          ],
+          "monitoring": false,
+          "network_interface": [],
+          "outpost_arn": "",
+          "password_data": "",
+          "placement_group": "",
+          "placement_group_id": "",
+          "placement_partition_number": 0,
+          "primary_network_interface": [
+            {
+              "delete_on_termination": false,
+              "network_interface_id": "eni-00000000000000007"
+            }
+          ],
+          "primary_network_interface_id": "eni-00000000000000007",
+          "private_dns": "ip-10-80-128-4.eu-central-1.compute.internal",
+          "private_dns_name_options": [],
+          "private_ip": "10.80.128.4",
+          "public_dns": "",
+          "public_ip": "",
+          "region": "eu-central-1",
+          "root_block_device": [
+            {
+              "delete_on_termination": true,
+              "device_name": "/dev/sda1",
+              "encrypted": true,
+              "iops": 3000,
+              "kms_key_id": "arn:aws:kms:eu-central-1:123456789012:key/00000000-0000-4000-8000-000000000002",
+              "tags": {},
+              "tags_all": {
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_stack_1"
+              },
+              "throughput": 0,
+              "volume_id": "vol-00000000000000008",
+              "volume_size": 8,
+              "volume_type": "gp3"
+            }
+          ],
+          "secondary_network_interface": [],
+          "secondary_private_ips": [],
+          "security_groups": [],
+          "source_dest_check": true,
+          "spot_instance_request_id": "",
+          "subnet_id": "subnet-00000000000000002",
+          "tags": {
+            "Name": "cloudgate/analytics/stack-vm",
+            "cloudgate:address": "aws_instance.stack_vm"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/stack-vm",
+            "cloudgate:address": "aws_instance.stack_vm",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "tenancy": "default",
+          "timeouts": null,
+          "user_data": "#cloud-config\npackage_update: true\npackages:\n  - ca-certificates\n  - curl\n  - unattended-upgrades\nwrite_files:\n  - path: /usr/local/sbin/cloudgate-data-disk\n    permissions: '0755'\n    content: |\n      #!/bin/bash\n      set -euo pipefail\n      root=\"$(lsblk -no PKNAME \"$(findmnt -no SOURCE /)\")\"\n      disk=\"\"\n      for _ in $(seq 1 120); do\n        for candidate in $(lsblk -dno NAME,TYPE | awk '$2 == \"disk\" {print $1}'); do\n          if [ \"$candidate\" != \"$root\" ] && [ -z \"$(lsblk -no MOUNTPOINT \"/dev/$candidate\" | tr -d '[:space:]')\" ]; then\n            disk=\"/dev/$candidate\"\n            break 2\n          fi\n        done\n        sleep 5\n      done\n      if [ -z \"$disk\" ]; then\n        echo \"cloudgate: no data disk was attached\" >&2\n        exit 1\n      fi\n      if ! blkid \"$disk\" >/dev/null 2>&1; then\n        mkfs.ext4 -L cloudgate-data \"$disk\"\n      fi\n      uuid=\"$(blkid -s UUID -o value \"$disk\")\"\n      mkdir -p /var/lib/docker/volumes\n      if ! grep -q \"$uuid\" /etc/fstab; then\n        echo \"UUID=$uuid /var/lib/docker/volumes ext4 defaults,nofail 0 2\" >> /etc/fstab\n      fi\n      mount -a\n  - path: /etc/apt/apt.conf.d/20auto-upgrades\n    permissions: '0644'\n    content: |\n      APT::Periodic::Update-Package-Lists \"1\";\n      APT::Periodic::Unattended-Upgrade \"1\";\n  - path: /etc/apt/apt.conf.d/52cloudgate-unattended-upgrades\n    permissions: '0644'\n    content: |\n      Unattended-Upgrade::Automatic-Reboot \"false\";\nruncmd:\n  - /usr/local/sbin/cloudgate-data-disk\n  - install -m 0755 -d /etc/apt/keyrings\n  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc\n  - chmod a+r /etc/apt/keyrings/docker.asc\n  - echo \"deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable\" > /etc/apt/sources.list.d/docker.list\n  - apt-get update\n  - DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce=5:29.9.2-1~ubuntu.24.04~noble docker-ce-cli=5:29.9.2-1~ubuntu.24.04~noble containerd.io docker-compose-plugin=5.6.1-1~ubuntu.24.04~noble\n  - apt-mark hold docker-ce docker-ce-cli docker-compose-plugin\n  - systemctl enable --now docker\n  - docker network inspect cloudgate-network >/dev/null 2>&1 || docker network create cloudgate-network\n",
+          "user_data_base64": null,
+          "user_data_replace_on_change": false,
+          "volume_tags": null,
+          "vpc_security_group_ids": [
+            "sg-00000000000000009"
+          ]
+        },
+        "after": {
+          "ami": "ami-00000001",
+          "arn": "arn:aws:ec2:eu-central-1:123456789012:instance/i-00000000000000006",
+          "associate_public_ip_address": true,
+          "availability_zone": "eu-central-1a",
+          "capacity_reservation_specification": [],
+          "cpu_options": [],
+          "credit_specification": [
+            {
+              "cpu_credits": "standard"
+            }
+          ],
+          "disable_api_stop": false,
+          "disable_api_termination": false,
+          "ebs_block_device": [
+            {
+              "delete_on_termination": false,
+              "device_name": "/dev/sdf",
+              "encrypted": true,
+              "iops": 3000,
+              "kms_key_id": "arn:aws:kms:eu-central-1:123456789012:key/00000000-0000-4000-8000-000000000002",
+              "snapshot_id": "",
+              "tags": {
+                "Name": "cloudgate/analytics/data",
+                "cloudgate:address": "aws_ebs_volume.data",
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:stack-vm-data": "st_stack_1",
+                "cloudgate:state": "st_stack_1"
+              },
+              "tags_all": {
+                "Name": "cloudgate/analytics/data",
+                "cloudgate:address": "aws_ebs_volume.data",
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:stack-vm-data": "st_stack_1",
+                "cloudgate:state": "st_stack_1"
+              },
+              "throughput": 0,
+              "volume_id": "vol-00000000000000005",
+              "volume_size": 20,
+              "volume_type": "gp3"
+            }
+          ],
+          "ebs_optimized": false,
+          "enable_primary_ipv6": null,
+          "enclave_options": [],
+          "ephemeral_block_device": [],
+          "force_destroy": false,
+          "get_password_data": false,
+          "hibernation": false,
+          "host_id": "",
+          "host_resource_group_arn": null,
+          "iam_instance_profile": "cloudgate-stack-vm-svcxstackx1",
+          "id": "i-00000000000000006",
+          "instance_initiated_shutdown_behavior": "stop",
+          "instance_lifecycle": "",
+          "instance_market_options": [],
+          "instance_state": "running",
+          "instance_type": "t3.small",
+          "ipv6_address_count": 0,
+          "ipv6_addresses": [],
+          "key_name": "",
+          "launch_template": [],
+          "maintenance_options": [],
+          "metadata_options": [
+            {
+              "http_endpoint": "enabled",
+              "http_protocol_ipv6": "disabled",
+              "http_put_response_hop_limit": 1,
+              "http_tokens": "required",
+              "instance_metadata_tags": "disabled"
+            }
+          ],
+          "monitoring": false,
+          "network_interface": [],
+          "outpost_arn": "",
+          "password_data": "",
+          "placement_group": "",
+          "placement_group_id": "",
+          "placement_partition_number": 0,
+          "primary_network_interface": [
+            {
+              "delete_on_termination": false,
+              "network_interface_id": "eni-00000000000000007"
+            }
+          ],
+          "primary_network_interface_id": "eni-00000000000000007",
+          "private_dns": "ip-10-80-128-4.eu-central-1.compute.internal",
+          "private_dns_name_options": [],
+          "private_ip": "10.80.128.4",
+          "public_dns": "",
+          "public_ip": "",
+          "region": "eu-central-1",
+          "root_block_device": [
+            {
+              "delete_on_termination": true,
+              "device_name": "/dev/sda1",
+              "encrypted": true,
+              "iops": 3000,
+              "kms_key_id": "arn:aws:kms:eu-central-1:123456789012:key/00000000-0000-4000-8000-000000000002",
+              "tags": {},
+              "tags_all": {
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_stack_1"
+              },
+              "throughput": 0,
+              "volume_id": "vol-00000000000000008",
+              "volume_size": 8,
+              "volume_type": "gp3"
+            }
+          ],
+          "secondary_network_interface": [],
+          "secondary_private_ips": [],
+          "security_groups": [],
+          "source_dest_check": true,
+          "spot_instance_request_id": "",
+          "subnet_id": "subnet-00000000000000002",
+          "tags": {
+            "Name": "cloudgate/analytics/stack-vm",
+            "cloudgate:address": "aws_instance.stack_vm"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/stack-vm",
+            "cloudgate:address": "aws_instance.stack_vm",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "tenancy": "default",
+          "timeouts": null,
+          "user_data": "#cloud-config\npackage_update: true\npackages:\n  - ca-certificates\n  - curl\n  - unattended-upgrades\nwrite_files:\n  - path: /usr/local/sbin/cloudgate-data-disk\n    permissions: '0755'\n    content: |\n      #!/bin/bash\n      set -euo pipefail\n      root=\"$(lsblk -no PKNAME \"$(findmnt -no SOURCE /)\")\"\n      disk=\"\"\n      for _ in $(seq 1 120); do\n        for candidate in $(lsblk -dno NAME,TYPE | awk '$2 == \"disk\" {print $1}'); do\n          if [ \"$candidate\" != \"$root\" ] && [ -z \"$(lsblk -no MOUNTPOINT \"/dev/$candidate\" | tr -d '[:space:]')\" ]; then\n            disk=\"/dev/$candidate\"\n            break 2\n          fi\n        done\n        sleep 5\n      done\n      if [ -z \"$disk\" ]; then\n        echo \"cloudgate: no data disk was attached\" >&2\n        exit 1\n      fi\n      if ! blkid \"$disk\" >/dev/null 2>&1; then\n        mkfs.ext4 -L cloudgate-data \"$disk\"\n      fi\n      uuid=\"$(blkid -s UUID -o value \"$disk\")\"\n      mkdir -p /var/lib/docker/volumes\n      if ! grep -q \"$uuid\" /etc/fstab; then\n        echo \"UUID=$uuid /var/lib/docker/volumes ext4 defaults,nofail 0 2\" >> /etc/fstab\n      fi\n      mount -a\n  - path: /etc/apt/apt.conf.d/20auto-upgrades\n    permissions: '0644'\n    content: |\n      APT::Periodic::Update-Package-Lists \"1\";\n      APT::Periodic::Unattended-Upgrade \"1\";\n  - path: /etc/apt/apt.conf.d/52cloudgate-unattended-upgrades\n    permissions: '0644'\n    content: |\n      Unattended-Upgrade::Automatic-Reboot \"false\";\nruncmd:\n  - /usr/local/sbin/cloudgate-data-disk\n  - install -m 0755 -d /etc/apt/keyrings\n  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc\n  - chmod a+r /etc/apt/keyrings/docker.asc\n  - echo \"deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable\" > /etc/apt/sources.list.d/docker.list\n  - apt-get update\n  - DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce=5:29.9.2-1~ubuntu.24.04~noble docker-ce-cli=5:29.9.2-1~ubuntu.24.04~noble containerd.io docker-compose-plugin=5.6.1-1~ubuntu.24.04~noble\n  - apt-mark hold docker-ce docker-ce-cli docker-compose-plugin\n  - systemctl enable --now docker\n  - docker network inspect cloudgate-network >/dev/null 2>&1 || docker network create cloudgate-network\n",
+          "user_data_base64": null,
+          "user_data_replace_on_change": false,
+          "volume_tags": null,
+          "vpc_security_group_ids": [
+            "sg-00000000000000009"
+          ]
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "capacity_reservation_specification": [],
+          "cpu_options": [],
+          "credit_specification": [
+            {}
+          ],
+          "ebs_block_device": [
+            {
+              "tags": {},
+              "tags_all": {}
+            }
+          ],
+          "enclave_options": [],
+          "ephemeral_block_device": [],
+          "instance_market_options": [],
+          "ipv6_addresses": [],
+          "launch_template": [],
+          "maintenance_options": [],
+          "metadata_options": [
+            {}
+          ],
+          "network_interface": [],
+          "primary_network_interface": [
+            {}
+          ],
+          "private_dns_name_options": [],
+          "root_block_device": [
+            {
+              "tags": {},
+              "tags_all": {}
+            }
+          ],
+          "secondary_network_interface": [],
+          "secondary_private_ips": [],
+          "security_groups": [],
+          "tags": {},
+          "tags_all": {},
+          "vpc_security_group_ids": [
+            false
+          ]
+        },
+        "after_sensitive": {
+          "capacity_reservation_specification": [],
+          "cpu_options": [],
+          "credit_specification": [
+            {}
+          ],
+          "ebs_block_device": [
+            {
+              "tags": {},
+              "tags_all": {}
+            }
+          ],
+          "enclave_options": [],
+          "ephemeral_block_device": [],
+          "instance_market_options": [],
+          "ipv6_addresses": [],
+          "launch_template": [],
+          "maintenance_options": [],
+          "metadata_options": [
+            {}
+          ],
+          "network_interface": [],
+          "primary_network_interface": [
+            {}
+          ],
+          "private_dns_name_options": [],
+          "root_block_device": [
+            {
+              "tags": {},
+              "tags_all": {}
+            }
+          ],
+          "secondary_network_interface": [],
+          "secondary_private_ips": [],
+          "security_groups": [],
+          "tags": {},
+          "tags_all": {},
+          "vpc_security_group_ids": [
+            false
+          ]
+        },
+        "before_identity": {
+          "account_id": "123456789012",
+          "id": "i-00000000000000006",
+          "region": "eu-central-1"
+        },
+        "after_identity": {
+          "account_id": "123456789012",
+          "id": "i-00000000000000006",
+          "region": "eu-central-1"
+        }
+      }
+    },
+    {
+      "address": "aws_lb_listener_rule.domain[\"dom_admin\"]",
+      "mode": "managed",
+      "type": "aws_lb_listener_rule",
+      "name": "domain",
+      "index": "dom_admin",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "action": [
+            {
+              "authenticate_cognito": [],
+              "authenticate_oidc": [],
+              "fixed_response": [],
+              "forward": [],
+              "jwt_validation": [],
+              "redirect": [],
+              "type": "forward"
+            }
+          ],
+          "condition": [
+            {
+              "host_header": [
+                {
+                  "regex_values": [],
+                  "values": [
+                    "admin.example.com"
+                  ]
+                }
+              ],
+              "http_header": [],
+              "http_request_method": [],
+              "path_pattern": [],
+              "query_string": [],
+              "source_ip": []
+            },
+            {
+              "host_header": [],
+              "http_header": [],
+              "http_request_method": [],
+              "path_pattern": [
+                {
+                  "regex_values": [],
+                  "values": [
+                    "/*"
+                  ]
+                }
+              ],
+              "query_string": [],
+              "source_ip": []
+            }
+          ],
+          "listener_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener/app/cg-00000000000000000000000001/0000000000000001/0000000000000002",
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/analytics/domain/admin.example.com",
+            "cloudgate:address": "aws_lb_listener_rule.domain/dom_admin"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/domain/admin.example.com",
+            "cloudgate:address": "aws_lb_listener_rule.domain/dom_admin",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "transform": []
+        },
+        "after_unknown": {
+          "action": [
+            {
+              "authenticate_cognito": [],
+              "authenticate_oidc": [],
+              "fixed_response": [],
+              "forward": [],
+              "jwt_validation": [],
+              "order": true,
+              "redirect": [],
+              "target_group_arn": true
+            }
+          ],
+          "arn": true,
+          "condition": [
+            {
+              "host_header": [
+                {
+                  "regex_values": [],
+                  "values": [
+                    false
+                  ]
+                }
+              ],
+              "http_header": [],
+              "http_request_method": [],
+              "path_pattern": [],
+              "query_string": [],
+              "source_ip": []
+            },
+            {
+              "host_header": [],
+              "http_header": [],
+              "http_request_method": [],
+              "path_pattern": [
+                {
+                  "regex_values": [],
+                  "values": [
+                    false
+                  ]
+                }
+              ],
+              "query_string": [],
+              "source_ip": []
+            }
+          ],
+          "id": true,
+          "priority": true,
+          "tags": {},
+          "tags_all": {},
+          "transform": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "action": [
+            {
+              "authenticate_cognito": [],
+              "authenticate_oidc": [],
+              "fixed_response": [],
+              "forward": [],
+              "jwt_validation": [],
+              "redirect": []
+            }
+          ],
+          "condition": [
+            {
+              "host_header": [
+                {
+                  "regex_values": [],
+                  "values": [
+                    false
+                  ]
+                }
+              ],
+              "http_header": [],
+              "http_request_method": [],
+              "path_pattern": [],
+              "query_string": [],
+              "source_ip": []
+            },
+            {
+              "host_header": [],
+              "http_header": [],
+              "http_request_method": [],
+              "path_pattern": [
+                {
+                  "regex_values": [],
+                  "values": [
+                    false
+                  ]
+                }
+              ],
+              "query_string": [],
+              "source_ip": []
+            }
+          ],
+          "tags": {},
+          "tags_all": {},
+          "transform": []
+        },
+        "after_identity": {
+          "arn": null
+        }
+      }
+    },
+    {
+      "address": "aws_lb_listener_rule.domain[\"dom_app\"]",
+      "mode": "managed",
+      "type": "aws_lb_listener_rule",
+      "name": "domain",
+      "index": "dom_app",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "action": [
+            {
+              "authenticate_cognito": [],
+              "authenticate_oidc": [],
+              "fixed_response": [],
+              "forward": [],
+              "jwt_validation": [],
+              "order": 1,
+              "redirect": [],
+              "target_group_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+              "type": "forward"
+            }
+          ],
+          "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener-rule/app/cg-00000000000000000000000001/0000000000000001/0000000000000002/0000000000000004",
+          "condition": [
+            {
+              "host_header": [
+                {
+                  "regex_values": [],
+                  "values": [
+                    "app.example.com"
+                  ]
+                }
+              ],
+              "http_header": [],
+              "http_request_method": [],
+              "path_pattern": [],
+              "query_string": [],
+              "source_ip": []
+            },
+            {
+              "host_header": [],
+              "http_header": [],
+              "http_request_method": [],
+              "path_pattern": [
+                {
+                  "regex_values": [],
+                  "values": [
+                    "/*"
+                  ]
+                }
+              ],
+              "query_string": [],
+              "source_ip": []
+            }
+          ],
+          "id": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener-rule/app/cg-00000000000000000000000001/0000000000000001/0000000000000002/0000000000000004",
+          "listener_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener/app/cg-00000000000000000000000001/0000000000000001/0000000000000002",
+          "priority": 1,
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/analytics/domain/app.example.com",
+            "cloudgate:address": "aws_lb_listener_rule.domain/dom_app"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/domain/app.example.com",
+            "cloudgate:address": "aws_lb_listener_rule.domain/dom_app",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "transform": []
+        },
+        "after": {
+          "action": [
+            {
+              "authenticate_cognito": [],
+              "authenticate_oidc": [],
+              "fixed_response": [],
+              "forward": [],
+              "jwt_validation": [],
+              "order": 1,
+              "redirect": [],
+              "target_group_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+              "type": "forward"
+            }
+          ],
+          "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener-rule/app/cg-00000000000000000000000001/0000000000000001/0000000000000002/0000000000000004",
+          "condition": [
+            {
+              "host_header": [
+                {
+                  "regex_values": [],
+                  "values": [
+                    "app.example.com"
+                  ]
+                }
+              ],
+              "http_header": [],
+              "http_request_method": [],
+              "path_pattern": [],
+              "query_string": [],
+              "source_ip": []
+            },
+            {
+              "host_header": [],
+              "http_header": [],
+              "http_request_method": [],
+              "path_pattern": [
+                {
+                  "regex_values": [],
+                  "values": [
+                    "/*"
+                  ]
+                }
+              ],
+              "query_string": [],
+              "source_ip": []
+            }
+          ],
+          "id": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener-rule/app/cg-00000000000000000000000001/0000000000000001/0000000000000002/0000000000000004",
+          "listener_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener/app/cg-00000000000000000000000001/0000000000000001/0000000000000002",
+          "priority": 1,
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/analytics/domain/app.example.com",
+            "cloudgate:address": "aws_lb_listener_rule.domain/dom_app"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/domain/app.example.com",
+            "cloudgate:address": "aws_lb_listener_rule.domain/dom_app",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "transform": []
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "action": [
+            {
+              "authenticate_cognito": [],
+              "authenticate_oidc": [],
+              "fixed_response": [],
+              "forward": [],
+              "jwt_validation": [],
+              "redirect": []
+            }
+          ],
+          "condition": [
+            {
+              "host_header": [
+                {
+                  "regex_values": [],
+                  "values": [
+                    false
+                  ]
+                }
+              ],
+              "http_header": [],
+              "http_request_method": [],
+              "path_pattern": [],
+              "query_string": [],
+              "source_ip": []
+            },
+            {
+              "host_header": [],
+              "http_header": [],
+              "http_request_method": [],
+              "path_pattern": [
+                {
+                  "regex_values": [],
+                  "values": [
+                    false
+                  ]
+                }
+              ],
+              "query_string": [],
+              "source_ip": []
+            }
+          ],
+          "tags": {},
+          "tags_all": {},
+          "transform": []
+        },
+        "after_sensitive": {
+          "action": [
+            {
+              "authenticate_cognito": [],
+              "authenticate_oidc": [],
+              "fixed_response": [],
+              "forward": [],
+              "jwt_validation": [],
+              "redirect": []
+            }
+          ],
+          "condition": [
+            {
+              "host_header": [
+                {
+                  "regex_values": [],
+                  "values": [
+                    false
+                  ]
+                }
+              ],
+              "http_header": [],
+              "http_request_method": [],
+              "path_pattern": [],
+              "query_string": [],
+              "source_ip": []
+            },
+            {
+              "host_header": [],
+              "http_header": [],
+              "http_request_method": [],
+              "path_pattern": [
+                {
+                  "regex_values": [],
+                  "values": [
+                    false
+                  ]
+                }
+              ],
+              "query_string": [],
+              "source_ip": []
+            }
+          ],
+          "tags": {},
+          "tags_all": {},
+          "transform": []
+        },
+        "before_identity": {
+          "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener-rule/app/cg-00000000000000000000000001/0000000000000001/0000000000000002/0000000000000004"
+        },
+        "after_identity": {
+          "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener-rule/app/cg-00000000000000000000000001/0000000000000001/0000000000000002/0000000000000004"
+        }
+      }
+    },
+    {
+      "address": "aws_lb_target_group.stack_vm[\"3000\"]",
+      "mode": "managed",
+      "type": "aws_lb_target_group",
+      "name": "stack_vm",
+      "index": "3000",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+          "arn_suffix": "targetgroup/cg-00000000000000000000000002/0000000000000003",
+          "connection_termination": null,
+          "deregistration_delay": "30",
+          "health_check": [
+            {
+              "enabled": true,
+              "healthy_threshold": 3,
+              "interval": 30,
+              "matcher": "200-499",
+              "path": "/",
+              "port": "traffic-port",
+              "protocol": "HTTP",
+              "timeout": 5,
+              "unhealthy_threshold": 3
+            }
+          ],
+          "id": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+          "ip_address_type": "ipv4",
+          "lambda_multi_value_headers_enabled": false,
+          "load_balancer_arns": [
+            "arn:aws:elasticloadbalancing:eu-central-1:123456789012:loadbalancer/app/cg-00000000000000000000000001/0000000000000001"
+          ],
+          "load_balancing_algorithm_type": "round_robin",
+          "load_balancing_anomaly_mitigation": null,
+          "load_balancing_cross_zone_enabled": "use_load_balancer_configuration",
+          "name": "cg-00000000000000000000000002",
+          "name_prefix": "cg-",
+          "port": 3000,
+          "preserve_client_ip": null,
+          "protocol": "HTTP",
+          "protocol_version": "HTTP1",
+          "proxy_protocol_v2": false,
+          "region": "eu-central-1",
+          "slow_start": 0,
+          "stickiness": [
+            {
+              "cookie_duration": 0,
+              "cookie_name": "",
+              "enabled": false,
+              "type": "lb_cookie"
+            }
+          ],
+          "tags": {
+            "Name": "cloudgate/analytics/targets/3000",
+            "cloudgate:address": "aws_lb_target_group.stack_vm/3000"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/targets/3000",
+            "cloudgate:address": "aws_lb_target_group.stack_vm/3000",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "target_control_port": 0,
+          "target_failover": [
+            {
+              "on_deregistration": null,
+              "on_unhealthy": null
+            }
+          ],
+          "target_group_health": [
+            {
+              "dns_failover": [
+                {
+                  "minimum_healthy_targets_count": null,
+                  "minimum_healthy_targets_percentage": null
+                }
+              ],
+              "unhealthy_state_routing": [
+                {
+                  "minimum_healthy_targets_count": null,
+                  "minimum_healthy_targets_percentage": null
+                }
+              ]
+            }
+          ],
+          "target_health_state": [
+            {
+              "enable_unhealthy_connection_termination": null,
+              "unhealthy_draining_interval": null
+            }
+          ],
+          "target_type": "instance",
+          "vpc_id": "vpc-00000000000000001"
+        },
+        "after": {
+          "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+          "arn_suffix": "targetgroup/cg-00000000000000000000000002/0000000000000003",
+          "connection_termination": null,
+          "deregistration_delay": "30",
+          "health_check": [
+            {
+              "enabled": true,
+              "healthy_threshold": 3,
+              "interval": 30,
+              "matcher": "200-499",
+              "path": "/",
+              "port": "traffic-port",
+              "protocol": "HTTP",
+              "timeout": 5,
+              "unhealthy_threshold": 3
+            }
+          ],
+          "id": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+          "ip_address_type": "ipv4",
+          "lambda_multi_value_headers_enabled": false,
+          "load_balancer_arns": [
+            "arn:aws:elasticloadbalancing:eu-central-1:123456789012:loadbalancer/app/cg-00000000000000000000000001/0000000000000001"
+          ],
+          "load_balancing_algorithm_type": "round_robin",
+          "load_balancing_anomaly_mitigation": null,
+          "load_balancing_cross_zone_enabled": "use_load_balancer_configuration",
+          "name": "cg-00000000000000000000000002",
+          "name_prefix": "cg-",
+          "port": 3000,
+          "preserve_client_ip": null,
+          "protocol": "HTTP",
+          "protocol_version": "HTTP1",
+          "proxy_protocol_v2": false,
+          "region": "eu-central-1",
+          "slow_start": 0,
+          "stickiness": [
+            {
+              "cookie_duration": 0,
+              "cookie_name": "",
+              "enabled": false,
+              "type": "lb_cookie"
+            }
+          ],
+          "tags": {
+            "Name": "cloudgate/analytics/targets/3000",
+            "cloudgate:address": "aws_lb_target_group.stack_vm/3000"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/targets/3000",
+            "cloudgate:address": "aws_lb_target_group.stack_vm/3000",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "target_control_port": 0,
+          "target_failover": [
+            {
+              "on_deregistration": null,
+              "on_unhealthy": null
+            }
+          ],
+          "target_group_health": [
+            {
+              "dns_failover": [
+                {
+                  "minimum_healthy_targets_count": null,
+                  "minimum_healthy_targets_percentage": null
+                }
+              ],
+              "unhealthy_state_routing": [
+                {
+                  "minimum_healthy_targets_count": null,
+                  "minimum_healthy_targets_percentage": null
+                }
+              ]
+            }
+          ],
+          "target_health_state": [
+            {
+              "enable_unhealthy_connection_termination": null,
+              "unhealthy_draining_interval": null
+            }
+          ],
+          "target_type": "instance",
+          "vpc_id": "vpc-00000000000000001"
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "health_check": [
+            {}
+          ],
+          "load_balancer_arns": [
+            false
+          ],
+          "stickiness": [
+            {}
+          ],
+          "tags": {},
+          "tags_all": {},
+          "target_failover": [
+            {}
+          ],
+          "target_group_health": [
+            {
+              "dns_failover": [
+                {}
+              ],
+              "unhealthy_state_routing": [
+                {}
+              ]
+            }
+          ],
+          "target_health_state": [
+            {}
+          ]
+        },
+        "after_sensitive": {
+          "health_check": [
+            {}
+          ],
+          "load_balancer_arns": [
+            false
+          ],
+          "stickiness": [
+            {}
+          ],
+          "tags": {},
+          "tags_all": {},
+          "target_failover": [
+            {}
+          ],
+          "target_group_health": [
+            {
+              "dns_failover": [
+                {}
+              ],
+              "unhealthy_state_routing": [
+                {}
+              ]
+            }
+          ],
+          "target_health_state": [
+            {}
+          ]
+        },
+        "before_identity": {
+          "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003"
+        },
+        "after_identity": {
+          "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003"
+        }
+      }
+    },
+    {
+      "address": "aws_lb_target_group.stack_vm[\"8080\"]",
+      "mode": "managed",
+      "type": "aws_lb_target_group",
+      "name": "stack_vm",
+      "index": "8080",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "deregistration_delay": "30",
+          "health_check": [
+            {
+              "enabled": true,
+              "healthy_threshold": 3,
+              "interval": 30,
+              "matcher": "200-499",
+              "path": "/",
+              "port": "traffic-port",
+              "protocol": "HTTP",
+              "unhealthy_threshold": 3
+            }
+          ],
+          "lambda_multi_value_headers_enabled": false,
+          "name_prefix": "cg-",
+          "port": 8080,
+          "protocol": "HTTP",
+          "proxy_protocol_v2": false,
+          "region": "eu-central-1",
+          "slow_start": 0,
+          "tags": {
+            "Name": "cloudgate/analytics/targets/8080",
+            "cloudgate:address": "aws_lb_target_group.stack_vm/8080"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/targets/8080",
+            "cloudgate:address": "aws_lb_target_group.stack_vm/8080",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "target_control_port": null,
+          "target_type": "instance",
+          "vpc_id": "vpc-00000000000000001"
+        },
+        "after_unknown": {
+          "arn": true,
+          "arn_suffix": true,
+          "connection_termination": true,
+          "health_check": [
+            {
+              "timeout": true
+            }
+          ],
+          "id": true,
+          "ip_address_type": true,
+          "load_balancer_arns": true,
+          "load_balancing_algorithm_type": true,
+          "load_balancing_anomaly_mitigation": true,
+          "load_balancing_cross_zone_enabled": true,
+          "name": true,
+          "preserve_client_ip": true,
+          "protocol_version": true,
+          "stickiness": true,
+          "tags": {},
+          "tags_all": {},
+          "target_failover": true,
+          "target_group_health": true,
+          "target_health_state": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "health_check": [
+            {}
+          ],
+          "load_balancer_arns": [],
+          "stickiness": [],
+          "tags": {},
+          "tags_all": {},
+          "target_failover": [],
+          "target_group_health": [],
+          "target_health_state": []
+        },
+        "after_identity": {
+          "arn": null
+        }
+      }
+    },
+    {
+      "address": "aws_lb_target_group_attachment.stack_vm[\"3000\"]",
+      "mode": "managed",
+      "type": "aws_lb_target_group_attachment",
+      "name": "stack_vm",
+      "index": "3000",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "availability_zone": null,
+          "id": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003,i-00000000000000006,3000",
+          "port": 3000,
+          "quic_server_id": null,
+          "region": "eu-central-1",
+          "target_group_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+          "target_id": "i-00000000000000006"
+        },
+        "after": {
+          "availability_zone": null,
+          "id": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003,i-00000000000000006,3000",
+          "port": 3000,
+          "quic_server_id": null,
+          "region": "eu-central-1",
+          "target_group_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+          "target_id": "i-00000000000000006"
+        },
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": {},
+        "before_identity": {
+          "account_id": "123456789012",
+          "availability_zone": null,
+          "port": 3000,
+          "quic_server_id": null,
+          "region": "eu-central-1",
+          "target_group_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+          "target_id": "i-00000000000000006"
+        },
+        "after_identity": {
+          "account_id": "123456789012",
+          "availability_zone": null,
+          "port": 3000,
+          "quic_server_id": null,
+          "region": "eu-central-1",
+          "target_group_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+          "target_id": "i-00000000000000006"
+        }
+      }
+    },
+    {
+      "address": "aws_lb_target_group_attachment.stack_vm[\"8080\"]",
+      "mode": "managed",
+      "type": "aws_lb_target_group_attachment",
+      "name": "stack_vm",
+      "index": "8080",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "availability_zone": null,
+          "port": 8080,
+          "quic_server_id": null,
+          "region": "eu-central-1",
+          "target_id": "i-00000000000000006"
+        },
+        "after_unknown": {
+          "id": true,
+          "target_group_arn": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {},
+        "after_identity": {
+          "account_id": null,
+          "availability_zone": null,
+          "port": null,
+          "quic_server_id": null,
+          "region": null,
+          "target_group_arn": null,
+          "target_id": null
+        }
+      }
+    },
+    {
+      "address": "aws_security_group.stack_vm",
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "stack_vm",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "arn": "arn:aws:ec2:eu-central-1:123456789012:security-group/sg-00000000000000009",
+          "description": "Cloudgate: the Stack VM of a Compose stack, reached through Session Manager",
+          "egress": [
+            {
+              "cidr_blocks": [
+                "0.0.0.0/0"
+              ],
+              "description": "",
+              "from_port": 0,
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "protocol": "-1",
+              "security_groups": [],
+              "self": false,
+              "to_port": 0
+            }
+          ],
+          "id": "sg-00000000000000009",
+          "ingress": [
+            {
+              "cidr_blocks": [],
+              "description": "The load balancer, to a Domain of the stack",
+              "from_port": 3000,
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "protocol": "tcp",
+              "security_groups": [
+                "sg-00000000000000004"
+              ],
+              "self": false,
+              "to_port": 3000
+            }
+          ],
+          "name": "cloudgate-stack-vm-svc_stack_1",
+          "name_prefix": "",
+          "owner_id": "123456789012",
+          "region": "eu-central-1",
+          "revoke_rules_on_delete": false,
+          "tags": {
+            "Name": "cloudgate/analytics/stack-vm",
+            "cloudgate:address": "aws_security_group.stack_vm"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/stack-vm",
+            "cloudgate:address": "aws_security_group.stack_vm",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "timeouts": null,
+          "vpc_id": "vpc-00000000000000001"
+        },
+        "after": {
+          "arn": "arn:aws:ec2:eu-central-1:123456789012:security-group/sg-00000000000000009",
+          "description": "Cloudgate: the Stack VM of a Compose stack, reached through Session Manager",
+          "egress": [
+            {
+              "cidr_blocks": [
+                "0.0.0.0/0"
+              ],
+              "description": "",
+              "from_port": 0,
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "protocol": "-1",
+              "security_groups": [],
+              "self": false,
+              "to_port": 0
+            }
+          ],
+          "id": "sg-00000000000000009",
+          "ingress": [
+            {
+              "cidr_blocks": [],
+              "description": "The load balancer, to a Domain of the stack",
+              "from_port": 3000,
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "protocol": "tcp",
+              "security_groups": [
+                "sg-00000000000000004"
+              ],
+              "self": false,
+              "to_port": 3000
+            },
+            {
+              "cidr_blocks": [],
+              "description": "The load balancer, to a Domain of the stack",
+              "from_port": 8080,
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "protocol": "tcp",
+              "security_groups": [
+                "sg-00000000000000004"
+              ],
+              "self": false,
+              "to_port": 8080
+            }
+          ],
+          "name": "cloudgate-stack-vm-svc_stack_1",
+          "name_prefix": "",
+          "owner_id": "123456789012",
+          "region": "eu-central-1",
+          "revoke_rules_on_delete": false,
+          "tags": {
+            "Name": "cloudgate/analytics/stack-vm",
+            "cloudgate:address": "aws_security_group.stack_vm"
+          },
+          "tags_all": {
+            "Name": "cloudgate/analytics/stack-vm",
+            "cloudgate:address": "aws_security_group.stack_vm",
+            "cloudgate:cloud-account": "ca_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "st_stack_1"
+          },
+          "timeouts": null,
+          "vpc_id": "vpc-00000000000000001"
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "egress": [
+            {
+              "cidr_blocks": [
+                false
+              ],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": []
+            }
+          ],
+          "ingress": [
+            {
+              "cidr_blocks": [],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": [
+                false
+              ]
+            }
+          ],
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_sensitive": {
+          "egress": [
+            {
+              "cidr_blocks": [
+                false
+              ],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": []
+            }
+          ],
+          "ingress": [
+            {
+              "cidr_blocks": [],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": [
+                false
+              ]
+            },
+            {
+              "cidr_blocks": [],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": [
+                false
+              ]
+            }
+          ],
+          "tags": {},
+          "tags_all": {}
+        },
+        "before_identity": {
+          "account_id": "123456789012",
+          "id": "sg-00000000000000009",
+          "region": "eu-central-1"
+        },
+        "after_identity": {
+          "account_id": "123456789012",
+          "id": "sg-00000000000000009",
+          "region": "eu-central-1"
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "domain_certificates": {
+      "actions": [
+        "update"
+      ],
+      "before": {
+        "dom_app-1": {
+          "arn": "arn:aws:acm:eu-central-1:123456789012:certificate/00000000-0000-4000-8000-000000000001",
+          "validation": [
+            {
+              "name": "_00000000000000000000000000000001.app.example.com.",
+              "type": "CNAME",
+              "value": "_00000000000000000000000000000002.ykybfrwcxw.acm-validations.aws."
+            }
+          ]
+        }
+      },
+      "after": {
+        "dom_admin-1": {
+          "validation": [
+            {}
+          ]
+        },
+        "dom_app-1": {
+          "arn": "arn:aws:acm:eu-central-1:123456789012:certificate/00000000-0000-4000-8000-000000000001",
+          "validation": [
+            {
+              "name": "_00000000000000000000000000000001.app.example.com.",
+              "type": "CNAME",
+              "value": "_00000000000000000000000000000002.ykybfrwcxw.acm-validations.aws."
+            }
+          ]
+        }
+      },
+      "after_unknown": {
+        "dom_admin-1": {
+          "arn": true,
+          "validation": [
+            {
+              "name": true,
+              "type": true,
+              "value": true
+            }
+          ]
+        },
+        "dom_app-1": {
+          "validation": [
+            {}
+          ]
+        }
+      },
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "image_id": {
+      "actions": [
+        "no-op"
+      ],
+      "before": "ami-00000001",
+      "after": "ami-00000001",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "instance_id": {
+      "actions": [
+        "no-op"
+      ],
+      "before": "i-00000000000000006",
+      "after": "i-00000000000000006",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "private_ip": {
+      "actions": [
+        "no-op"
+      ],
+      "before": "10.80.128.4",
+      "after": "10.80.128.4",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "zone": {
+      "actions": [
+        "no-op"
+      ],
+      "before": "eu-central-1a",
+      "after": "eu-central-1a",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "outputs": {
+        "data_volume_id": {
+          "sensitive": false,
+          "value": "vol-00000000000000005",
+          "type": "string"
+        },
+        "domain_certificates": {
+          "sensitive": false,
+          "value": {
+            "dom_app-1": {
+              "arn": "arn:aws:acm:eu-central-1:123456789012:certificate/00000000-0000-4000-8000-000000000001",
+              "validation": [
+                {
+                  "name": "_00000000000000000000000000000001.app.example.com.",
+                  "type": "CNAME",
+                  "value": "_00000000000000000000000000000002.ykybfrwcxw.acm-validations.aws."
+                }
+              ]
+            }
+          },
+          "type": [
+            "object",
+            {
+              "dom_app-1": [
+                "object",
+                {
+                  "arn": "string",
+                  "validation": [
+                    "tuple",
+                    [
+                      [
+                        "object",
+                        {
+                          "name": "string",
+                          "type": "string",
+                          "value": "string"
+                        }
+                      ]
+                    ]
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "image_id": {
+          "sensitive": false,
+          "value": "ami-00000001",
+          "type": "string"
+        },
+        "instance_id": {
+          "sensitive": false,
+          "value": "i-00000000000000006",
+          "type": "string"
+        },
+        "private_ip": {
+          "sensitive": false,
+          "value": "10.80.128.4",
+          "type": "string"
+        },
+        "zone": {
+          "sensitive": false,
+          "value": "eu-central-1a",
+          "type": "string"
+        }
+      },
+      "root_module": {
+        "resources": [
+          {
+            "address": "aws_acm_certificate.domain[\"dom_app-1\"]",
+            "mode": "managed",
+            "type": "aws_acm_certificate",
+            "name": "domain",
+            "index": "dom_app-1",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "arn": "arn:aws:acm:eu-central-1:123456789012:certificate/00000000-0000-4000-8000-000000000001",
+              "certificate_authority_arn": "",
+              "certificate_body": null,
+              "certificate_chain": null,
+              "domain_name": "app.example.com",
+              "domain_validation_options": [
+                {
+                  "domain_name": "app.example.com",
+                  "resource_record_name": "_00000000000000000000000000000001.app.example.com.",
+                  "resource_record_type": "CNAME",
+                  "resource_record_value": "_00000000000000000000000000000002.ykybfrwcxw.acm-validations.aws."
+                }
+              ],
+              "early_renewal_duration": "",
+              "id": "arn:aws:acm:eu-central-1:123456789012:certificate/00000000-0000-4000-8000-000000000001",
+              "key_algorithm": "RSA_2048",
+              "not_after": "2026-01-01T00:00:00Z",
+              "not_before": "2026-01-01T00:00:00Z",
+              "options": [
+                {
+                  "certificate_transparency_logging_preference": "ENABLED",
+                  "export": "DISABLED"
+                }
+              ],
+              "pending_renewal": false,
+              "private_key": null,
+              "private_key_wo": null,
+              "private_key_wo_version": null,
+              "region": "eu-central-1",
+              "renewal_eligibility": "INELIGIBLE",
+              "renewal_summary": [],
+              "status": "PENDING_VALIDATION",
+              "subject_alternative_names": [
+                "app.example.com"
+              ],
+              "tags": {
+                "Name": "cloudgate/analytics/domain/app.example.com",
+                "cloudgate:address": "aws_acm_certificate.domain/dom_app-1"
+              },
+              "tags_all": {
+                "Name": "cloudgate/analytics/domain/app.example.com",
+                "cloudgate:address": "aws_acm_certificate.domain/dom_app-1",
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_stack_1"
+              },
+              "type": "AMAZON_ISSUED",
+              "validation_emails": [],
+              "validation_method": "DNS",
+              "validation_option": []
+            },
+            "sensitive_values": {
+              "domain_validation_options": [
+                {}
+              ],
+              "options": [
+                {}
+              ],
+              "private_key": true,
+              "renewal_summary": [],
+              "subject_alternative_names": [
+                false
+              ],
+              "tags": {},
+              "tags_all": {},
+              "validation_emails": [],
+              "validation_option": []
+            },
+            "identity": {
+              "arn": "arn:aws:acm:eu-central-1:123456789012:certificate/00000000-0000-4000-8000-000000000001"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_ebs_volume.data",
+            "mode": "managed",
+            "type": "aws_ebs_volume",
+            "name": "data",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "arn": "arn:aws:ec2:eu-central-1:123456789012:volume/vol-00000000000000005",
+              "availability_zone": "eu-central-1a",
+              "create_time": "2026-01-01T00:00:00Z",
+              "encrypted": true,
+              "final_snapshot": false,
+              "id": "vol-00000000000000005",
+              "iops": 3000,
+              "kms_key_id": "arn:aws:kms:eu-central-1:123456789012:key/00000000-0000-4000-8000-000000000002",
+              "multi_attach_enabled": false,
+              "outpost_arn": "",
+              "region": "eu-central-1",
+              "size": 20,
+              "snapshot_id": "",
+              "tags": {
+                "Name": "cloudgate/analytics/data",
+                "cloudgate:address": "aws_ebs_volume.data",
+                "cloudgate:stack-vm-data": "st_stack_1"
+              },
+              "tags_all": {
+                "Name": "cloudgate/analytics/data",
+                "cloudgate:address": "aws_ebs_volume.data",
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:stack-vm-data": "st_stack_1",
+                "cloudgate:state": "st_stack_1"
+              },
+              "throughput": 0,
+              "timeouts": null,
+              "type": "gp3",
+              "volume_initialization_rate": 0
+            },
+            "sensitive_values": {
+              "tags": {},
+              "tags_all": {}
+            },
+            "depends_on": [
+              "aws_iam_instance_profile.stack_vm",
+              "aws_iam_role.stack_vm",
+              "aws_instance.stack_vm",
+              "aws_security_group.stack_vm"
+            ],
+            "identity": {
+              "account_id": "123456789012",
+              "id": "vol-00000000000000005",
+              "region": "eu-central-1"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_iam_instance_profile.stack_vm",
+            "mode": "managed",
+            "type": "aws_iam_instance_profile",
+            "name": "stack_vm",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "arn": "arn:aws:iam::123456789012:instance-profile/cloudgate/stack-vm/cloudgate-stack-vm-svcxstackx1",
+              "create_date": "2026-01-01T00:00:00Z",
+              "id": "cloudgate-stack-vm-svcxstackx1",
+              "name": "cloudgate-stack-vm-svcxstackx1",
+              "name_prefix": "",
+              "path": "/cloudgate/stack-vm/",
+              "role": "cloudgate-stack-vm-svcxstackx1",
+              "tags": {
+                "Name": "cloudgate/analytics/stack-vm",
+                "cloudgate:address": "aws_iam_instance_profile.stack_vm"
+              },
+              "tags_all": {
+                "Name": "cloudgate/analytics/stack-vm",
+                "cloudgate:address": "aws_iam_instance_profile.stack_vm",
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_stack_1"
+              },
+              "unique_id": "9a1qrpzinee1rqx9idgp"
+            },
+            "sensitive_values": {
+              "tags": {},
+              "tags_all": {}
+            },
+            "depends_on": [
+              "aws_iam_role.stack_vm"
+            ],
+            "identity": {
+              "account_id": "123456789012",
+              "name": "cloudgate-stack-vm-svcxstackx1"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_iam_role.snapshots",
+            "mode": "managed",
+            "type": "aws_iam_role",
+            "name": "snapshots",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "arn": "arn:aws:iam::123456789012:role/cloudgate/stack-vm/cloudgate-stack-vm-snapshots-svcxstackx1",
+              "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"dlm.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+              "create_date": "2026-01-01T00:00:00Z",
+              "description": "Cloudgate: a Stack VM data disk's daily snapshots",
+              "force_detach_policies": false,
+              "id": "cloudgate-stack-vm-snapshots-svcxstackx1",
+              "inline_policy": [],
+              "managed_policy_arns": [],
+              "max_session_duration": 3600,
+              "name": "cloudgate-stack-vm-snapshots-svcxstackx1",
+              "name_prefix": "",
+              "path": "/cloudgate/stack-vm/",
+              "permissions_boundary": "",
+              "tags": {
+                "Name": "cloudgate/analytics/snapshots",
+                "cloudgate:address": "aws_iam_role.snapshots"
+              },
+              "tags_all": {
+                "Name": "cloudgate/analytics/snapshots",
+                "cloudgate:address": "aws_iam_role.snapshots",
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_stack_1"
+              },
+              "unique_id": "AROA00000000000000001"
+            },
+            "sensitive_values": {
+              "inline_policy": [],
+              "managed_policy_arns": [],
+              "tags": {},
+              "tags_all": {}
+            },
+            "identity": {
+              "account_id": "123456789012",
+              "name": "cloudgate-stack-vm-snapshots-svcxstackx1"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_iam_role.stack_vm",
+            "mode": "managed",
+            "type": "aws_iam_role",
+            "name": "stack_vm",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "arn": "arn:aws:iam::123456789012:role/cloudgate/stack-vm/cloudgate-stack-vm-svcxstackx1",
+              "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ec2.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+              "create_date": "2026-01-01T00:00:00Z",
+              "description": "Cloudgate: a Stack VM, reached through Session Manager",
+              "force_detach_policies": false,
+              "id": "cloudgate-stack-vm-svcxstackx1",
+              "inline_policy": [],
+              "managed_policy_arns": [
+                "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+              ],
+              "max_session_duration": 3600,
+              "name": "cloudgate-stack-vm-svcxstackx1",
+              "name_prefix": "",
+              "path": "/cloudgate/stack-vm/",
+              "permissions_boundary": "",
+              "tags": {
+                "Name": "cloudgate/analytics/stack-vm",
+                "cloudgate:address": "aws_iam_role.stack_vm"
+              },
+              "tags_all": {
+                "Name": "cloudgate/analytics/stack-vm",
+                "cloudgate:address": "aws_iam_role.stack_vm",
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_stack_1"
+              },
+              "unique_id": "AROA00000000000000002"
+            },
+            "sensitive_values": {
+              "inline_policy": [],
+              "managed_policy_arns": [
+                false
+              ],
+              "tags": {},
+              "tags_all": {}
+            },
+            "identity": {
+              "account_id": "123456789012",
+              "name": "cloudgate-stack-vm-svcxstackx1"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_iam_role_policy_attachment.session_manager",
+            "mode": "managed",
+            "type": "aws_iam_role_policy_attachment",
+            "name": "session_manager",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "id": "cloudgate-stack-vm-svcxstackx1/arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+              "policy_arn": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+              "role": "cloudgate-stack-vm-svcxstackx1"
+            },
+            "sensitive_values": {},
+            "depends_on": [
+              "aws_iam_role.stack_vm"
+            ],
+            "identity": {
+              "account_id": "123456789012",
+              "policy_arn": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+              "role": "cloudgate-stack-vm-svcxstackx1"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_iam_role_policy_attachment.snapshots",
+            "mode": "managed",
+            "type": "aws_iam_role_policy_attachment",
+            "name": "snapshots",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "id": "cloudgate-stack-vm-snapshots-svcxstackx1/arn:aws:iam::aws:policy/service-role/AWSDataLifecycleManagerServiceRole",
+              "policy_arn": "arn:aws:iam::aws:policy/service-role/AWSDataLifecycleManagerServiceRole",
+              "role": "cloudgate-stack-vm-snapshots-svcxstackx1"
+            },
+            "sensitive_values": {},
+            "depends_on": [
+              "aws_iam_role.snapshots"
+            ],
+            "identity": {
+              "account_id": "123456789012",
+              "policy_arn": "arn:aws:iam::aws:policy/service-role/AWSDataLifecycleManagerServiceRole",
+              "role": "cloudgate-stack-vm-snapshots-svcxstackx1"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_instance.stack_vm",
+            "mode": "managed",
+            "type": "aws_instance",
+            "name": "stack_vm",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 2,
+            "values": {
+              "ami": "ami-00000001",
+              "arn": "arn:aws:ec2:eu-central-1:123456789012:instance/i-00000000000000006",
+              "associate_public_ip_address": true,
+              "availability_zone": "eu-central-1a",
+              "capacity_reservation_specification": [],
+              "cpu_options": [],
+              "credit_specification": [
+                {
+                  "cpu_credits": "standard"
+                }
+              ],
+              "disable_api_stop": false,
+              "disable_api_termination": false,
+              "ebs_block_device": [
+                {
+                  "delete_on_termination": false,
+                  "device_name": "/dev/sdf",
+                  "encrypted": true,
+                  "iops": 3000,
+                  "kms_key_id": "arn:aws:kms:eu-central-1:123456789012:key/00000000-0000-4000-8000-000000000002",
+                  "snapshot_id": "",
+                  "tags": {
+                    "Name": "cloudgate/analytics/data",
+                    "cloudgate:address": "aws_ebs_volume.data",
+                    "cloudgate:cloud-account": "ca_1",
+                    "cloudgate:environment": "env_1",
+                    "cloudgate:stack-vm-data": "st_stack_1",
+                    "cloudgate:state": "st_stack_1"
+                  },
+                  "tags_all": {
+                    "Name": "cloudgate/analytics/data",
+                    "cloudgate:address": "aws_ebs_volume.data",
+                    "cloudgate:cloud-account": "ca_1",
+                    "cloudgate:environment": "env_1",
+                    "cloudgate:stack-vm-data": "st_stack_1",
+                    "cloudgate:state": "st_stack_1"
+                  },
+                  "throughput": 0,
+                  "volume_id": "vol-00000000000000005",
+                  "volume_size": 20,
+                  "volume_type": "gp3"
+                }
+              ],
+              "ebs_optimized": false,
+              "enable_primary_ipv6": null,
+              "enclave_options": [],
+              "ephemeral_block_device": [],
+              "force_destroy": false,
+              "get_password_data": false,
+              "hibernation": false,
+              "host_id": "",
+              "host_resource_group_arn": null,
+              "iam_instance_profile": "cloudgate-stack-vm-svcxstackx1",
+              "id": "i-00000000000000006",
+              "instance_initiated_shutdown_behavior": "stop",
+              "instance_lifecycle": "",
+              "instance_market_options": [],
+              "instance_state": "running",
+              "instance_type": "t3.small",
+              "ipv6_address_count": 0,
+              "ipv6_addresses": [],
+              "key_name": "",
+              "launch_template": [],
+              "maintenance_options": [],
+              "metadata_options": [
+                {
+                  "http_endpoint": "enabled",
+                  "http_protocol_ipv6": "disabled",
+                  "http_put_response_hop_limit": 1,
+                  "http_tokens": "required",
+                  "instance_metadata_tags": "disabled"
+                }
+              ],
+              "monitoring": false,
+              "network_interface": [],
+              "outpost_arn": "",
+              "password_data": "",
+              "placement_group": "",
+              "placement_group_id": "",
+              "placement_partition_number": 0,
+              "primary_network_interface": [
+                {
+                  "delete_on_termination": false,
+                  "network_interface_id": "eni-00000000000000007"
+                }
+              ],
+              "primary_network_interface_id": "eni-00000000000000007",
+              "private_dns": "ip-10-80-128-4.eu-central-1.compute.internal",
+              "private_dns_name_options": [],
+              "private_ip": "10.80.128.4",
+              "public_dns": "",
+              "public_ip": "",
+              "region": "eu-central-1",
+              "root_block_device": [
+                {
+                  "delete_on_termination": true,
+                  "device_name": "/dev/sda1",
+                  "encrypted": true,
+                  "iops": 3000,
+                  "kms_key_id": "arn:aws:kms:eu-central-1:123456789012:key/00000000-0000-4000-8000-000000000002",
+                  "tags": {},
+                  "tags_all": {
+                    "cloudgate:cloud-account": "ca_1",
+                    "cloudgate:environment": "env_1",
+                    "cloudgate:state": "st_stack_1"
+                  },
+                  "throughput": 0,
+                  "volume_id": "vol-00000000000000008",
+                  "volume_size": 8,
+                  "volume_type": "gp3"
+                }
+              ],
+              "secondary_network_interface": [],
+              "secondary_private_ips": [],
+              "security_groups": [],
+              "source_dest_check": true,
+              "spot_instance_request_id": "",
+              "subnet_id": "subnet-00000000000000002",
+              "tags": {
+                "Name": "cloudgate/analytics/stack-vm",
+                "cloudgate:address": "aws_instance.stack_vm"
+              },
+              "tags_all": {
+                "Name": "cloudgate/analytics/stack-vm",
+                "cloudgate:address": "aws_instance.stack_vm",
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_stack_1"
+              },
+              "tenancy": "default",
+              "timeouts": null,
+              "user_data": "#cloud-config\npackage_update: true\npackages:\n  - ca-certificates\n  - curl\n  - unattended-upgrades\nwrite_files:\n  - path: /usr/local/sbin/cloudgate-data-disk\n    permissions: '0755'\n    content: |\n      #!/bin/bash\n      set -euo pipefail\n      root=\"$(lsblk -no PKNAME \"$(findmnt -no SOURCE /)\")\"\n      disk=\"\"\n      for _ in $(seq 1 120); do\n        for candidate in $(lsblk -dno NAME,TYPE | awk '$2 == \"disk\" {print $1}'); do\n          if [ \"$candidate\" != \"$root\" ] && [ -z \"$(lsblk -no MOUNTPOINT \"/dev/$candidate\" | tr -d '[:space:]')\" ]; then\n            disk=\"/dev/$candidate\"\n            break 2\n          fi\n        done\n        sleep 5\n      done\n      if [ -z \"$disk\" ]; then\n        echo \"cloudgate: no data disk was attached\" >&2\n        exit 1\n      fi\n      if ! blkid \"$disk\" >/dev/null 2>&1; then\n        mkfs.ext4 -L cloudgate-data \"$disk\"\n      fi\n      uuid=\"$(blkid -s UUID -o value \"$disk\")\"\n      mkdir -p /var/lib/docker/volumes\n      if ! grep -q \"$uuid\" /etc/fstab; then\n        echo \"UUID=$uuid /var/lib/docker/volumes ext4 defaults,nofail 0 2\" >> /etc/fstab\n      fi\n      mount -a\n  - path: /etc/apt/apt.conf.d/20auto-upgrades\n    permissions: '0644'\n    content: |\n      APT::Periodic::Update-Package-Lists \"1\";\n      APT::Periodic::Unattended-Upgrade \"1\";\n  - path: /etc/apt/apt.conf.d/52cloudgate-unattended-upgrades\n    permissions: '0644'\n    content: |\n      Unattended-Upgrade::Automatic-Reboot \"false\";\nruncmd:\n  - /usr/local/sbin/cloudgate-data-disk\n  - install -m 0755 -d /etc/apt/keyrings\n  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc\n  - chmod a+r /etc/apt/keyrings/docker.asc\n  - echo \"deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable\" > /etc/apt/sources.list.d/docker.list\n  - apt-get update\n  - DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce=5:29.9.2-1~ubuntu.24.04~noble docker-ce-cli=5:29.9.2-1~ubuntu.24.04~noble containerd.io docker-compose-plugin=5.6.1-1~ubuntu.24.04~noble\n  - apt-mark hold docker-ce docker-ce-cli docker-compose-plugin\n  - systemctl enable --now docker\n  - docker network inspect cloudgate-network >/dev/null 2>&1 || docker network create cloudgate-network\n",
+              "user_data_base64": null,
+              "user_data_replace_on_change": false,
+              "volume_tags": null,
+              "vpc_security_group_ids": [
+                "sg-00000000000000009"
+              ]
+            },
+            "sensitive_values": {
+              "capacity_reservation_specification": [],
+              "cpu_options": [],
+              "credit_specification": [
+                {}
+              ],
+              "ebs_block_device": [
+                {
+                  "tags": {},
+                  "tags_all": {}
+                }
+              ],
+              "enclave_options": [],
+              "ephemeral_block_device": [],
+              "instance_market_options": [],
+              "ipv6_addresses": [],
+              "launch_template": [],
+              "maintenance_options": [],
+              "metadata_options": [
+                {}
+              ],
+              "network_interface": [],
+              "primary_network_interface": [
+                {}
+              ],
+              "private_dns_name_options": [],
+              "root_block_device": [
+                {
+                  "tags": {},
+                  "tags_all": {}
+                }
+              ],
+              "secondary_network_interface": [],
+              "secondary_private_ips": [],
+              "security_groups": [],
+              "tags": {},
+              "tags_all": {},
+              "vpc_security_group_ids": [
+                false
+              ]
+            },
+            "depends_on": [
+              "aws_iam_instance_profile.stack_vm",
+              "aws_iam_role.stack_vm",
+              "aws_security_group.stack_vm"
+            ],
+            "identity": {
+              "account_id": "123456789012",
+              "id": "i-00000000000000006",
+              "region": "eu-central-1"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_lb_listener_rule.domain[\"dom_app\"]",
+            "mode": "managed",
+            "type": "aws_lb_listener_rule",
+            "name": "domain",
+            "index": "dom_app",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "action": [
+                {
+                  "authenticate_cognito": [],
+                  "authenticate_oidc": [],
+                  "fixed_response": [],
+                  "forward": [],
+                  "jwt_validation": [],
+                  "order": 1,
+                  "redirect": [],
+                  "target_group_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+                  "type": "forward"
+                }
+              ],
+              "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener-rule/app/cg-00000000000000000000000001/0000000000000001/0000000000000002/0000000000000004",
+              "condition": [
+                {
+                  "host_header": [
+                    {
+                      "regex_values": [],
+                      "values": [
+                        "app.example.com"
+                      ]
+                    }
+                  ],
+                  "http_header": [],
+                  "http_request_method": [],
+                  "path_pattern": [],
+                  "query_string": [],
+                  "source_ip": []
+                },
+                {
+                  "host_header": [],
+                  "http_header": [],
+                  "http_request_method": [],
+                  "path_pattern": [
+                    {
+                      "regex_values": [],
+                      "values": [
+                        "/*"
+                      ]
+                    }
+                  ],
+                  "query_string": [],
+                  "source_ip": []
+                }
+              ],
+              "id": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener-rule/app/cg-00000000000000000000000001/0000000000000001/0000000000000002/0000000000000004",
+              "listener_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener/app/cg-00000000000000000000000001/0000000000000001/0000000000000002",
+              "priority": 1,
+              "region": "eu-central-1",
+              "tags": {
+                "Name": "cloudgate/analytics/domain/app.example.com",
+                "cloudgate:address": "aws_lb_listener_rule.domain/dom_app"
+              },
+              "tags_all": {
+                "Name": "cloudgate/analytics/domain/app.example.com",
+                "cloudgate:address": "aws_lb_listener_rule.domain/dom_app",
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_stack_1"
+              },
+              "transform": []
+            },
+            "sensitive_values": {
+              "action": [
+                {
+                  "authenticate_cognito": [],
+                  "authenticate_oidc": [],
+                  "fixed_response": [],
+                  "forward": [],
+                  "jwt_validation": [],
+                  "redirect": []
+                }
+              ],
+              "condition": [
+                {
+                  "host_header": [
+                    {
+                      "regex_values": [],
+                      "values": [
+                        false
+                      ]
+                    }
+                  ],
+                  "http_header": [],
+                  "http_request_method": [],
+                  "path_pattern": [],
+                  "query_string": [],
+                  "source_ip": []
+                },
+                {
+                  "host_header": [],
+                  "http_header": [],
+                  "http_request_method": [],
+                  "path_pattern": [
+                    {
+                      "regex_values": [],
+                      "values": [
+                        false
+                      ]
+                    }
+                  ],
+                  "query_string": [],
+                  "source_ip": []
+                }
+              ],
+              "tags": {},
+              "tags_all": {},
+              "transform": []
+            },
+            "depends_on": [
+              "aws_lb_target_group.stack_vm"
+            ],
+            "identity": {
+              "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener-rule/app/cg-00000000000000000000000001/0000000000000001/0000000000000002/0000000000000004"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_lb_target_group.stack_vm[\"3000\"]",
+            "mode": "managed",
+            "type": "aws_lb_target_group",
+            "name": "stack_vm",
+            "index": "3000",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+              "arn_suffix": "targetgroup/cg-00000000000000000000000002/0000000000000003",
+              "connection_termination": null,
+              "deregistration_delay": "30",
+              "health_check": [
+                {
+                  "enabled": true,
+                  "healthy_threshold": 3,
+                  "interval": 30,
+                  "matcher": "200-499",
+                  "path": "/",
+                  "port": "traffic-port",
+                  "protocol": "HTTP",
+                  "timeout": 5,
+                  "unhealthy_threshold": 3
+                }
+              ],
+              "id": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+              "ip_address_type": "ipv4",
+              "lambda_multi_value_headers_enabled": false,
+              "load_balancer_arns": [
+                "arn:aws:elasticloadbalancing:eu-central-1:123456789012:loadbalancer/app/cg-00000000000000000000000001/0000000000000001"
+              ],
+              "load_balancing_algorithm_type": "round_robin",
+              "load_balancing_anomaly_mitigation": null,
+              "load_balancing_cross_zone_enabled": "use_load_balancer_configuration",
+              "name": "cg-00000000000000000000000002",
+              "name_prefix": "cg-",
+              "port": 3000,
+              "preserve_client_ip": null,
+              "protocol": "HTTP",
+              "protocol_version": "HTTP1",
+              "proxy_protocol_v2": false,
+              "region": "eu-central-1",
+              "slow_start": 0,
+              "stickiness": [
+                {
+                  "cookie_duration": 0,
+                  "cookie_name": "",
+                  "enabled": false,
+                  "type": "lb_cookie"
+                }
+              ],
+              "tags": {
+                "Name": "cloudgate/analytics/targets/3000",
+                "cloudgate:address": "aws_lb_target_group.stack_vm/3000"
+              },
+              "tags_all": {
+                "Name": "cloudgate/analytics/targets/3000",
+                "cloudgate:address": "aws_lb_target_group.stack_vm/3000",
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_stack_1"
+              },
+              "target_control_port": 0,
+              "target_failover": [
+                {
+                  "on_deregistration": null,
+                  "on_unhealthy": null
+                }
+              ],
+              "target_group_health": [
+                {
+                  "dns_failover": [
+                    {
+                      "minimum_healthy_targets_count": null,
+                      "minimum_healthy_targets_percentage": null
+                    }
+                  ],
+                  "unhealthy_state_routing": [
+                    {
+                      "minimum_healthy_targets_count": null,
+                      "minimum_healthy_targets_percentage": null
+                    }
+                  ]
+                }
+              ],
+              "target_health_state": [
+                {
+                  "enable_unhealthy_connection_termination": null,
+                  "unhealthy_draining_interval": null
+                }
+              ],
+              "target_type": "instance",
+              "vpc_id": "vpc-00000000000000001"
+            },
+            "sensitive_values": {
+              "health_check": [
+                {}
+              ],
+              "load_balancer_arns": [
+                false
+              ],
+              "stickiness": [
+                {}
+              ],
+              "tags": {},
+              "tags_all": {},
+              "target_failover": [
+                {}
+              ],
+              "target_group_health": [
+                {
+                  "dns_failover": [
+                    {}
+                  ],
+                  "unhealthy_state_routing": [
+                    {}
+                  ]
+                }
+              ],
+              "target_health_state": [
+                {}
+              ]
+            },
+            "identity": {
+              "arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_lb_target_group_attachment.stack_vm[\"3000\"]",
+            "mode": "managed",
+            "type": "aws_lb_target_group_attachment",
+            "name": "stack_vm",
+            "index": "3000",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "availability_zone": null,
+              "id": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003,i-00000000000000006,3000",
+              "port": 3000,
+              "quic_server_id": null,
+              "region": "eu-central-1",
+              "target_group_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+              "target_id": "i-00000000000000006"
+            },
+            "sensitive_values": {},
+            "depends_on": [
+              "aws_iam_instance_profile.stack_vm",
+              "aws_iam_role.stack_vm",
+              "aws_instance.stack_vm",
+              "aws_lb_target_group.stack_vm",
+              "aws_security_group.stack_vm"
+            ],
+            "identity": {
+              "account_id": "123456789012",
+              "availability_zone": null,
+              "port": 3000,
+              "quic_server_id": null,
+              "region": "eu-central-1",
+              "target_group_arn": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:targetgroup/cg-00000000000000000000000002/0000000000000003",
+              "target_id": "i-00000000000000006"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_security_group.stack_vm",
+            "mode": "managed",
+            "type": "aws_security_group",
+            "name": "stack_vm",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 1,
+            "values": {
+              "arn": "arn:aws:ec2:eu-central-1:123456789012:security-group/sg-00000000000000009",
+              "description": "Cloudgate: the Stack VM of a Compose stack, reached through Session Manager",
+              "egress": [
+                {
+                  "cidr_blocks": [
+                    "0.0.0.0/0"
+                  ],
+                  "description": "",
+                  "from_port": 0,
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "protocol": "-1",
+                  "security_groups": [],
+                  "self": false,
+                  "to_port": 0
+                }
+              ],
+              "id": "sg-00000000000000009",
+              "ingress": [
+                {
+                  "cidr_blocks": [],
+                  "description": "The load balancer, to a Domain of the stack",
+                  "from_port": 3000,
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "protocol": "tcp",
+                  "security_groups": [
+                    "sg-00000000000000004"
+                  ],
+                  "self": false,
+                  "to_port": 3000
+                }
+              ],
+              "name": "cloudgate-stack-vm-svc_stack_1",
+              "name_prefix": "",
+              "owner_id": "123456789012",
+              "region": "eu-central-1",
+              "revoke_rules_on_delete": false,
+              "tags": {
+                "Name": "cloudgate/analytics/stack-vm",
+                "cloudgate:address": "aws_security_group.stack_vm"
+              },
+              "tags_all": {
+                "Name": "cloudgate/analytics/stack-vm",
+                "cloudgate:address": "aws_security_group.stack_vm",
+                "cloudgate:cloud-account": "ca_1",
+                "cloudgate:environment": "env_1",
+                "cloudgate:state": "st_stack_1"
+              },
+              "timeouts": null,
+              "vpc_id": "vpc-00000000000000001"
+            },
+            "sensitive_values": {
+              "egress": [
+                {
+                  "cidr_blocks": [
+                    false
+                  ],
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "security_groups": []
+                }
+              ],
+              "ingress": [
+                {
+                  "cidr_blocks": [],
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "security_groups": [
+                    false
+                  ]
+                }
+              ],
+              "tags": {},
+              "tags_all": {}
+            },
+            "identity": {
+              "account_id": "123456789012",
+              "id": "sg-00000000000000009",
+              "region": "eu-central-1"
+            },
+            "identity_schema_version": 0
+          },
+          {
+            "address": "aws_volume_attachment.data",
+            "mode": "managed",
+            "type": "aws_volume_attachment",
+            "name": "data",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "device_name": "/dev/sdf",
+              "force_detach": null,
+              "id": "vai-3052985825",
+              "instance_id": "i-00000000000000006",
+              "region": "eu-central-1",
+              "skip_destroy": null,
+              "stop_instance_before_detaching": true,
+              "timeouts": null,
+              "volume_id": "vol-00000000000000005"
+            },
+            "sensitive_values": {},
+            "depends_on": [
+              "aws_ebs_volume.data",
+              "aws_iam_instance_profile.stack_vm",
+              "aws_iam_role.stack_vm",
+              "aws_instance.stack_vm",
+              "aws_security_group.stack_vm"
+            ],
+            "identity": {
+              "account_id": "123456789012",
+              "device_name": "/dev/sdf",
+              "instance_id": "i-00000000000000006",
+              "region": "eu-central-1",
+              "volume_id": "vol-00000000000000005"
+            },
+            "identity_schema_version": 0
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "aws": {
+        "name": "aws",
+        "full_name": "registry.opentofu.org/hashicorp/aws",
+        "version_constraint": "6.69.1",
+        "expressions": {
+          "allowed_account_ids": {
+            "constant_value": [
+              "123456789012"
+            ]
+          },
+          "assume_role": [
+            {
+              "external_id": {
+                "constant_value": "moto-lane-external-id"
+              },
+              "role_arn": {
+                "constant_value": "arn:aws:iam::123456789012:role/cloudgate/cloudgate-deploy"
+              },
+              "session_name": {
+                "constant_value": "cloudgate"
+              }
+            }
+          ],
+          "default_tags": [
+            {
+              "tags": {
+                "constant_value": {
+                  "cloudgate:cloud-account": "ca_1",
+                  "cloudgate:environment": "env_1",
+                  "cloudgate:state": "st_stack_1"
+                }
+              }
+            }
+          ],
+          "endpoints": [
+            {
+              "acm": {
+                "constant_value": "http://moto:5000"
+              },
+              "dlm": {
+                "constant_value": "http://moto:5000"
+              },
+              "ec2": {
+                "constant_value": "http://moto:5000"
+              },
+              "ecs": {
+                "constant_value": "http://moto:5000"
+              },
+              "elbv2": {
+                "constant_value": "http://moto:5000"
+              },
+              "iam": {
+                "constant_value": "http://moto:5000"
+              },
+              "logs": {
+                "constant_value": "http://moto:5000"
+              },
+              "route53": {
+                "constant_value": "http://moto:5000"
+              },
+              "servicediscovery": {
+                "constant_value": "http://moto:5000"
+              },
+              "ssm": {
+                "constant_value": "http://moto:5000"
+              },
+              "sts": {
+                "constant_value": "http://moto:5000"
+              }
+            }
+          ],
+          "region": {
+            "constant_value": "eu-central-1"
+          }
+        }
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "data_volume_id": {
+          "expression": {
+            "constant_value": "${aws_ebs_volume.data.id}",
+            "references": [
+              "aws_ebs_volume.data",
+              "aws_ebs_volume.data.id"
+            ]
+          }
+        },
+        "domain_certificates": {
+          "expression": {
+            "constant_value": "${ {for key, certificate in aws_acm_certificate.domain : key => { arn = certificate.arn, validation = [for option in certificate.domain_validation_options : { name = option.resource_record_name, type = option.resource_record_type, value = option.resource_record_value }] }} }",
+            "references": [
+              "aws_acm_certificate.domain"
+            ]
+          }
+        },
+        "image_id": {
+          "expression": {
+            "constant_value": "${aws_instance.stack_vm.ami}",
+            "references": [
+              "aws_instance.stack_vm",
+              "aws_instance.stack_vm.ami"
+            ]
+          }
+        },
+        "instance_id": {
+          "expression": {
+            "constant_value": "${aws_instance.stack_vm.id}",
+            "references": [
+              "aws_instance.stack_vm",
+              "aws_instance.stack_vm.id"
+            ]
+          }
+        },
+        "private_ip": {
+          "expression": {
+            "constant_value": "${aws_instance.stack_vm.private_ip}",
+            "references": [
+              "aws_instance.stack_vm",
+              "aws_instance.stack_vm.private_ip"
+            ]
+          }
+        },
+        "zone": {
+          "expression": {
+            "constant_value": "${aws_instance.stack_vm.availability_zone}",
+            "references": [
+              "aws_instance.stack_vm",
+              "aws_instance.stack_vm.availability_zone"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "aws_acm_certificate.domain",
+          "mode": "managed",
+          "type": "aws_acm_certificate",
+          "name": "domain",
+          "provider_config_key": "aws",
+          "expressions": {
+            "domain_name": {
+              "constant_value": "${each.value.host}",
+              "references": [
+                "each.value",
+                "each.value.host"
+              ]
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "${each.value.name}",
+                "cloudgate:address": "aws_acm_certificate.domain/${each.key}"
+              },
+              "references": [
+                "each.key",
+                "each.value",
+                "each.value.name"
+              ]
+            },
+            "validation_method": {
+              "constant_value": "DNS"
+            }
+          },
+          "schema_version": 0,
+          "for_each_expression": {
+            "constant_value": {
+              "dom_admin-1": {
+                "host": "admin.example.com",
+                "name": "cloudgate/analytics/domain/admin.example.com"
+              },
+              "dom_app-1": {
+                "host": "app.example.com",
+                "name": "cloudgate/analytics/domain/app.example.com"
+              }
+            }
+          }
+        },
+        {
+          "address": "aws_ebs_volume.data",
+          "mode": "managed",
+          "type": "aws_ebs_volume",
+          "name": "data",
+          "provider_config_key": "aws",
+          "expressions": {
+            "availability_zone": {
+              "constant_value": "${aws_instance.stack_vm.availability_zone}",
+              "references": [
+                "aws_instance.stack_vm",
+                "aws_instance.stack_vm.availability_zone"
+              ]
+            },
+            "encrypted": {
+              "constant_value": true
+            },
+            "size": {
+              "constant_value": 20
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/analytics/data",
+                "cloudgate:address": "aws_ebs_volume.data",
+                "cloudgate:stack-vm-data": "st_stack_1"
+              }
+            },
+            "type": {
+              "constant_value": "gp3"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_iam_instance_profile.stack_vm",
+          "mode": "managed",
+          "type": "aws_iam_instance_profile",
+          "name": "stack_vm",
+          "provider_config_key": "aws",
+          "expressions": {
+            "name": {
+              "constant_value": "cloudgate-stack-vm-svcxstackx1"
+            },
+            "path": {
+              "constant_value": "/cloudgate/stack-vm/"
+            },
+            "role": {
+              "constant_value": "${aws_iam_role.stack_vm.name}",
+              "references": [
+                "aws_iam_role.stack_vm",
+                "aws_iam_role.stack_vm.name"
+              ]
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/analytics/stack-vm",
+                "cloudgate:address": "aws_iam_instance_profile.stack_vm"
+              }
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_iam_role.snapshots",
+          "mode": "managed",
+          "type": "aws_iam_role",
+          "name": "snapshots",
+          "provider_config_key": "aws",
+          "expressions": {
+            "assume_role_policy": {
+              "constant_value": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"dlm.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}"
+            },
+            "description": {
+              "constant_value": "Cloudgate: a Stack VM data disk's daily snapshots"
+            },
+            "name": {
+              "constant_value": "cloudgate-stack-vm-snapshots-svcxstackx1"
+            },
+            "path": {
+              "constant_value": "/cloudgate/stack-vm/"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/analytics/snapshots",
+                "cloudgate:address": "aws_iam_role.snapshots"
+              }
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_iam_role.stack_vm",
+          "mode": "managed",
+          "type": "aws_iam_role",
+          "name": "stack_vm",
+          "provider_config_key": "aws",
+          "expressions": {
+            "assume_role_policy": {
+              "constant_value": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ec2.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}"
+            },
+            "description": {
+              "constant_value": "Cloudgate: a Stack VM, reached through Session Manager"
+            },
+            "name": {
+              "constant_value": "cloudgate-stack-vm-svcxstackx1"
+            },
+            "path": {
+              "constant_value": "/cloudgate/stack-vm/"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/analytics/stack-vm",
+                "cloudgate:address": "aws_iam_role.stack_vm"
+              }
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_iam_role_policy_attachment.session_manager",
+          "mode": "managed",
+          "type": "aws_iam_role_policy_attachment",
+          "name": "session_manager",
+          "provider_config_key": "aws",
+          "expressions": {
+            "policy_arn": {
+              "constant_value": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+            },
+            "role": {
+              "constant_value": "${aws_iam_role.stack_vm.name}",
+              "references": [
+                "aws_iam_role.stack_vm",
+                "aws_iam_role.stack_vm.name"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_iam_role_policy_attachment.snapshots",
+          "mode": "managed",
+          "type": "aws_iam_role_policy_attachment",
+          "name": "snapshots",
+          "provider_config_key": "aws",
+          "expressions": {
+            "policy_arn": {
+              "constant_value": "arn:aws:iam::aws:policy/service-role/AWSDataLifecycleManagerServiceRole"
+            },
+            "role": {
+              "constant_value": "${aws_iam_role.snapshots.name}",
+              "references": [
+                "aws_iam_role.snapshots",
+                "aws_iam_role.snapshots.name"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_instance.stack_vm",
+          "mode": "managed",
+          "type": "aws_instance",
+          "name": "stack_vm",
+          "provider_config_key": "aws",
+          "expressions": {
+            "ami": {
+              "constant_value": "ami-00000001"
+            },
+            "iam_instance_profile": {
+              "constant_value": "${aws_iam_instance_profile.stack_vm.name}",
+              "references": [
+                "aws_iam_instance_profile.stack_vm",
+                "aws_iam_instance_profile.stack_vm.name"
+              ]
+            },
+            "instance_type": {
+              "constant_value": "t3.small"
+            },
+            "metadata_options": [
+              {
+                "http_endpoint": {
+                  "constant_value": "enabled"
+                },
+                "http_tokens": {
+                  "constant_value": "required"
+                }
+              }
+            ],
+            "root_block_device": [
+              {
+                "encrypted": {
+                  "constant_value": true
+                },
+                "volume_size": {
+                  "constant_value": 8
+                },
+                "volume_type": {
+                  "constant_value": "gp3"
+                }
+              }
+            ],
+            "subnet_id": {
+              "constant_value": "subnet-00000000000000002"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/analytics/stack-vm",
+                "cloudgate:address": "aws_instance.stack_vm"
+              }
+            },
+            "user_data": {
+              "constant_value": "#cloud-config\npackage_update: true\npackages:\n  - ca-certificates\n  - curl\n  - unattended-upgrades\nwrite_files:\n  - path: /usr/local/sbin/cloudgate-data-disk\n    permissions: '0755'\n    content: |\n      #!/bin/bash\n      set -euo pipefail\n      root=\"$(lsblk -no PKNAME \"$(findmnt -no SOURCE /)\")\"\n      disk=\"\"\n      for _ in $(seq 1 120); do\n        for candidate in $(lsblk -dno NAME,TYPE | awk '$2 == \"disk\" {print $1}'); do\n          if [ \"$candidate\" != \"$root\" ] && [ -z \"$(lsblk -no MOUNTPOINT \"/dev/$candidate\" | tr -d '[:space:]')\" ]; then\n            disk=\"/dev/$candidate\"\n            break 2\n          fi\n        done\n        sleep 5\n      done\n      if [ -z \"$disk\" ]; then\n        echo \"cloudgate: no data disk was attached\" >&2\n        exit 1\n      fi\n      if ! blkid \"$disk\" >/dev/null 2>&1; then\n        mkfs.ext4 -L cloudgate-data \"$disk\"\n      fi\n      uuid=\"$(blkid -s UUID -o value \"$disk\")\"\n      mkdir -p /var/lib/docker/volumes\n      if ! grep -q \"$uuid\" /etc/fstab; then\n        echo \"UUID=$uuid /var/lib/docker/volumes ext4 defaults,nofail 0 2\" >> /etc/fstab\n      fi\n      mount -a\n  - path: /etc/apt/apt.conf.d/20auto-upgrades\n    permissions: '0644'\n    content: |\n      APT::Periodic::Update-Package-Lists \"1\";\n      APT::Periodic::Unattended-Upgrade \"1\";\n  - path: /etc/apt/apt.conf.d/52cloudgate-unattended-upgrades\n    permissions: '0644'\n    content: |\n      Unattended-Upgrade::Automatic-Reboot \"false\";\nruncmd:\n  - /usr/local/sbin/cloudgate-data-disk\n  - install -m 0755 -d /etc/apt/keyrings\n  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc\n  - chmod a+r /etc/apt/keyrings/docker.asc\n  - echo \"deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable\" > /etc/apt/sources.list.d/docker.list\n  - apt-get update\n  - DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce=5:29.9.2-1~ubuntu.24.04~noble docker-ce-cli=5:29.9.2-1~ubuntu.24.04~noble containerd.io docker-compose-plugin=5.6.1-1~ubuntu.24.04~noble\n  - apt-mark hold docker-ce docker-ce-cli docker-compose-plugin\n  - systemctl enable --now docker\n  - docker network inspect cloudgate-network >/dev/null 2>&1 || docker network create cloudgate-network\n"
+            },
+            "user_data_replace_on_change": {
+              "constant_value": false
+            },
+            "vpc_security_group_ids": {
+              "constant_value": [
+                "${aws_security_group.stack_vm.id}"
+              ],
+              "references": [
+                "aws_security_group.stack_vm",
+                "aws_security_group.stack_vm.id"
+              ]
+            }
+          },
+          "schema_version": 2
+        },
+        {
+          "address": "aws_lb_listener_certificate.domain",
+          "mode": "managed",
+          "type": "aws_lb_listener_certificate",
+          "name": "domain",
+          "provider_config_key": "aws",
+          "expressions": {
+            "certificate_arn": {
+              "constant_value": "${aws_acm_certificate.domain[each.key].arn}",
+              "references": [
+                "aws_acm_certificate.domain",
+                "each.key"
+              ]
+            },
+            "listener_arn": {
+              "constant_value": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener/app/cg-00000000000000000000000001/0000000000000001/0000000000000002"
+            }
+          },
+          "schema_version": 0,
+          "for_each_expression": {
+            "constant_value": {}
+          }
+        },
+        {
+          "address": "aws_lb_listener_rule.domain",
+          "mode": "managed",
+          "type": "aws_lb_listener_rule",
+          "name": "domain",
+          "provider_config_key": "aws",
+          "expressions": {
+            "action": [
+              {
+                "target_group_arn": {
+                  "constant_value": "${each.value.target_group}",
+                  "references": [
+                    "each.value",
+                    "each.value.target_group"
+                  ]
+                },
+                "type": {
+                  "constant_value": "forward"
+                }
+              }
+            ],
+            "condition": [
+              {
+                "host_header": [
+                  {
+                    "values": {
+                      "constant_value": [
+                        "${each.value.host}"
+                      ],
+                      "references": [
+                        "each.value",
+                        "each.value.host"
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "path_pattern": [
+                  {
+                    "values": {
+                      "constant_value": "${each.value.paths}",
+                      "references": [
+                        "each.value",
+                        "each.value.paths"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ],
+            "listener_arn": {
+              "constant_value": "arn:aws:elasticloadbalancing:eu-central-1:123456789012:listener/app/cg-00000000000000000000000001/0000000000000001/0000000000000002"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "${each.value.name}",
+                "cloudgate:address": "aws_lb_listener_rule.domain/${each.key}"
+              },
+              "references": [
+                "each.key",
+                "each.value",
+                "each.value.name"
+              ]
+            }
+          },
+          "schema_version": 0,
+          "for_each_expression": {
+            "constant_value": {
+              "dom_admin": {
+                "host": "admin.example.com",
+                "name": "cloudgate/analytics/domain/admin.example.com",
+                "paths": [
+                  "/*"
+                ],
+                "target_group": "${aws_lb_target_group.stack_vm[\"8080\"].arn}"
+              },
+              "dom_app": {
+                "host": "app.example.com",
+                "name": "cloudgate/analytics/domain/app.example.com",
+                "paths": [
+                  "/*"
+                ],
+                "target_group": "${aws_lb_target_group.stack_vm[\"3000\"].arn}"
+              }
+            },
+            "references": [
+              "aws_lb_target_group.stack_vm",
+              "aws_lb_target_group.stack_vm",
+              "aws_lb_target_group.stack_vm[\"3000\"]",
+              "aws_lb_target_group.stack_vm[\"3000\"].arn",
+              "aws_lb_target_group.stack_vm[\"8080\"]",
+              "aws_lb_target_group.stack_vm[\"8080\"].arn"
+            ]
+          }
+        },
+        {
+          "address": "aws_lb_target_group.stack_vm",
+          "mode": "managed",
+          "type": "aws_lb_target_group",
+          "name": "stack_vm",
+          "provider_config_key": "aws",
+          "expressions": {
+            "deregistration_delay": {
+              "constant_value": "30"
+            },
+            "health_check": [
+              {
+                "enabled": {
+                  "constant_value": true
+                },
+                "matcher": {
+                  "constant_value": "200-499"
+                },
+                "path": {
+                  "constant_value": "/"
+                },
+                "port": {
+                  "constant_value": "traffic-port"
+                },
+                "protocol": {
+                  "constant_value": "HTTP"
+                }
+              }
+            ],
+            "name_prefix": {
+              "constant_value": "cg-"
+            },
+            "port": {
+              "constant_value": "${each.value}",
+              "references": [
+                "each.value"
+              ]
+            },
+            "protocol": {
+              "constant_value": "HTTP"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/analytics/targets/${each.key}",
+                "cloudgate:address": "aws_lb_target_group.stack_vm/${each.key}"
+              },
+              "references": [
+                "each.key",
+                "each.key"
+              ]
+            },
+            "target_type": {
+              "constant_value": "instance"
+            },
+            "vpc_id": {
+              "constant_value": "vpc-00000000000000001"
+            }
+          },
+          "schema_version": 0,
+          "for_each_expression": {
+            "constant_value": {
+              "3000": 3000,
+              "8080": 8080
+            }
+          }
+        },
+        {
+          "address": "aws_lb_target_group_attachment.stack_vm",
+          "mode": "managed",
+          "type": "aws_lb_target_group_attachment",
+          "name": "stack_vm",
+          "provider_config_key": "aws",
+          "expressions": {
+            "port": {
+              "constant_value": "${each.value}",
+              "references": [
+                "each.value"
+              ]
+            },
+            "target_group_arn": {
+              "constant_value": "${aws_lb_target_group.stack_vm[each.key].arn}",
+              "references": [
+                "aws_lb_target_group.stack_vm",
+                "each.key"
+              ]
+            },
+            "target_id": {
+              "constant_value": "${aws_instance.stack_vm.id}",
+              "references": [
+                "aws_instance.stack_vm",
+                "aws_instance.stack_vm.id"
+              ]
+            }
+          },
+          "schema_version": 0,
+          "for_each_expression": {
+            "constant_value": {
+              "3000": 3000,
+              "8080": 8080
+            }
+          }
+        },
+        {
+          "address": "aws_security_group.stack_vm",
+          "mode": "managed",
+          "type": "aws_security_group",
+          "name": "stack_vm",
+          "provider_config_key": "aws",
+          "expressions": {
+            "description": {
+              "constant_value": "Cloudgate: the Stack VM of a Compose stack, reached through Session Manager"
+            },
+            "egress": {
+              "constant_value": [
+                {
+                  "cidr_blocks": [
+                    "0.0.0.0/0"
+                  ],
+                  "description": "",
+                  "from_port": 0,
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "protocol": "-1",
+                  "security_groups": [],
+                  "self": false,
+                  "to_port": 0
+                }
+              ]
+            },
+            "ingress": {
+              "constant_value": [
+                {
+                  "cidr_blocks": [],
+                  "description": "The load balancer, to a Domain of the stack",
+                  "from_port": 3000,
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "protocol": "tcp",
+                  "security_groups": [
+                    "sg-00000000000000004"
+                  ],
+                  "self": false,
+                  "to_port": 3000
+                },
+                {
+                  "cidr_blocks": [],
+                  "description": "The load balancer, to a Domain of the stack",
+                  "from_port": 8080,
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "protocol": "tcp",
+                  "security_groups": [
+                    "sg-00000000000000004"
+                  ],
+                  "self": false,
+                  "to_port": 8080
+                }
+              ]
+            },
+            "name": {
+              "constant_value": "cloudgate-stack-vm-svc_stack_1"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/analytics/stack-vm",
+                "cloudgate:address": "aws_security_group.stack_vm"
+              }
+            },
+            "vpc_id": {
+              "constant_value": "vpc-00000000000000001"
+            }
+          },
+          "schema_version": 1
+        },
+        {
+          "address": "aws_volume_attachment.data",
+          "mode": "managed",
+          "type": "aws_volume_attachment",
+          "name": "data",
+          "provider_config_key": "aws",
+          "expressions": {
+            "device_name": {
+              "constant_value": "/dev/sdf"
+            },
+            "instance_id": {
+              "constant_value": "${aws_instance.stack_vm.id}",
+              "references": [
+                "aws_instance.stack_vm",
+                "aws_instance.stack_vm.id"
+              ]
+            },
+            "stop_instance_before_detaching": {
+              "constant_value": true
+            },
+            "volume_id": {
+              "constant_value": "${aws_ebs_volume.data.id}",
+              "references": [
+                "aws_ebs_volume.data",
+                "aws_ebs_volume.data.id"
+              ]
+            }
+          },
+          "schema_version": 0
+        }
+      ]
+    }
+  },
+  "relevant_attributes": [
+    {
+      "resource": "aws_acm_certificate.domain",
+      "attribute": []
+    },
+    {
+      "resource": "aws_instance.stack_vm",
+      "attribute": [
+        "id"
+      ]
+    },
+    {
+      "resource": "aws_lb_target_group.stack_vm",
+      "attribute": []
+    },
+    {
+      "resource": "aws_lb_target_group.stack_vm[\"3000\"]",
+      "attribute": [
+        "arn"
+      ]
+    },
+    {
+      "resource": "aws_lb_target_group.stack_vm[\"8080\"]",
+      "attribute": [
+        "arn"
+      ]
+    }
+  ],
+  "timestamp": "2026-01-01T00:00:00Z",
+  "errored": false
+}

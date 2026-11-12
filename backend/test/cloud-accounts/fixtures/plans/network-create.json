@@ -1,0 +1,2992 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "planned_values": {
+    "outputs": {
+      "alb_arn": {
+        "sensitive": false
+      },
+      "alb_dns_name": {
+        "sensitive": false
+      },
+      "alb_security_group_id": {
+        "sensitive": false
+      },
+      "alb_zone_id": {
+        "sensitive": false
+      },
+      "cluster_arn": {
+        "sensitive": false
+      },
+      "default_certificate_arn": {
+        "sensitive": false
+      },
+      "https_listener_arn": {
+        "sensitive": false
+      },
+      "private_subnet_ids": {
+        "sensitive": false
+      },
+      "public_subnet_ids": {
+        "sensitive": false
+      },
+      "vpc_id": {
+        "sensitive": false
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_acm_certificate.default",
+          "mode": "managed",
+          "type": "aws_acm_certificate",
+          "name": "default",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "certificate_authority_arn": null,
+            "certificate_body": "-----BEGIN CERTIFICATE-----\ncmUtc2F2ZWQgYnkgdGhlIG1vdG8gbGFuZTsgbWFkZSBhbmV3IGVhY2ggcnVu\n-----END CERTIFICATE-----\n",
+            "certificate_chain": null,
+            "early_renewal_duration": null,
+            "private_key": "-----BEGIN RSA PRIVATE KEY-----\ncmUtc2F2ZWQgYnkgdGhlIG1vdG8gbGFuZTsgbWFkZSBhbmV3IGVhY2ggcnVu\n-----END RSA PRIVATE KEY-----\n",
+            "private_key_wo": null,
+            "private_key_wo_version": null,
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "cloudgate/env-env_1/default-certificate",
+              "cloudgate:address": "aws_acm_certificate.default"
+            },
+            "tags_all": {
+              "Name": "cloudgate/env-env_1/default-certificate",
+              "cloudgate:address": "aws_acm_certificate.default",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_network_1"
+            },
+            "validation_option": []
+          },
+          "sensitive_values": {
+            "domain_validation_options": [],
+            "options": [],
+            "private_key": true,
+            "renewal_summary": [],
+            "subject_alternative_names": [],
+            "tags": {},
+            "tags_all": {},
+            "validation_emails": [],
+            "validation_option": []
+          },
+          "identity": {
+            "arn": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_ecs_cluster.network",
+          "mode": "managed",
+          "type": "aws_ecs_cluster",
+          "name": "network",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "configuration": [],
+            "name": "cloudgate-env_1",
+            "region": "eu-central-1",
+            "service_connect_defaults": [],
+            "tags": {
+              "Name": "cloudgate/env-env_1/cluster",
+              "cloudgate:address": "aws_ecs_cluster.network"
+            },
+            "tags_all": {
+              "Name": "cloudgate/env-env_1/cluster",
+              "cloudgate:address": "aws_ecs_cluster.network",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_network_1"
+            }
+          },
+          "sensitive_values": {
+            "configuration": [],
+            "service_connect_defaults": [],
+            "setting": [],
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": null,
+            "name": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_internet_gateway.network",
+          "mode": "managed",
+          "type": "aws_internet_gateway",
+          "name": "network",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "cloudgate/env-env_1/internet-gateway",
+              "cloudgate:address": "aws_internet_gateway.network"
+            },
+            "tags_all": {
+              "Name": "cloudgate/env-env_1/internet-gateway",
+              "cloudgate:address": "aws_internet_gateway.network",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_network_1"
+            },
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": null,
+            "id": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_lb.network",
+          "mode": "managed",
+          "type": "aws_lb",
+          "name": "network",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "access_logs": [],
+            "client_keep_alive": 3600,
+            "connection_logs": [],
+            "customer_owned_ipv4_pool": null,
+            "desync_mitigation_mode": "defensive",
+            "dns_record_client_routing_policy": null,
+            "drop_invalid_header_fields": true,
+            "enable_cross_zone_load_balancing": null,
+            "enable_deletion_protection": false,
+            "enable_http2": true,
+            "enable_tls_version_and_cipher_suite_headers": false,
+            "enable_waf_fail_open": false,
+            "enable_xff_client_port": false,
+            "enable_zonal_shift": false,
+            "health_check_logs": [],
+            "idle_timeout": 60,
+            "internal": false,
+            "ipam_pools": [],
+            "load_balancer_type": "application",
+            "minimum_load_balancer_capacity": [],
+            "name_prefix": "cg-",
+            "preserve_host_header": false,
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "cloudgate/env-env_1/load-balancer",
+              "cloudgate:address": "aws_lb.network"
+            },
+            "tags_all": {
+              "Name": "cloudgate/env-env_1/load-balancer",
+              "cloudgate:address": "aws_lb.network",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_network_1"
+            },
+            "timeouts": null,
+            "xff_header_processing_mode": "append"
+          },
+          "sensitive_values": {
+            "access_logs": [],
+            "connection_logs": [],
+            "health_check_logs": [],
+            "ipam_pools": [],
+            "minimum_load_balancer_capacity": [],
+            "security_groups": [],
+            "subnet_mapping": [],
+            "subnets": [],
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "arn": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_lb_listener.http",
+          "mode": "managed",
+          "type": "aws_lb_listener",
+          "name": "http",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "alpn_policy": null,
+            "certificate_arn": null,
+            "default_action": [
+              {
+                "authenticate_cognito": [],
+                "authenticate_oidc": [],
+                "fixed_response": [],
+                "forward": [],
+                "jwt_validation": [],
+                "redirect": [
+                  {
+                    "host": "#{host}",
+                    "path": "/#{path}",
+                    "port": "443",
+                    "protocol": "HTTPS",
+                    "query": "#{query}",
+                    "status_code": "HTTP_301"
+                  }
+                ],
+                "target_group_arn": null,
+                "type": "redirect"
+              }
+            ],
+            "port": 80,
+            "protocol": "HTTP",
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "cloudgate/env-env_1/http",
+              "cloudgate:address": "aws_lb_listener.http"
+            },
+            "tags_all": {
+              "Name": "cloudgate/env-env_1/http",
+              "cloudgate:address": "aws_lb_listener.http",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_network_1"
+            },
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "default_action": [
+              {
+                "authenticate_cognito": [],
+                "authenticate_oidc": [],
+                "fixed_response": [],
+                "forward": [],
+                "jwt_validation": [],
+                "redirect": [
+                  {}
+                ]
+              }
+            ],
+            "mutual_authentication": [],
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "arn": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_lb_listener.https",
+          "mode": "managed",
+          "type": "aws_lb_listener",
+          "name": "https",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "alpn_policy": null,
+            "default_action": [
+              {
+                "authenticate_cognito": [],
+                "authenticate_oidc": [],
+                "fixed_response": [
+                  {
+                    "content_type": "text/plain",
+                    "message_body": "No Service answers on this address",
+                    "status_code": "404"
+                  }
+                ],
+                "forward": [],
+                "jwt_validation": [],
+                "redirect": [],
+                "target_group_arn": null,
+                "type": "fixed-response"
+              }
+            ],
+            "port": 443,
+            "protocol": "HTTPS",
+            "region": "eu-central-1",
+            "ssl_policy": "ELBSecurityPolicy-TLS13-1-2-2021-06",
+            "tags": {
+              "Name": "cloudgate/env-env_1/https",
+              "cloudgate:address": "aws_lb_listener.https"
+            },
+            "tags_all": {
+              "Name": "cloudgate/env-env_1/https",
+              "cloudgate:address": "aws_lb_listener.https",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_network_1"
+            },
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "default_action": [
+              {
+                "authenticate_cognito": [],
+                "authenticate_oidc": [],
+                "fixed_response": [
+                  {}
+                ],
+                "forward": [],
+                "jwt_validation": [],
+                "redirect": []
+              }
+            ],
+            "mutual_authentication": [],
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "arn": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_route.internet",
+          "mode": "managed",
+          "type": "aws_route",
+          "name": "internet",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "carrier_gateway_id": null,
+            "core_network_arn": null,
+            "destination_cidr_block": "0.0.0.0/0",
+            "destination_ipv6_cidr_block": null,
+            "destination_prefix_list_id": null,
+            "egress_only_gateway_id": null,
+            "local_gateway_id": null,
+            "nat_gateway_id": null,
+            "odb_network_arn": null,
+            "region": "eu-central-1",
+            "timeouts": null,
+            "transit_gateway_id": null,
+            "vpc_endpoint_id": null,
+            "vpc_peering_connection_id": null
+          },
+          "sensitive_values": {},
+          "identity": {
+            "account_id": null,
+            "destination_cidr_block": null,
+            "destination_ipv6_cidr_block": null,
+            "destination_prefix_list_id": null,
+            "region": null,
+            "route_table_id": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_route_table.public",
+          "mode": "managed",
+          "type": "aws_route_table",
+          "name": "public",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "cloudgate/env-env_1/public-routes",
+              "cloudgate:address": "aws_route_table.public"
+            },
+            "tags_all": {
+              "Name": "cloudgate/env-env_1/public-routes",
+              "cloudgate:address": "aws_route_table.public",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_network_1"
+            },
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "propagating_vgws": [],
+            "route": [],
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": null,
+            "id": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_route_table_association.public_a",
+          "mode": "managed",
+          "type": "aws_route_table_association",
+          "name": "public_a",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "gateway_id": null,
+            "region": "eu-central-1",
+            "timeouts": null
+          },
+          "sensitive_values": {},
+          "identity": {
+            "account_id": null,
+            "id": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_route_table_association.public_b",
+          "mode": "managed",
+          "type": "aws_route_table_association",
+          "name": "public_b",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "gateway_id": null,
+            "region": "eu-central-1",
+            "timeouts": null
+          },
+          "sensitive_values": {},
+          "identity": {
+            "account_id": null,
+            "id": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_security_group.alb",
+          "mode": "managed",
+          "type": "aws_security_group",
+          "name": "alb",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "description": "Cloudgate: the Environment load balancer",
+            "egress": [
+              {
+                "cidr_blocks": [
+                  "10.80.0.0/16"
+                ],
+                "description": "",
+                "from_port": 0,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "-1",
+                "security_groups": [],
+                "self": false,
+                "to_port": 0
+              }
+            ],
+            "ingress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "",
+                "from_port": 443,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 443
+              },
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "",
+                "from_port": 80,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 80
+              }
+            ],
+            "name": "cloudgate-load-balancer",
+            "region": "eu-central-1",
+            "revoke_rules_on_delete": false,
+            "tags": {
+              "Name": "cloudgate/env-env_1/load-balancer",
+              "cloudgate:address": "aws_security_group.alb"
+            },
+            "tags_all": {
+              "Name": "cloudgate/env-env_1/load-balancer",
+              "cloudgate:address": "aws_security_group.alb",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_network_1"
+            },
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "egress": [
+              {
+                "cidr_blocks": [
+                  false
+                ],
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "security_groups": []
+              }
+            ],
+            "ingress": [
+              {
+                "cidr_blocks": [
+                  false
+                ],
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "security_groups": []
+              },
+              {
+                "cidr_blocks": [
+                  false
+                ],
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "security_groups": []
+              }
+            ],
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": null,
+            "id": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_subnet.private_a",
+          "mode": "managed",
+          "type": "aws_subnet",
+          "name": "private_a",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "eu-central-1a",
+            "cidr_block": "10.80.128.0/20",
+            "customer_owned_ipv4_pool": null,
+            "enable_dns64": false,
+            "enable_lni_at_device_index": null,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "ipv4_ipam_pool_id": null,
+            "ipv4_netmask_length": null,
+            "ipv6_ipam_pool_id": null,
+            "ipv6_native": false,
+            "ipv6_netmask_length": null,
+            "map_customer_owned_ip_on_launch": null,
+            "map_public_ip_on_launch": false,
+            "outpost_arn": null,
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "cloudgate/env-env_1/private-a",
+              "cloudgate:address": "aws_subnet.private_a"
+            },
+            "tags_all": {
+              "Name": "cloudgate/env-env_1/private-a",
+              "cloudgate:address": "aws_subnet.private_a",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_network_1"
+            },
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": null,
+            "id": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_subnet.private_b",
+          "mode": "managed",
+          "type": "aws_subnet",
+          "name": "private_b",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "eu-central-1b",
+            "cidr_block": "10.80.144.0/20",
+            "customer_owned_ipv4_pool": null,
+            "enable_dns64": false,
+            "enable_lni_at_device_index": null,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "ipv4_ipam_pool_id": null,
+            "ipv4_netmask_length": null,
+            "ipv6_ipam_pool_id": null,
+            "ipv6_native": false,
+            "ipv6_netmask_length": null,
+            "map_customer_owned_ip_on_launch": null,
+            "map_public_ip_on_launch": false,
+            "outpost_arn": null,
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "cloudgate/env-env_1/private-b",
+              "cloudgate:address": "aws_subnet.private_b"
+            },
+            "tags_all": {
+              "Name": "cloudgate/env-env_1/private-b",
+              "cloudgate:address": "aws_subnet.private_b",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_network_1"
+            },
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": null,
+            "id": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_subnet.public_a",
+          "mode": "managed",
+          "type": "aws_subnet",
+          "name": "public_a",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "eu-central-1a",
+            "cidr_block": "10.80.0.0/20",
+            "customer_owned_ipv4_pool": null,
+            "enable_dns64": false,
+            "enable_lni_at_device_index": null,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "ipv4_ipam_pool_id": null,
+            "ipv4_netmask_length": null,
+            "ipv6_ipam_pool_id": null,
+            "ipv6_native": false,
+            "ipv6_netmask_length": null,
+            "map_customer_owned_ip_on_launch": null,
+            "map_public_ip_on_launch": false,
+            "outpost_arn": null,
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "cloudgate/env-env_1/public-a",
+              "cloudgate:address": "aws_subnet.public_a"
+            },
+            "tags_all": {
+              "Name": "cloudgate/env-env_1/public-a",
+              "cloudgate:address": "aws_subnet.public_a",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_network_1"
+            },
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": null,
+            "id": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_subnet.public_b",
+          "mode": "managed",
+          "type": "aws_subnet",
+          "name": "public_b",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "eu-central-1b",
+            "cidr_block": "10.80.16.0/20",
+            "customer_owned_ipv4_pool": null,
+            "enable_dns64": false,
+            "enable_lni_at_device_index": null,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "ipv4_ipam_pool_id": null,
+            "ipv4_netmask_length": null,
+            "ipv6_ipam_pool_id": null,
+            "ipv6_native": false,
+            "ipv6_netmask_length": null,
+            "map_customer_owned_ip_on_launch": null,
+            "map_public_ip_on_launch": false,
+            "outpost_arn": null,
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "cloudgate/env-env_1/public-b",
+              "cloudgate:address": "aws_subnet.public_b"
+            },
+            "tags_all": {
+              "Name": "cloudgate/env-env_1/public-b",
+              "cloudgate:address": "aws_subnet.public_b",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_network_1"
+            },
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": null,
+            "id": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        },
+        {
+          "address": "aws_vpc.network",
+          "mode": "managed",
+          "type": "aws_vpc",
+          "name": "network",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "assign_generated_ipv6_cidr_block": null,
+            "cidr_block": "10.80.0.0/16",
+            "enable_dns_hostnames": true,
+            "enable_dns_support": true,
+            "instance_tenancy": "default",
+            "ipv4_ipam_pool_id": null,
+            "ipv4_netmask_length": null,
+            "ipv6_ipam_pool_id": null,
+            "ipv6_netmask_length": null,
+            "region": "eu-central-1",
+            "tags": {
+              "Name": "cloudgate/env-env_1/vpc",
+              "cloudgate:address": "aws_vpc.network"
+            },
+            "tags_all": {
+              "Name": "cloudgate/env-env_1/vpc",
+              "cloudgate:address": "aws_vpc.network",
+              "cloudgate:cloud-account": "cloud_1",
+              "cloudgate:environment": "env_1",
+              "cloudgate:state": "state_network_1"
+            }
+          },
+          "sensitive_values": {
+            "tags": {},
+            "tags_all": {}
+          },
+          "identity": {
+            "account_id": null,
+            "id": null,
+            "region": null
+          },
+          "identity_schema_version": 0
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "aws_acm_certificate.default",
+      "mode": "managed",
+      "type": "aws_acm_certificate",
+      "name": "default",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "certificate_authority_arn": null,
+          "certificate_body": "-----BEGIN CERTIFICATE-----\ncmUtc2F2ZWQgYnkgdGhlIG1vdG8gbGFuZTsgbWFkZSBhbmV3IGVhY2ggcnVu\n-----END CERTIFICATE-----\n",
+          "certificate_chain": null,
+          "early_renewal_duration": null,
+          "private_key": "-----BEGIN RSA PRIVATE KEY-----\ncmUtc2F2ZWQgYnkgdGhlIG1vdG8gbGFuZTsgbWFkZSBhbmV3IGVhY2ggcnVu\n-----END RSA PRIVATE KEY-----\n",
+          "private_key_wo": null,
+          "private_key_wo_version": null,
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/env-env_1/default-certificate",
+            "cloudgate:address": "aws_acm_certificate.default"
+          },
+          "tags_all": {
+            "Name": "cloudgate/env-env_1/default-certificate",
+            "cloudgate:address": "aws_acm_certificate.default",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_network_1"
+          },
+          "validation_option": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "domain_name": true,
+          "domain_validation_options": true,
+          "id": true,
+          "key_algorithm": true,
+          "not_after": true,
+          "not_before": true,
+          "options": true,
+          "pending_renewal": true,
+          "renewal_eligibility": true,
+          "renewal_summary": true,
+          "status": true,
+          "subject_alternative_names": true,
+          "tags": {},
+          "tags_all": {},
+          "type": true,
+          "validation_emails": true,
+          "validation_method": true,
+          "validation_option": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "domain_validation_options": [],
+          "options": [],
+          "private_key": true,
+          "renewal_summary": [],
+          "subject_alternative_names": [],
+          "tags": {},
+          "tags_all": {},
+          "validation_emails": [],
+          "validation_option": []
+        },
+        "after_identity": {
+          "arn": null
+        }
+      }
+    },
+    {
+      "address": "aws_ecs_cluster.network",
+      "mode": "managed",
+      "type": "aws_ecs_cluster",
+      "name": "network",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "configuration": [],
+          "name": "cloudgate-env_1",
+          "region": "eu-central-1",
+          "service_connect_defaults": [],
+          "tags": {
+            "Name": "cloudgate/env-env_1/cluster",
+            "cloudgate:address": "aws_ecs_cluster.network"
+          },
+          "tags_all": {
+            "Name": "cloudgate/env-env_1/cluster",
+            "cloudgate:address": "aws_ecs_cluster.network",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_network_1"
+          }
+        },
+        "after_unknown": {
+          "arn": true,
+          "configuration": [],
+          "id": true,
+          "service_connect_defaults": [],
+          "setting": true,
+          "tags": {},
+          "tags_all": {}
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "configuration": [],
+          "service_connect_defaults": [],
+          "setting": [],
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_identity": {
+          "account_id": null,
+          "name": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_internet_gateway.network",
+      "mode": "managed",
+      "type": "aws_internet_gateway",
+      "name": "network",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/env-env_1/internet-gateway",
+            "cloudgate:address": "aws_internet_gateway.network"
+          },
+          "tags_all": {
+            "Name": "cloudgate/env-env_1/internet-gateway",
+            "cloudgate:address": "aws_internet_gateway.network",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_network_1"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "id": true,
+          "owner_id": true,
+          "tags": {},
+          "tags_all": {},
+          "vpc_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_identity": {
+          "account_id": null,
+          "id": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_lb.network",
+      "mode": "managed",
+      "type": "aws_lb",
+      "name": "network",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "access_logs": [],
+          "client_keep_alive": 3600,
+          "connection_logs": [],
+          "customer_owned_ipv4_pool": null,
+          "desync_mitigation_mode": "defensive",
+          "dns_record_client_routing_policy": null,
+          "drop_invalid_header_fields": true,
+          "enable_cross_zone_load_balancing": null,
+          "enable_deletion_protection": false,
+          "enable_http2": true,
+          "enable_tls_version_and_cipher_suite_headers": false,
+          "enable_waf_fail_open": false,
+          "enable_xff_client_port": false,
+          "enable_zonal_shift": false,
+          "health_check_logs": [],
+          "idle_timeout": 60,
+          "internal": false,
+          "ipam_pools": [],
+          "load_balancer_type": "application",
+          "minimum_load_balancer_capacity": [],
+          "name_prefix": "cg-",
+          "preserve_host_header": false,
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/env-env_1/load-balancer",
+            "cloudgate:address": "aws_lb.network"
+          },
+          "tags_all": {
+            "Name": "cloudgate/env-env_1/load-balancer",
+            "cloudgate:address": "aws_lb.network",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_network_1"
+          },
+          "timeouts": null,
+          "xff_header_processing_mode": "append"
+        },
+        "after_unknown": {
+          "access_logs": [],
+          "arn": true,
+          "arn_suffix": true,
+          "connection_logs": [],
+          "dns_name": true,
+          "enable_prefix_for_ipv6_source_nat": true,
+          "enforce_security_group_inbound_rules_on_private_link_traffic": true,
+          "health_check_logs": [],
+          "id": true,
+          "ip_address_type": true,
+          "ipam_pools": [],
+          "minimum_load_balancer_capacity": [],
+          "name": true,
+          "secondary_ips_auto_assigned_per_subnet": true,
+          "security_groups": true,
+          "subnet_mapping": true,
+          "subnets": true,
+          "tags": {},
+          "tags_all": {},
+          "vpc_id": true,
+          "zone_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "access_logs": [],
+          "connection_logs": [],
+          "health_check_logs": [],
+          "ipam_pools": [],
+          "minimum_load_balancer_capacity": [],
+          "security_groups": [],
+          "subnet_mapping": [],
+          "subnets": [],
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_identity": {
+          "arn": null
+        }
+      }
+    },
+    {
+      "address": "aws_lb_listener.http",
+      "mode": "managed",
+      "type": "aws_lb_listener",
+      "name": "http",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "alpn_policy": null,
+          "certificate_arn": null,
+          "default_action": [
+            {
+              "authenticate_cognito": [],
+              "authenticate_oidc": [],
+              "fixed_response": [],
+              "forward": [],
+              "jwt_validation": [],
+              "redirect": [
+                {
+                  "host": "#{host}",
+                  "path": "/#{path}",
+                  "port": "443",
+                  "protocol": "HTTPS",
+                  "query": "#{query}",
+                  "status_code": "HTTP_301"
+                }
+              ],
+              "target_group_arn": null,
+              "type": "redirect"
+            }
+          ],
+          "port": 80,
+          "protocol": "HTTP",
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/env-env_1/http",
+            "cloudgate:address": "aws_lb_listener.http"
+          },
+          "tags_all": {
+            "Name": "cloudgate/env-env_1/http",
+            "cloudgate:address": "aws_lb_listener.http",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_network_1"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "default_action": [
+            {
+              "authenticate_cognito": [],
+              "authenticate_oidc": [],
+              "fixed_response": [],
+              "forward": [],
+              "jwt_validation": [],
+              "order": true,
+              "redirect": [
+                {}
+              ]
+            }
+          ],
+          "id": true,
+          "load_balancer_arn": true,
+          "mutual_authentication": true,
+          "routing_http_request_x_amzn_mtls_clientcert_header_name": true,
+          "routing_http_request_x_amzn_mtls_clientcert_issuer_header_name": true,
+          "routing_http_request_x_amzn_mtls_clientcert_leaf_header_name": true,
+          "routing_http_request_x_amzn_mtls_clientcert_serial_number_header_name": true,
+          "routing_http_request_x_amzn_mtls_clientcert_subject_header_name": true,
+          "routing_http_request_x_amzn_mtls_clientcert_validity_header_name": true,
+          "routing_http_request_x_amzn_tls_cipher_suite_header_name": true,
+          "routing_http_request_x_amzn_tls_version_header_name": true,
+          "routing_http_response_access_control_allow_credentials_header_value": true,
+          "routing_http_response_access_control_allow_headers_header_value": true,
+          "routing_http_response_access_control_allow_methods_header_value": true,
+          "routing_http_response_access_control_allow_origin_header_value": true,
+          "routing_http_response_access_control_expose_headers_header_value": true,
+          "routing_http_response_access_control_max_age_header_value": true,
+          "routing_http_response_content_security_policy_header_value": true,
+          "routing_http_response_server_enabled": true,
+          "routing_http_response_strict_transport_security_header_value": true,
+          "routing_http_response_x_content_type_options_header_value": true,
+          "routing_http_response_x_frame_options_header_value": true,
+          "ssl_policy": true,
+          "tags": {},
+          "tags_all": {},
+          "tcp_idle_timeout_seconds": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "default_action": [
+            {
+              "authenticate_cognito": [],
+              "authenticate_oidc": [],
+              "fixed_response": [],
+              "forward": [],
+              "jwt_validation": [],
+              "redirect": [
+                {}
+              ]
+            }
+          ],
+          "mutual_authentication": [],
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_identity": {
+          "arn": null
+        }
+      }
+    },
+    {
+      "address": "aws_lb_listener.https",
+      "mode": "managed",
+      "type": "aws_lb_listener",
+      "name": "https",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "alpn_policy": null,
+          "default_action": [
+            {
+              "authenticate_cognito": [],
+              "authenticate_oidc": [],
+              "fixed_response": [
+                {
+                  "content_type": "text/plain",
+                  "message_body": "No Service answers on this address",
+                  "status_code": "404"
+                }
+              ],
+              "forward": [],
+              "jwt_validation": [],
+              "redirect": [],
+              "target_group_arn": null,
+              "type": "fixed-response"
+            }
+          ],
+          "port": 443,
+          "protocol": "HTTPS",
+          "region": "eu-central-1",
+          "ssl_policy": "ELBSecurityPolicy-TLS13-1-2-2021-06",
+          "tags": {
+            "Name": "cloudgate/env-env_1/https",
+            "cloudgate:address": "aws_lb_listener.https"
+          },
+          "tags_all": {
+            "Name": "cloudgate/env-env_1/https",
+            "cloudgate:address": "aws_lb_listener.https",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_network_1"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "certificate_arn": true,
+          "default_action": [
+            {
+              "authenticate_cognito": [],
+              "authenticate_oidc": [],
+              "fixed_response": [
+                {}
+              ],
+              "forward": [],
+              "jwt_validation": [],
+              "order": true,
+              "redirect": []
+            }
+          ],
+          "id": true,
+          "load_balancer_arn": true,
+          "mutual_authentication": true,
+          "routing_http_request_x_amzn_mtls_clientcert_header_name": true,
+          "routing_http_request_x_amzn_mtls_clientcert_issuer_header_name": true,
+          "routing_http_request_x_amzn_mtls_clientcert_leaf_header_name": true,
+          "routing_http_request_x_amzn_mtls_clientcert_serial_number_header_name": true,
+          "routing_http_request_x_amzn_mtls_clientcert_subject_header_name": true,
+          "routing_http_request_x_amzn_mtls_clientcert_validity_header_name": true,
+          "routing_http_request_x_amzn_tls_cipher_suite_header_name": true,
+          "routing_http_request_x_amzn_tls_version_header_name": true,
+          "routing_http_response_access_control_allow_credentials_header_value": true,
+          "routing_http_response_access_control_allow_headers_header_value": true,
+          "routing_http_response_access_control_allow_methods_header_value": true,
+          "routing_http_response_access_control_allow_origin_header_value": true,
+          "routing_http_response_access_control_expose_headers_header_value": true,
+          "routing_http_response_access_control_max_age_header_value": true,
+          "routing_http_response_content_security_policy_header_value": true,
+          "routing_http_response_server_enabled": true,
+          "routing_http_response_strict_transport_security_header_value": true,
+          "routing_http_response_x_content_type_options_header_value": true,
+          "routing_http_response_x_frame_options_header_value": true,
+          "tags": {},
+          "tags_all": {},
+          "tcp_idle_timeout_seconds": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "default_action": [
+            {
+              "authenticate_cognito": [],
+              "authenticate_oidc": [],
+              "fixed_response": [
+                {}
+              ],
+              "forward": [],
+              "jwt_validation": [],
+              "redirect": []
+            }
+          ],
+          "mutual_authentication": [],
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_identity": {
+          "arn": null
+        }
+      }
+    },
+    {
+      "address": "aws_route.internet",
+      "mode": "managed",
+      "type": "aws_route",
+      "name": "internet",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "carrier_gateway_id": null,
+          "core_network_arn": null,
+          "destination_cidr_block": "0.0.0.0/0",
+          "destination_ipv6_cidr_block": null,
+          "destination_prefix_list_id": null,
+          "egress_only_gateway_id": null,
+          "local_gateway_id": null,
+          "nat_gateway_id": null,
+          "odb_network_arn": null,
+          "region": "eu-central-1",
+          "timeouts": null,
+          "transit_gateway_id": null,
+          "vpc_endpoint_id": null,
+          "vpc_peering_connection_id": null
+        },
+        "after_unknown": {
+          "gateway_id": true,
+          "id": true,
+          "instance_id": true,
+          "instance_owner_id": true,
+          "network_interface_id": true,
+          "origin": true,
+          "route_table_id": true,
+          "state": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {},
+        "after_identity": {
+          "account_id": null,
+          "destination_cidr_block": null,
+          "destination_ipv6_cidr_block": null,
+          "destination_prefix_list_id": null,
+          "region": null,
+          "route_table_id": null
+        }
+      }
+    },
+    {
+      "address": "aws_route_table.public",
+      "mode": "managed",
+      "type": "aws_route_table",
+      "name": "public",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/env-env_1/public-routes",
+            "cloudgate:address": "aws_route_table.public"
+          },
+          "tags_all": {
+            "Name": "cloudgate/env-env_1/public-routes",
+            "cloudgate:address": "aws_route_table.public",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_network_1"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "id": true,
+          "owner_id": true,
+          "propagating_vgws": true,
+          "route": true,
+          "tags": {},
+          "tags_all": {},
+          "vpc_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "propagating_vgws": [],
+          "route": [],
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_identity": {
+          "account_id": null,
+          "id": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_route_table_association.public_a",
+      "mode": "managed",
+      "type": "aws_route_table_association",
+      "name": "public_a",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "gateway_id": null,
+          "region": "eu-central-1",
+          "timeouts": null
+        },
+        "after_unknown": {
+          "id": true,
+          "route_table_id": true,
+          "subnet_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {},
+        "after_identity": {
+          "account_id": null,
+          "id": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_route_table_association.public_b",
+      "mode": "managed",
+      "type": "aws_route_table_association",
+      "name": "public_b",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "gateway_id": null,
+          "region": "eu-central-1",
+          "timeouts": null
+        },
+        "after_unknown": {
+          "id": true,
+          "route_table_id": true,
+          "subnet_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {},
+        "after_identity": {
+          "account_id": null,
+          "id": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_security_group.alb",
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "alb",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "description": "Cloudgate: the Environment load balancer",
+          "egress": [
+            {
+              "cidr_blocks": [
+                "10.80.0.0/16"
+              ],
+              "description": "",
+              "from_port": 0,
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "protocol": "-1",
+              "security_groups": [],
+              "self": false,
+              "to_port": 0
+            }
+          ],
+          "ingress": [
+            {
+              "cidr_blocks": [
+                "0.0.0.0/0"
+              ],
+              "description": "",
+              "from_port": 443,
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "protocol": "tcp",
+              "security_groups": [],
+              "self": false,
+              "to_port": 443
+            },
+            {
+              "cidr_blocks": [
+                "0.0.0.0/0"
+              ],
+              "description": "",
+              "from_port": 80,
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "protocol": "tcp",
+              "security_groups": [],
+              "self": false,
+              "to_port": 80
+            }
+          ],
+          "name": "cloudgate-load-balancer",
+          "region": "eu-central-1",
+          "revoke_rules_on_delete": false,
+          "tags": {
+            "Name": "cloudgate/env-env_1/load-balancer",
+            "cloudgate:address": "aws_security_group.alb"
+          },
+          "tags_all": {
+            "Name": "cloudgate/env-env_1/load-balancer",
+            "cloudgate:address": "aws_security_group.alb",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_network_1"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "egress": [
+            {
+              "cidr_blocks": [
+                false
+              ],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": []
+            }
+          ],
+          "id": true,
+          "ingress": [
+            {
+              "cidr_blocks": [
+                false
+              ],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": []
+            },
+            {
+              "cidr_blocks": [
+                false
+              ],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": []
+            }
+          ],
+          "name_prefix": true,
+          "owner_id": true,
+          "tags": {},
+          "tags_all": {},
+          "vpc_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "egress": [
+            {
+              "cidr_blocks": [
+                false
+              ],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": []
+            }
+          ],
+          "ingress": [
+            {
+              "cidr_blocks": [
+                false
+              ],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": []
+            },
+            {
+              "cidr_blocks": [
+                false
+              ],
+              "ipv6_cidr_blocks": [],
+              "prefix_list_ids": [],
+              "security_groups": []
+            }
+          ],
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_identity": {
+          "account_id": null,
+          "id": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_subnet.private_a",
+      "mode": "managed",
+      "type": "aws_subnet",
+      "name": "private_a",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "assign_ipv6_address_on_creation": false,
+          "availability_zone": "eu-central-1a",
+          "cidr_block": "10.80.128.0/20",
+          "customer_owned_ipv4_pool": null,
+          "enable_dns64": false,
+          "enable_lni_at_device_index": null,
+          "enable_resource_name_dns_a_record_on_launch": false,
+          "enable_resource_name_dns_aaaa_record_on_launch": false,
+          "ipv4_ipam_pool_id": null,
+          "ipv4_netmask_length": null,
+          "ipv6_ipam_pool_id": null,
+          "ipv6_native": false,
+          "ipv6_netmask_length": null,
+          "map_customer_owned_ip_on_launch": null,
+          "map_public_ip_on_launch": false,
+          "outpost_arn": null,
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/env-env_1/private-a",
+            "cloudgate:address": "aws_subnet.private_a"
+          },
+          "tags_all": {
+            "Name": "cloudgate/env-env_1/private-a",
+            "cloudgate:address": "aws_subnet.private_a",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_network_1"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "availability_zone_id": true,
+          "id": true,
+          "ipv6_cidr_block": true,
+          "ipv6_cidr_block_association_id": true,
+          "owner_id": true,
+          "private_dns_hostname_type_on_launch": true,
+          "tags": {},
+          "tags_all": {},
+          "vpc_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_identity": {
+          "account_id": null,
+          "id": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_subnet.private_b",
+      "mode": "managed",
+      "type": "aws_subnet",
+      "name": "private_b",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "assign_ipv6_address_on_creation": false,
+          "availability_zone": "eu-central-1b",
+          "cidr_block": "10.80.144.0/20",
+          "customer_owned_ipv4_pool": null,
+          "enable_dns64": false,
+          "enable_lni_at_device_index": null,
+          "enable_resource_name_dns_a_record_on_launch": false,
+          "enable_resource_name_dns_aaaa_record_on_launch": false,
+          "ipv4_ipam_pool_id": null,
+          "ipv4_netmask_length": null,
+          "ipv6_ipam_pool_id": null,
+          "ipv6_native": false,
+          "ipv6_netmask_length": null,
+          "map_customer_owned_ip_on_launch": null,
+          "map_public_ip_on_launch": false,
+          "outpost_arn": null,
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/env-env_1/private-b",
+            "cloudgate:address": "aws_subnet.private_b"
+          },
+          "tags_all": {
+            "Name": "cloudgate/env-env_1/private-b",
+            "cloudgate:address": "aws_subnet.private_b",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_network_1"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "availability_zone_id": true,
+          "id": true,
+          "ipv6_cidr_block": true,
+          "ipv6_cidr_block_association_id": true,
+          "owner_id": true,
+          "private_dns_hostname_type_on_launch": true,
+          "tags": {},
+          "tags_all": {},
+          "vpc_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_identity": {
+          "account_id": null,
+          "id": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_subnet.public_a",
+      "mode": "managed",
+      "type": "aws_subnet",
+      "name": "public_a",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "assign_ipv6_address_on_creation": false,
+          "availability_zone": "eu-central-1a",
+          "cidr_block": "10.80.0.0/20",
+          "customer_owned_ipv4_pool": null,
+          "enable_dns64": false,
+          "enable_lni_at_device_index": null,
+          "enable_resource_name_dns_a_record_on_launch": false,
+          "enable_resource_name_dns_aaaa_record_on_launch": false,
+          "ipv4_ipam_pool_id": null,
+          "ipv4_netmask_length": null,
+          "ipv6_ipam_pool_id": null,
+          "ipv6_native": false,
+          "ipv6_netmask_length": null,
+          "map_customer_owned_ip_on_launch": null,
+          "map_public_ip_on_launch": false,
+          "outpost_arn": null,
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/env-env_1/public-a",
+            "cloudgate:address": "aws_subnet.public_a"
+          },
+          "tags_all": {
+            "Name": "cloudgate/env-env_1/public-a",
+            "cloudgate:address": "aws_subnet.public_a",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_network_1"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "availability_zone_id": true,
+          "id": true,
+          "ipv6_cidr_block": true,
+          "ipv6_cidr_block_association_id": true,
+          "owner_id": true,
+          "private_dns_hostname_type_on_launch": true,
+          "tags": {},
+          "tags_all": {},
+          "vpc_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_identity": {
+          "account_id": null,
+          "id": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_subnet.public_b",
+      "mode": "managed",
+      "type": "aws_subnet",
+      "name": "public_b",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "assign_ipv6_address_on_creation": false,
+          "availability_zone": "eu-central-1b",
+          "cidr_block": "10.80.16.0/20",
+          "customer_owned_ipv4_pool": null,
+          "enable_dns64": false,
+          "enable_lni_at_device_index": null,
+          "enable_resource_name_dns_a_record_on_launch": false,
+          "enable_resource_name_dns_aaaa_record_on_launch": false,
+          "ipv4_ipam_pool_id": null,
+          "ipv4_netmask_length": null,
+          "ipv6_ipam_pool_id": null,
+          "ipv6_native": false,
+          "ipv6_netmask_length": null,
+          "map_customer_owned_ip_on_launch": null,
+          "map_public_ip_on_launch": false,
+          "outpost_arn": null,
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/env-env_1/public-b",
+            "cloudgate:address": "aws_subnet.public_b"
+          },
+          "tags_all": {
+            "Name": "cloudgate/env-env_1/public-b",
+            "cloudgate:address": "aws_subnet.public_b",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_network_1"
+          },
+          "timeouts": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "availability_zone_id": true,
+          "id": true,
+          "ipv6_cidr_block": true,
+          "ipv6_cidr_block_association_id": true,
+          "owner_id": true,
+          "private_dns_hostname_type_on_launch": true,
+          "tags": {},
+          "tags_all": {},
+          "vpc_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_identity": {
+          "account_id": null,
+          "id": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "aws_vpc.network",
+      "mode": "managed",
+      "type": "aws_vpc",
+      "name": "network",
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "assign_generated_ipv6_cidr_block": null,
+          "cidr_block": "10.80.0.0/16",
+          "enable_dns_hostnames": true,
+          "enable_dns_support": true,
+          "instance_tenancy": "default",
+          "ipv4_ipam_pool_id": null,
+          "ipv4_netmask_length": null,
+          "ipv6_ipam_pool_id": null,
+          "ipv6_netmask_length": null,
+          "region": "eu-central-1",
+          "tags": {
+            "Name": "cloudgate/env-env_1/vpc",
+            "cloudgate:address": "aws_vpc.network"
+          },
+          "tags_all": {
+            "Name": "cloudgate/env-env_1/vpc",
+            "cloudgate:address": "aws_vpc.network",
+            "cloudgate:cloud-account": "cloud_1",
+            "cloudgate:environment": "env_1",
+            "cloudgate:state": "state_network_1"
+          }
+        },
+        "after_unknown": {
+          "arn": true,
+          "default_network_acl_id": true,
+          "default_route_table_id": true,
+          "default_security_group_id": true,
+          "dhcp_options_id": true,
+          "enable_network_address_usage_metrics": true,
+          "id": true,
+          "ipv6_association_id": true,
+          "ipv6_cidr_block": true,
+          "ipv6_cidr_block_network_border_group": true,
+          "main_route_table_id": true,
+          "owner_id": true,
+          "tags": {},
+          "tags_all": {}
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags": {},
+          "tags_all": {}
+        },
+        "after_identity": {
+          "account_id": null,
+          "id": null,
+          "region": null
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "alb_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "alb_dns_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "alb_security_group_id": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "alb_zone_id": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "cluster_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "default_certificate_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "https_listener_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "private_subnet_ids": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": [
+        null,
+        null
+      ],
+      "after_unknown": [
+        true,
+        true
+      ],
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "public_subnet_ids": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": [
+        null,
+        null
+      ],
+      "after_unknown": [
+        true,
+        true
+      ],
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "vpc_id": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "root_module": {
+        "resources": [
+          {
+            "address": "data.aws_availability_zones.zones",
+            "mode": "data",
+            "type": "aws_availability_zones",
+            "name": "zones",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "all_availability_zones": null,
+              "exclude_names": null,
+              "exclude_zone_ids": null,
+              "filter": [
+                {
+                  "name": "opt-in-status",
+                  "values": [
+                    "opt-in-not-required"
+                  ]
+                }
+              ],
+              "group_names": [
+                ""
+              ],
+              "id": "eu-central-1",
+              "names": [
+                "eu-central-1a",
+                "eu-central-1b",
+                "eu-central-1c"
+              ],
+              "region": "eu-central-1",
+              "state": null,
+              "timeouts": null,
+              "zone_ids": [
+                "euc1-az1",
+                "euc1-az2",
+                "euc1-az3"
+              ]
+            },
+            "sensitive_values": {
+              "filter": [
+                {
+                  "values": [
+                    false
+                  ]
+                }
+              ],
+              "group_names": [
+                false
+              ],
+              "names": [
+                false,
+                false,
+                false
+              ],
+              "zone_ids": [
+                false,
+                false,
+                false
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "aws": {
+        "name": "aws",
+        "full_name": "registry.opentofu.org/hashicorp/aws",
+        "version_constraint": "6.69.1",
+        "expressions": {
+          "allowed_account_ids": {
+            "constant_value": [
+              "123456789012"
+            ]
+          },
+          "assume_role": [
+            {
+              "external_id": {
+                "constant_value": "moto-lane-external-id"
+              },
+              "role_arn": {
+                "constant_value": "arn:aws:iam::123456789012:role/cloudgate/cloudgate-deploy"
+              },
+              "session_name": {
+                "constant_value": "cloudgate"
+              }
+            }
+          ],
+          "default_tags": [
+            {
+              "tags": {
+                "constant_value": {
+                  "cloudgate:cloud-account": "cloud_1",
+                  "cloudgate:environment": "env_1",
+                  "cloudgate:state": "state_network_1"
+                }
+              }
+            }
+          ],
+          "endpoints": [
+            {
+              "acm": {
+                "constant_value": "http://moto:5000"
+              },
+              "ec2": {
+                "constant_value": "http://moto:5000"
+              },
+              "ecr": {
+                "constant_value": "http://moto:5000"
+              },
+              "ecs": {
+                "constant_value": "http://moto:5000"
+              },
+              "elbv2": {
+                "constant_value": "http://moto:5000"
+              },
+              "iam": {
+                "constant_value": "http://moto:5000"
+              },
+              "logs": {
+                "constant_value": "http://moto:5000"
+              },
+              "route53": {
+                "constant_value": "http://moto:5000"
+              },
+              "servicediscovery": {
+                "constant_value": "http://moto:5000"
+              },
+              "ssm": {
+                "constant_value": "http://moto:5000"
+              },
+              "sts": {
+                "constant_value": "http://moto:5000"
+              }
+            }
+          ],
+          "region": {
+            "constant_value": "eu-central-1"
+          }
+        }
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "alb_arn": {
+          "expression": {
+            "constant_value": "${aws_lb.network.arn}",
+            "references": [
+              "aws_lb.network",
+              "aws_lb.network.arn"
+            ]
+          }
+        },
+        "alb_dns_name": {
+          "expression": {
+            "constant_value": "${aws_lb.network.dns_name}",
+            "references": [
+              "aws_lb.network",
+              "aws_lb.network.dns_name"
+            ]
+          }
+        },
+        "alb_security_group_id": {
+          "expression": {
+            "constant_value": "${aws_security_group.alb.id}",
+            "references": [
+              "aws_security_group.alb",
+              "aws_security_group.alb.id"
+            ]
+          }
+        },
+        "alb_zone_id": {
+          "expression": {
+            "constant_value": "${aws_lb.network.zone_id}",
+            "references": [
+              "aws_lb.network",
+              "aws_lb.network.zone_id"
+            ]
+          }
+        },
+        "cluster_arn": {
+          "expression": {
+            "constant_value": "${aws_ecs_cluster.network.arn}",
+            "references": [
+              "aws_ecs_cluster.network",
+              "aws_ecs_cluster.network.arn"
+            ]
+          }
+        },
+        "default_certificate_arn": {
+          "expression": {
+            "constant_value": "${aws_acm_certificate.default.arn}",
+            "references": [
+              "aws_acm_certificate.default",
+              "aws_acm_certificate.default.arn"
+            ]
+          }
+        },
+        "https_listener_arn": {
+          "expression": {
+            "constant_value": "${aws_lb_listener.https.arn}",
+            "references": [
+              "aws_lb_listener.https",
+              "aws_lb_listener.https.arn"
+            ]
+          }
+        },
+        "private_subnet_ids": {
+          "expression": {
+            "constant_value": [
+              "${aws_subnet.private_a.id}",
+              "${aws_subnet.private_b.id}"
+            ],
+            "references": [
+              "aws_subnet.private_a",
+              "aws_subnet.private_a.id",
+              "aws_subnet.private_b",
+              "aws_subnet.private_b.id"
+            ]
+          }
+        },
+        "public_subnet_ids": {
+          "expression": {
+            "constant_value": [
+              "${aws_subnet.public_a.id}",
+              "${aws_subnet.public_b.id}"
+            ],
+            "references": [
+              "aws_subnet.public_a",
+              "aws_subnet.public_a.id",
+              "aws_subnet.public_b",
+              "aws_subnet.public_b.id"
+            ]
+          }
+        },
+        "vpc_id": {
+          "expression": {
+            "constant_value": "${aws_vpc.network.id}",
+            "references": [
+              "aws_vpc.network",
+              "aws_vpc.network.id"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "aws_acm_certificate.default",
+          "mode": "managed",
+          "type": "aws_acm_certificate",
+          "name": "default",
+          "provider_config_key": "aws",
+          "expressions": {
+            "certificate_body": {
+              "constant_value": "${var.default_certificate_body}",
+              "references": [
+                "var.default_certificate_body"
+              ]
+            },
+            "private_key": {
+              "constant_value": "${var.default_certificate_private_key}",
+              "references": [
+                "var.default_certificate_private_key"
+              ]
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/env-env_1/default-certificate",
+                "cloudgate:address": "aws_acm_certificate.default"
+              }
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_ecs_cluster.network",
+          "mode": "managed",
+          "type": "aws_ecs_cluster",
+          "name": "network",
+          "provider_config_key": "aws",
+          "expressions": {
+            "name": {
+              "constant_value": "cloudgate-env_1"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/env-env_1/cluster",
+                "cloudgate:address": "aws_ecs_cluster.network"
+              }
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_internet_gateway.network",
+          "mode": "managed",
+          "type": "aws_internet_gateway",
+          "name": "network",
+          "provider_config_key": "aws",
+          "expressions": {
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/env-env_1/internet-gateway",
+                "cloudgate:address": "aws_internet_gateway.network"
+              }
+            },
+            "vpc_id": {
+              "constant_value": "${aws_vpc.network.id}",
+              "references": [
+                "aws_vpc.network",
+                "aws_vpc.network.id"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_lb.network",
+          "mode": "managed",
+          "type": "aws_lb",
+          "name": "network",
+          "provider_config_key": "aws",
+          "expressions": {
+            "drop_invalid_header_fields": {
+              "constant_value": true
+            },
+            "internal": {
+              "constant_value": false
+            },
+            "load_balancer_type": {
+              "constant_value": "application"
+            },
+            "name_prefix": {
+              "constant_value": "cg-"
+            },
+            "security_groups": {
+              "constant_value": [
+                "${aws_security_group.alb.id}"
+              ],
+              "references": [
+                "aws_security_group.alb",
+                "aws_security_group.alb.id"
+              ]
+            },
+            "subnets": {
+              "constant_value": [
+                "${aws_subnet.public_a.id}",
+                "${aws_subnet.public_b.id}"
+              ],
+              "references": [
+                "aws_subnet.public_a",
+                "aws_subnet.public_a.id",
+                "aws_subnet.public_b",
+                "aws_subnet.public_b.id"
+              ]
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/env-env_1/load-balancer",
+                "cloudgate:address": "aws_lb.network"
+              }
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_lb_listener.http",
+          "mode": "managed",
+          "type": "aws_lb_listener",
+          "name": "http",
+          "provider_config_key": "aws",
+          "expressions": {
+            "default_action": [
+              {
+                "redirect": [
+                  {
+                    "port": {
+                      "constant_value": "443"
+                    },
+                    "protocol": {
+                      "constant_value": "HTTPS"
+                    },
+                    "status_code": {
+                      "constant_value": "HTTP_301"
+                    }
+                  }
+                ],
+                "type": {
+                  "constant_value": "redirect"
+                }
+              }
+            ],
+            "load_balancer_arn": {
+              "constant_value": "${aws_lb.network.arn}",
+              "references": [
+                "aws_lb.network",
+                "aws_lb.network.arn"
+              ]
+            },
+            "port": {
+              "constant_value": 80
+            },
+            "protocol": {
+              "constant_value": "HTTP"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/env-env_1/http",
+                "cloudgate:address": "aws_lb_listener.http"
+              }
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_lb_listener.https",
+          "mode": "managed",
+          "type": "aws_lb_listener",
+          "name": "https",
+          "provider_config_key": "aws",
+          "expressions": {
+            "certificate_arn": {
+              "constant_value": "${aws_acm_certificate.default.arn}",
+              "references": [
+                "aws_acm_certificate.default",
+                "aws_acm_certificate.default.arn"
+              ]
+            },
+            "default_action": [
+              {
+                "fixed_response": [
+                  {
+                    "content_type": {
+                      "constant_value": "text/plain"
+                    },
+                    "message_body": {
+                      "constant_value": "No Service answers on this address"
+                    },
+                    "status_code": {
+                      "constant_value": "404"
+                    }
+                  }
+                ],
+                "type": {
+                  "constant_value": "fixed-response"
+                }
+              }
+            ],
+            "load_balancer_arn": {
+              "constant_value": "${aws_lb.network.arn}",
+              "references": [
+                "aws_lb.network",
+                "aws_lb.network.arn"
+              ]
+            },
+            "port": {
+              "constant_value": 443
+            },
+            "protocol": {
+              "constant_value": "HTTPS"
+            },
+            "ssl_policy": {
+              "constant_value": "ELBSecurityPolicy-TLS13-1-2-2021-06"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/env-env_1/https",
+                "cloudgate:address": "aws_lb_listener.https"
+              }
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_route.internet",
+          "mode": "managed",
+          "type": "aws_route",
+          "name": "internet",
+          "provider_config_key": "aws",
+          "expressions": {
+            "destination_cidr_block": {
+              "constant_value": "0.0.0.0/0"
+            },
+            "gateway_id": {
+              "constant_value": "${aws_internet_gateway.network.id}",
+              "references": [
+                "aws_internet_gateway.network",
+                "aws_internet_gateway.network.id"
+              ]
+            },
+            "route_table_id": {
+              "constant_value": "${aws_route_table.public.id}",
+              "references": [
+                "aws_route_table.public",
+                "aws_route_table.public.id"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_route_table.public",
+          "mode": "managed",
+          "type": "aws_route_table",
+          "name": "public",
+          "provider_config_key": "aws",
+          "expressions": {
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/env-env_1/public-routes",
+                "cloudgate:address": "aws_route_table.public"
+              }
+            },
+            "vpc_id": {
+              "constant_value": "${aws_vpc.network.id}",
+              "references": [
+                "aws_vpc.network",
+                "aws_vpc.network.id"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_route_table_association.public_a",
+          "mode": "managed",
+          "type": "aws_route_table_association",
+          "name": "public_a",
+          "provider_config_key": "aws",
+          "expressions": {
+            "route_table_id": {
+              "constant_value": "${aws_route_table.public.id}",
+              "references": [
+                "aws_route_table.public",
+                "aws_route_table.public.id"
+              ]
+            },
+            "subnet_id": {
+              "constant_value": "${aws_subnet.public_a.id}",
+              "references": [
+                "aws_subnet.public_a",
+                "aws_subnet.public_a.id"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_route_table_association.public_b",
+          "mode": "managed",
+          "type": "aws_route_table_association",
+          "name": "public_b",
+          "provider_config_key": "aws",
+          "expressions": {
+            "route_table_id": {
+              "constant_value": "${aws_route_table.public.id}",
+              "references": [
+                "aws_route_table.public",
+                "aws_route_table.public.id"
+              ]
+            },
+            "subnet_id": {
+              "constant_value": "${aws_subnet.public_b.id}",
+              "references": [
+                "aws_subnet.public_b",
+                "aws_subnet.public_b.id"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "aws_security_group.alb",
+          "mode": "managed",
+          "type": "aws_security_group",
+          "name": "alb",
+          "provider_config_key": "aws",
+          "expressions": {
+            "description": {
+              "constant_value": "Cloudgate: the Environment load balancer"
+            },
+            "egress": {
+              "constant_value": [
+                {
+                  "cidr_blocks": [
+                    "10.80.0.0/16"
+                  ],
+                  "description": "",
+                  "from_port": 0,
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "protocol": "-1",
+                  "security_groups": [],
+                  "self": false,
+                  "to_port": 0
+                }
+              ]
+            },
+            "ingress": {
+              "constant_value": [
+                {
+                  "cidr_blocks": [
+                    "0.0.0.0/0"
+                  ],
+                  "description": "",
+                  "from_port": 80,
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "protocol": "tcp",
+                  "security_groups": [],
+                  "self": false,
+                  "to_port": 80
+                },
+                {
+                  "cidr_blocks": [
+                    "0.0.0.0/0"
+                  ],
+                  "description": "",
+                  "from_port": 443,
+                  "ipv6_cidr_blocks": [],
+                  "prefix_list_ids": [],
+                  "protocol": "tcp",
+                  "security_groups": [],
+                  "self": false,
+                  "to_port": 443
+                }
+              ]
+            },
+            "name": {
+              "constant_value": "cloudgate-load-balancer"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/env-env_1/load-balancer",
+                "cloudgate:address": "aws_security_group.alb"
+              }
+            },
+            "vpc_id": {
+              "constant_value": "${aws_vpc.network.id}",
+              "references": [
+                "aws_vpc.network",
+                "aws_vpc.network.id"
+              ]
+            }
+          },
+          "schema_version": 1
+        },
+        {
+          "address": "aws_subnet.private_a",
+          "mode": "managed",
+          "type": "aws_subnet",
+          "name": "private_a",
+          "provider_config_key": "aws",
+          "expressions": {
+            "availability_zone": {
+              "constant_value": "${data.aws_availability_zones.zones.names[0]}",
+              "references": [
+                "data.aws_availability_zones.zones",
+                "data.aws_availability_zones.zones.names",
+                "data.aws_availability_zones.zones.names[0]"
+              ]
+            },
+            "cidr_block": {
+              "constant_value": "10.80.128.0/20"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/env-env_1/private-a",
+                "cloudgate:address": "aws_subnet.private_a"
+              }
+            },
+            "vpc_id": {
+              "constant_value": "${aws_vpc.network.id}",
+              "references": [
+                "aws_vpc.network",
+                "aws_vpc.network.id"
+              ]
+            }
+          },
+          "schema_version": 1
+        },
+        {
+          "address": "aws_subnet.private_b",
+          "mode": "managed",
+          "type": "aws_subnet",
+          "name": "private_b",
+          "provider_config_key": "aws",
+          "expressions": {
+            "availability_zone": {
+              "constant_value": "${data.aws_availability_zones.zones.names[1]}",
+              "references": [
+                "data.aws_availability_zones.zones",
+                "data.aws_availability_zones.zones.names",
+                "data.aws_availability_zones.zones.names[1]"
+              ]
+            },
+            "cidr_block": {
+              "constant_value": "10.80.144.0/20"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/env-env_1/private-b",
+                "cloudgate:address": "aws_subnet.private_b"
+              }
+            },
+            "vpc_id": {
+              "constant_value": "${aws_vpc.network.id}",
+              "references": [
+                "aws_vpc.network",
+                "aws_vpc.network.id"
+              ]
+            }
+          },
+          "schema_version": 1
+        },
+        {
+          "address": "aws_subnet.public_a",
+          "mode": "managed",
+          "type": "aws_subnet",
+          "name": "public_a",
+          "provider_config_key": "aws",
+          "expressions": {
+            "availability_zone": {
+              "constant_value": "${data.aws_availability_zones.zones.names[0]}",
+              "references": [
+                "data.aws_availability_zones.zones",
+                "data.aws_availability_zones.zones.names",
+                "data.aws_availability_zones.zones.names[0]"
+              ]
+            },
+            "cidr_block": {
+              "constant_value": "10.80.0.0/20"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/env-env_1/public-a",
+                "cloudgate:address": "aws_subnet.public_a"
+              }
+            },
+            "vpc_id": {
+              "constant_value": "${aws_vpc.network.id}",
+              "references": [
+                "aws_vpc.network",
+                "aws_vpc.network.id"
+              ]
+            }
+          },
+          "schema_version": 1
+        },
+        {
+          "address": "aws_subnet.public_b",
+          "mode": "managed",
+          "type": "aws_subnet",
+          "name": "public_b",
+          "provider_config_key": "aws",
+          "expressions": {
+            "availability_zone": {
+              "constant_value": "${data.aws_availability_zones.zones.names[1]}",
+              "references": [
+                "data.aws_availability_zones.zones",
+                "data.aws_availability_zones.zones.names",
+                "data.aws_availability_zones.zones.names[1]"
+              ]
+            },
+            "cidr_block": {
+              "constant_value": "10.80.16.0/20"
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/env-env_1/public-b",
+                "cloudgate:address": "aws_subnet.public_b"
+              }
+            },
+            "vpc_id": {
+              "constant_value": "${aws_vpc.network.id}",
+              "references": [
+                "aws_vpc.network",
+                "aws_vpc.network.id"
+              ]
+            }
+          },
+          "schema_version": 1
+        },
+        {
+          "address": "aws_vpc.network",
+          "mode": "managed",
+          "type": "aws_vpc",
+          "name": "network",
+          "provider_config_key": "aws",
+          "expressions": {
+            "cidr_block": {
+              "constant_value": "10.80.0.0/16"
+            },
+            "enable_dns_hostnames": {
+              "constant_value": true
+            },
+            "enable_dns_support": {
+              "constant_value": true
+            },
+            "tags": {
+              "constant_value": {
+                "Name": "cloudgate/env-env_1/vpc",
+                "cloudgate:address": "aws_vpc.network"
+              }
+            }
+          },
+          "schema_version": 1
+        },
+        {
+          "address": "data.aws_availability_zones.zones",
+          "mode": "data",
+          "type": "aws_availability_zones",
+          "name": "zones",
+          "provider_config_key": "aws",
+          "expressions": {
+            "filter": [
+              {
+                "name": {
+                  "constant_value": "opt-in-status"
+                },
+                "values": {
+                  "constant_value": [
+                    "opt-in-not-required"
+                  ]
+                }
+              }
+            ]
+          },
+          "schema_version": 0
+        }
+      ],
+      "variables": {
+        "default_certificate_body": {
+          "type": "string",
+          "required": true
+        },
+        "default_certificate_private_key": {
+          "type": "string",
+          "required": true,
+          "sensitive": true
+        }
+      }
+    }
+  },
+  "relevant_attributes": [
+    {
+      "resource": "aws_acm_certificate.default",
+      "attribute": [
+        "arn"
+      ]
+    },
+    {
+      "resource": "aws_ecs_cluster.network",
+      "attribute": [
+        "arn"
+      ]
+    },
+    {
+      "resource": "aws_internet_gateway.network",
+      "attribute": [
+        "id"
+      ]
+    },
+    {
+      "resource": "aws_lb.network",
+      "attribute": [
+        "arn"
+      ]
+    },
+    {
+      "resource": "aws_lb.network",
+      "attribute": [
+        "dns_name"
+      ]
+    },
+    {
+      "resource": "aws_lb.network",
+      "attribute": [
+        "zone_id"
+      ]
+    },
+    {
+      "resource": "aws_lb_listener.https",
+      "attribute": [
+        "arn"
+      ]
+    },
+    {
+      "resource": "aws_route_table.public",
+      "attribute": [
+        "id"
+      ]
+    },
+    {
+      "resource": "aws_security_group.alb",
+      "attribute": [
+        "id"
+      ]
+    },
+    {
+      "resource": "aws_subnet.private_a",
+      "attribute": [
+        "id"
+      ]
+    },
+    {
+      "resource": "aws_subnet.private_b",
+      "attribute": [
+        "id"
+      ]
+    },
+    {
+      "resource": "aws_subnet.public_a",
+      "attribute": [
+        "id"
+      ]
+    },
+    {
+      "resource": "aws_subnet.public_b",
+      "attribute": [
+        "id"
+      ]
+    },
+    {
+      "resource": "aws_vpc.network",
+      "attribute": [
+        "id"
+      ]
+    },
+    {
+      "resource": "data.aws_availability_zones.zones",
+      "attribute": [
+        "names",
+        0
+      ]
+    },
+    {
+      "resource": "data.aws_availability_zones.zones",
+      "attribute": [
+        "names",
+        1
+      ]
+    }
+  ],
+  "timestamp": "2026-01-01T00:00:00Z",
+  "errored": false,
+  "resource_drift": []
+}

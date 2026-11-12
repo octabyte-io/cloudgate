@@ -1,0 +1,1 @@
+ALTER TABLE "redis" ADD COLUMN "memorystore_engine_version" text;

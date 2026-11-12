@@ -1,0 +1,1 @@
+ALTER TABLE "redis" DROP COLUMN "memorystore_token";

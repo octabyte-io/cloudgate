@@ -1,0 +1,4 @@
+ALTER TABLE "application" ADD COLUMN "cron_schedule" text;--> statement-breakpoint
+ALTER TABLE "application" ADD COLUMN "cron_timezone" text;--> statement-breakpoint
+ALTER TABLE "application" ADD COLUMN "cron_timeout_seconds" integer;--> statement-breakpoint
+ALTER TABLE "application" ADD CONSTRAINT "application_cron_timetable" CHECK (("application"."config_kind" = 'cron') = ("application"."cron_schedule" IS NOT NULL) AND ("application"."cron_schedule" IS NULL) = ("application"."cron_timezone" IS NULL) AND ("application"."cron_schedule" IS NULL) = ("application"."cron_timeout_seconds" IS NULL));

@@ -1,0 +1,57 @@
+/**
+ * Self-signed test certificates (P-256, notBefore 2026-09-22,
+ * notAfter 2126-08-29T18:35:13Z), minted with
+ * `openssl req -x509 -days 36500 -subj /CN=<name> -addext subjectAltName=DNS:<name>`.
+ * Only the certificate half: nothing here reads a key.
+ */
+
+/** The instant every fixture here stops being valid. */
+export const FIXTURE_NOT_AFTER = new Date('2126-08-29T18:35:13Z');
+
+/** CN and SAN `*.preview.example.com`. */
+export const WILDCARD_PREVIEW_EXAMPLE_COM_PEM = `-----BEGIN CERTIFICATE-----
+MIIBuDCCAV+gAwIBAgIUZth6j7ipgFSnLrHKhOManxIXo1MwCgYIKoZIzj0EAwIw
+IDEeMBwGA1UEAwwVKi5wcmV2aWV3LmV4YW1wbGUuY29tMCAXDTI2MDkyMjE4MzUx
+M1oYDzIxMjYwODI5MTgzNTEzWjAgMR4wHAYDVQQDDBUqLnByZXZpZXcuZXhhbXBs
+ZS5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAT+zUepccmHxwjlKtosyb8J
+JZSI5bycsHU9fz4TDg9/VUUZSIs3M6dr35JEVFnU45Rtig2iT/towzeFalLQ2Zrx
+o3UwczAdBgNVHQ4EFgQUOi7VIk5+FBQ4yUzaTV8Jsr+PtB0wHwYDVR0jBBgwFoAU
+Oi7VIk5+FBQ4yUzaTV8Jsr+PtB0wDwYDVR0TAQH/BAUwAwEB/zAgBgNVHREEGTAX
+ghUqLnByZXZpZXcuZXhhbXBsZS5jb20wCgYIKoZIzj0EAwIDRwAwRAIgZzBeYjte
+JUWstd36VdBn+dXzuj9yRQGEXl1XkS22q+wCIEU2ZNvH3QweMMDj7rT/QoVV4Esk
+Vz48P7JaTKjeXlM0
+-----END CERTIFICATE-----
+`;
+
+/** CN and SAN `preview-web-app-abc123.preview.example.com`. */
+export const EXACT_PREVIEW_HOST_PEM = `-----BEGIN CERTIFICATE-----
+MIIB+jCCAaCgAwIBAgIUPAYny031W41lQINqF8Tj6lIbI1gwCgYIKoZIzj0EAwIw
+NTEzMDEGA1UEAwwqcHJldmlldy13ZWItYXBwLWFiYzEyMy5wcmV2aWV3LmV4YW1w
+bGUuY29tMCAXDTI2MDkyMjE4MzUxM1oYDzIxMjYwODI5MTgzNTEzWjA1MTMwMQYD
+VQQDDCpwcmV2aWV3LXdlYi1hcHAtYWJjMTIzLnByZXZpZXcuZXhhbXBsZS5jb20w
+WTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAT+zUepccmHxwjlKtosyb8JJZSI5byc
+sHU9fz4TDg9/VUUZSIs3M6dr35JEVFnU45Rtig2iT/towzeFalLQ2Zrxo4GLMIGI
+MB0GA1UdDgQWBBQ6LtUiTn4UFDjJTNpNXwmyv4+0HTAfBgNVHSMEGDAWgBQ6LtUi
+Tn4UFDjJTNpNXwmyv4+0HTAPBgNVHRMBAf8EBTADAQH/MDUGA1UdEQQuMCyCKnBy
+ZXZpZXctd2ViLWFwcC1hYmMxMjMucHJldmlldy5leGFtcGxlLmNvbTAKBggqhkjO
+PQQDAgNIADBFAiBoVcDRphM4vrKp/kCtGBoWa92+KCtzoCiVK7Tr1+8tsQIhAKaL
+uLPkuHBac8CWWcdsw7AKz2A+SYDpVBjSGPM7Lb3y
+-----END CERTIFICATE-----
+`;
+
+/**
+ * CN `*.preview.example.com` and **no SAN at all** — minted without
+ * `-addext`. A browser ignores the CN, so this covers nothing.
+ */
+export const CN_ONLY_WILDCARD_PEM = `-----BEGIN CERTIFICATE-----
+MIIBljCCAT2gAwIBAgIUOMBTqqVG9qGvAGQyrGzKPE7P1rcwCgYIKoZIzj0EAwIw
+IDEeMBwGA1UEAwwVKi5wcmV2aWV3LmV4YW1wbGUuY29tMCAXDTI2MDkyMjE4MzUx
+M1oYDzIxMjYwODI5MTgzNTEzWjAgMR4wHAYDVQQDDBUqLnByZXZpZXcuZXhhbXBs
+ZS5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAT+zUepccmHxwjlKtosyb8J
+JZSI5bycsHU9fz4TDg9/VUUZSIs3M6dr35JEVFnU45Rtig2iT/towzeFalLQ2Zrx
+o1MwUTAdBgNVHQ4EFgQUOi7VIk5+FBQ4yUzaTV8Jsr+PtB0wHwYDVR0jBBgwFoAU
+Oi7VIk5+FBQ4yUzaTV8Jsr+PtB0wDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQD
+AgNHADBEAiBNsWzSMRD1Doz5Ksqpy1kREcfaIiscxlKVhTVArMkMqQIgWRDCf3HY
+/AGP+6BXioHpWh4KszLXZIbTB6VJu0LJHyY=
+-----END CERTIFICATE-----
+`;

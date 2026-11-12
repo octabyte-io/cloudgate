@@ -1,0 +1,173 @@
+# Publishes the Cloudgate CLI (`cli/`, `@octabyte-io/cloudgate`) to npm when a
+# `cli-v<version>` tag is pushed (CLI spec, Release):
+#
+#   1. bump `version` in cli/package.json and move cli/CHANGELOG.md's
+#      Unreleased entries under a `## <version>` heading, on main;
+#   2. git tag cli-v<version> && git push origin cli-v<version>
+#
+# The CLI has its own version and its own release cycle. `cli-v*` never
+# matches the server's `v*` (a tag glob is anchored at its start), so this
+# does not start `e2e.yml`, and it does not wait for the server's e2e either:
+# what it checks is the CLI package's own type-check, lint and unit lane.
+#
+# The order is the point. Nothing is published until the tag has been checked
+# against cli/package.json, the version's changelog section has been found,
+# and the CLI's checks are green; and the GitHub Release is made only after
+# npm has the version, never before, so a Release always names a version that
+# can be installed. Both decisions live in cli/scripts/release.ts, unit-tested
+# in cli/test/release.test.ts rather than read off this log.
+#
+# Publishing uses npm trusted publishing: npm trusts this workflow file, in
+# this repository, running in the GitHub environment `npm`, through the OIDC
+# token `id-token: write` lets the job mint. No npm token is stored anywhere.
+# The `npm` environment admits only `cli-v*` tags; it has no required
+# reviewers, which GitHub offers a private repository only on a paid plan, so
+# pushing the tag is the approval. The trusted publisher on npm names this file by its name, so
+# renaming it breaks publishing until the npm side is changed too.
+#
+# No `--provenance`: npm refuses a provenance statement from a private
+# repository ("Only public source repositories are supported when publishing
+# with provenance", on the first publish), and this one is private. Trusted
+# publishing itself works from a private repository. Add `--provenance` back
+# to the publish step if the repository is made public.
+#
+# A version with a prerelease part (`0.0.2-beta.1`) goes to the `next`
+# dist-tag, every other to `latest`, at publish time: a trusted publisher may
+# publish but not run `npm dist-tag`, so a version cannot be moved afterwards
+# from here.
+name: Release CLI
+
+on:
+  push:
+    tags: ['cli-v*']
+
+permissions:
+  contents: read
+
+# One release per tag at a time; a second push of the same tag waits.
+concurrency:
+  group: release-cli-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    # Explicit, because only `shell: bash` gets `-o pipefail`, and the check
+    # below is piped through `tee`.
+    shell: bash
+
+jobs:
+  check:
+    name: Check the tag, type-check, lint and test the CLI
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      dist-tag: ${{ steps.release.outputs.dist-tag }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # First, before installing anything: a tag that disagrees with
+      # cli/package.json (a typo, or a tag pushed before the bump) fails here,
+      # naming both versions. Node 24 runs the TypeScript script directly.
+      - name: The tag names cli/package.json's version
+        id: release
+        run: node cli/scripts/release.ts check "$GITHUB_REF_NAME" | tee -a "$GITHUB_OUTPUT"
+
+      # The Release made after the publish is this section; finding it now
+      # means a version is never published without one.
+      - name: cli/CHANGELOG.md has this version's section
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: node cli/scripts/release.ts notes "$VERSION"
+
+      - name: Install (fails on an unplaced dependency build script)
+        run: pnpm install --frozen-lockfile --config.strict-dep-builds=true
+
+      - name: Type-check
+        run: pnpm --filter @octabyte-io/cloudgate typecheck
+
+      - name: Lint
+        run: pnpm --filter @octabyte-io/cloudgate lint
+
+      - name: Tests
+        run: pnpm --filter @octabyte-io/cloudgate test
+
+  publish:
+    name: Publish to npm and make the GitHub Release
+    needs: check
+    runs-on: ubuntu-latest
+    # Trusted publishing is bound to this environment: npm accepts the OIDC
+    # token only from a job running in it, and it runs only for a `cli-v*` tag.
+    environment: npm
+    permissions:
+      contents: write # the GitHub Release
+      id-token: write # npm trusted publishing
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+      DIST_TAG: ${{ needs.check.outputs.dist-tag }}
+      PRERELEASE: ${{ needs.check.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      # No dependency cache in the job that publishes: what goes into the
+      # tarball is built from a clean install of the lockfile.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm 11.5.1 or newer; Node 24's bundled npm
+      # may be older than that.
+      - name: npm new enough for trusted publishing
+        run: |
+          npm install -g npm@^11.5.1
+          npm --version
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --config.strict-dep-builds=true
+
+      # bin/cloudgate.js loads dist/cloudgate.mjs, which only the build makes
+      # (dist/ is not in git). `files` in cli/package.json keeps the tarball to
+      # bin/, dist/, the README and the CHANGELOG.
+      - name: Build
+        run: pnpm --filter @octabyte-io/cloudgate build
+
+      # Packed by pnpm, published by npm. pnpm writes the tarball's
+      # package.json with `workspace:*` replaced by a real version, which npm
+      # would publish verbatim; npm is what speaks trusted publishing.
+      - name: Pack
+        working-directory: cli
+        run: pnpm pack --pack-destination "$RUNNER_TEMP"
+
+      # A re-run after a failed Release step finds the version already on npm
+      # and goes straight on to the Release, rather than failing on a version
+      # that cannot be published twice.
+      - name: Publish ${{ env.VERSION }} to ${{ env.DIST_TAG }}
+        run: |
+          if npm view "@octabyte-io/cloudgate@$VERSION" version 2>/dev/null | grep -qx "$VERSION"; then
+            echo "::notice::@octabyte-io/cloudgate@$VERSION is already on npm; not publishing it again."
+            exit 0
+          fi
+          npm publish "$RUNNER_TEMP/octabyte-io-cloudgate-$VERSION.tgz" \
+            --access public --tag "$DIST_TAG"
+
+      # Only after the publish. `--latest=false` keeps the repository's
+      # "Latest" release the server's, whatever the CLI does.
+      - name: GitHub Release with the changelog section
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node cli/scripts/release.ts notes "$VERSION" > "$RUNNER_TEMP/notes.md"
+          flags=()
+          if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
+            --title "Cloudgate CLI $VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            --latest=false \
+            "${flags[@]}"

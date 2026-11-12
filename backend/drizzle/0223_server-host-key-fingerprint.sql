@@ -1,0 +1,1 @@
+ALTER TABLE "server" ADD COLUMN "host_key_fingerprint" text;

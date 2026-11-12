@@ -1,0 +1,52 @@
+{
+  "format_version": "1.0",
+  "terraform_version": "1.13.1",
+  "values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_acm_certificate.domain[\"dom_1-1\"]",
+          "mode": "managed",
+          "type": "aws_acm_certificate",
+          "name": "domain",
+          "index": "dom_1-1",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "arn": "arn:aws:acm:us-east-1:123456789012:certificate/0b5f3c1e-old",
+            "id": "arn:aws:acm:us-east-1:123456789012:certificate/0b5f3c1e-old",
+            "domain_name": "docs.example.com",
+            "region": "us-east-1"
+          }
+        },
+        {
+          "address": "aws_acm_certificate.domain[\"dom_1-2\"]",
+          "mode": "managed",
+          "type": "aws_acm_certificate",
+          "name": "domain",
+          "index": "dom_1-2",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "arn": "arn:aws:acm:us-east-1:123456789012:certificate/7d2a9e4f-new",
+            "id": "arn:aws:acm:us-east-1:123456789012:certificate/7d2a9e4f-new",
+            "domain_name": "guide.example.com",
+            "region": "us-east-1"
+          }
+        },
+        {
+          "address": "aws_cloudfront_distribution.site",
+          "mode": "managed",
+          "type": "aws_cloudfront_distribution",
+          "name": "site",
+          "provider_name": "registry.opentofu.org/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "arn": "arn:aws:cloudfront::123456789012:distribution/E2QWRUHAPOMQZL",
+            "id": "E2QWRUHAPOMQZL"
+          }
+        }
+      ]
+    }
+  }
+}

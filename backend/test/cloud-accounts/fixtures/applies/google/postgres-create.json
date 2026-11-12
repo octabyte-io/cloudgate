@@ -1,0 +1,28 @@
+{
+  "cloudgate_fixture": {
+    "source": "the live walk by hand",
+    "how": "Recorded by `tofu output -json` from a real apply in the live Google Cloud project on 2026-11-06 (a walk by hand; OpenTofu 1.13.1, hashicorp/google 8.8.0), then rewritten to the stored files' sample ids (cloud_1, env_1, svc_1, svc_pg_1, svc_redis_1 and their states, project example-project-123 / 123456789012, region europe-west1, deployment ids dep_N) and with every secret value masked (the default certificate's key, the database password, the wired variables' URLs; the typed variable values were the stored files' sample strings). The `tofu output -json` of the postgres pg-1's apply on Cloud SQL."
+  },
+  "outputs": {
+    "ca": {
+      "sensitive": true,
+      "type": "string",
+      "value": "-----BEGIN CERTIFICATE-----\nMIIDcTCCAlmgAwIBAgIBADANBgkqhkiG9w0BAQsFADBwMS0wKwYDVQQuEyQzNDc1\nZDViZC02ODRjLTQ0YzEtOGJmYi01MDc2M2MyYzFhYjExHDAaBgNVBAMTE0Nsb3Vk\nIFNRTCBTZXJ2ZXIgQ0ExFDASBgNVBAoTC0dvb2dsZSwgSW5jMQswCQYDVQQGEwJV\nUzAeFw0yNjExMDYxNzU1MjBaFw0zNjExMDMxNzU2MjBaMHAxLTArBgNVBC4TJDM0\nNzVkNWJkLTY4NGMtNDRjMS04YmZiLTUwNzYzYzJjMWFiMTEcMBoGA1UEAxMTQ2xv\ndWQgU1FMIFNlcnZlciBDQTEUMBIGA1UEChMLR29vZ2xlLCBJbmMxCzAJBgNVBAYT\nAlVTMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvlsKRMQD0emlPoOW\nhWxZPC+VLwqdxNwUXrjEuTzHkjKn3e0Gl0pb0/ASsLV0t+a8vdTry0+SInPKkbI4\n3PPXe99qJcc0wDLNdmhTPSoBKdTsyB3QnlbDrbZfPus87agPjKTetvEPfrXmDFUg\ngFNSwYCIX1Ksk38WhLZhiOIDceMBJvkMm9gMK/8H094cMWayaMEwc4NsiWT8y0Vq\nOIfBzCHG1BYTUx76QUZaUyq9Cw3N20N+m9yk2j6Ef2O1ffQzxIkCjtDWSITTDuLr\n7oVir8hZhld4H3NKnrXAj1XPsPI/LGyBviDV9VQkf+prSY+rmZwmMX5wiB5KN0Jq\n3W580wIDAQABoxYwFDASBgNVHRMBAf8ECDAGAQH/AgEAMA0GCSqGSIb3DQEBCwUA\nA4IBAQBDfzCs6mDgS2v6BoLfeSE26/hgzLXstgYPPr5B98O6Fb58xyi8X7ZKdI9B\nfmCtHX4RTZLN2w15XLSyE9b2muSJeOow4366xmD0MqSsAaZnWtG3/SGP6/b+FkG5\nFIJjyssQpbxvyRGkZUzAB+pilEgzEpmb50XwpceQL4c70Lf5zQel1CWfSVwmpjKQ\nqTuylziB3/FA0BIL3uz+KnXqjKRMdIdZPxEEDWy7ndEv02c7ekeRYj5vWhYZtYKl\nC23kD0kEIgGQepUrWCcYPKN+iF0danzqH9FXyzSJ/PEhntyLTbxlhpwl3Hw59M9h\n7V5tS8JfT7Bl1KUyhWK6L8y+mfjU\n-----END CERTIFICATE-----"
+    },
+    "dns_name": {
+      "sensitive": false,
+      "type": "string",
+      "value": "24201ef35c59.1idghei1xv0vf.europe-west1.sql-psc.goog"
+    },
+    "instance_name": {
+      "sensitive": false,
+      "type": "string",
+      "value": "cloudgate-dcbebtwmqi6e"
+    },
+    "private_address": {
+      "sensitive": false,
+      "type": "string",
+      "value": "10.64.16.4"
+    }
+  }
+}

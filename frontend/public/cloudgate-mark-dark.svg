@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="3 15 58 37">
+  <title>Cloudgate</title>
+  <defs>
+    <clipPath id="a"><polygon points="0,0 25,0 17,64 0,64"/></clipPath>
+    <clipPath id="b"><polygon points="28,0 44,0 36,64 20,64"/></clipPath>
+    <clipPath id="c"><polygon points="47,0 64,0 64,64 39,64"/></clipPath>
+    <mask id="k" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <rect width="64" height="64" fill="#fff"/>
+      <circle cx="31.7" cy="34" r="2.8"/>
+      <path d="M30.6 35 L29.4 42.5 H33.2 L32.8 35 Z"/>
+    </mask>
+  </defs>
+  <g class="m" fill="#b5b0ff" mask="url(#k)">
+    <g clip-path="url(#a)"><rect x="3" y="33" width="58" height="19" rx="9.5"/><circle cx="19" cy="34" r="9.5"/><circle cx="37" cy="28" r="13"/><circle cx="50" cy="35.5" r="8"/></g>
+    <g clip-path="url(#b)" opacity=".75"><rect x="3" y="33" width="58" height="19" rx="9.5"/><circle cx="19" cy="34" r="9.5"/><circle cx="37" cy="28" r="13"/><circle cx="50" cy="35.5" r="8"/></g>
+    <g clip-path="url(#c)" opacity=".5"><rect x="3" y="33" width="58" height="19" rx="9.5"/><circle cx="19" cy="34" r="9.5"/><circle cx="37" cy="28" r="13"/><circle cx="50" cy="35.5" r="8"/></g>
+  </g>
+</svg>

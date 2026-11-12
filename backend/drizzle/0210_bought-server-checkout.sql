@@ -1,0 +1,1 @@
+ALTER TABLE "bought_server" ADD COLUMN "purchase_checkout_session_id" text;

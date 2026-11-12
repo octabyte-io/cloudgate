@@ -1,0 +1,31 @@
+[Unit]
+Description=Cloudgate Hosted instance backup to Backblaze B2
+Documentation=https://github.com/octabyte-io/cloudgate/blob/main/docs/deploy.md
+# Installed only by install.sh's HOSTED_MODE=true path, started by
+# cloudgate-backup.timer. deploy/hosted-backup.sh says what a run takes and
+# where it goes.
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+# oneshot: `systemctl start cloudgate-backup.service` returns when the run has
+# uploaded, or failed, which is what install.sh's first backup waits on. A
+# timer firing while a run is still going starts nothing new.
+Type=oneshot
+User=root
+Group=root
+ExecStart=/bin/bash /opt/cloudgate/deploy/hosted-backup.sh run
+# /var/lib/cloudgate-backup, root-only: where last-success is kept for the
+# staleness check.
+StateDirectory=cloudgate-backup
+StateDirectoryMode=0700
+# The encrypted files are staged here before upload, then removed.
+Environment=TMPDIR=/var/tmp
+# Below the backend and the customers' builds on CPU and disk.
+Nice=10
+IOSchedulingClass=idle
+# Well inside the hour, so a wedged upload fails and the next run starts.
+TimeoutStartSec=50min
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cloudgate-backup

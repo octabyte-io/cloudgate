@@ -1,0 +1,20 @@
+[Unit]
+Description=Alert when no Cloudgate backup has succeeded for 3 hours
+Documentation=https://github.com/octabyte-io/cloudgate/blob/main/docs/deploy.md
+# Installed only by install.sh's HOSTED_MODE=true path, started by
+# cloudgate-backup-check.timer. Fails, having mailed BACKUP_ALERT_EMAIL, while
+# the backups are stale.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/bin/bash /opt/cloudgate/deploy/hosted-backup.sh check
+StateDirectory=cloudgate-backup
+StateDirectoryMode=0700
+TimeoutStartSec=5min
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cloudgate-backup-check

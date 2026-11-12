@@ -1,0 +1,155 @@
+# /etc/cloudgate/traefik/traefik.yml — Traefik's static configuration.
+#
+# Everything below this header, from `providers:` to the last line, is
+# byte-identical to what deploy/install.sh writes, and to what
+# `createTraefikConfig()` in backend/src/servers/server-setup.ts writes for a
+# remote Server **plus the access-log block at the end** — a remote Server is
+# provisioned with its access log off (ADR-0027), the platform host keeps its
+# own. Keep it that way: registering this host as a Server runs that script,
+# which skips the file when it already exists. If the two ever diverge,
+# whichever ran first silently wins.
+#
+# `backend/test/servers/server-setup.spec.ts` compares this file, deploy/
+# install.sh and the generator against each other, so a change to any one of the
+# three that is not made to the other two fails there rather than on a host. The
+# installer is pinned too — it is read off disk. What is pinned has grown past the
+# two Traefik heredocs, their guards, CLOUDGATE_DIR and TRAEFIK_VERSION: also the
+# container-log ceiling and both --log-opt run flags, a blank TRUST_PROXY in
+# the script and in deploy/env/cloudgate-backend.example, the 0700 ssh key
+# directory, and the ensure_packages guard body. The rest of that
+# script is still not pinned, and "the rest" is load-bearing: the Traefik
+# container's own -p 80:80 -p 443:443 -p 443:443/udp can be replaced wholesale and
+# all 39 assertions in that spec still pass.
+#
+# Write this file BEFORE starting the container. Starting Traefik first makes
+# Docker create a *directory* at the bind-mount source, after which Traefik
+# fails on config and every retry fails identically until you rm -rf a directory
+# you did not know you made.
+#
+# The `directory:` below is the path *inside* the container. It reads
+# /etc/cloudgate/... because that is the bind target
+# TraefikSetupService.initializeStandaloneTraefik uses, regardless of this
+# instance's own CLOUDGATE_DIRECTORY — which is one more reason to leave
+# CLOUDGATE_DIRECTORY at its default.
+#
+# --- TLS -------------------------------------------------------------------
+#
+# `certificatesResolvers.letsencrypt` is here because every generator that emits
+# a `letsencrypt` domain writes `tls: { certResolver: letsencrypt }`.
+# Traefik does not refuse a router that names a resolver it does not have — it
+# serves the app under its built-in self-signed certificate, so the operator
+# gets an HTTPS URL that works and that every browser rejects, and one line in a
+# container log they have no reason to read. It used to be absent; it is not a
+# product change to add, because the product already assumes it.
+#
+# The email is a placeholder the console overwrites: assigning a domain calls
+# TraefikFilesService.updateLetsEncryptEmail, which *patches* this key and
+# throws "Invalid Let's Encrypt configuration structure" when the block is
+# missing. It is deliberately not an @example.com address — Let's Encrypt
+# refuses those, which would turn a placeholder into a registration failure.
+#
+# `storage:` is inside dynamic/ because that is the only directory of the three
+# bind-mounted into the container. Anywhere else and the ACME account lives in
+# the container's writable layer, which TraefikSetupService throws away every
+# time it recreates Traefik — and every recreation re-issues certificates
+# straight into Let's Encrypt's rate limit.
+#
+# --- The two logs, which are not the same log --------------------------------
+#
+# `log:` is Traefik's *own* log — startup, provider reloads, and every ACME
+# attempt with what Let's Encrypt answered. Traefik 3 defaults it to level ERROR
+# on stdout, so a healthy instance said nothing at all and `docker logs
+# cloudgate-traefik` was 0 bytes from install onwards; "never attempted a
+# certificate" and "attempted one and succeeded" were the same observation.
+# `accessLog:` below cannot stand in for it, because the httpChallenge
+# is answered before the router chain runs — a challenge that demonstrably
+# succeeded leaves no acme-challenge line in access.log.
+#
+# It is INFO rather than DEBUG: INFO is where lego's `acme: Obtaining bundled
+# SAN certificate` and `Testing certificate renew…` lines appear, and it is
+# startup-and-events volume rather than per-request volume.
+#
+# It deliberately has **no `filePath`**. Two consequences, both wanted: stdout
+# is what `docker logs` reads, which is the interface the product's own
+# troubleshooting assumes; and Docker's log driver owns retention, so Cloudgate
+# is not handed a second file to rotate. That driver is capped — json-file,
+# max-size 10m, max-file 3 — by whichever path created the container.
+#
+# This is *static* config, read once at process start. Adding it to an existing
+# host's traefik.yml costs a Traefik restart; see docs/deploy.md section 6.
+#
+# --- Request metrics ---------------------------------------------------------
+#
+# `metrics:` and the `metrics` entryPoint are Traefik's per-service request
+# counters, which the backend reads as a Service's Error rate (ADR-0027) over
+# `docker exec` into this container. The entryPoint is 127.0.0.1:8082 — inside
+# the container — and that is a tenant-isolation requirement: on :8082 any
+# container on cloudgate-network could read every Service's counters. It is
+# never the `traefik` entryPoint "Publish the dashboard" exposes. A host whose
+# traefik.yml predates this gets it from Enable request metrics, which writes
+# the same block and restarts Traefik behind the usual confirmation.
+#
+# --- Access log ------------------------------------------------------------
+#
+# `accessLog:` is here so a fresh install has something for the console's
+# /requests analytics to read. Turning it on later is
+# POST /settings/traefik/requests and it costs a Traefik restart — every
+# connection on 80 and 443 — which the product deliberately refuses to do on the
+# operator's behalf. At install time that price is zero, so this is where the
+# default belongs. The filePath, format and bufferingSize are the ones the
+# toggle itself writes, so `haveActivateRequests` reads it as already on and a
+# later toggle is not a rewrite.
+#
+# --- The dynamic files -----------------------------------------------------
+#
+# This is the *static* config; it is read once at start. The file provider above
+# watches /etc/cloudgate/traefik/dynamic, where deploy/traefik/dynamic/
+# middlewares.yml.example is the other file both the installer and the setup
+# script write.
+
+providers:
+  docker:
+    exposedByDefault: false
+    watch: true
+  file:
+    directory: /etc/cloudgate/traefik/dynamic
+    watch: true
+entryPoints:
+  web:
+    address: ':80'
+  websecure:
+    address: ':443'
+  metrics:
+    address: '127.0.0.1:8082'
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: admin@localhost.com
+      storage: /etc/cloudgate/traefik/dynamic/acme.json
+      httpChallenge:
+        entryPoint: web
+# Traefik's *application* log — startup, provider reloads and, the reason it is
+# here, every ACME attempt and what Let's Encrypt answered. At Traefik 3's
+# default level (ERROR) a healthy instance says nothing, so "never tried" and
+# "issued a certificate" are the same empty docker logs. No filePath:
+# stdout is what "docker logs cloudgate-traefik" reads, and Docker's log driver
+# owns retention. An access log, where a machine keeps one, is a separate file.
+log:
+  level: INFO
+# Request metrics (ADR-0027): per-service request counters, read by the
+# backend as each Service's Error rate. Loopback only — on any other address
+# every container on the Traefik network could read every Service's counters.
+# Never on the dashboard entryPoint.
+metrics:
+  prometheus:
+    entryPoint: metrics
+    addServicesLabels: true
+    addRoutersLabels: false
+# Cloudgate rotates this file; Traefik cannot. Traefik 3.x has no accessLog
+# rotation settings, so the policy is ACCESS_LOG_MAX_BYTES in
+# backend/src/settings/traefik-files.service.ts, which renames the file and
+# sends Traefik SIGUSR1 to make it reopen filePath.
+accessLog:
+  filePath: /etc/cloudgate/traefik/dynamic/access.log
+  format: json
+  bufferingSize: 100

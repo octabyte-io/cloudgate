@@ -1,0 +1,1701 @@
+{
+  "cloudgate_fixture": {
+    "source": "not yet from a real project",
+    "how": "Planned offline on 2026-11-10 by `tofu plan -refresh=false` with the pinned OpenTofu 1.13.1 and hashicorp/google 8.8.0 from the generated definition, with no state and no Google call, in the stored files' sample ids (cloud_1, env_1, project example-project-123, region europe-west1), then `tofu show -json`. A Compose stack's first Stack VM (analytics, svc_compose_1, state_compose_1) at medium, e2-small, on the applied network's names. The image is passed as the recorded one, since an offline plan cannot read Ubuntu's image family; a real first plan reads it from data.google_compute_image.ubuntu."
+  },
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "planned_values": {
+    "outputs": {
+      "data_disk_name": {
+        "sensitive": false,
+        "type": "string",
+        "value": "cloudgate-cmyrpsiafuea-data"
+      },
+      "image_id": {
+        "sensitive": false,
+        "type": "string",
+        "value": "projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261101"
+      },
+      "instance_name": {
+        "sensitive": false,
+        "type": "string",
+        "value": "cloudgate-cmyrpsiafuea"
+      },
+      "private_ip": {
+        "sensitive": false
+      },
+      "zone": {
+        "sensitive": false,
+        "type": "string",
+        "value": "europe-west1-b"
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "google_compute_disk.data",
+          "mode": "managed",
+          "type": "google_compute_disk",
+          "name": "data",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "architecture": null,
+            "async_primary_disk": [],
+            "create_snapshot_before_destroy": false,
+            "create_snapshot_before_destroy_prefix": null,
+            "deletion_policy": "DELETE",
+            "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_compose_1",
+            "disk_encryption_key": [],
+            "effective_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "xlmgovk5m2wy"
+            },
+            "image": null,
+            "labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "xlmgovk5m2wy"
+            },
+            "name": "cloudgate-cmyrpsiafuea-data",
+            "params": [],
+            "project": "example-project-123",
+            "size": 20,
+            "snapshot": null,
+            "source_disk": null,
+            "source_image_encryption_key": [],
+            "source_instant_snapshot": null,
+            "source_snapshot_encryption_key": [],
+            "source_storage_object": null,
+            "storage_pool": null,
+            "terraform_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "xlmgovk5m2wy"
+            },
+            "timeouts": null,
+            "type": "pd-balanced",
+            "zone": "europe-west1-b"
+          },
+          "sensitive_values": {
+            "async_primary_disk": [],
+            "disk_encryption_key": [],
+            "effective_labels": {},
+            "guest_os_features": [],
+            "labels": {},
+            "licenses": [],
+            "params": [],
+            "source_image_encryption_key": [],
+            "source_snapshot_encryption_key": [],
+            "terraform_labels": {},
+            "users": []
+          },
+          "identity": {
+            "name": null,
+            "project": null,
+            "zone": null
+          },
+          "identity_schema_version": 1
+        },
+        {
+          "address": "google_compute_disk_resource_policy_attachment.snapshots",
+          "mode": "managed",
+          "type": "google_compute_disk_resource_policy_attachment",
+          "name": "snapshots",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "deletion_policy": "DELETE",
+            "disk": "cloudgate-cmyrpsiafuea-data",
+            "name": "cloudgate-cmyrpsiafuea-snapshots",
+            "project": "example-project-123",
+            "timeouts": null,
+            "zone": "europe-west1-b"
+          },
+          "sensitive_values": {},
+          "identity": {
+            "disk": null,
+            "name": null,
+            "project": null,
+            "zone": null
+          },
+          "identity_schema_version": 1
+        },
+        {
+          "address": "google_compute_firewall.iap",
+          "mode": "managed",
+          "type": "google_compute_firewall",
+          "name": "iap",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 1,
+          "values": {
+            "allow": [
+              {
+                "ports": [
+                  "22"
+                ],
+                "protocol": "tcp"
+              }
+            ],
+            "deletion_policy": "DELETE",
+            "deny": [],
+            "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_compose_1",
+            "direction": "INGRESS",
+            "disabled": null,
+            "log_config": [],
+            "name": "cloudgate-cmyrpsiafuea-iap",
+            "network": "projects/example-project-123/global/networks/cloudgate-envkey-net",
+            "params": [],
+            "priority": 1000,
+            "project": "example-project-123",
+            "source_ranges": [
+              "35.235.240.0/20"
+            ],
+            "source_service_accounts": null,
+            "source_tags": null,
+            "target_service_accounts": [
+              "cloudgate-cmyrpsiafuea@example-project-123.iam.gserviceaccount.com"
+            ],
+            "target_tags": null,
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "allow": [
+              {
+                "ports": [
+                  false
+                ]
+              }
+            ],
+            "deny": [],
+            "destination_ranges": [],
+            "log_config": [],
+            "params": [],
+            "source_ranges": [
+              false
+            ],
+            "target_service_accounts": [
+              false
+            ]
+          },
+          "identity": {
+            "name": null,
+            "project": null
+          },
+          "identity_schema_version": 1
+        },
+        {
+          "address": "google_compute_instance.stack_vm",
+          "mode": "managed",
+          "type": "google_compute_instance",
+          "name": "stack_vm",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 6,
+          "values": {
+            "advanced_machine_features": [],
+            "allow_stopping_for_update": true,
+            "attached_disk": [
+              {
+                "device_name": "cloudgate-data",
+                "disk_encryption_key_raw": null,
+                "disk_encryption_key_rsa": null,
+                "disk_encryption_service_account": null,
+                "force_attach": null,
+                "mode": "READ_WRITE"
+              }
+            ],
+            "boot_disk": [
+              {
+                "auto_delete": true,
+                "disk_encryption_key_raw": null,
+                "disk_encryption_key_rsa": null,
+                "disk_encryption_service_account": null,
+                "force_attach": null,
+                "initialize_params": [
+                  {
+                    "enable_confidential_compute": null,
+                    "image": "projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261101",
+                    "labels": {
+                      "cloudgate-cloud-account": "lqinodt54kzk",
+                      "cloudgate-environment": "w33lemwkholw",
+                      "cloudgate-state": "xlmgovk5m2wy"
+                    },
+                    "replica_zones": null,
+                    "resource_manager_tags": null,
+                    "size": 10,
+                    "source_image_encryption_key": [],
+                    "source_snapshot_encryption_key": [],
+                    "storage_pool": null,
+                    "type": "pd-balanced"
+                  }
+                ],
+                "interface": null,
+                "mode": "READ_WRITE"
+              }
+            ],
+            "can_ip_forward": false,
+            "deletion_policy": "DELETE",
+            "deletion_protection": false,
+            "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_compose_1",
+            "desired_status": null,
+            "effective_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "xlmgovk5m2wy"
+            },
+            "enable_display": null,
+            "hostname": null,
+            "instance_encryption_key": [],
+            "key_revocation_action_type": null,
+            "labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "xlmgovk5m2wy"
+            },
+            "machine_type": "e2-small",
+            "metadata": {
+              "user-data": "#cloud-config\npackage_update: true\npackages:\n  - ca-certificates\n  - curl\n  - unattended-upgrades\nwrite_files:\n  - path: /usr/local/sbin/cloudgate-data-disk\n    permissions: '0755'\n    content: |\n      #!/bin/bash\n      set -euo pipefail\n      root=\"$(lsblk -no PKNAME \"$(findmnt -no SOURCE /)\")\"\n      disk=\"\"\n      for _ in $(seq 1 120); do\n        for candidate in $(lsblk -dno NAME,TYPE | awk '$2 == \"disk\" {print $1}'); do\n          if [ \"$candidate\" != \"$root\" ] && [ -z \"$(lsblk -no MOUNTPOINT \"/dev/$candidate\" | tr -d '[:space:]')\" ]; then\n            disk=\"/dev/$candidate\"\n            break 2\n          fi\n        done\n        sleep 5\n      done\n      if [ -z \"$disk\" ]; then\n        echo \"cloudgate: no data disk was attached\" >&2\n        exit 1\n      fi\n      if ! blkid \"$disk\" >/dev/null 2>&1; then\n        mkfs.ext4 -L cloudgate-data \"$disk\"\n      fi\n      uuid=\"$(blkid -s UUID -o value \"$disk\")\"\n      mkdir -p /var/lib/docker/volumes\n      if ! grep -q \"$uuid\" /etc/fstab; then\n        echo \"UUID=$uuid /var/lib/docker/volumes ext4 defaults,nofail 0 2\" >> /etc/fstab\n      fi\n      mount -a\n  - path: /etc/apt/apt.conf.d/20auto-upgrades\n    permissions: '0644'\n    content: |\n      APT::Periodic::Update-Package-Lists \"1\";\n      APT::Periodic::Unattended-Upgrade \"1\";\n  - path: /etc/apt/apt.conf.d/52cloudgate-unattended-upgrades\n    permissions: '0644'\n    content: |\n      Unattended-Upgrade::Automatic-Reboot \"false\";\nruncmd:\n  - /usr/local/sbin/cloudgate-data-disk\n  - install -m 0755 -d /etc/apt/keyrings\n  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc\n  - chmod a+r /etc/apt/keyrings/docker.asc\n  - echo \"deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable\" > /etc/apt/sources.list.d/docker.list\n  - apt-get update\n  - DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce=5:29.9.2-1~ubuntu.24.04~noble docker-ce-cli=5:29.9.2-1~ubuntu.24.04~noble containerd.io docker-compose-plugin=5.6.1-1~ubuntu.24.04~noble\n  - apt-mark hold docker-ce docker-ce-cli docker-compose-plugin\n  - systemctl enable --now docker\n"
+            },
+            "metadata_startup_script": null,
+            "name": "cloudgate-cmyrpsiafuea",
+            "network_interface": [
+              {
+                "access_config": [],
+                "alias_ip_range": [],
+                "enable_vpc_scoped_dns": null,
+                "ipv6_access_config": [],
+                "network": "projects/example-project-123/global/networks/cloudgate-envkey-net",
+                "nic_type": null,
+                "queue_count": null,
+                "service_class_id": null,
+                "subnetwork": "projects/example-project-123/regions/europe-west1/subnetworks/cloudgate-envkey-subnet",
+                "vlan": null
+              }
+            ],
+            "network_performance_config": [],
+            "params": [],
+            "project": "example-project-123",
+            "resource_policies": null,
+            "scheduling": [
+              {
+                "automatic_restart": true,
+                "availability_domain": null,
+                "host_error_timeout_seconds": null,
+                "instance_termination_action": null,
+                "local_ssd_recovery_timeout": [],
+                "max_run_duration": [],
+                "min_node_cpus": null,
+                "node_affinities": [],
+                "on_host_maintenance": "MIGRATE",
+                "on_instance_stop_action": [],
+                "preemptible": false,
+                "preemption_notice_duration": [],
+                "termination_time": null
+              }
+            ],
+            "scratch_disk": [],
+            "service_account": [
+              {
+                "email": "cloudgate-cmyrpsiafuea@example-project-123.iam.gserviceaccount.com",
+                "scopes": [
+                  "https://www.googleapis.com/auth/cloud-platform"
+                ]
+              }
+            ],
+            "shielded_instance_config": [],
+            "tags": null,
+            "terraform_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "xlmgovk5m2wy"
+            },
+            "timeouts": null,
+            "workload_identity_config": [],
+            "zone": "europe-west1-b"
+          },
+          "sensitive_values": {
+            "advanced_machine_features": [],
+            "attached_disk": [
+              {
+                "disk_encryption_key_raw": true,
+                "disk_encryption_key_rsa": true
+              }
+            ],
+            "boot_disk": [
+              {
+                "disk_encryption_key_raw": true,
+                "disk_encryption_key_rsa": true,
+                "guest_os_features": [],
+                "initialize_params": [
+                  {
+                    "labels": {},
+                    "resource_policies": [],
+                    "source_image_encryption_key": [],
+                    "source_snapshot_encryption_key": []
+                  }
+                ]
+              }
+            ],
+            "confidential_instance_config": [],
+            "effective_labels": {},
+            "guest_accelerator": [],
+            "instance_encryption_key": [],
+            "labels": {},
+            "metadata": {},
+            "network_interface": [
+              {
+                "access_config": [],
+                "alias_ip_range": [],
+                "ipv6_access_config": []
+              }
+            ],
+            "network_performance_config": [],
+            "params": [],
+            "reservation_affinity": [],
+            "scheduling": [
+              {
+                "local_ssd_recovery_timeout": [],
+                "max_run_duration": [],
+                "node_affinities": [],
+                "on_instance_stop_action": [],
+                "preemption_notice_duration": []
+              }
+            ],
+            "scratch_disk": [],
+            "service_account": [
+              {
+                "scopes": [
+                  false
+                ]
+              }
+            ],
+            "shielded_instance_config": [],
+            "terraform_labels": {},
+            "workload_identity_config": []
+          },
+          "identity": {
+            "name": null,
+            "project": null,
+            "zone": null
+          },
+          "identity_schema_version": 1
+        },
+        {
+          "address": "google_compute_resource_policy.snapshots",
+          "mode": "managed",
+          "type": "google_compute_resource_policy",
+          "name": "snapshots",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "deletion_policy": "DELETE",
+            "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_compose_1",
+            "disk_consistency_group_policy": [],
+            "group_placement_policy": [],
+            "instance_schedule_policy": [],
+            "name": "cloudgate-cmyrpsiafuea-snapshots",
+            "project": "example-project-123",
+            "region": "europe-west1",
+            "snapshot_schedule_policy": [
+              {
+                "retention_policy": [
+                  {
+                    "max_retention_days": 7,
+                    "on_source_disk_delete": "APPLY_RETENTION_POLICY"
+                  }
+                ],
+                "schedule": [
+                  {
+                    "daily_schedule": [
+                      {
+                        "days_in_cycle": 1,
+                        "start_time": "03:00"
+                      }
+                    ],
+                    "hourly_schedule": [],
+                    "weekly_schedule": []
+                  }
+                ],
+                "snapshot_properties": [
+                  {
+                    "chain_name": null,
+                    "guest_flush": null,
+                    "labels": null,
+                    "storage_locations": [
+                      "europe-west1"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "timeouts": null,
+            "workload_policy": []
+          },
+          "sensitive_values": {
+            "disk_consistency_group_policy": [],
+            "group_placement_policy": [],
+            "instance_schedule_policy": [],
+            "snapshot_schedule_policy": [
+              {
+                "retention_policy": [
+                  {}
+                ],
+                "schedule": [
+                  {
+                    "daily_schedule": [
+                      {}
+                    ],
+                    "hourly_schedule": [],
+                    "weekly_schedule": []
+                  }
+                ],
+                "snapshot_properties": [
+                  {
+                    "storage_locations": [
+                      false
+                    ]
+                  }
+                ]
+              }
+            ],
+            "workload_policy": []
+          },
+          "identity": {
+            "name": null,
+            "project": null,
+            "region": null
+          },
+          "identity_schema_version": 1
+        },
+        {
+          "address": "google_service_account.stack_vm",
+          "mode": "managed",
+          "type": "google_service_account",
+          "name": "stack_vm",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "account_id": "cloudgate-cmyrpsiafuea",
+            "create_ignore_already_exists": null,
+            "deletion_policy": "DELETE",
+            "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_compose_1",
+            "disabled": false,
+            "display_name": "Cloudgate Stack VM analytics",
+            "email": "cloudgate-cmyrpsiafuea@example-project-123.iam.gserviceaccount.com",
+            "member": "serviceAccount:cloudgate-cmyrpsiafuea@example-project-123.iam.gserviceaccount.com",
+            "project": "example-project-123",
+            "timeouts": null
+          },
+          "sensitive_values": {},
+          "identity": {
+            "email": null,
+            "project": null
+          },
+          "identity_schema_version": 1
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "google_compute_disk.data",
+      "mode": "managed",
+      "type": "google_compute_disk",
+      "name": "data",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "architecture": null,
+          "async_primary_disk": [],
+          "create_snapshot_before_destroy": false,
+          "create_snapshot_before_destroy_prefix": null,
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_compose_1",
+          "disk_encryption_key": [],
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "xlmgovk5m2wy"
+          },
+          "image": null,
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "xlmgovk5m2wy"
+          },
+          "name": "cloudgate-cmyrpsiafuea-data",
+          "params": [],
+          "project": "example-project-123",
+          "size": 20,
+          "snapshot": null,
+          "source_disk": null,
+          "source_image_encryption_key": [],
+          "source_instant_snapshot": null,
+          "source_snapshot_encryption_key": [],
+          "source_storage_object": null,
+          "storage_pool": null,
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "xlmgovk5m2wy"
+          },
+          "timeouts": null,
+          "type": "pd-balanced",
+          "zone": "europe-west1-b"
+        },
+        "after_unknown": {
+          "access_mode": true,
+          "async_primary_disk": [],
+          "creation_timestamp": true,
+          "disk_encryption_key": [],
+          "disk_id": true,
+          "effective_labels": {},
+          "enable_confidential_compute": true,
+          "guest_os_features": true,
+          "id": true,
+          "label_fingerprint": true,
+          "labels": {},
+          "last_attach_timestamp": true,
+          "last_detach_timestamp": true,
+          "licenses": true,
+          "params": [],
+          "physical_block_size_bytes": true,
+          "provisioned_iops": true,
+          "provisioned_throughput": true,
+          "self_link": true,
+          "source_disk_id": true,
+          "source_image_encryption_key": [],
+          "source_image_id": true,
+          "source_instant_snapshot_id": true,
+          "source_snapshot_encryption_key": [],
+          "source_snapshot_id": true,
+          "terraform_labels": {},
+          "users": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "async_primary_disk": [],
+          "disk_encryption_key": [],
+          "effective_labels": {},
+          "guest_os_features": [],
+          "labels": {},
+          "licenses": [],
+          "params": [],
+          "source_image_encryption_key": [],
+          "source_snapshot_encryption_key": [],
+          "terraform_labels": {},
+          "users": []
+        },
+        "after_identity": {
+          "name": null,
+          "project": null,
+          "zone": null
+        }
+      }
+    },
+    {
+      "address": "google_compute_disk_resource_policy_attachment.snapshots",
+      "mode": "managed",
+      "type": "google_compute_disk_resource_policy_attachment",
+      "name": "snapshots",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "deletion_policy": "DELETE",
+          "disk": "cloudgate-cmyrpsiafuea-data",
+          "name": "cloudgate-cmyrpsiafuea-snapshots",
+          "project": "example-project-123",
+          "timeouts": null,
+          "zone": "europe-west1-b"
+        },
+        "after_unknown": {
+          "id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {},
+        "after_identity": {
+          "disk": null,
+          "name": null,
+          "project": null,
+          "zone": null
+        }
+      }
+    },
+    {
+      "address": "google_compute_firewall.iap",
+      "mode": "managed",
+      "type": "google_compute_firewall",
+      "name": "iap",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "allow": [
+            {
+              "ports": [
+                "22"
+              ],
+              "protocol": "tcp"
+            }
+          ],
+          "deletion_policy": "DELETE",
+          "deny": [],
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_compose_1",
+          "direction": "INGRESS",
+          "disabled": null,
+          "log_config": [],
+          "name": "cloudgate-cmyrpsiafuea-iap",
+          "network": "projects/example-project-123/global/networks/cloudgate-envkey-net",
+          "params": [],
+          "priority": 1000,
+          "project": "example-project-123",
+          "source_ranges": [
+            "35.235.240.0/20"
+          ],
+          "source_service_accounts": null,
+          "source_tags": null,
+          "target_service_accounts": [
+            "cloudgate-cmyrpsiafuea@example-project-123.iam.gserviceaccount.com"
+          ],
+          "target_tags": null,
+          "timeouts": null
+        },
+        "after_unknown": {
+          "allow": [
+            {
+              "ports": [
+                false
+              ]
+            }
+          ],
+          "creation_timestamp": true,
+          "deny": [],
+          "destination_ranges": true,
+          "enable_logging": true,
+          "id": true,
+          "log_config": [],
+          "params": [],
+          "self_link": true,
+          "source_ranges": [
+            false
+          ],
+          "target_service_accounts": [
+            false
+          ]
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "allow": [
+            {
+              "ports": [
+                false
+              ]
+            }
+          ],
+          "deny": [],
+          "destination_ranges": [],
+          "log_config": [],
+          "params": [],
+          "source_ranges": [
+            false
+          ],
+          "target_service_accounts": [
+            false
+          ]
+        },
+        "after_identity": {
+          "name": null,
+          "project": null
+        }
+      }
+    },
+    {
+      "address": "google_compute_instance.stack_vm",
+      "mode": "managed",
+      "type": "google_compute_instance",
+      "name": "stack_vm",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "advanced_machine_features": [],
+          "allow_stopping_for_update": true,
+          "attached_disk": [
+            {
+              "device_name": "cloudgate-data",
+              "disk_encryption_key_raw": null,
+              "disk_encryption_key_rsa": null,
+              "disk_encryption_service_account": null,
+              "force_attach": null,
+              "mode": "READ_WRITE"
+            }
+          ],
+          "boot_disk": [
+            {
+              "auto_delete": true,
+              "disk_encryption_key_raw": null,
+              "disk_encryption_key_rsa": null,
+              "disk_encryption_service_account": null,
+              "force_attach": null,
+              "initialize_params": [
+                {
+                  "enable_confidential_compute": null,
+                  "image": "projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261101",
+                  "labels": {
+                    "cloudgate-cloud-account": "lqinodt54kzk",
+                    "cloudgate-environment": "w33lemwkholw",
+                    "cloudgate-state": "xlmgovk5m2wy"
+                  },
+                  "replica_zones": null,
+                  "resource_manager_tags": null,
+                  "size": 10,
+                  "source_image_encryption_key": [],
+                  "source_snapshot_encryption_key": [],
+                  "storage_pool": null,
+                  "type": "pd-balanced"
+                }
+              ],
+              "interface": null,
+              "mode": "READ_WRITE"
+            }
+          ],
+          "can_ip_forward": false,
+          "deletion_policy": "DELETE",
+          "deletion_protection": false,
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_compose_1",
+          "desired_status": null,
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "xlmgovk5m2wy"
+          },
+          "enable_display": null,
+          "hostname": null,
+          "instance_encryption_key": [],
+          "key_revocation_action_type": null,
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "xlmgovk5m2wy"
+          },
+          "machine_type": "e2-small",
+          "metadata": {
+            "user-data": "#cloud-config\npackage_update: true\npackages:\n  - ca-certificates\n  - curl\n  - unattended-upgrades\nwrite_files:\n  - path: /usr/local/sbin/cloudgate-data-disk\n    permissions: '0755'\n    content: |\n      #!/bin/bash\n      set -euo pipefail\n      root=\"$(lsblk -no PKNAME \"$(findmnt -no SOURCE /)\")\"\n      disk=\"\"\n      for _ in $(seq 1 120); do\n        for candidate in $(lsblk -dno NAME,TYPE | awk '$2 == \"disk\" {print $1}'); do\n          if [ \"$candidate\" != \"$root\" ] && [ -z \"$(lsblk -no MOUNTPOINT \"/dev/$candidate\" | tr -d '[:space:]')\" ]; then\n            disk=\"/dev/$candidate\"\n            break 2\n          fi\n        done\n        sleep 5\n      done\n      if [ -z \"$disk\" ]; then\n        echo \"cloudgate: no data disk was attached\" >&2\n        exit 1\n      fi\n      if ! blkid \"$disk\" >/dev/null 2>&1; then\n        mkfs.ext4 -L cloudgate-data \"$disk\"\n      fi\n      uuid=\"$(blkid -s UUID -o value \"$disk\")\"\n      mkdir -p /var/lib/docker/volumes\n      if ! grep -q \"$uuid\" /etc/fstab; then\n        echo \"UUID=$uuid /var/lib/docker/volumes ext4 defaults,nofail 0 2\" >> /etc/fstab\n      fi\n      mount -a\n  - path: /etc/apt/apt.conf.d/20auto-upgrades\n    permissions: '0644'\n    content: |\n      APT::Periodic::Update-Package-Lists \"1\";\n      APT::Periodic::Unattended-Upgrade \"1\";\n  - path: /etc/apt/apt.conf.d/52cloudgate-unattended-upgrades\n    permissions: '0644'\n    content: |\n      Unattended-Upgrade::Automatic-Reboot \"false\";\nruncmd:\n  - /usr/local/sbin/cloudgate-data-disk\n  - install -m 0755 -d /etc/apt/keyrings\n  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc\n  - chmod a+r /etc/apt/keyrings/docker.asc\n  - echo \"deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable\" > /etc/apt/sources.list.d/docker.list\n  - apt-get update\n  - DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce=5:29.9.2-1~ubuntu.24.04~noble docker-ce-cli=5:29.9.2-1~ubuntu.24.04~noble containerd.io docker-compose-plugin=5.6.1-1~ubuntu.24.04~noble\n  - apt-mark hold docker-ce docker-ce-cli docker-compose-plugin\n  - systemctl enable --now docker\n"
+          },
+          "metadata_startup_script": null,
+          "name": "cloudgate-cmyrpsiafuea",
+          "network_interface": [
+            {
+              "access_config": [],
+              "alias_ip_range": [],
+              "enable_vpc_scoped_dns": null,
+              "ipv6_access_config": [],
+              "network": "projects/example-project-123/global/networks/cloudgate-envkey-net",
+              "nic_type": null,
+              "queue_count": null,
+              "service_class_id": null,
+              "subnetwork": "projects/example-project-123/regions/europe-west1/subnetworks/cloudgate-envkey-subnet",
+              "vlan": null
+            }
+          ],
+          "network_performance_config": [],
+          "params": [],
+          "project": "example-project-123",
+          "resource_policies": null,
+          "scheduling": [
+            {
+              "automatic_restart": true,
+              "availability_domain": null,
+              "host_error_timeout_seconds": null,
+              "instance_termination_action": null,
+              "local_ssd_recovery_timeout": [],
+              "max_run_duration": [],
+              "min_node_cpus": null,
+              "node_affinities": [],
+              "on_host_maintenance": "MIGRATE",
+              "on_instance_stop_action": [],
+              "preemptible": false,
+              "preemption_notice_duration": [],
+              "termination_time": null
+            }
+          ],
+          "scratch_disk": [],
+          "service_account": [
+            {
+              "email": "cloudgate-cmyrpsiafuea@example-project-123.iam.gserviceaccount.com",
+              "scopes": [
+                "https://www.googleapis.com/auth/cloud-platform"
+              ]
+            }
+          ],
+          "shielded_instance_config": [],
+          "tags": null,
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "xlmgovk5m2wy"
+          },
+          "timeouts": null,
+          "workload_identity_config": [],
+          "zone": "europe-west1-b"
+        },
+        "after_unknown": {
+          "advanced_machine_features": [],
+          "attached_disk": [
+            {
+              "disk_encryption_key_sha256": true,
+              "kms_key_self_link": true,
+              "source": true
+            }
+          ],
+          "boot_disk": [
+            {
+              "device_name": true,
+              "disk_encryption_key_sha256": true,
+              "guest_os_features": true,
+              "initialize_params": [
+                {
+                  "architecture": true,
+                  "labels": {},
+                  "provisioned_iops": true,
+                  "provisioned_throughput": true,
+                  "resource_policies": true,
+                  "snapshot": true,
+                  "source_image_encryption_key": [],
+                  "source_snapshot_encryption_key": []
+                }
+              ],
+              "kms_key_self_link": true,
+              "source": true
+            }
+          ],
+          "confidential_instance_config": true,
+          "cpu_platform": true,
+          "creation_timestamp": true,
+          "current_status": true,
+          "effective_labels": {},
+          "guest_accelerator": true,
+          "id": true,
+          "instance_encryption_key": [],
+          "instance_id": true,
+          "label_fingerprint": true,
+          "labels": {},
+          "metadata": {},
+          "metadata_fingerprint": true,
+          "min_cpu_platform": true,
+          "network_interface": [
+            {
+              "access_config": [],
+              "alias_ip_range": [],
+              "igmp_query": true,
+              "internal_ipv6_prefix_length": true,
+              "ipv6_access_config": [],
+              "ipv6_access_type": true,
+              "ipv6_address": true,
+              "name": true,
+              "network_attachment": true,
+              "network_ip": true,
+              "parent_nic_name": true,
+              "stack_type": true,
+              "subnetwork_project": true
+            }
+          ],
+          "network_performance_config": [],
+          "params": [],
+          "reservation_affinity": true,
+          "scheduling": [
+            {
+              "local_ssd_recovery_timeout": [],
+              "max_run_duration": [],
+              "node_affinities": [],
+              "on_instance_stop_action": [],
+              "preemption_notice_duration": [],
+              "provisioning_model": true
+            }
+          ],
+          "scratch_disk": [],
+          "self_link": true,
+          "service_account": [
+            {
+              "scopes": [
+                false
+              ]
+            }
+          ],
+          "shielded_instance_config": [],
+          "tags_fingerprint": true,
+          "terraform_labels": {},
+          "workload_identity_config": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "advanced_machine_features": [],
+          "attached_disk": [
+            {
+              "disk_encryption_key_raw": true,
+              "disk_encryption_key_rsa": true
+            }
+          ],
+          "boot_disk": [
+            {
+              "disk_encryption_key_raw": true,
+              "disk_encryption_key_rsa": true,
+              "guest_os_features": [],
+              "initialize_params": [
+                {
+                  "labels": {},
+                  "resource_policies": [],
+                  "source_image_encryption_key": [],
+                  "source_snapshot_encryption_key": []
+                }
+              ]
+            }
+          ],
+          "confidential_instance_config": [],
+          "effective_labels": {},
+          "guest_accelerator": [],
+          "instance_encryption_key": [],
+          "labels": {},
+          "metadata": {},
+          "network_interface": [
+            {
+              "access_config": [],
+              "alias_ip_range": [],
+              "ipv6_access_config": []
+            }
+          ],
+          "network_performance_config": [],
+          "params": [],
+          "reservation_affinity": [],
+          "scheduling": [
+            {
+              "local_ssd_recovery_timeout": [],
+              "max_run_duration": [],
+              "node_affinities": [],
+              "on_instance_stop_action": [],
+              "preemption_notice_duration": []
+            }
+          ],
+          "scratch_disk": [],
+          "service_account": [
+            {
+              "scopes": [
+                false
+              ]
+            }
+          ],
+          "shielded_instance_config": [],
+          "terraform_labels": {},
+          "workload_identity_config": []
+        },
+        "after_identity": {
+          "name": null,
+          "project": null,
+          "zone": null
+        }
+      }
+    },
+    {
+      "address": "google_compute_resource_policy.snapshots",
+      "mode": "managed",
+      "type": "google_compute_resource_policy",
+      "name": "snapshots",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_compose_1",
+          "disk_consistency_group_policy": [],
+          "group_placement_policy": [],
+          "instance_schedule_policy": [],
+          "name": "cloudgate-cmyrpsiafuea-snapshots",
+          "project": "example-project-123",
+          "region": "europe-west1",
+          "snapshot_schedule_policy": [
+            {
+              "retention_policy": [
+                {
+                  "max_retention_days": 7,
+                  "on_source_disk_delete": "APPLY_RETENTION_POLICY"
+                }
+              ],
+              "schedule": [
+                {
+                  "daily_schedule": [
+                    {
+                      "days_in_cycle": 1,
+                      "start_time": "03:00"
+                    }
+                  ],
+                  "hourly_schedule": [],
+                  "weekly_schedule": []
+                }
+              ],
+              "snapshot_properties": [
+                {
+                  "chain_name": null,
+                  "guest_flush": null,
+                  "labels": null,
+                  "storage_locations": [
+                    "europe-west1"
+                  ]
+                }
+              ]
+            }
+          ],
+          "timeouts": null,
+          "workload_policy": []
+        },
+        "after_unknown": {
+          "disk_consistency_group_policy": [],
+          "group_placement_policy": [],
+          "id": true,
+          "instance_schedule_policy": [],
+          "self_link": true,
+          "snapshot_schedule_policy": [
+            {
+              "retention_policy": [
+                {}
+              ],
+              "schedule": [
+                {
+                  "daily_schedule": [
+                    {}
+                  ],
+                  "hourly_schedule": [],
+                  "weekly_schedule": []
+                }
+              ],
+              "snapshot_properties": [
+                {
+                  "storage_locations": [
+                    false
+                  ]
+                }
+              ]
+            }
+          ],
+          "workload_policy": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "disk_consistency_group_policy": [],
+          "group_placement_policy": [],
+          "instance_schedule_policy": [],
+          "snapshot_schedule_policy": [
+            {
+              "retention_policy": [
+                {}
+              ],
+              "schedule": [
+                {
+                  "daily_schedule": [
+                    {}
+                  ],
+                  "hourly_schedule": [],
+                  "weekly_schedule": []
+                }
+              ],
+              "snapshot_properties": [
+                {
+                  "storage_locations": [
+                    false
+                  ]
+                }
+              ]
+            }
+          ],
+          "workload_policy": []
+        },
+        "after_identity": {
+          "name": null,
+          "project": null,
+          "region": null
+        }
+      }
+    },
+    {
+      "address": "google_service_account.stack_vm",
+      "mode": "managed",
+      "type": "google_service_account",
+      "name": "stack_vm",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "account_id": "cloudgate-cmyrpsiafuea",
+          "create_ignore_already_exists": null,
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_compose_1",
+          "disabled": false,
+          "display_name": "Cloudgate Stack VM analytics",
+          "email": "cloudgate-cmyrpsiafuea@example-project-123.iam.gserviceaccount.com",
+          "member": "serviceAccount:cloudgate-cmyrpsiafuea@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123",
+          "timeouts": null
+        },
+        "after_unknown": {
+          "id": true,
+          "name": true,
+          "unique_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {},
+        "after_identity": {
+          "email": null,
+          "project": null
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "data_disk_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "cloudgate-cmyrpsiafuea-data",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "image_id": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261101",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "instance_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "cloudgate-cmyrpsiafuea",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "private_ip": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "zone": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "europe-west1-b",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "outputs": {
+        "data_disk_name": {
+          "sensitive": false,
+          "value": "cloudgate-cmyrpsiafuea-data",
+          "type": "string"
+        },
+        "image_id": {
+          "sensitive": false,
+          "value": "projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261101",
+          "type": "string"
+        },
+        "instance_name": {
+          "sensitive": false,
+          "value": "cloudgate-cmyrpsiafuea",
+          "type": "string"
+        },
+        "zone": {
+          "sensitive": false,
+          "value": "europe-west1-b",
+          "type": "string"
+        }
+      },
+      "root_module": {}
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "aws": {
+        "name": "aws",
+        "full_name": "registry.opentofu.org/hashicorp/aws",
+        "version_constraint": "6.69.1"
+      },
+      "google": {
+        "name": "google",
+        "full_name": "registry.opentofu.org/hashicorp/google",
+        "version_constraint": "8.8.0",
+        "expressions": {
+          "add_terraform_attribution_label": {
+            "constant_value": false
+          },
+          "project": {
+            "constant_value": "example-project-123"
+          },
+          "region": {
+            "constant_value": "europe-west1"
+          }
+        }
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "data_disk_name": {
+          "expression": {
+            "constant_value": "${google_compute_disk.data.name}",
+            "references": [
+              "google_compute_disk.data.name",
+              "google_compute_disk.data"
+            ]
+          }
+        },
+        "image_id": {
+          "expression": {
+            "constant_value": "${google_compute_instance.stack_vm.boot_disk[0].initialize_params[0].image}",
+            "references": [
+              "google_compute_instance.stack_vm.boot_disk[0].initialize_params[0].image",
+              "google_compute_instance.stack_vm.boot_disk[0].initialize_params[0]",
+              "google_compute_instance.stack_vm.boot_disk[0].initialize_params",
+              "google_compute_instance.stack_vm.boot_disk[0]",
+              "google_compute_instance.stack_vm.boot_disk",
+              "google_compute_instance.stack_vm"
+            ]
+          }
+        },
+        "instance_name": {
+          "expression": {
+            "constant_value": "${google_compute_instance.stack_vm.name}",
+            "references": [
+              "google_compute_instance.stack_vm.name",
+              "google_compute_instance.stack_vm"
+            ]
+          }
+        },
+        "private_ip": {
+          "expression": {
+            "constant_value": "${google_compute_instance.stack_vm.network_interface[0].network_ip}",
+            "references": [
+              "google_compute_instance.stack_vm.network_interface[0].network_ip",
+              "google_compute_instance.stack_vm.network_interface[0]",
+              "google_compute_instance.stack_vm.network_interface",
+              "google_compute_instance.stack_vm"
+            ]
+          }
+        },
+        "zone": {
+          "expression": {
+            "constant_value": "${google_compute_instance.stack_vm.zone}",
+            "references": [
+              "google_compute_instance.stack_vm.zone",
+              "google_compute_instance.stack_vm"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "google_compute_disk.data",
+          "mode": "managed",
+          "type": "google_compute_disk",
+          "name": "data",
+          "provider_config_key": "google",
+          "expressions": {
+            "description": {
+              "constant_value": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_compose_1"
+            },
+            "labels": {
+              "constant_value": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "xlmgovk5m2wy"
+              }
+            },
+            "name": {
+              "constant_value": "cloudgate-cmyrpsiafuea-data"
+            },
+            "size": {
+              "constant_value": 20
+            },
+            "type": {
+              "constant_value": "pd-balanced"
+            },
+            "zone": {
+              "constant_value": "europe-west1-b"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "google_compute_disk_resource_policy_attachment.snapshots",
+          "mode": "managed",
+          "type": "google_compute_disk_resource_policy_attachment",
+          "name": "snapshots",
+          "provider_config_key": "google",
+          "expressions": {
+            "disk": {
+              "constant_value": "${google_compute_disk.data.name}",
+              "references": [
+                "google_compute_disk.data.name",
+                "google_compute_disk.data"
+              ]
+            },
+            "name": {
+              "constant_value": "${google_compute_resource_policy.snapshots.name}",
+              "references": [
+                "google_compute_resource_policy.snapshots.name",
+                "google_compute_resource_policy.snapshots"
+              ]
+            },
+            "zone": {
+              "constant_value": "europe-west1-b"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "google_compute_firewall.iap",
+          "mode": "managed",
+          "type": "google_compute_firewall",
+          "name": "iap",
+          "provider_config_key": "google",
+          "expressions": {
+            "allow": [
+              {
+                "ports": {
+                  "constant_value": [
+                    "22"
+                  ]
+                },
+                "protocol": {
+                  "constant_value": "tcp"
+                }
+              }
+            ],
+            "description": {
+              "constant_value": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_compose_1"
+            },
+            "direction": {
+              "constant_value": "INGRESS"
+            },
+            "name": {
+              "constant_value": "cloudgate-cmyrpsiafuea-iap"
+            },
+            "network": {
+              "constant_value": "projects/example-project-123/global/networks/cloudgate-envkey-net"
+            },
+            "priority": {
+              "constant_value": 1000
+            },
+            "source_ranges": {
+              "constant_value": [
+                "35.235.240.0/20"
+              ]
+            },
+            "target_service_accounts": {
+              "constant_value": [
+                "${google_service_account.stack_vm.email}"
+              ],
+              "references": [
+                "google_service_account.stack_vm.email",
+                "google_service_account.stack_vm"
+              ]
+            }
+          },
+          "schema_version": 1
+        },
+        {
+          "address": "google_compute_instance.stack_vm",
+          "mode": "managed",
+          "type": "google_compute_instance",
+          "name": "stack_vm",
+          "provider_config_key": "google",
+          "expressions": {
+            "allow_stopping_for_update": {
+              "constant_value": true
+            },
+            "attached_disk": [
+              {
+                "device_name": {
+                  "constant_value": "cloudgate-data"
+                },
+                "mode": {
+                  "constant_value": "READ_WRITE"
+                },
+                "source": {
+                  "constant_value": "${google_compute_disk.data.self_link}",
+                  "references": [
+                    "google_compute_disk.data.self_link",
+                    "google_compute_disk.data"
+                  ]
+                }
+              }
+            ],
+            "boot_disk": [
+              {
+                "auto_delete": {
+                  "constant_value": true
+                },
+                "initialize_params": [
+                  {
+                    "image": {
+                      "constant_value": "projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261101"
+                    },
+                    "labels": {
+                      "constant_value": {
+                        "cloudgate-cloud-account": "lqinodt54kzk",
+                        "cloudgate-environment": "w33lemwkholw",
+                        "cloudgate-state": "xlmgovk5m2wy"
+                      }
+                    },
+                    "size": {
+                      "constant_value": 10
+                    },
+                    "type": {
+                      "constant_value": "pd-balanced"
+                    }
+                  }
+                ]
+              }
+            ],
+            "can_ip_forward": {
+              "constant_value": false
+            },
+            "deletion_protection": {
+              "constant_value": false
+            },
+            "description": {
+              "constant_value": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_compose_1"
+            },
+            "labels": {
+              "constant_value": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "xlmgovk5m2wy"
+              }
+            },
+            "machine_type": {
+              "constant_value": "e2-small"
+            },
+            "metadata": {
+              "constant_value": {
+                "user-data": "#cloud-config\npackage_update: true\npackages:\n  - ca-certificates\n  - curl\n  - unattended-upgrades\nwrite_files:\n  - path: /usr/local/sbin/cloudgate-data-disk\n    permissions: '0755'\n    content: |\n      #!/bin/bash\n      set -euo pipefail\n      root=\"$(lsblk -no PKNAME \"$(findmnt -no SOURCE /)\")\"\n      disk=\"\"\n      for _ in $(seq 1 120); do\n        for candidate in $(lsblk -dno NAME,TYPE | awk '$2 == \"disk\" {print $1}'); do\n          if [ \"$candidate\" != \"$root\" ] && [ -z \"$(lsblk -no MOUNTPOINT \"/dev/$candidate\" | tr -d '[:space:]')\" ]; then\n            disk=\"/dev/$candidate\"\n            break 2\n          fi\n        done\n        sleep 5\n      done\n      if [ -z \"$disk\" ]; then\n        echo \"cloudgate: no data disk was attached\" >&2\n        exit 1\n      fi\n      if ! blkid \"$disk\" >/dev/null 2>&1; then\n        mkfs.ext4 -L cloudgate-data \"$disk\"\n      fi\n      uuid=\"$(blkid -s UUID -o value \"$disk\")\"\n      mkdir -p /var/lib/docker/volumes\n      if ! grep -q \"$uuid\" /etc/fstab; then\n        echo \"UUID=$uuid /var/lib/docker/volumes ext4 defaults,nofail 0 2\" >> /etc/fstab\n      fi\n      mount -a\n  - path: /etc/apt/apt.conf.d/20auto-upgrades\n    permissions: '0644'\n    content: |\n      APT::Periodic::Update-Package-Lists \"1\";\n      APT::Periodic::Unattended-Upgrade \"1\";\n  - path: /etc/apt/apt.conf.d/52cloudgate-unattended-upgrades\n    permissions: '0644'\n    content: |\n      Unattended-Upgrade::Automatic-Reboot \"false\";\nruncmd:\n  - /usr/local/sbin/cloudgate-data-disk\n  - install -m 0755 -d /etc/apt/keyrings\n  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc\n  - chmod a+r /etc/apt/keyrings/docker.asc\n  - echo \"deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable\" > /etc/apt/sources.list.d/docker.list\n  - apt-get update\n  - DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce=5:29.9.2-1~ubuntu.24.04~noble docker-ce-cli=5:29.9.2-1~ubuntu.24.04~noble containerd.io docker-compose-plugin=5.6.1-1~ubuntu.24.04~noble\n  - apt-mark hold docker-ce docker-ce-cli docker-compose-plugin\n  - systemctl enable --now docker\n"
+              }
+            },
+            "name": {
+              "constant_value": "cloudgate-cmyrpsiafuea"
+            },
+            "network_interface": [
+              {
+                "network": {
+                  "constant_value": "projects/example-project-123/global/networks/cloudgate-envkey-net"
+                },
+                "subnetwork": {
+                  "constant_value": "projects/example-project-123/regions/europe-west1/subnetworks/cloudgate-envkey-subnet"
+                }
+              }
+            ],
+            "scheduling": [
+              {
+                "automatic_restart": {
+                  "constant_value": true
+                },
+                "on_host_maintenance": {
+                  "constant_value": "MIGRATE"
+                }
+              }
+            ],
+            "service_account": [
+              {
+                "email": {
+                  "constant_value": "${google_service_account.stack_vm.email}",
+                  "references": [
+                    "google_service_account.stack_vm.email",
+                    "google_service_account.stack_vm"
+                  ]
+                },
+                "scopes": {
+                  "constant_value": [
+                    "cloud-platform"
+                  ]
+                }
+              }
+            ],
+            "zone": {
+              "constant_value": "europe-west1-b"
+            }
+          },
+          "schema_version": 6
+        },
+        {
+          "address": "google_compute_resource_policy.snapshots",
+          "mode": "managed",
+          "type": "google_compute_resource_policy",
+          "name": "snapshots",
+          "provider_config_key": "google",
+          "expressions": {
+            "description": {
+              "constant_value": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_compose_1"
+            },
+            "name": {
+              "constant_value": "cloudgate-cmyrpsiafuea-snapshots"
+            },
+            "region": {
+              "constant_value": "europe-west1"
+            },
+            "snapshot_schedule_policy": [
+              {
+                "retention_policy": [
+                  {
+                    "max_retention_days": {
+                      "constant_value": 7
+                    },
+                    "on_source_disk_delete": {
+                      "constant_value": "APPLY_RETENTION_POLICY"
+                    }
+                  }
+                ],
+                "schedule": [
+                  {
+                    "daily_schedule": [
+                      {
+                        "days_in_cycle": {
+                          "constant_value": 1
+                        },
+                        "start_time": {
+                          "constant_value": "03:00"
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "snapshot_properties": [
+                  {
+                    "storage_locations": {
+                      "constant_value": [
+                        "europe-west1"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "google_service_account.stack_vm",
+          "mode": "managed",
+          "type": "google_service_account",
+          "name": "stack_vm",
+          "provider_config_key": "google",
+          "expressions": {
+            "account_id": {
+              "constant_value": "cloudgate-cmyrpsiafuea"
+            },
+            "description": {
+              "constant_value": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_compose_1"
+            },
+            "display_name": {
+              "constant_value": "Cloudgate Stack VM analytics"
+            }
+          },
+          "schema_version": 0
+        }
+      ]
+    }
+  },
+  "relevant_attributes": [
+    {
+      "resource": "google_compute_disk.data",
+      "attribute": [
+        "name"
+      ]
+    },
+    {
+      "resource": "google_compute_disk.data",
+      "attribute": [
+        "self_link"
+      ]
+    },
+    {
+      "resource": "google_compute_instance.stack_vm",
+      "attribute": [
+        "zone"
+      ]
+    },
+    {
+      "resource": "google_compute_instance.stack_vm",
+      "attribute": [
+        "name"
+      ]
+    },
+    {
+      "resource": "google_compute_instance.stack_vm",
+      "attribute": [
+        "network_interface",
+        0,
+        "network_ip"
+      ]
+    },
+    {
+      "resource": "google_compute_instance.stack_vm",
+      "attribute": [
+        "boot_disk",
+        0,
+        "initialize_params",
+        0,
+        "image"
+      ]
+    },
+    {
+      "resource": "google_compute_resource_policy.snapshots",
+      "attribute": [
+        "name"
+      ]
+    },
+    {
+      "resource": "google_service_account.stack_vm",
+      "attribute": [
+        "email"
+      ]
+    }
+  ],
+  "errored": false
+}

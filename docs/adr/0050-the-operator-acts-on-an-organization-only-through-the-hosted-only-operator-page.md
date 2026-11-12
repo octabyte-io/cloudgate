@@ -1,0 +1,23 @@
+# The operator acts on an Organization only through the hosted-only Operator page
+
+On the Hosted instance Octabyte needs to list Organizations, suspend an abuser, and make an Organization Enterprise with counts set by hand (`isEnterpriseCloud`, which no route sets today). We give the **Operator** (an owner or admin of the Instance organization, a person and never an Agent, ADR-0013's authority) one console page, shown only in hosted mode, and nothing else.
+
+- **Account facts only.** The page shows each Organization's name, creation date, owner email, member count, plan status, Servers and Cloud Environments used against its counts, and Enterprise. Never anything inside a Project: no Services, env values, logs, Server IPs or shells.
+- **No impersonation.** The better-auth `/admin/*` routes stay locked (H-10, ADR-0010). Hands-on support happens when the customer invites an Octabyte person as an ordinary member and removes them afterwards, which the customer sees in their own member list and audit log.
+- **Three writes.** Suspend and lift (suspension reuses the stopped state a lapsed subscription puts an Organization in, with a reason the customer sees, and lifts only by the operator; it never touches containers running on the customer's own Servers). Enterprise on and off with its Server and Cloud Environment counts (refused while an active Stripe subscription exists; a count below current use refuses new ones and stops nothing, as ADR-0048; off returns the Organization to needing the Hosted plan). An operator never deletes an Organization.
+- **Every write is visible to the customer.** It is recorded in the target Organization's own audit log, naming the operator and marked as Octabyte, with a copy in the Instance organization's log; owners are emailed on suspend and lift. Viewing is not recorded.
+- **Hosted mode only.** A Self-hosted instance's Organizations belong to one company and its Enterprise comes from the license key, so it gets no Operator page.
+
+**Amended 2026-11-05 (ADR-0054):** turning Enterprise off no longer just returns the Organization to needing a plan: it **is a lapse** (ADR-0052). The Organization is frozen, owners and admins get the "your plan has ended" email, and the 30-day deletion clock starts; paying for Starter or Business lifts it, with no free trial. Turning Enterprise on stays refused while a Stripe subscription can still charge, a trial included, and an Operator still never writes to Stripe. The page shows each Organization's **Plan** (Starter, Business, Enterprise or None), a plain **State** ("Trial, ends <date>", "Paid", "Payment failing", "Ends on <date>", "Moves to Starter on <date>", "Lapsed", "Suspended") and **Trial used**, in place of the raw Stripe status. There is no trial extension, no granting a trial to someone not eligible, and no clearing of trial history.
+
+Rejected: impersonation (a hidden way into a customer's data that the customer cannot see), editing the database by hand (unrecorded and easy to get wrong), and a new instance-wide "super admin" role (ADR-0013 already names the authority).
+
+**Amended 2026-11-11 (ADR-0071, spec #1387):** Bought Servers give the Operator page more writes than the three above. Each is recorded through the same Operator write path as the others: in the Instance organization's audit log for the instance's own settings and machines, and in the target Organization's log, with the copy in the Instance organization's, for a write that reaches a customer.
+
+- **Server markup and margin floor** (instance settings, Instance organization's log only). A change prices new purchases and new lines; every line already sold keeps its price.
+- **Reprice** the Bought Servers whose margin fell below the floor, with the notice ADR-0071 sets; the owners are emailed. It is the one Operator write that reaches Stripe, and only the repriced Bought Server lines' prices.
+- **Power off and power on** a Bought Server, with a reason its Server page shows (abuse that cannot wait for the deadline).
+- **Forward and close an abuse report** the provider sent Octabyte, which emails the owners with a deadline.
+- **Delete an orphan machine**: one at the provider that no Bought Server names (Instance organization's log, with its labels and what went).
+
+None of them gives an Operator access to a machine or to anything inside a Project: no shell, no files, no Services, no logs. Powering off acts on the machine from the outside, through the provider, as Delete does; a Bought Server stays an account fact (its size, Location, monthly price and provider id). An Operator still never deletes an Organization, and still never touches a customer's own Servers.

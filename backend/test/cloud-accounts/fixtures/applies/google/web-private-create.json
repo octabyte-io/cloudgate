@@ -1,0 +1,34 @@
+{
+  "cloudgate_fixture": {
+    "source": "the live walk by hand",
+    "how": "Recorded by `tofu output -json` from a real apply in the live Google Cloud project on 2026-11-06 (a walk by hand, step 10; OpenTofu 1.13.1, hashicorp/google 8.8.0), then rewritten to the stored files' sample ids (project example-project-123, region europe-west1, and the stored service's hashed run.app address). A Private web service's first apply: its service's name, address and repository URL."
+  },
+  "outputs": {
+    "repository_url": {
+      "sensitive": false,
+      "type": "string",
+      "value": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-tfeyly54xiuh"
+    },
+    "service_name": {
+      "sensitive": false,
+      "type": "string",
+      "value": "cloudgate-tfeyly54xiuh"
+    },
+    "service_uri": {
+      "sensitive": false,
+      "type": "string",
+      "value": "https://cloudgate-tfeyly54xiuh-6qzq3k7vqa-ew.a.run.app"
+    },
+    "service_urls": {
+      "sensitive": false,
+      "type": [
+        "list",
+        "string"
+      ],
+      "value": [
+        "https://cloudgate-tfeyly54xiuh-123456789012.europe-west1.run.app",
+        "https://cloudgate-tfeyly54xiuh-6qzq3k7vqa-ew.a.run.app"
+      ]
+    }
+  }
+}

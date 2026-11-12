@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: vague-report-asks-for-facts
+expected_outcome: |
+  The report is too vague to reproduce. The run looks for what it can (recent commits in the 
+  deployment area, the deploy tests), says it cannot reproduce from this, and asks for the 
+  specific facts it needs (which Service and Deploy target, what the Deployment log or error 
+  says, the version), without guessing a fix or changing code.

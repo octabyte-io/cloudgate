@@ -1,0 +1,33 @@
+# /etc/cloudgate/traefik/dynamic/middlewares.yml — the one dynamic file both
+# provisioning paths write.
+#
+# Everything below this header, from `http:` to the last line, is byte-identical
+# to what `createTraefikMiddlewares()` in backend/src/servers/server-setup.ts
+# writes and to what deploy/install.sh writes.
+# `backend/test/servers/server-setup.spec.ts` compares this file, deploy/
+# install.sh and the generator against each other, so a change to any one of the
+# three that is not made to the other two fails there rather than on a host. The
+# installer is pinned too — it is read off disk — though only its two Traefik
+# heredocs, their guards, CLOUDGATE_DIR and TRAEFIK_VERSION are; the rest of that
+# script is not.
+#
+# `redirect-to-https` is named by three generators — traefik/config/domain.ts,
+# traefik/config/web-server.ts and compose/compose.utils.ts — on the `web`
+# router of every HTTPS domain, and until this file existed nothing anywhere
+# defined it. Traefik drops a router that names a middleware it does not
+# know, so plain HTTP did not redirect: it fell through to the catch-all and
+# answered 404, which reads as a broken domain rather than as three missing
+# lines of configuration.
+#
+# It lives here rather than in traefik.yml because the file provider watches
+# this directory: dropping it in reaches a Traefik that is already running, with
+# no restart. Both writers guard it on its own existence rather than on
+# traefik.yml's, so a re-run repairs a host provisioned before this file was
+# part of the install.
+
+http:
+  middlewares:
+    redirect-to-https:
+      redirectScheme:
+        scheme: https
+        permanent: true

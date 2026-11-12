@@ -1,0 +1,255 @@
+[
+  {
+    "ID": "v8buahrryhzjarwvh29uq5clv",
+    "Version": {
+      "Index": 16
+    },
+    "CreatedAt": "2026-10-20T15:00:47.675098217Z",
+    "UpdatedAt": "2026-10-20T15:00:52.398075636Z",
+    "Labels": {},
+    "Spec": {
+      "ContainerSpec": {
+        "Image": "alpine:latest@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6",
+        "Args": [
+          "sleep",
+          "1d"
+        ],
+        "Init": false,
+        "DNSConfig": {},
+        "Isolation": "default"
+      },
+      "Resources": {
+        "Limits": {},
+        "Reservations": {
+          "GenericResources": [
+            {
+              "DiscreteResourceSpec": {
+                "Kind": "GPU",
+                "Value": 1
+              }
+            }
+          ]
+        }
+      },
+      "Placement": {
+        "Platforms": [
+          {
+            "Architecture": "amd64",
+            "OS": "linux"
+          },
+          {
+            "OS": "linux"
+          },
+          {
+            "Architecture": "arm64",
+            "OS": "linux"
+          },
+          {
+            "Architecture": "386",
+            "OS": "linux"
+          },
+          {
+            "Architecture": "ppc64le",
+            "OS": "linux"
+          },
+          {
+            "Architecture": "riscv64",
+            "OS": "linux"
+          },
+          {
+            "Architecture": "s390x",
+            "OS": "linux"
+          }
+        ]
+      },
+      "ForceUpdate": 0
+    },
+    "ServiceID": "h45im9whj1opzfk5lrj57j8y3",
+    "Slot": 1,
+    "NodeID": "wd6g8et1wnjqfvkuw180tniq5",
+    "Status": {
+      "Timestamp": "2026-10-20T15:00:52.386011678Z",
+      "State": "running",
+      "Message": "started",
+      "ContainerStatus": {
+        "ContainerID": "0146ef2fc51f46e677a3e9a6e3120f3a199123c0a9eff92f7bed1fc0b56a2d22",
+        "PID": 397,
+        "ExitCode": 0
+      },
+      "PortStatus": {}
+    },
+    "DesiredState": "running",
+    "GenericResources": [
+      {
+        "NamedResourceSpec": {
+          "Kind": "GPU",
+          "Value": "GPU-fake-uuid-1"
+        }
+      }
+    ],
+    "Volumes": null
+  },
+  {
+    "ID": "rzsnjh30idax2fmxh6xykgy6j",
+    "Version": {
+      "Index": 28
+    },
+    "CreatedAt": "2026-10-20T15:01:09.242758505Z",
+    "UpdatedAt": "2026-10-20T15:01:09.535356338Z",
+    "Labels": {},
+    "Spec": {
+      "ContainerSpec": {
+        "Image": "alpine:latest@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6",
+        "Args": [
+          "sleep",
+          "1d"
+        ],
+        "Init": false,
+        "DNSConfig": {},
+        "Isolation": "default"
+      },
+      "Resources": {
+        "Limits": {},
+        "Reservations": {
+          "GenericResources": [
+            {
+              "DiscreteResourceSpec": {
+                "Kind": "GPU",
+                "Value": 1
+              }
+            }
+          ]
+        }
+      },
+      "Placement": {
+        "Platforms": [
+          {
+            "Architecture": "amd64",
+            "OS": "linux"
+          },
+          {
+            "OS": "linux"
+          },
+          {
+            "Architecture": "arm64",
+            "OS": "linux"
+          },
+          {
+            "Architecture": "386",
+            "OS": "linux"
+          },
+          {
+            "Architecture": "ppc64le",
+            "OS": "linux"
+          },
+          {
+            "Architecture": "riscv64",
+            "OS": "linux"
+          },
+          {
+            "Architecture": "s390x",
+            "OS": "linux"
+          }
+        ]
+      },
+      "ForceUpdate": 0
+    },
+    "ServiceID": "q7cf8ph62j30i7fpyq4xq4zpz",
+    "Slot": 1,
+    "NodeID": "wd6g8et1wnjqfvkuw180tniq5",
+    "Status": {
+      "Timestamp": "2026-10-20T15:01:09.496156047Z",
+      "State": "running",
+      "Message": "started",
+      "ContainerStatus": {
+        "ContainerID": "d4d0fe473b896b8d2c4925ed55b8124647819853fda01ded7a5f054b8447ec91",
+        "PID": 527,
+        "ExitCode": 0
+      },
+      "PortStatus": {}
+    },
+    "DesiredState": "running",
+    "GenericResources": [
+      {
+        "NamedResourceSpec": {
+          "Kind": "GPU",
+          "Value": "GPU-fake-uuid-2"
+        }
+      }
+    ],
+    "Volumes": null
+  },
+  {
+    "ID": "wygf8b2ra2s989kyuenro7cya",
+    "Version": {
+      "Index": 22
+    },
+    "CreatedAt": "2026-10-20T15:01:01.103419668Z",
+    "UpdatedAt": "2026-10-20T15:01:01.426530543Z",
+    "Labels": {},
+    "Spec": {
+      "ContainerSpec": {
+        "Image": "alpine:latest@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6",
+        "Args": [
+          "sleep",
+          "1d"
+        ],
+        "Init": false,
+        "DNSConfig": {},
+        "Isolation": "default"
+      },
+      "Resources": {
+        "Limits": {},
+        "Reservations": {}
+      },
+      "Placement": {
+        "Platforms": [
+          {
+            "Architecture": "amd64",
+            "OS": "linux"
+          },
+          {
+            "OS": "linux"
+          },
+          {
+            "Architecture": "arm64",
+            "OS": "linux"
+          },
+          {
+            "Architecture": "386",
+            "OS": "linux"
+          },
+          {
+            "Architecture": "ppc64le",
+            "OS": "linux"
+          },
+          {
+            "Architecture": "riscv64",
+            "OS": "linux"
+          },
+          {
+            "Architecture": "s390x",
+            "OS": "linux"
+          }
+        ]
+      },
+      "ForceUpdate": 0
+    },
+    "ServiceID": "nvv4fcib7b81n4yg135o5dnqq",
+    "Slot": 1,
+    "NodeID": "wd6g8et1wnjqfvkuw180tniq5",
+    "Status": {
+      "Timestamp": "2026-10-20T15:01:01.350628418Z",
+      "State": "running",
+      "Message": "started",
+      "ContainerStatus": {
+        "ContainerID": "b7f796f13a91b73b14493b13bdee05544357d66520d2627f72949a049f15d931",
+        "PID": 459,
+        "ExitCode": 0
+      },
+      "PortStatus": {}
+    },
+    "DesiredState": "running",
+    "Volumes": null
+  }
+]

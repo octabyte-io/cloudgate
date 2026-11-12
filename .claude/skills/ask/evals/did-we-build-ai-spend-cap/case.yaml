@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: did-we-build-ai-spend-cap
+expected_outcome: |
+  Answers yes, no or partly in the first sentence, backed by the code and ADRs it read, names the 
+  places it looked, and for partly says what exists and what is missing. A short text or table 
+  answer, no page. Ends with /plan if the answer is that it is not built. Nothing in the repo is 
+  changed.

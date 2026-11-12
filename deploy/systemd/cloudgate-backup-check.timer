@@ -1,0 +1,11 @@
+[Unit]
+Description=Hourly Cloudgate backup-staleness check
+
+[Timer]
+# Half past, between the backups' hourly runs.
+OnCalendar=*-*-* *:30:00
+Persistent=true
+Unit=cloudgate-backup-check.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,1 @@
+ALTER TABLE "project_config_location" ADD COLUMN "moved_out_of" jsonb;

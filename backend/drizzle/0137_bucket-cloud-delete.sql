@@ -1,0 +1,1 @@
+ALTER TABLE "bucket" ADD COLUMN "cloud_delete" jsonb;

@@ -1,0 +1,1 @@
+ALTER TABLE "trial_history" ADD COLUMN "stripe_subscription_id" text;

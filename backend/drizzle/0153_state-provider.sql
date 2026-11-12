@@ -1,0 +1,1 @@
+ALTER TABLE "infrastructure_state_record" ADD COLUMN "provider" text DEFAULT 'aws' NOT NULL;

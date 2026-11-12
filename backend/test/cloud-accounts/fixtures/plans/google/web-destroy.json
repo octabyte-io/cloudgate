@@ -1,0 +1,3074 @@
+{
+  "cloudgate_fixture": {
+    "source": "the live walk by hand",
+    "how": "Recorded by `tofu show -json` from a real plan in the live Google Cloud project on 2026-11-06 (a walk by hand; OpenTofu 1.13.1, hashicorp/google 8.8.0), then rewritten to the stored files' sample ids (cloud_1, env_1, svc_1, svc_pg_1, svc_redis_1 and their states, project example-project-123 / 123456789012, region europe-west1, deployment ids dep_N) and with every secret value masked (the default certificate's key, the database password, the wired variables' URLs; the typed variable values were the stored files' sample strings). The `web`'s destroy in the Environment's Delete, with its five secrets."
+  },
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "planned_values": {
+    "root_module": {}
+  },
+  "resource_changes": [
+    {
+      "address": "google_artifact_registry_repository.service",
+      "mode": "managed",
+      "type": "google_artifact_registry_repository",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "cleanup_policies": [
+            {
+              "action": "DELETE",
+              "condition": [
+                {
+                  "newer_than": "",
+                  "older_than": "86400s",
+                  "package_name_prefixes": [],
+                  "tag_prefixes": [],
+                  "tag_state": "UNTAGGED",
+                  "version_name_prefixes": []
+                }
+              ],
+              "id": "delete-untagged",
+              "most_recent_versions": []
+            }
+          ],
+          "cleanup_policy_dry_run": false,
+          "create_time": "2026-11-06T17:24:23.815813Z",
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "docker_config": [],
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "format": "DOCKER",
+          "id": "projects/example-project-123/locations/europe-west1/repositories/cloudgate-plb3nv2t74e6",
+          "kms_key_name": "",
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "location": "europe-west1",
+          "maven_config": [],
+          "mode": "STANDARD_REPOSITORY",
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123",
+          "registry_uri": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6",
+          "remote_repository_config": [],
+          "repository_id": "cloudgate-plb3nv2t74e6",
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "timeouts": null,
+          "update_time": "2026-11-06T18:30:11.465893Z",
+          "virtual_repository_config": [],
+          "vulnerability_scanning_config": [
+            {
+              "enablement_config": "",
+              "enablement_state": "SCANNING_DISABLED",
+              "enablement_state_reason": "API containerscanning.googleapis.com is not enabled."
+            }
+          ]
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "cleanup_policies": [
+            {
+              "condition": [
+                {
+                  "package_name_prefixes": [],
+                  "tag_prefixes": [],
+                  "version_name_prefixes": []
+                }
+              ],
+              "most_recent_versions": []
+            }
+          ],
+          "docker_config": [],
+          "effective_labels": {},
+          "labels": {},
+          "maven_config": [],
+          "remote_repository_config": [],
+          "terraform_labels": {},
+          "virtual_repository_config": [],
+          "vulnerability_scanning_config": [
+            {}
+          ]
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "location": "europe-west1",
+          "project": "example-project-123",
+          "repository_id": "cloudgate-plb3nv2t74e6"
+        }
+      }
+    },
+    {
+      "address": "google_cloud_run_v2_service.service",
+      "mode": "managed",
+      "type": "google_cloud_run_v2_service",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "annotations": {},
+          "binary_authorization": [],
+          "build_config": [],
+          "client": "gcloud",
+          "client_version": "592.0.0",
+          "conditions": [
+            {
+              "execution_reason": "",
+              "last_transition_time": "2026-11-06T18:30:46.084761Z",
+              "message": "",
+              "reason": "",
+              "revision_reason": "",
+              "severity": "",
+              "state": "CONDITION_SUCCEEDED",
+              "type": "RoutesReady"
+            },
+            {
+              "execution_reason": "",
+              "last_transition_time": "2026-11-06T18:30:40.085902Z",
+              "message": "",
+              "reason": "",
+              "revision_reason": "",
+              "severity": "",
+              "state": "CONDITION_SUCCEEDED",
+              "type": "ConfigurationsReady"
+            }
+          ],
+          "create_time": "2026-11-06T17:25:16.547588Z",
+          "creator": "cloudgate-deploy-lqinodt54kzk@example-project-123.iam.gserviceaccount.com",
+          "custom_audiences": [],
+          "default_uri_disabled": false,
+          "delete_time": "",
+          "deletion_policy": "DELETE",
+          "deletion_protection": false,
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "effective_annotations": {},
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "etag": "\"CM-5uNcGEJD2kBI/cHJvamVjdHMvY2xvdWRnYXRlLXRlc3QtMTIzL2xvY2F0aW9ucy91cy1jZW50cmFsMS9zZXJ2aWNlcy9jbG91ZGdhdGUtY3BoY3h2NmF4a25z\"",
+          "expire_time": "",
+          "generation": "25",
+          "iap_enabled": false,
+          "id": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6",
+          "ingress": "INGRESS_TRAFFIC_ALL",
+          "invoker_iam_disabled": true,
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "last_modifier": "cloudgate-deploy-lqinodt54kzk@example-project-123.iam.gserviceaccount.com",
+          "latest_created_revision": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6/revisions/cloudgate-plb3nv2t74e6-00018-lb2",
+          "latest_ready_revision": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6/revisions/cloudgate-plb3nv2t74e6-00018-lb2",
+          "launch_stage": "GA",
+          "location": "europe-west1",
+          "multi_region_settings": [],
+          "name": "cloudgate-plb3nv2t74e6",
+          "observed_generation": "25",
+          "project": "example-project-123",
+          "reconciling": false,
+          "scaling": [
+            {
+              "manual_instance_count": 0,
+              "max_instance_count": 12,
+              "min_instance_count": 0,
+              "scaling_mode": "AUTOMATIC"
+            }
+          ],
+          "ssh_enabled": false,
+          "tags": null,
+          "template": [
+            {
+              "annotations": {},
+              "containers": [
+                {
+                  "args": [],
+                  "base_image_uri": "",
+                  "build_info": [],
+                  "command": [],
+                  "depends_on": [],
+                  "env": [
+                    {
+                      "name": "DATABASE_URL",
+                      "value": "",
+                      "value_source": [
+                        {
+                          "secret_key_ref": [
+                            {
+                              "secret": "cloudgate-plb3nv2t74e6-DATABASE_URL",
+                              "version": "1"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "PG_CA",
+                      "value": "",
+                      "value_source": [
+                        {
+                          "secret_key_ref": [
+                            {
+                              "secret": "cloudgate-plb3nv2t74e6-PG_CA",
+                              "version": "1"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "REDIS_CA_B64",
+                      "value": "",
+                      "value_source": [
+                        {
+                          "secret_key_ref": [
+                            {
+                              "secret": "cloudgate-plb3nv2t74e6-REDIS_CA_B64",
+                              "version": "1"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "REDIS_URL",
+                      "value": "",
+                      "value_source": [
+                        {
+                          "secret_key_ref": [
+                            {
+                              "secret": "cloudgate-plb3nv2t74e6-REDIS_URL",
+                              "version": "1"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "WALK_GREETING",
+                      "value": "",
+                      "value_source": [
+                        {
+                          "secret_key_ref": [
+                            {
+                              "secret": "cloudgate-plb3nv2t74e6-WALK_GREETING",
+                              "version": "1"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "image": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6/service:dep_1",
+                  "liveness_probe": [],
+                  "name": "service",
+                  "ports": [
+                    {
+                      "container_port": 8080,
+                      "name": "http1"
+                    }
+                  ],
+                  "readiness_probe": [],
+                  "resources": [
+                    {
+                      "cpu_idle": true,
+                      "limits": {
+                        "cpu": "1",
+                        "memory": "1Gi"
+                      },
+                      "startup_cpu_boost": false
+                    }
+                  ],
+                  "sandbox_launcher": false,
+                  "startup_probe": [
+                    {
+                      "failure_threshold": 1,
+                      "grpc": [],
+                      "http_get": [],
+                      "initial_delay_seconds": 0,
+                      "period_seconds": 240,
+                      "tcp_socket": [
+                        {
+                          "port": 8080
+                        }
+                      ],
+                      "timeout_seconds": 240
+                    }
+                  ],
+                  "volume_mounts": [],
+                  "working_dir": ""
+                }
+              ],
+              "encryption_key": "",
+              "execution_environment": "",
+              "gpu_zonal_redundancy_disabled": false,
+              "health_check_disabled": false,
+              "labels": {
+                "cloudgate-reload": "1793987100"
+              },
+              "max_instance_request_concurrency": 80,
+              "node_selector": [],
+              "revision": "",
+              "sandboxes": [],
+              "scaling": [
+                {
+                  "concurrency_utilization": 0,
+                  "cpu_utilization": 0,
+                  "max_instance_count": 10,
+                  "min_instance_count": 0
+                }
+              ],
+              "service_account": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "session_affinity": false,
+              "timeout": "300s",
+              "volumes": [],
+              "vpc_access": [
+                {
+                  "connector": "",
+                  "egress": "PRIVATE_RANGES_ONLY",
+                  "network_interfaces": [
+                    {
+                      "network": "cloudgate-w33lemwkholw-net",
+                      "subnetwork": "cloudgate-w33lemwkholw-subnet",
+                      "tags": []
+                    }
+                  ]
+                }
+              ],
+              "workload_identity_config": []
+            }
+          ],
+          "terminal_condition": [
+            {
+              "execution_reason": "",
+              "last_transition_time": "2026-11-06T18:30:46.124505Z",
+              "message": "",
+              "reason": "",
+              "revision_reason": "",
+              "severity": "",
+              "state": "CONDITION_SUCCEEDED",
+              "type": "Ready"
+            }
+          ],
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "timeouts": null,
+          "traffic": [
+            {
+              "percent": 100,
+              "revision": "",
+              "tag": "",
+              "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+            }
+          ],
+          "traffic_statuses": [
+            {
+              "percent": 100,
+              "revision": "cloudgate-plb3nv2t74e6-00018-lb2",
+              "tag": "",
+              "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
+              "uri": ""
+            }
+          ],
+          "uid": "d4bd79c1-547f-4a0c-ad67-498c11370429",
+          "update_time": "2026-11-06T18:30:39.038026Z",
+          "uri": "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app",
+          "urls": [
+            "https://cloudgate-plb3nv2t74e6-123456789012.europe-west1.run.app",
+            "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app"
+          ]
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "annotations": {},
+          "binary_authorization": [],
+          "build_config": [],
+          "conditions": [
+            {},
+            {}
+          ],
+          "custom_audiences": [],
+          "effective_annotations": {},
+          "effective_labels": {},
+          "labels": {},
+          "multi_region_settings": [],
+          "scaling": [
+            {}
+          ],
+          "template": [
+            {
+              "annotations": {},
+              "containers": [
+                {
+                  "args": [],
+                  "build_info": [],
+                  "command": [],
+                  "depends_on": [],
+                  "env": [
+                    {
+                      "value_source": [
+                        {
+                          "secret_key_ref": [
+                            {}
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "value_source": [
+                        {
+                          "secret_key_ref": [
+                            {}
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "value_source": [
+                        {
+                          "secret_key_ref": [
+                            {}
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "value_source": [
+                        {
+                          "secret_key_ref": [
+                            {}
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "value_source": [
+                        {
+                          "secret_key_ref": [
+                            {}
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "liveness_probe": [],
+                  "ports": [
+                    {}
+                  ],
+                  "readiness_probe": [],
+                  "resources": [
+                    {
+                      "limits": {}
+                    }
+                  ],
+                  "startup_probe": [
+                    {
+                      "grpc": [],
+                      "http_get": [],
+                      "tcp_socket": [
+                        {}
+                      ]
+                    }
+                  ],
+                  "volume_mounts": []
+                }
+              ],
+              "labels": {},
+              "node_selector": [],
+              "sandboxes": [],
+              "scaling": [
+                {}
+              ],
+              "volumes": [],
+              "vpc_access": [
+                {
+                  "network_interfaces": [
+                    {
+                      "tags": []
+                    }
+                  ]
+                }
+              ],
+              "workload_identity_config": []
+            }
+          ],
+          "terminal_condition": [
+            {}
+          ],
+          "terraform_labels": {},
+          "traffic": [
+            {}
+          ],
+          "traffic_statuses": [
+            {}
+          ],
+          "urls": [
+            false,
+            false
+          ]
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "location": "europe-west1",
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123"
+        }
+      }
+    },
+    {
+      "address": "google_compute_backend_service.service",
+      "mode": "managed",
+      "type": "google_compute_backend_service",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "affinity_cookie_ttl_sec": 0,
+          "backend": [
+            {
+              "balancing_mode": "UTILIZATION",
+              "capacity_scaler": 1,
+              "custom_metrics": [],
+              "description": "",
+              "group": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+              "max_connections": 0,
+              "max_connections_per_endpoint": 0,
+              "max_connections_per_instance": 0,
+              "max_rate": 0,
+              "max_rate_per_endpoint": 0,
+              "max_rate_per_instance": 0,
+              "max_utilization": 0,
+              "preference": ""
+            }
+          ],
+          "cdn_policy": [],
+          "circuit_breakers": [],
+          "compression_mode": "",
+          "connection_draining_timeout_sec": 300,
+          "consistent_hash": [],
+          "creation_timestamp": "2026-11-06T09:25:33.629-08:00",
+          "custom_metrics": [],
+          "custom_request_headers": [],
+          "custom_response_headers": [],
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "edge_security_policy": "",
+          "enable_cdn": false,
+          "external_managed_migration_state": "",
+          "external_managed_migration_testing_percentage": 0,
+          "fingerprint": "7YU4Gj-u4oE=",
+          "generated_id": 6446927883494732643,
+          "health_checks": [],
+          "iap": [],
+          "id": "projects/example-project-123/global/backendServices/cloudgate-plb3nv2t74e6",
+          "ip_address_selection_policy": "",
+          "load_balancing_scheme": "EXTERNAL_MANAGED",
+          "locality_lb_policies": [],
+          "locality_lb_policy": "",
+          "log_config": [],
+          "max_stream_duration": [],
+          "name": "cloudgate-plb3nv2t74e6",
+          "outlier_detection": [],
+          "params": [],
+          "port_name": "http",
+          "project": "example-project-123",
+          "protocol": "HTTPS",
+          "security_policy": "",
+          "security_settings": [],
+          "self_link": "https://www.googleapis.com/compute/v1/projects/example-project-123/global/backendServices/cloudgate-plb3nv2t74e6",
+          "service_lb_policy": "",
+          "session_affinity": "NONE",
+          "strong_session_affinity_cookie": [],
+          "timeout_sec": 30,
+          "timeouts": null,
+          "tls_settings": []
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "backend": [
+            {
+              "custom_metrics": []
+            }
+          ],
+          "cdn_policy": [],
+          "circuit_breakers": [],
+          "consistent_hash": [],
+          "custom_metrics": [],
+          "custom_request_headers": [],
+          "custom_response_headers": [],
+          "health_checks": [],
+          "iap": [],
+          "locality_lb_policies": [],
+          "log_config": [],
+          "max_stream_duration": [],
+          "outlier_detection": [],
+          "params": [],
+          "security_settings": [],
+          "strong_session_affinity_cookie": [],
+          "tls_settings": []
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123"
+        }
+      }
+    },
+    {
+      "address": "google_compute_region_network_endpoint_group.service",
+      "mode": "managed",
+      "type": "google_compute_region_network_endpoint_group",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "app_engine": [],
+          "cloud_function": [],
+          "cloud_run": [
+            {
+              "service": "cloudgate-plb3nv2t74e6",
+              "tag": "",
+              "url_mask": ""
+            }
+          ],
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "id": "projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+          "name": "cloudgate-plb3nv2t74e6",
+          "network": "",
+          "network_endpoint_type": "SERVERLESS",
+          "project": "example-project-123",
+          "psc_data": [],
+          "psc_target_service": "",
+          "region": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1",
+          "self_link": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+          "subnetwork": "",
+          "timeouts": null
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "app_engine": [],
+          "cloud_function": [],
+          "cloud_run": [
+            {}
+          ],
+          "psc_data": []
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123",
+          "region": "europe-west1"
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret.variable[\"DATABASE_URL\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret",
+      "name": "variable",
+      "index": "DATABASE_URL",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "annotations": {},
+          "create_time": "2026-11-06T18:08:33.091135Z",
+          "deletion_policy": "DELETE",
+          "deletion_protection": false,
+          "effective_annotations": {},
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "expire_time": "",
+          "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL",
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL",
+          "project": "example-project-123",
+          "replication": [
+            {
+              "auto": [
+                {
+                  "customer_managed_encryption": []
+                }
+              ],
+              "user_managed": []
+            }
+          ],
+          "rotation": [],
+          "secret_id": "cloudgate-plb3nv2t74e6-DATABASE_URL",
+          "secret_type": "",
+          "tags": null,
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "timeouts": null,
+          "topics": [],
+          "ttl": null,
+          "version_aliases": {},
+          "version_destroy_ttl": ""
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "annotations": {},
+          "effective_annotations": {},
+          "effective_labels": {},
+          "labels": {},
+          "replication": [
+            {
+              "auto": [
+                {
+                  "customer_managed_encryption": []
+                }
+              ],
+              "user_managed": []
+            }
+          ],
+          "rotation": [],
+          "terraform_labels": {},
+          "topics": [],
+          "version_aliases": {}
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "project": "example-project-123",
+          "secret_id": "cloudgate-plb3nv2t74e6-DATABASE_URL"
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret.variable[\"PG_CA\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret",
+      "name": "variable",
+      "index": "PG_CA",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "annotations": {},
+          "create_time": "2026-11-06T18:08:33.649213Z",
+          "deletion_policy": "DELETE",
+          "deletion_protection": false,
+          "effective_annotations": {},
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "expire_time": "",
+          "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-PG_CA",
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-PG_CA",
+          "project": "example-project-123",
+          "replication": [
+            {
+              "auto": [
+                {
+                  "customer_managed_encryption": []
+                }
+              ],
+              "user_managed": []
+            }
+          ],
+          "rotation": [],
+          "secret_id": "cloudgate-plb3nv2t74e6-PG_CA",
+          "secret_type": "",
+          "tags": null,
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "timeouts": null,
+          "topics": [],
+          "ttl": null,
+          "version_aliases": {},
+          "version_destroy_ttl": ""
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "annotations": {},
+          "effective_annotations": {},
+          "effective_labels": {},
+          "labels": {},
+          "replication": [
+            {
+              "auto": [
+                {
+                  "customer_managed_encryption": []
+                }
+              ],
+              "user_managed": []
+            }
+          ],
+          "rotation": [],
+          "terraform_labels": {},
+          "topics": [],
+          "version_aliases": {}
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "project": "example-project-123",
+          "secret_id": "cloudgate-plb3nv2t74e6-PG_CA"
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret.variable[\"REDIS_CA_B64\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret",
+      "name": "variable",
+      "index": "REDIS_CA_B64",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "annotations": {},
+          "create_time": "2026-11-06T18:30:28.622634Z",
+          "deletion_policy": "DELETE",
+          "deletion_protection": false,
+          "effective_annotations": {},
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "expire_time": "",
+          "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64",
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64",
+          "project": "example-project-123",
+          "replication": [
+            {
+              "auto": [
+                {
+                  "customer_managed_encryption": []
+                }
+              ],
+              "user_managed": []
+            }
+          ],
+          "rotation": [],
+          "secret_id": "cloudgate-plb3nv2t74e6-REDIS_CA_B64",
+          "secret_type": "",
+          "tags": null,
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "timeouts": null,
+          "topics": [],
+          "ttl": null,
+          "version_aliases": {},
+          "version_destroy_ttl": ""
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "annotations": {},
+          "effective_annotations": {},
+          "effective_labels": {},
+          "labels": {},
+          "replication": [
+            {
+              "auto": [
+                {
+                  "customer_managed_encryption": []
+                }
+              ],
+              "user_managed": []
+            }
+          ],
+          "rotation": [],
+          "terraform_labels": {},
+          "topics": [],
+          "version_aliases": {}
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "project": "example-project-123",
+          "secret_id": "cloudgate-plb3nv2t74e6-REDIS_CA_B64"
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret.variable[\"REDIS_URL\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret",
+      "name": "variable",
+      "index": "REDIS_URL",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "annotations": {},
+          "create_time": "2026-11-06T18:30:28.624023Z",
+          "deletion_policy": "DELETE",
+          "deletion_protection": false,
+          "effective_annotations": {},
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "expire_time": "",
+          "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_URL",
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-REDIS_URL",
+          "project": "example-project-123",
+          "replication": [
+            {
+              "auto": [
+                {
+                  "customer_managed_encryption": []
+                }
+              ],
+              "user_managed": []
+            }
+          ],
+          "rotation": [],
+          "secret_id": "cloudgate-plb3nv2t74e6-REDIS_URL",
+          "secret_type": "",
+          "tags": null,
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "timeouts": null,
+          "topics": [],
+          "ttl": null,
+          "version_aliases": {},
+          "version_destroy_ttl": ""
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "annotations": {},
+          "effective_annotations": {},
+          "effective_labels": {},
+          "labels": {},
+          "replication": [
+            {
+              "auto": [
+                {
+                  "customer_managed_encryption": []
+                }
+              ],
+              "user_managed": []
+            }
+          ],
+          "rotation": [],
+          "terraform_labels": {},
+          "topics": [],
+          "version_aliases": {}
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "project": "example-project-123",
+          "secret_id": "cloudgate-plb3nv2t74e6-REDIS_URL"
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret.variable[\"WALK_GREETING\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret",
+      "name": "variable",
+      "index": "WALK_GREETING",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "annotations": {},
+          "create_time": "2026-11-06T18:08:33.660447Z",
+          "deletion_policy": "DELETE",
+          "deletion_protection": false,
+          "effective_annotations": {},
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "expire_time": "",
+          "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING",
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING",
+          "project": "example-project-123",
+          "replication": [
+            {
+              "auto": [
+                {
+                  "customer_managed_encryption": []
+                }
+              ],
+              "user_managed": []
+            }
+          ],
+          "rotation": [],
+          "secret_id": "cloudgate-plb3nv2t74e6-WALK_GREETING",
+          "secret_type": "",
+          "tags": null,
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "timeouts": null,
+          "topics": [],
+          "ttl": null,
+          "version_aliases": {},
+          "version_destroy_ttl": ""
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "annotations": {},
+          "effective_annotations": {},
+          "effective_labels": {},
+          "labels": {},
+          "replication": [
+            {
+              "auto": [
+                {
+                  "customer_managed_encryption": []
+                }
+              ],
+              "user_managed": []
+            }
+          ],
+          "rotation": [],
+          "terraform_labels": {},
+          "topics": [],
+          "version_aliases": {}
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "project": "example-project-123",
+          "secret_id": "cloudgate-plb3nv2t74e6-WALK_GREETING"
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret_iam_member.variable[\"DATABASE_URL\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret_iam_member",
+      "name": "variable",
+      "index": "DATABASE_URL",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "condition": [],
+          "etag": "BwZfn4BcMJg=",
+          "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL/roles/secretmanager.secretAccessor/serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123",
+          "role": "roles/secretmanager.secretAccessor",
+          "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL"
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "condition": []
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "condition_title": null,
+          "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123",
+          "role": "roles/secretmanager.secretAccessor",
+          "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL"
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret_iam_member.variable[\"PG_CA\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret_iam_member",
+      "name": "variable",
+      "index": "PG_CA",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "condition": [],
+          "etag": "BwZfn4BVxlM=",
+          "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-PG_CA/roles/secretmanager.secretAccessor/serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123",
+          "role": "roles/secretmanager.secretAccessor",
+          "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-PG_CA"
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "condition": []
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "condition_title": null,
+          "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123",
+          "role": "roles/secretmanager.secretAccessor",
+          "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-PG_CA"
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret_iam_member.variable[\"REDIS_CA_B64\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret_iam_member",
+      "name": "variable",
+      "index": "REDIS_CA_B64",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "condition": [],
+          "etag": "BwZfn86kNeQ=",
+          "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64/roles/secretmanager.secretAccessor/serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123",
+          "role": "roles/secretmanager.secretAccessor",
+          "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64"
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "condition": []
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "condition_title": null,
+          "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123",
+          "role": "roles/secretmanager.secretAccessor",
+          "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64"
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret_iam_member.variable[\"REDIS_URL\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret_iam_member",
+      "name": "variable",
+      "index": "REDIS_URL",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "condition": [],
+          "etag": "BwZfn86ur+4=",
+          "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_URL/roles/secretmanager.secretAccessor/serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123",
+          "role": "roles/secretmanager.secretAccessor",
+          "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_URL"
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "condition": []
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "condition_title": null,
+          "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123",
+          "role": "roles/secretmanager.secretAccessor",
+          "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_URL"
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret_iam_member.variable[\"WALK_GREETING\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret_iam_member",
+      "name": "variable",
+      "index": "WALK_GREETING",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "condition": [],
+          "etag": "BwZfn4BTT64=",
+          "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING/roles/secretmanager.secretAccessor/serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123",
+          "role": "roles/secretmanager.secretAccessor",
+          "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING"
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "condition": []
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "condition_title": null,
+          "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123",
+          "role": "roles/secretmanager.secretAccessor",
+          "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING"
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret_version.variable[\"DATABASE_URL\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret_version",
+      "name": "variable",
+      "index": "DATABASE_URL",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "create_time": "2026-11-06T18:08:39.534020Z",
+          "deletion_policy": "DELETE",
+          "destroy_time": "",
+          "enabled": true,
+          "id": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL/versions/1",
+          "is_secret_data_base64": false,
+          "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL/versions/1",
+          "project": null,
+          "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL",
+          "secret_data": "hunter2-very-secret",
+          "secret_data_wo": null,
+          "secret_data_wo_version": null,
+          "timeouts": null,
+          "version": "1"
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "secret_data": true
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "project": "",
+          "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL",
+          "version": "1"
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret_version.variable[\"PG_CA\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret_version",
+      "name": "variable",
+      "index": "PG_CA",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "create_time": "2026-11-06T18:08:39.302424Z",
+          "deletion_policy": "DELETE",
+          "destroy_time": "",
+          "enabled": true,
+          "id": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-PG_CA/versions/1",
+          "is_secret_data_base64": false,
+          "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-PG_CA/versions/1",
+          "project": null,
+          "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-PG_CA",
+          "secret_data": "-----BEGIN CERTIFICATE-----\nMIIDcTCCAlmgAwIBAgIBADANBgkqhkiG9w0BAQsFADBwMS0wKwYDVQQuEyQzNDc1\nZDViZC02ODRjLTQ0YzEtOGJmYi01MDc2M2MyYzFhYjExHDAaBgNVBAMTE0Nsb3Vk\nIFNRTCBTZXJ2ZXIgQ0ExFDASBgNVBAoTC0dvb2dsZSwgSW5jMQswCQYDVQQGEwJV\nUzAeFw0yNjExMDYxNzU1MjBaFw0zNjExMDMxNzU2MjBaMHAxLTArBgNVBC4TJDM0\nNzVkNWJkLTY4NGMtNDRjMS04YmZiLTUwNzYzYzJjMWFiMTEcMBoGA1UEAxMTQ2xv\ndWQgU1FMIFNlcnZlciBDQTEUMBIGA1UEChMLR29vZ2xlLCBJbmMxCzAJBgNVBAYT\nAlVTMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvlsKRMQD0emlPoOW\nhWxZPC+VLwqdxNwUXrjEuTzHkjKn3e0Gl0pb0/ASsLV0t+a8vdTry0+SInPKkbI4\n3PPXe99qJcc0wDLNdmhTPSoBKdTsyB3QnlbDrbZfPus87agPjKTetvEPfrXmDFUg\ngFNSwYCIX1Ksk38WhLZhiOIDceMBJvkMm9gMK/8H094cMWayaMEwc4NsiWT8y0Vq\nOIfBzCHG1BYTUx76QUZaUyq9Cw3N20N+m9yk2j6Ef2O1ffQzxIkCjtDWSITTDuLr\n7oVir8hZhld4H3NKnrXAj1XPsPI/LGyBviDV9VQkf+prSY+rmZwmMX5wiB5KN0Jq\n3W580wIDAQABoxYwFDASBgNVHRMBAf8ECDAGAQH/AgEAMA0GCSqGSIb3DQEBCwUA\nA4IBAQBDfzCs6mDgS2v6BoLfeSE26/hgzLXstgYPPr5B98O6Fb58xyi8X7ZKdI9B\nfmCtHX4RTZLN2w15XLSyE9b2muSJeOow4366xmD0MqSsAaZnWtG3/SGP6/b+FkG5\nFIJjyssQpbxvyRGkZUzAB+pilEgzEpmb50XwpceQL4c70Lf5zQel1CWfSVwmpjKQ\nqTuylziB3/FA0BIL3uz+KnXqjKRMdIdZPxEEDWy7ndEv02c7ekeRYj5vWhYZtYKl\nC23kD0kEIgGQepUrWCcYPKN+iF0danzqH9FXyzSJ/PEhntyLTbxlhpwl3Hw59M9h\n7V5tS8JfT7Bl1KUyhWK6L8y+mfjU\n-----END CERTIFICATE-----",
+          "secret_data_wo": null,
+          "secret_data_wo_version": null,
+          "timeouts": null,
+          "version": "1"
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "secret_data": true
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "project": "",
+          "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-PG_CA",
+          "version": "1"
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret_version.variable[\"REDIS_CA_B64\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret_version",
+      "name": "variable",
+      "index": "REDIS_CA_B64",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "create_time": "2026-11-06T18:30:32.576209Z",
+          "deletion_policy": "DELETE",
+          "destroy_time": "",
+          "enabled": true,
+          "id": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64/versions/1",
+          "is_secret_data_base64": false,
+          "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64/versions/1",
+          "project": null,
+          "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64",
+          "secret_data": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUdJRENDQTlTZ0F3SUJBZ0lUTklSeGZJdGFaWEs0R1h1UUxUNkw1NmR2b1RCQkJna3Foa2lHOXcwQkFRb3cKTktBUE1BMEdDV0NHU0FGbEF3UUNBUVVBb1J3d0dnWUpLb1pJaHZjTkFRRUlNQTBHQ1dDR1NBRmxBd1FDQVFVQQpvZ01DQVNBd1lERUxNQWtHQTFVRUJoTUNWVk14RXpBUkJnTlZCQW9UQ2tkdmIyZHNaU0JNVEVNeFBEQTZCZ05WCkJBTVRNMGR2YjJkc1pTMVNiMjkwTFVOQkxUWmhaamN3TVRObUxUQXdNREF0TWpabE1TMWhNalJsTFRJME1EVTQKT0RZNVpUQTFOREFlRncweU5qRXhNRFl4TnpVME1UVmFGdzB6TmpFeE1EWXhOelV6TlRWYU1Fd3hDekFKQmdOVgpCQVlUQWxWVE1STXdFUVlEVlFRS0V3cEhiMjluYkdVZ1RFeERNU2d3SmdZRFZRUURFeDlEUVZNdFRXRnVZV2RsClpDQkRRUzExY3kxalpXNTBjbUZzTVMwMllXWTFNSUlCSWpBTkJna3Foa2lHOXcwQkFRRUZBQU9DQVE4QU1JSUIKQ2dLQ0FRRUFyT3c4MkJKbG04LzlKWWYySy9lc0hobFdwZTlKd1FGbXFxaXp6SUtHeHBTUmlKY0VKWkVYdFMyMQpRUGEvMi9jamdPUnJQazJadGljRSs4V2FUeC9jMTdZaTgvSnZyRjgwemZVRi9CZHRNUUhEV0ErQk5STHlyUC9RClVFbkxlVittOHhJYmFOOUd4UFJHMDJrd1VsU0hhV1JESmRzMEZVVENLaFhWanVkbDBnQnNyVmZCRVpEQ1cxZ0gKU3VyUXJuOVZUdDdMN2haYlc2Z2tpQTB4aURPWVhiUWhQZ0NJMTNBRkpGeUUrNTU0WlhJaEZWTnZOWlhXRUhXRQpVU1RzZ3FSQnBZaElPS2Q0MVNTUzNhMmp5VENWbE04RGsrMjBRNFNvQnRyUEkzcXc4bWJ1RHZ4VWJadE1YSXhPCmNlS0RxRWNDbzI5S1NTLytWZ1VlS0hnckJIR1p4d0lEQVFBQm80SUJmVENDQVhrd0RnWURWUjBQQVFIL0JBUUQKQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCQWY4Q0FRQXdIUVlEVlIwT0JCWUVGTXpsVzJyaWY2Yk1YaTNEbk8wYwpjcVJqRWM1OU1COEdBMVVkSXdRWU1CYUFGSEFRVW9zNlZtNkNkREVGTXJjdFBMOGxIRmlTTUlHTkJnZ3JCZ0VGCkJRY0JBUVNCZ0RCK01Id0dDQ3NHQVFVRkJ6QUNobkJvZEhSd09pOHZjSEpwZG1GMFpXTmhMV052Ym5SbGJuUXQKTm1GbU5HUTJPV1V0TURBd01DMHlOREEwTFdFell6a3RNMk15T0Raa016azFPRFJoTG5OMGIzSmhaMlV1WjI5dgpaMnhsWVhCcGN5NWpiMjB2TlRneU5EVTRabVUxTkRVellqWmxZbVUxTUdFdlkyRXVZM0owTUlHQ0JnTlZIUjhFCmV6QjVNSGVnZGFCemhuRm9kSFJ3T2k4dmNISnBkbUYwWldOaExXTnZiblJsYm5RdE5tRm1OR1EyT1dVdE1EQXcKTUMweU5EQTBMV0V6WXprdE0yTXlPRFprTXprMU9EUmhMbk4wYjNKaFoyVXVaMjl2WjJ4bFlYQnBjeTVqYjIwdgpOVGd5TkRVNFptVTFORFV6WWpabFltVTFNR0V2WTNKc0xtTnliREJCQmdrcWhraUc5dzBCQVFvd05LQVBNQTBHCkNXQ0dTQUZsQXdRQ0FRVUFvUnd3R2dZSktvWklodmNOQVFFSU1BMEdDV0NHU0FGbEF3UUNBUVVBb2dNQ0FTQUQKZ2dJQkFHcU03UUVoc1NOWFJnM3ZqS1BZRHM3dnBZWVl6TTZ4UHZ0YmI5aWI0MjduUVFGdHpsWldVMThIZXRwRwpjUGxWeGdqOE4rUzNwTHV5eklGSGphdUhPUDlWRnlzN3VGeUVVc04zR2lrMTNkQ3MyZ3BhWEEyUFY4dFRhdGZlCkwwVzNjc01jN2FWZVM3YWFPVkh0NHhpTTR6MzNZZlptaGVjR3lGbFJVNkJEc2RoMWtNcVBKQlU1NDQzTlZadzQKVWxOREhmb2hadm5HM1lJVEhDSHc0TmwxWjNWNjFHaWo2a3lBcDUrd091V2NLaHc0TjZRUzd6aFE1cUM0bFowawo4YXZndWoxT0R3SXpMUTVLUG9rREtyNEs1RHY1R0FSTWFQcitaWTF3UWR2TTZZdXpma3k4R0xqRTFNaXhPSituCjhkTm05bStSZUk2QTZPWVM3c2piaDVzMUlCRXZBM1RQSmFFWnE5MW03Q3dEdHdRRkhBdkk0aEg4M3JtemF4MksKbnM2bFp0QjZmUWhpemQxTm5VZ1FIOEcyOTNJazBXbkkxYWtrZ2ZoTkNPa1R0Vy9hMURlS0ZaZDBKT3FidFAwbwpqNWxhV09LMkl3LzY5a2o4bDFmYVVRRG5tbys2OFdmd1MwRGtDREVXdDkyYWFhcGkwQ2hwSDFVS2VCelJGR2hnClVTZ2JBZkk5RW9IbW14OGFKQlZSWUpQUkc5WUVyS1JTTWM4YnhzY0RPYVo0dWppMHhITHZHRWhraGpFOXd5SjYKcWE2NUwyLzFvTURxRFlWa2pKUjE5UjNZdmtiT1FHdHN5djNEZWp4Nk9JRnJTamZOTGE0cHBkZTNBeXplSGhVVwpGaDVGa2c1NVdRaDhVODlaaFplZ3Y2bFdIRzBUSFBpblh6MFdaMU1Nd0hSOGRtMjQKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQotLS0tLUJFR0lOIENFUlRJRklDQVRFLS0tLS0KTUlJR0dEQ0NBOHlnQXdJQkFnSVRBeFZwUnhUQW40ZlR0UE5YaTYxT1NjRUNMakJCQmdrcWhraUc5dzBCQVFvdwpOS0FQTUEwR0NXQ0dTQUZsQXdRQ0FRVUFvUnd3R2dZSktvWklodmNOQVFFSU1BMEdDV0NHU0FGbEF3UUNBUVVBCm9nTUNBU0F3WURFTE1Ba0dBMVVFQmhNQ1ZWTXhFekFSQmdOVkJBb1RDa2R2YjJkc1pTQk1URU14UERBNkJnTlYKQkFNVE0wZHZiMmRzWlMxU2IyOTBMVU5CTFRaaFpqY3dNVE5tTFRBd01EQXRNalpsTVMxaE1qUmxMVEkwTURVNApPRFk1WlRBMU5EQWVGdzB5TmpFeE1EWXhOelV6TlRkYUZ3MHpOakV4TURZeE56VXpOVFZhTUdBeEN6QUpCZ05WCkJBWVRBbFZUTVJNd0VRWURWUVFLRXdwSGIyOW5iR1VnVEV4RE1Ud3dPZ1lEVlFRREV6TkhiMjluYkdVdFVtOXYKZEMxRFFTMDJZV1kzTURFelppMHdNREF3TFRJMlpURXRZVEkwWlMweU5EQTFPRGcyT1dVd05UUXdnZ0lpTUEwRwpDU3FHU0liM0RRRUJBUVVBQTRJQ0R3QXdnZ0lLQW9JQ0FRQ1Q0dGd5am51QmEzR243Qmh3OTdSeHZFaFVkZkVVCkRBRGc1WDJzQjNBQ1BMMC9RRjRNKzI0dDF6SElqRHYzakM4RXU2RnlWVFZyTitLUGZpNG12Y0F5MDdGZzRyQmsKVGI0OVZsNjJHMGVOQmdKdkZONEtXdnJmSkI2cGoyMGpNdUZRVVZIVHAzSkJ5bmVSZDdyalVLWGQ3eU9kOTRJWgpGSnVwMWlTVEtjUlFpdmx1NzZ0OGJzOUZyMG81ZnZDQkZML0oxWVhVdEpLbGZVczlKYnpOT2RQd0RWNjJEdmZoCkNlcmdHam5uUE1oYzRsM2J3QXdLN29yMDc4TVNNV2ZsR1k2bHd5em9pblAyTlZVblhvQlloYnowMmN1WnFvcEsKeHp5L25oQldnVjhSOWFkc2pqZ1l4R0xXbUwzWEdBeG1HWUQvTzJTWjIyUWlyT1VlbFF6TkVZSUMvbjZ3M0FtNwpjUmVveHVSd3ovVngrRkVBTERSTWorZHhIdWJVOWR1d2hkS0Q2Um9rQ25sRXlVZHlPa05HVmo0aVU2RnRzS3JFCjhyUG1NU2EvbUtDMU9Ya0RrWG56UEZpS3h5V1JRZTF3eUxZVUlhWmJ0dk51eDdWWUpNWXovRCtEQ2ZKQmpjcUQKd1p4MWRuN0gwVVg0bDRRRGlzL3VlSnk5NTY5OXVDeE9YM3pyaUhtUms5dENxWHJBRHZmNDJoTTZTbitMWlQ5RQpTUTdLTXZBYXhKSzUyTGxrL3JvVkgrMDJSUjk4QzZYZXMzSWM2Q0NOeUFuMkVMWmdJcGJyQUZLWm9PNlI3NnFCCnpNTGh5VFNmK2FiaVNaaGZsaUMrVzJaNFVpSnczZVlTMGtSNFR2Zy9NQ0k1K0tKS0pLYTBqTGNPLzNJTmpzb2UKWDJyeldheXd2VXVzdXdJREFRQUJvMk13WVRBT0JnTlZIUThCQWY4RUJBTUNBUVl3RHdZRFZSMFRBUUgvQkFVdwpBd0VCL3pBZEJnTlZIUTRFRmdRVWNCQlNpenBXYm9KME1RVXl0eTA4dnlVY1dKSXdId1lEVlIwakJCZ3dGb0FVCmNCQlNpenBXYm9KME1RVXl0eTA4dnlVY1dKSXdRUVlKS29aSWh2Y05BUUVLTURTZ0R6QU5CZ2xnaGtnQlpRTUUKQWdFRkFLRWNNQm9HQ1NxR1NJYjNEUUVCQ0RBTkJnbGdoa2dCWlFNRUFnRUZBS0lEQWdFZ0E0SUNBUUNCQm9YRwpOYTg3c2s2TDZ4RG1tU0pUZTEzZndDaVIvRTI3WjV1Y3FzUTBmL09mWEJXZUo3b3ZJMzZESXgvdGIvT2VaMVYvCnQvZ2ZqeVpmUEpRbjFyNjhHSWZJNWZ3RjV1QTd4dXBwVEQwWWtyYXBNZ0hablhNWTYycWo1NjNZV29nbjRpdG8KaUdjbWJPVm14VVBBRTFGQzdPWHJFR1NaZ0ZYL29FeHQrNGNEdXZDMHFmNmtndVJKWmxGdStzNnlRcjFaS2ZKZgpycnJKMFhpTUJreWg3b0FUWFJ6VGlDb1Uxd0djWXgxOFM0L3pSbS96SlA4NkNDSlZuODFLSTd6b1lDRlRJR3FuCmZWVlcwUjg5eFNGRG5JTWo3VlB6VlAxUHFoUTFreWs1cjNONWRHNnlwYzJlWXNKNHdYcmtWbjY4Zzh0aDVFcnAKVklDcTlvUUFVcWxxalFRN083UzRGc1Yxb1NsZ1FBV1BDd3l5NUVaajR6SEJDamxvNC9FR0tqdlUyZ29FUGlJSQpGUGVyMWdiQjc4VFpGOW5oMTlsZ0FEdU9vdmlZZHlkbXhiVzFsTkRuSWJYOG4vblRzSHArR1JLSkNGODQzQkFlCkdrd1p6d2c1V2pWeEUxV1lRQUpGUERBVFYzZGdrYm04NWJ0VThHdi8wTC9RUW5RTnU1cXBsZTE2UlV5LzM4RlMKNHFxK005NHhGdm4wT2R1eVl3MmxlSG1oNlBkRzF0YXA0djZoYXB5bEVKUjgybFBsM2hYWnlvMElXOXBSU1pLYgoxQTd0TkY3YVBoM3JEaGJ5QTZwOEpWNHlvQ1BWNWJXakVpY0hGVjQvM0dVVExzTDZhN3lycGU1bld1Qjg1Ly82CnhtY1RpbG45YklwTUZmeTZmYzZFZEFMZHE2UUJnZE9CdndiY2VnPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQoK",
+          "secret_data_wo": null,
+          "secret_data_wo_version": null,
+          "timeouts": null,
+          "version": "1"
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "secret_data": true
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "project": "",
+          "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64",
+          "version": "1"
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret_version.variable[\"REDIS_URL\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret_version",
+      "name": "variable",
+      "index": "REDIS_URL",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "create_time": "2026-11-06T18:30:31.998989Z",
+          "deletion_policy": "DELETE",
+          "destroy_time": "",
+          "enabled": true,
+          "id": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-REDIS_URL/versions/1",
+          "is_secret_data_base64": false,
+          "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-REDIS_URL/versions/1",
+          "project": null,
+          "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_URL",
+          "secret_data": "hunter2-very-secret",
+          "secret_data_wo": null,
+          "secret_data_wo_version": null,
+          "timeouts": null,
+          "version": "1"
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "secret_data": true
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "project": "",
+          "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_URL",
+          "version": "1"
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret_version.variable[\"WALK_GREETING\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret_version",
+      "name": "variable",
+      "index": "WALK_GREETING",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "create_time": "2026-11-06T18:08:37.721565Z",
+          "deletion_policy": "DELETE",
+          "destroy_time": "",
+          "enabled": true,
+          "id": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING/versions/1",
+          "is_secret_data_base64": false,
+          "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING/versions/1",
+          "project": null,
+          "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING",
+          "secret_data": "hunter2-very-secret",
+          "secret_data_wo": null,
+          "secret_data_wo_version": null,
+          "timeouts": null,
+          "version": "1"
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "secret_data": true
+        },
+        "after_sensitive": false,
+        "before_identity": {
+          "project": "",
+          "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING",
+          "version": "1"
+        }
+      }
+    },
+    {
+      "address": "google_service_account.service",
+      "mode": "managed",
+      "type": "google_service_account",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "account_id": "cloudgate-plb3nv2t74e6",
+          "create_ignore_already_exists": null,
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "disabled": false,
+          "display_name": "",
+          "email": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "id": "projects/example-project-123/serviceAccounts/cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "name": "projects/example-project-123/serviceAccounts/cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123",
+          "timeouts": null,
+          "unique_id": "115272916555036410164"
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": false,
+        "before_identity": {
+          "email": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123"
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "repository_url": {
+      "actions": [
+        "delete"
+      ],
+      "before": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6",
+      "after": null,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "service_name": {
+      "actions": [
+        "delete"
+      ],
+      "before": "cloudgate-plb3nv2t74e6",
+      "after": null,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "service_uri": {
+      "actions": [
+        "delete"
+      ],
+      "before": "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app",
+      "after": null,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "outputs": {
+        "repository_url": {
+          "sensitive": false,
+          "value": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6",
+          "type": "string"
+        },
+        "service_name": {
+          "sensitive": false,
+          "value": "cloudgate-plb3nv2t74e6",
+          "type": "string"
+        },
+        "service_uri": {
+          "sensitive": false,
+          "value": "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app",
+          "type": "string"
+        }
+      },
+      "root_module": {
+        "resources": [
+          {
+            "address": "google_artifact_registry_repository.service",
+            "mode": "managed",
+            "type": "google_artifact_registry_repository",
+            "name": "service",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "cleanup_policies": [
+                {
+                  "action": "DELETE",
+                  "condition": [
+                    {
+                      "newer_than": "",
+                      "older_than": "86400s",
+                      "package_name_prefixes": [],
+                      "tag_prefixes": [],
+                      "tag_state": "UNTAGGED",
+                      "version_name_prefixes": []
+                    }
+                  ],
+                  "id": "delete-untagged",
+                  "most_recent_versions": []
+                }
+              ],
+              "cleanup_policy_dry_run": false,
+              "create_time": "2026-11-06T17:24:23.815813Z",
+              "deletion_policy": "DELETE",
+              "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+              "docker_config": [],
+              "effective_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "format": "DOCKER",
+              "id": "projects/example-project-123/locations/europe-west1/repositories/cloudgate-plb3nv2t74e6",
+              "kms_key_name": "",
+              "labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "location": "europe-west1",
+              "maven_config": [],
+              "mode": "STANDARD_REPOSITORY",
+              "name": "cloudgate-plb3nv2t74e6",
+              "project": "example-project-123",
+              "registry_uri": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6",
+              "remote_repository_config": [],
+              "repository_id": "cloudgate-plb3nv2t74e6",
+              "terraform_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "timeouts": null,
+              "update_time": "2026-11-06T18:30:11.465893Z",
+              "virtual_repository_config": [],
+              "vulnerability_scanning_config": [
+                {
+                  "enablement_config": "",
+                  "enablement_state": "SCANNING_DISABLED",
+                  "enablement_state_reason": "API containerscanning.googleapis.com is not enabled."
+                }
+              ]
+            },
+            "sensitive_values": {
+              "cleanup_policies": [
+                {
+                  "condition": [
+                    {
+                      "package_name_prefixes": [],
+                      "tag_prefixes": [],
+                      "version_name_prefixes": []
+                    }
+                  ],
+                  "most_recent_versions": []
+                }
+              ],
+              "docker_config": [],
+              "effective_labels": {},
+              "labels": {},
+              "maven_config": [],
+              "remote_repository_config": [],
+              "terraform_labels": {},
+              "virtual_repository_config": [],
+              "vulnerability_scanning_config": [
+                {}
+              ]
+            },
+            "identity": {
+              "location": "europe-west1",
+              "project": "example-project-123",
+              "repository_id": "cloudgate-plb3nv2t74e6"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_cloud_run_v2_service.service",
+            "mode": "managed",
+            "type": "google_cloud_run_v2_service",
+            "name": "service",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "annotations": {},
+              "binary_authorization": [],
+              "build_config": [],
+              "client": "gcloud",
+              "client_version": "592.0.0",
+              "conditions": [
+                {
+                  "execution_reason": "",
+                  "last_transition_time": "2026-11-06T18:30:46.084761Z",
+                  "message": "",
+                  "reason": "",
+                  "revision_reason": "",
+                  "severity": "",
+                  "state": "CONDITION_SUCCEEDED",
+                  "type": "RoutesReady"
+                },
+                {
+                  "execution_reason": "",
+                  "last_transition_time": "2026-11-06T18:30:40.085902Z",
+                  "message": "",
+                  "reason": "",
+                  "revision_reason": "",
+                  "severity": "",
+                  "state": "CONDITION_SUCCEEDED",
+                  "type": "ConfigurationsReady"
+                }
+              ],
+              "create_time": "2026-11-06T17:25:16.547588Z",
+              "creator": "cloudgate-deploy-lqinodt54kzk@example-project-123.iam.gserviceaccount.com",
+              "custom_audiences": [],
+              "default_uri_disabled": false,
+              "delete_time": "",
+              "deletion_policy": "DELETE",
+              "deletion_protection": false,
+              "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+              "effective_annotations": {},
+              "effective_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "etag": "\"CM-5uNcGEJD2kBI/cHJvamVjdHMvY2xvdWRnYXRlLXRlc3QtMTIzL2xvY2F0aW9ucy91cy1jZW50cmFsMS9zZXJ2aWNlcy9jbG91ZGdhdGUtY3BoY3h2NmF4a25z\"",
+              "expire_time": "",
+              "generation": "25",
+              "iap_enabled": false,
+              "id": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6",
+              "ingress": "INGRESS_TRAFFIC_ALL",
+              "invoker_iam_disabled": true,
+              "labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "last_modifier": "cloudgate-deploy-lqinodt54kzk@example-project-123.iam.gserviceaccount.com",
+              "latest_created_revision": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6/revisions/cloudgate-plb3nv2t74e6-00018-lb2",
+              "latest_ready_revision": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6/revisions/cloudgate-plb3nv2t74e6-00018-lb2",
+              "launch_stage": "GA",
+              "location": "europe-west1",
+              "multi_region_settings": [],
+              "name": "cloudgate-plb3nv2t74e6",
+              "observed_generation": "25",
+              "project": "example-project-123",
+              "reconciling": false,
+              "scaling": [
+                {
+                  "manual_instance_count": 0,
+                  "max_instance_count": 12,
+                  "min_instance_count": 0,
+                  "scaling_mode": "AUTOMATIC"
+                }
+              ],
+              "ssh_enabled": false,
+              "tags": null,
+              "template": [
+                {
+                  "annotations": {},
+                  "containers": [
+                    {
+                      "args": [],
+                      "base_image_uri": "",
+                      "build_info": [],
+                      "command": [],
+                      "depends_on": [],
+                      "env": [
+                        {
+                          "name": "DATABASE_URL",
+                          "value": "",
+                          "value_source": [
+                            {
+                              "secret_key_ref": [
+                                {
+                                  "secret": "cloudgate-plb3nv2t74e6-DATABASE_URL",
+                                  "version": "1"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "name": "PG_CA",
+                          "value": "",
+                          "value_source": [
+                            {
+                              "secret_key_ref": [
+                                {
+                                  "secret": "cloudgate-plb3nv2t74e6-PG_CA",
+                                  "version": "1"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "name": "REDIS_CA_B64",
+                          "value": "",
+                          "value_source": [
+                            {
+                              "secret_key_ref": [
+                                {
+                                  "secret": "cloudgate-plb3nv2t74e6-REDIS_CA_B64",
+                                  "version": "1"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "name": "REDIS_URL",
+                          "value": "",
+                          "value_source": [
+                            {
+                              "secret_key_ref": [
+                                {
+                                  "secret": "cloudgate-plb3nv2t74e6-REDIS_URL",
+                                  "version": "1"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "name": "WALK_GREETING",
+                          "value": "",
+                          "value_source": [
+                            {
+                              "secret_key_ref": [
+                                {
+                                  "secret": "cloudgate-plb3nv2t74e6-WALK_GREETING",
+                                  "version": "1"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ],
+                      "image": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6/service:dep_1",
+                      "liveness_probe": [],
+                      "name": "service",
+                      "ports": [
+                        {
+                          "container_port": 8080,
+                          "name": "http1"
+                        }
+                      ],
+                      "readiness_probe": [],
+                      "resources": [
+                        {
+                          "cpu_idle": true,
+                          "limits": {
+                            "cpu": "1",
+                            "memory": "1Gi"
+                          },
+                          "startup_cpu_boost": false
+                        }
+                      ],
+                      "sandbox_launcher": false,
+                      "startup_probe": [
+                        {
+                          "failure_threshold": 1,
+                          "grpc": [],
+                          "http_get": [],
+                          "initial_delay_seconds": 0,
+                          "period_seconds": 240,
+                          "tcp_socket": [
+                            {
+                              "port": 8080
+                            }
+                          ],
+                          "timeout_seconds": 240
+                        }
+                      ],
+                      "volume_mounts": [],
+                      "working_dir": ""
+                    }
+                  ],
+                  "encryption_key": "",
+                  "execution_environment": "",
+                  "gpu_zonal_redundancy_disabled": false,
+                  "health_check_disabled": false,
+                  "labels": {
+                    "cloudgate-reload": "1793987100"
+                  },
+                  "max_instance_request_concurrency": 80,
+                  "node_selector": [],
+                  "revision": "",
+                  "sandboxes": [],
+                  "scaling": [
+                    {
+                      "concurrency_utilization": 0,
+                      "cpu_utilization": 0,
+                      "max_instance_count": 10,
+                      "min_instance_count": 0
+                    }
+                  ],
+                  "service_account": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+                  "session_affinity": false,
+                  "timeout": "300s",
+                  "volumes": [],
+                  "vpc_access": [
+                    {
+                      "connector": "",
+                      "egress": "PRIVATE_RANGES_ONLY",
+                      "network_interfaces": [
+                        {
+                          "network": "cloudgate-w33lemwkholw-net",
+                          "subnetwork": "cloudgate-w33lemwkholw-subnet",
+                          "tags": []
+                        }
+                      ]
+                    }
+                  ],
+                  "workload_identity_config": []
+                }
+              ],
+              "terminal_condition": [
+                {
+                  "execution_reason": "",
+                  "last_transition_time": "2026-11-06T18:30:46.124505Z",
+                  "message": "",
+                  "reason": "",
+                  "revision_reason": "",
+                  "severity": "",
+                  "state": "CONDITION_SUCCEEDED",
+                  "type": "Ready"
+                }
+              ],
+              "terraform_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "timeouts": null,
+              "traffic": [
+                {
+                  "percent": 100,
+                  "revision": "",
+                  "tag": "",
+                  "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+                }
+              ],
+              "traffic_statuses": [
+                {
+                  "percent": 100,
+                  "revision": "cloudgate-plb3nv2t74e6-00018-lb2",
+                  "tag": "",
+                  "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
+                  "uri": ""
+                }
+              ],
+              "uid": "d4bd79c1-547f-4a0c-ad67-498c11370429",
+              "update_time": "2026-11-06T18:30:39.038026Z",
+              "uri": "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app",
+              "urls": [
+                "https://cloudgate-plb3nv2t74e6-123456789012.europe-west1.run.app",
+                "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app"
+              ]
+            },
+            "sensitive_values": {
+              "annotations": {},
+              "binary_authorization": [],
+              "build_config": [],
+              "conditions": [
+                {},
+                {}
+              ],
+              "custom_audiences": [],
+              "effective_annotations": {},
+              "effective_labels": {},
+              "labels": {},
+              "multi_region_settings": [],
+              "scaling": [
+                {}
+              ],
+              "template": [
+                {
+                  "annotations": {},
+                  "containers": [
+                    {
+                      "args": [],
+                      "build_info": [],
+                      "command": [],
+                      "depends_on": [],
+                      "env": [
+                        {
+                          "value_source": [
+                            {
+                              "secret_key_ref": [
+                                {}
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "value_source": [
+                            {
+                              "secret_key_ref": [
+                                {}
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "value_source": [
+                            {
+                              "secret_key_ref": [
+                                {}
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "value_source": [
+                            {
+                              "secret_key_ref": [
+                                {}
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "value_source": [
+                            {
+                              "secret_key_ref": [
+                                {}
+                              ]
+                            }
+                          ]
+                        }
+                      ],
+                      "liveness_probe": [],
+                      "ports": [
+                        {}
+                      ],
+                      "readiness_probe": [],
+                      "resources": [
+                        {
+                          "limits": {}
+                        }
+                      ],
+                      "startup_probe": [
+                        {
+                          "grpc": [],
+                          "http_get": [],
+                          "tcp_socket": [
+                            {}
+                          ]
+                        }
+                      ],
+                      "volume_mounts": []
+                    }
+                  ],
+                  "labels": {},
+                  "node_selector": [],
+                  "sandboxes": [],
+                  "scaling": [
+                    {}
+                  ],
+                  "volumes": [],
+                  "vpc_access": [
+                    {
+                      "network_interfaces": [
+                        {
+                          "tags": []
+                        }
+                      ]
+                    }
+                  ],
+                  "workload_identity_config": []
+                }
+              ],
+              "terminal_condition": [
+                {}
+              ],
+              "terraform_labels": {},
+              "traffic": [
+                {}
+              ],
+              "traffic_statuses": [
+                {}
+              ],
+              "urls": [
+                false,
+                false
+              ]
+            },
+            "depends_on": [
+              "google_artifact_registry_repository.service",
+              "google_secret_manager_secret.variable",
+              "google_secret_manager_secret_iam_member.variable",
+              "google_secret_manager_secret_version.variable",
+              "google_service_account.service"
+            ],
+            "identity": {
+              "location": "europe-west1",
+              "name": "cloudgate-plb3nv2t74e6",
+              "project": "example-project-123"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_compute_backend_service.service",
+            "mode": "managed",
+            "type": "google_compute_backend_service",
+            "name": "service",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 1,
+            "values": {
+              "affinity_cookie_ttl_sec": 0,
+              "backend": [
+                {
+                  "balancing_mode": "UTILIZATION",
+                  "capacity_scaler": 1,
+                  "custom_metrics": [],
+                  "description": "",
+                  "group": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+                  "max_connections": 0,
+                  "max_connections_per_endpoint": 0,
+                  "max_connections_per_instance": 0,
+                  "max_rate": 0,
+                  "max_rate_per_endpoint": 0,
+                  "max_rate_per_instance": 0,
+                  "max_utilization": 0,
+                  "preference": ""
+                }
+              ],
+              "cdn_policy": [],
+              "circuit_breakers": [],
+              "compression_mode": "",
+              "connection_draining_timeout_sec": 300,
+              "consistent_hash": [],
+              "creation_timestamp": "2026-11-06T09:25:33.629-08:00",
+              "custom_metrics": [],
+              "custom_request_headers": [],
+              "custom_response_headers": [],
+              "deletion_policy": "DELETE",
+              "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+              "edge_security_policy": "",
+              "enable_cdn": false,
+              "external_managed_migration_state": "",
+              "external_managed_migration_testing_percentage": 0,
+              "fingerprint": "7YU4Gj-u4oE=",
+              "generated_id": 6446927883494732643,
+              "health_checks": [],
+              "iap": [],
+              "id": "projects/example-project-123/global/backendServices/cloudgate-plb3nv2t74e6",
+              "ip_address_selection_policy": "",
+              "load_balancing_scheme": "EXTERNAL_MANAGED",
+              "locality_lb_policies": [],
+              "locality_lb_policy": "",
+              "log_config": [],
+              "max_stream_duration": [],
+              "name": "cloudgate-plb3nv2t74e6",
+              "outlier_detection": [],
+              "params": [],
+              "port_name": "http",
+              "project": "example-project-123",
+              "protocol": "HTTPS",
+              "security_policy": "",
+              "security_settings": [],
+              "self_link": "https://www.googleapis.com/compute/v1/projects/example-project-123/global/backendServices/cloudgate-plb3nv2t74e6",
+              "service_lb_policy": "",
+              "session_affinity": "NONE",
+              "strong_session_affinity_cookie": [],
+              "timeout_sec": 30,
+              "timeouts": null,
+              "tls_settings": []
+            },
+            "sensitive_values": {
+              "backend": [
+                {
+                  "custom_metrics": []
+                }
+              ],
+              "cdn_policy": [],
+              "circuit_breakers": [],
+              "consistent_hash": [],
+              "custom_metrics": [],
+              "custom_request_headers": [],
+              "custom_response_headers": [],
+              "health_checks": [],
+              "iap": [],
+              "locality_lb_policies": [],
+              "log_config": [],
+              "max_stream_duration": [],
+              "outlier_detection": [],
+              "params": [],
+              "security_settings": [],
+              "strong_session_affinity_cookie": [],
+              "tls_settings": []
+            },
+            "depends_on": [
+              "google_artifact_registry_repository.service",
+              "google_cloud_run_v2_service.service",
+              "google_compute_region_network_endpoint_group.service",
+              "google_secret_manager_secret.variable",
+              "google_secret_manager_secret_iam_member.variable",
+              "google_secret_manager_secret_version.variable",
+              "google_service_account.service"
+            ],
+            "identity": {
+              "name": "cloudgate-plb3nv2t74e6",
+              "project": "example-project-123"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_compute_region_network_endpoint_group.service",
+            "mode": "managed",
+            "type": "google_compute_region_network_endpoint_group",
+            "name": "service",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "app_engine": [],
+              "cloud_function": [],
+              "cloud_run": [
+                {
+                  "service": "cloudgate-plb3nv2t74e6",
+                  "tag": "",
+                  "url_mask": ""
+                }
+              ],
+              "deletion_policy": "DELETE",
+              "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+              "id": "projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+              "name": "cloudgate-plb3nv2t74e6",
+              "network": "",
+              "network_endpoint_type": "SERVERLESS",
+              "project": "example-project-123",
+              "psc_data": [],
+              "psc_target_service": "",
+              "region": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1",
+              "self_link": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+              "subnetwork": "",
+              "timeouts": null
+            },
+            "sensitive_values": {
+              "app_engine": [],
+              "cloud_function": [],
+              "cloud_run": [
+                {}
+              ],
+              "psc_data": []
+            },
+            "depends_on": [
+              "google_artifact_registry_repository.service",
+              "google_cloud_run_v2_service.service",
+              "google_secret_manager_secret.variable",
+              "google_secret_manager_secret_iam_member.variable",
+              "google_secret_manager_secret_version.variable",
+              "google_service_account.service"
+            ],
+            "identity": {
+              "name": "cloudgate-plb3nv2t74e6",
+              "project": "example-project-123",
+              "region": "europe-west1"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_secret_manager_secret.variable[\"DATABASE_URL\"]",
+            "mode": "managed",
+            "type": "google_secret_manager_secret",
+            "name": "variable",
+            "index": "DATABASE_URL",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "annotations": {},
+              "create_time": "2026-11-06T18:08:33.091135Z",
+              "deletion_policy": "DELETE",
+              "deletion_protection": false,
+              "effective_annotations": {},
+              "effective_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "expire_time": "",
+              "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL",
+              "labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL",
+              "project": "example-project-123",
+              "replication": [
+                {
+                  "auto": [
+                    {
+                      "customer_managed_encryption": []
+                    }
+                  ],
+                  "user_managed": []
+                }
+              ],
+              "rotation": [],
+              "secret_id": "cloudgate-plb3nv2t74e6-DATABASE_URL",
+              "secret_type": "",
+              "tags": null,
+              "terraform_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "timeouts": null,
+              "topics": [],
+              "ttl": null,
+              "version_aliases": {},
+              "version_destroy_ttl": ""
+            },
+            "sensitive_values": {
+              "annotations": {},
+              "effective_annotations": {},
+              "effective_labels": {},
+              "labels": {},
+              "replication": [
+                {
+                  "auto": [
+                    {
+                      "customer_managed_encryption": []
+                    }
+                  ],
+                  "user_managed": []
+                }
+              ],
+              "rotation": [],
+              "terraform_labels": {},
+              "topics": [],
+              "version_aliases": {}
+            },
+            "identity": {
+              "project": "example-project-123",
+              "secret_id": "cloudgate-plb3nv2t74e6-DATABASE_URL"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_secret_manager_secret.variable[\"PG_CA\"]",
+            "mode": "managed",
+            "type": "google_secret_manager_secret",
+            "name": "variable",
+            "index": "PG_CA",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "annotations": {},
+              "create_time": "2026-11-06T18:08:33.649213Z",
+              "deletion_policy": "DELETE",
+              "deletion_protection": false,
+              "effective_annotations": {},
+              "effective_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "expire_time": "",
+              "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-PG_CA",
+              "labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-PG_CA",
+              "project": "example-project-123",
+              "replication": [
+                {
+                  "auto": [
+                    {
+                      "customer_managed_encryption": []
+                    }
+                  ],
+                  "user_managed": []
+                }
+              ],
+              "rotation": [],
+              "secret_id": "cloudgate-plb3nv2t74e6-PG_CA",
+              "secret_type": "",
+              "tags": null,
+              "terraform_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "timeouts": null,
+              "topics": [],
+              "ttl": null,
+              "version_aliases": {},
+              "version_destroy_ttl": ""
+            },
+            "sensitive_values": {
+              "annotations": {},
+              "effective_annotations": {},
+              "effective_labels": {},
+              "labels": {},
+              "replication": [
+                {
+                  "auto": [
+                    {
+                      "customer_managed_encryption": []
+                    }
+                  ],
+                  "user_managed": []
+                }
+              ],
+              "rotation": [],
+              "terraform_labels": {},
+              "topics": [],
+              "version_aliases": {}
+            },
+            "identity": {
+              "project": "example-project-123",
+              "secret_id": "cloudgate-plb3nv2t74e6-PG_CA"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_secret_manager_secret.variable[\"REDIS_CA_B64\"]",
+            "mode": "managed",
+            "type": "google_secret_manager_secret",
+            "name": "variable",
+            "index": "REDIS_CA_B64",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "annotations": {},
+              "create_time": "2026-11-06T18:30:28.622634Z",
+              "deletion_policy": "DELETE",
+              "deletion_protection": false,
+              "effective_annotations": {},
+              "effective_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "expire_time": "",
+              "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64",
+              "labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64",
+              "project": "example-project-123",
+              "replication": [
+                {
+                  "auto": [
+                    {
+                      "customer_managed_encryption": []
+                    }
+                  ],
+                  "user_managed": []
+                }
+              ],
+              "rotation": [],
+              "secret_id": "cloudgate-plb3nv2t74e6-REDIS_CA_B64",
+              "secret_type": "",
+              "tags": null,
+              "terraform_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "timeouts": null,
+              "topics": [],
+              "ttl": null,
+              "version_aliases": {},
+              "version_destroy_ttl": ""
+            },
+            "sensitive_values": {
+              "annotations": {},
+              "effective_annotations": {},
+              "effective_labels": {},
+              "labels": {},
+              "replication": [
+                {
+                  "auto": [
+                    {
+                      "customer_managed_encryption": []
+                    }
+                  ],
+                  "user_managed": []
+                }
+              ],
+              "rotation": [],
+              "terraform_labels": {},
+              "topics": [],
+              "version_aliases": {}
+            },
+            "identity": {
+              "project": "example-project-123",
+              "secret_id": "cloudgate-plb3nv2t74e6-REDIS_CA_B64"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_secret_manager_secret.variable[\"REDIS_URL\"]",
+            "mode": "managed",
+            "type": "google_secret_manager_secret",
+            "name": "variable",
+            "index": "REDIS_URL",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "annotations": {},
+              "create_time": "2026-11-06T18:30:28.624023Z",
+              "deletion_policy": "DELETE",
+              "deletion_protection": false,
+              "effective_annotations": {},
+              "effective_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "expire_time": "",
+              "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_URL",
+              "labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-REDIS_URL",
+              "project": "example-project-123",
+              "replication": [
+                {
+                  "auto": [
+                    {
+                      "customer_managed_encryption": []
+                    }
+                  ],
+                  "user_managed": []
+                }
+              ],
+              "rotation": [],
+              "secret_id": "cloudgate-plb3nv2t74e6-REDIS_URL",
+              "secret_type": "",
+              "tags": null,
+              "terraform_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "timeouts": null,
+              "topics": [],
+              "ttl": null,
+              "version_aliases": {},
+              "version_destroy_ttl": ""
+            },
+            "sensitive_values": {
+              "annotations": {},
+              "effective_annotations": {},
+              "effective_labels": {},
+              "labels": {},
+              "replication": [
+                {
+                  "auto": [
+                    {
+                      "customer_managed_encryption": []
+                    }
+                  ],
+                  "user_managed": []
+                }
+              ],
+              "rotation": [],
+              "terraform_labels": {},
+              "topics": [],
+              "version_aliases": {}
+            },
+            "identity": {
+              "project": "example-project-123",
+              "secret_id": "cloudgate-plb3nv2t74e6-REDIS_URL"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_secret_manager_secret.variable[\"WALK_GREETING\"]",
+            "mode": "managed",
+            "type": "google_secret_manager_secret",
+            "name": "variable",
+            "index": "WALK_GREETING",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "annotations": {},
+              "create_time": "2026-11-06T18:08:33.660447Z",
+              "deletion_policy": "DELETE",
+              "deletion_protection": false,
+              "effective_annotations": {},
+              "effective_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "expire_time": "",
+              "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING",
+              "labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING",
+              "project": "example-project-123",
+              "replication": [
+                {
+                  "auto": [
+                    {
+                      "customer_managed_encryption": []
+                    }
+                  ],
+                  "user_managed": []
+                }
+              ],
+              "rotation": [],
+              "secret_id": "cloudgate-plb3nv2t74e6-WALK_GREETING",
+              "secret_type": "",
+              "tags": null,
+              "terraform_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "timeouts": null,
+              "topics": [],
+              "ttl": null,
+              "version_aliases": {},
+              "version_destroy_ttl": ""
+            },
+            "sensitive_values": {
+              "annotations": {},
+              "effective_annotations": {},
+              "effective_labels": {},
+              "labels": {},
+              "replication": [
+                {
+                  "auto": [
+                    {
+                      "customer_managed_encryption": []
+                    }
+                  ],
+                  "user_managed": []
+                }
+              ],
+              "rotation": [],
+              "terraform_labels": {},
+              "topics": [],
+              "version_aliases": {}
+            },
+            "identity": {
+              "project": "example-project-123",
+              "secret_id": "cloudgate-plb3nv2t74e6-WALK_GREETING"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_secret_manager_secret_iam_member.variable[\"DATABASE_URL\"]",
+            "mode": "managed",
+            "type": "google_secret_manager_secret_iam_member",
+            "name": "variable",
+            "index": "DATABASE_URL",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "condition": [],
+              "etag": "BwZfn4BcMJg=",
+              "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL/roles/secretmanager.secretAccessor/serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "project": "example-project-123",
+              "role": "roles/secretmanager.secretAccessor",
+              "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL"
+            },
+            "sensitive_values": {
+              "condition": []
+            },
+            "depends_on": [
+              "google_secret_manager_secret.variable",
+              "google_service_account.service"
+            ],
+            "identity": {
+              "condition_title": null,
+              "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "project": "example-project-123",
+              "role": "roles/secretmanager.secretAccessor",
+              "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_secret_manager_secret_iam_member.variable[\"PG_CA\"]",
+            "mode": "managed",
+            "type": "google_secret_manager_secret_iam_member",
+            "name": "variable",
+            "index": "PG_CA",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "condition": [],
+              "etag": "BwZfn4BVxlM=",
+              "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-PG_CA/roles/secretmanager.secretAccessor/serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "project": "example-project-123",
+              "role": "roles/secretmanager.secretAccessor",
+              "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-PG_CA"
+            },
+            "sensitive_values": {
+              "condition": []
+            },
+            "depends_on": [
+              "google_secret_manager_secret.variable",
+              "google_service_account.service"
+            ],
+            "identity": {
+              "condition_title": null,
+              "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "project": "example-project-123",
+              "role": "roles/secretmanager.secretAccessor",
+              "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-PG_CA"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_secret_manager_secret_iam_member.variable[\"REDIS_CA_B64\"]",
+            "mode": "managed",
+            "type": "google_secret_manager_secret_iam_member",
+            "name": "variable",
+            "index": "REDIS_CA_B64",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "condition": [],
+              "etag": "BwZfn86kNeQ=",
+              "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64/roles/secretmanager.secretAccessor/serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "project": "example-project-123",
+              "role": "roles/secretmanager.secretAccessor",
+              "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64"
+            },
+            "sensitive_values": {
+              "condition": []
+            },
+            "depends_on": [
+              "google_secret_manager_secret.variable",
+              "google_service_account.service"
+            ],
+            "identity": {
+              "condition_title": null,
+              "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "project": "example-project-123",
+              "role": "roles/secretmanager.secretAccessor",
+              "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_secret_manager_secret_iam_member.variable[\"REDIS_URL\"]",
+            "mode": "managed",
+            "type": "google_secret_manager_secret_iam_member",
+            "name": "variable",
+            "index": "REDIS_URL",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "condition": [],
+              "etag": "BwZfn86ur+4=",
+              "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_URL/roles/secretmanager.secretAccessor/serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "project": "example-project-123",
+              "role": "roles/secretmanager.secretAccessor",
+              "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_URL"
+            },
+            "sensitive_values": {
+              "condition": []
+            },
+            "depends_on": [
+              "google_secret_manager_secret.variable",
+              "google_service_account.service"
+            ],
+            "identity": {
+              "condition_title": null,
+              "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "project": "example-project-123",
+              "role": "roles/secretmanager.secretAccessor",
+              "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_URL"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_secret_manager_secret_iam_member.variable[\"WALK_GREETING\"]",
+            "mode": "managed",
+            "type": "google_secret_manager_secret_iam_member",
+            "name": "variable",
+            "index": "WALK_GREETING",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "condition": [],
+              "etag": "BwZfn4BTT64=",
+              "id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING/roles/secretmanager.secretAccessor/serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "project": "example-project-123",
+              "role": "roles/secretmanager.secretAccessor",
+              "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING"
+            },
+            "sensitive_values": {
+              "condition": []
+            },
+            "depends_on": [
+              "google_secret_manager_secret.variable",
+              "google_service_account.service"
+            ],
+            "identity": {
+              "condition_title": null,
+              "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "project": "example-project-123",
+              "role": "roles/secretmanager.secretAccessor",
+              "secret_id": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_secret_manager_secret_version.variable[\"DATABASE_URL\"]",
+            "mode": "managed",
+            "type": "google_secret_manager_secret_version",
+            "name": "variable",
+            "index": "DATABASE_URL",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 1,
+            "values": {
+              "create_time": "2026-11-06T18:08:39.534020Z",
+              "deletion_policy": "DELETE",
+              "destroy_time": "",
+              "enabled": true,
+              "id": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL/versions/1",
+              "is_secret_data_base64": false,
+              "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL/versions/1",
+              "project": null,
+              "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL",
+              "secret_data": "hunter2-very-secret",
+              "secret_data_wo": null,
+              "secret_data_wo_version": null,
+              "timeouts": null,
+              "version": "1"
+            },
+            "sensitive_values": {
+              "secret_data": true
+            },
+            "depends_on": [
+              "google_secret_manager_secret.variable"
+            ],
+            "identity": {
+              "project": "",
+              "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-DATABASE_URL",
+              "version": "1"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_secret_manager_secret_version.variable[\"PG_CA\"]",
+            "mode": "managed",
+            "type": "google_secret_manager_secret_version",
+            "name": "variable",
+            "index": "PG_CA",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 1,
+            "values": {
+              "create_time": "2026-11-06T18:08:39.302424Z",
+              "deletion_policy": "DELETE",
+              "destroy_time": "",
+              "enabled": true,
+              "id": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-PG_CA/versions/1",
+              "is_secret_data_base64": false,
+              "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-PG_CA/versions/1",
+              "project": null,
+              "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-PG_CA",
+              "secret_data": "-----BEGIN CERTIFICATE-----\nMIIDcTCCAlmgAwIBAgIBADANBgkqhkiG9w0BAQsFADBwMS0wKwYDVQQuEyQzNDc1\nZDViZC02ODRjLTQ0YzEtOGJmYi01MDc2M2MyYzFhYjExHDAaBgNVBAMTE0Nsb3Vk\nIFNRTCBTZXJ2ZXIgQ0ExFDASBgNVBAoTC0dvb2dsZSwgSW5jMQswCQYDVQQGEwJV\nUzAeFw0yNjExMDYxNzU1MjBaFw0zNjExMDMxNzU2MjBaMHAxLTArBgNVBC4TJDM0\nNzVkNWJkLTY4NGMtNDRjMS04YmZiLTUwNzYzYzJjMWFiMTEcMBoGA1UEAxMTQ2xv\ndWQgU1FMIFNlcnZlciBDQTEUMBIGA1UEChMLR29vZ2xlLCBJbmMxCzAJBgNVBAYT\nAlVTMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvlsKRMQD0emlPoOW\nhWxZPC+VLwqdxNwUXrjEuTzHkjKn3e0Gl0pb0/ASsLV0t+a8vdTry0+SInPKkbI4\n3PPXe99qJcc0wDLNdmhTPSoBKdTsyB3QnlbDrbZfPus87agPjKTetvEPfrXmDFUg\ngFNSwYCIX1Ksk38WhLZhiOIDceMBJvkMm9gMK/8H094cMWayaMEwc4NsiWT8y0Vq\nOIfBzCHG1BYTUx76QUZaUyq9Cw3N20N+m9yk2j6Ef2O1ffQzxIkCjtDWSITTDuLr\n7oVir8hZhld4H3NKnrXAj1XPsPI/LGyBviDV9VQkf+prSY+rmZwmMX5wiB5KN0Jq\n3W580wIDAQABoxYwFDASBgNVHRMBAf8ECDAGAQH/AgEAMA0GCSqGSIb3DQEBCwUA\nA4IBAQBDfzCs6mDgS2v6BoLfeSE26/hgzLXstgYPPr5B98O6Fb58xyi8X7ZKdI9B\nfmCtHX4RTZLN2w15XLSyE9b2muSJeOow4366xmD0MqSsAaZnWtG3/SGP6/b+FkG5\nFIJjyssQpbxvyRGkZUzAB+pilEgzEpmb50XwpceQL4c70Lf5zQel1CWfSVwmpjKQ\nqTuylziB3/FA0BIL3uz+KnXqjKRMdIdZPxEEDWy7ndEv02c7ekeRYj5vWhYZtYKl\nC23kD0kEIgGQepUrWCcYPKN+iF0danzqH9FXyzSJ/PEhntyLTbxlhpwl3Hw59M9h\n7V5tS8JfT7Bl1KUyhWK6L8y+mfjU\n-----END CERTIFICATE-----",
+              "secret_data_wo": null,
+              "secret_data_wo_version": null,
+              "timeouts": null,
+              "version": "1"
+            },
+            "sensitive_values": {
+              "secret_data": true
+            },
+            "depends_on": [
+              "google_secret_manager_secret.variable"
+            ],
+            "identity": {
+              "project": "",
+              "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-PG_CA",
+              "version": "1"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_secret_manager_secret_version.variable[\"REDIS_CA_B64\"]",
+            "mode": "managed",
+            "type": "google_secret_manager_secret_version",
+            "name": "variable",
+            "index": "REDIS_CA_B64",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 1,
+            "values": {
+              "create_time": "2026-11-06T18:30:32.576209Z",
+              "deletion_policy": "DELETE",
+              "destroy_time": "",
+              "enabled": true,
+              "id": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64/versions/1",
+              "is_secret_data_base64": false,
+              "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64/versions/1",
+              "project": null,
+              "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64",
+              "secret_data": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUdJRENDQTlTZ0F3SUJBZ0lUTklSeGZJdGFaWEs0R1h1UUxUNkw1NmR2b1RCQkJna3Foa2lHOXcwQkFRb3cKTktBUE1BMEdDV0NHU0FGbEF3UUNBUVVBb1J3d0dnWUpLb1pJaHZjTkFRRUlNQTBHQ1dDR1NBRmxBd1FDQVFVQQpvZ01DQVNBd1lERUxNQWtHQTFVRUJoTUNWVk14RXpBUkJnTlZCQW9UQ2tkdmIyZHNaU0JNVEVNeFBEQTZCZ05WCkJBTVRNMGR2YjJkc1pTMVNiMjkwTFVOQkxUWmhaamN3TVRObUxUQXdNREF0TWpabE1TMWhNalJsTFRJME1EVTQKT0RZNVpUQTFOREFlRncweU5qRXhNRFl4TnpVME1UVmFGdzB6TmpFeE1EWXhOelV6TlRWYU1Fd3hDekFKQmdOVgpCQVlUQWxWVE1STXdFUVlEVlFRS0V3cEhiMjluYkdVZ1RFeERNU2d3SmdZRFZRUURFeDlEUVZNdFRXRnVZV2RsClpDQkRRUzExY3kxalpXNTBjbUZzTVMwMllXWTFNSUlCSWpBTkJna3Foa2lHOXcwQkFRRUZBQU9DQVE4QU1JSUIKQ2dLQ0FRRUFyT3c4MkJKbG04LzlKWWYySy9lc0hobFdwZTlKd1FGbXFxaXp6SUtHeHBTUmlKY0VKWkVYdFMyMQpRUGEvMi9jamdPUnJQazJadGljRSs4V2FUeC9jMTdZaTgvSnZyRjgwemZVRi9CZHRNUUhEV0ErQk5STHlyUC9RClVFbkxlVittOHhJYmFOOUd4UFJHMDJrd1VsU0hhV1JESmRzMEZVVENLaFhWanVkbDBnQnNyVmZCRVpEQ1cxZ0gKU3VyUXJuOVZUdDdMN2haYlc2Z2tpQTB4aURPWVhiUWhQZ0NJMTNBRkpGeUUrNTU0WlhJaEZWTnZOWlhXRUhXRQpVU1RzZ3FSQnBZaElPS2Q0MVNTUzNhMmp5VENWbE04RGsrMjBRNFNvQnRyUEkzcXc4bWJ1RHZ4VWJadE1YSXhPCmNlS0RxRWNDbzI5S1NTLytWZ1VlS0hnckJIR1p4d0lEQVFBQm80SUJmVENDQVhrd0RnWURWUjBQQVFIL0JBUUQKQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCQWY4Q0FRQXdIUVlEVlIwT0JCWUVGTXpsVzJyaWY2Yk1YaTNEbk8wYwpjcVJqRWM1OU1COEdBMVVkSXdRWU1CYUFGSEFRVW9zNlZtNkNkREVGTXJjdFBMOGxIRmlTTUlHTkJnZ3JCZ0VGCkJRY0JBUVNCZ0RCK01Id0dDQ3NHQVFVRkJ6QUNobkJvZEhSd09pOHZjSEpwZG1GMFpXTmhMV052Ym5SbGJuUXQKTm1GbU5HUTJPV1V0TURBd01DMHlOREEwTFdFell6a3RNMk15T0Raa016azFPRFJoTG5OMGIzSmhaMlV1WjI5dgpaMnhsWVhCcGN5NWpiMjB2TlRneU5EVTRabVUxTkRVellqWmxZbVUxTUdFdlkyRXVZM0owTUlHQ0JnTlZIUjhFCmV6QjVNSGVnZGFCemhuRm9kSFJ3T2k4dmNISnBkbUYwWldOaExXTnZiblJsYm5RdE5tRm1OR1EyT1dVdE1EQXcKTUMweU5EQTBMV0V6WXprdE0yTXlPRFprTXprMU9EUmhMbk4wYjNKaFoyVXVaMjl2WjJ4bFlYQnBjeTVqYjIwdgpOVGd5TkRVNFptVTFORFV6WWpabFltVTFNR0V2WTNKc0xtTnliREJCQmdrcWhraUc5dzBCQVFvd05LQVBNQTBHCkNXQ0dTQUZsQXdRQ0FRVUFvUnd3R2dZSktvWklodmNOQVFFSU1BMEdDV0NHU0FGbEF3UUNBUVVBb2dNQ0FTQUQKZ2dJQkFHcU03UUVoc1NOWFJnM3ZqS1BZRHM3dnBZWVl6TTZ4UHZ0YmI5aWI0MjduUVFGdHpsWldVMThIZXRwRwpjUGxWeGdqOE4rUzNwTHV5eklGSGphdUhPUDlWRnlzN3VGeUVVc04zR2lrMTNkQ3MyZ3BhWEEyUFY4dFRhdGZlCkwwVzNjc01jN2FWZVM3YWFPVkh0NHhpTTR6MzNZZlptaGVjR3lGbFJVNkJEc2RoMWtNcVBKQlU1NDQzTlZadzQKVWxOREhmb2hadm5HM1lJVEhDSHc0TmwxWjNWNjFHaWo2a3lBcDUrd091V2NLaHc0TjZRUzd6aFE1cUM0bFowawo4YXZndWoxT0R3SXpMUTVLUG9rREtyNEs1RHY1R0FSTWFQcitaWTF3UWR2TTZZdXpma3k4R0xqRTFNaXhPSituCjhkTm05bStSZUk2QTZPWVM3c2piaDVzMUlCRXZBM1RQSmFFWnE5MW03Q3dEdHdRRkhBdkk0aEg4M3JtemF4MksKbnM2bFp0QjZmUWhpemQxTm5VZ1FIOEcyOTNJazBXbkkxYWtrZ2ZoTkNPa1R0Vy9hMURlS0ZaZDBKT3FidFAwbwpqNWxhV09LMkl3LzY5a2o4bDFmYVVRRG5tbys2OFdmd1MwRGtDREVXdDkyYWFhcGkwQ2hwSDFVS2VCelJGR2hnClVTZ2JBZkk5RW9IbW14OGFKQlZSWUpQUkc5WUVyS1JTTWM4YnhzY0RPYVo0dWppMHhITHZHRWhraGpFOXd5SjYKcWE2NUwyLzFvTURxRFlWa2pKUjE5UjNZdmtiT1FHdHN5djNEZWp4Nk9JRnJTamZOTGE0cHBkZTNBeXplSGhVVwpGaDVGa2c1NVdRaDhVODlaaFplZ3Y2bFdIRzBUSFBpblh6MFdaMU1Nd0hSOGRtMjQKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQotLS0tLUJFR0lOIENFUlRJRklDQVRFLS0tLS0KTUlJR0dEQ0NBOHlnQXdJQkFnSVRBeFZwUnhUQW40ZlR0UE5YaTYxT1NjRUNMakJCQmdrcWhraUc5dzBCQVFvdwpOS0FQTUEwR0NXQ0dTQUZsQXdRQ0FRVUFvUnd3R2dZSktvWklodmNOQVFFSU1BMEdDV0NHU0FGbEF3UUNBUVVBCm9nTUNBU0F3WURFTE1Ba0dBMVVFQmhNQ1ZWTXhFekFSQmdOVkJBb1RDa2R2YjJkc1pTQk1URU14UERBNkJnTlYKQkFNVE0wZHZiMmRzWlMxU2IyOTBMVU5CTFRaaFpqY3dNVE5tTFRBd01EQXRNalpsTVMxaE1qUmxMVEkwTURVNApPRFk1WlRBMU5EQWVGdzB5TmpFeE1EWXhOelV6TlRkYUZ3MHpOakV4TURZeE56VXpOVFZhTUdBeEN6QUpCZ05WCkJBWVRBbFZUTVJNd0VRWURWUVFLRXdwSGIyOW5iR1VnVEV4RE1Ud3dPZ1lEVlFRREV6TkhiMjluYkdVdFVtOXYKZEMxRFFTMDJZV1kzTURFelppMHdNREF3TFRJMlpURXRZVEkwWlMweU5EQTFPRGcyT1dVd05UUXdnZ0lpTUEwRwpDU3FHU0liM0RRRUJBUVVBQTRJQ0R3QXdnZ0lLQW9JQ0FRQ1Q0dGd5am51QmEzR243Qmh3OTdSeHZFaFVkZkVVCkRBRGc1WDJzQjNBQ1BMMC9RRjRNKzI0dDF6SElqRHYzakM4RXU2RnlWVFZyTitLUGZpNG12Y0F5MDdGZzRyQmsKVGI0OVZsNjJHMGVOQmdKdkZONEtXdnJmSkI2cGoyMGpNdUZRVVZIVHAzSkJ5bmVSZDdyalVLWGQ3eU9kOTRJWgpGSnVwMWlTVEtjUlFpdmx1NzZ0OGJzOUZyMG81ZnZDQkZML0oxWVhVdEpLbGZVczlKYnpOT2RQd0RWNjJEdmZoCkNlcmdHam5uUE1oYzRsM2J3QXdLN29yMDc4TVNNV2ZsR1k2bHd5em9pblAyTlZVblhvQlloYnowMmN1WnFvcEsKeHp5L25oQldnVjhSOWFkc2pqZ1l4R0xXbUwzWEdBeG1HWUQvTzJTWjIyUWlyT1VlbFF6TkVZSUMvbjZ3M0FtNwpjUmVveHVSd3ovVngrRkVBTERSTWorZHhIdWJVOWR1d2hkS0Q2Um9rQ25sRXlVZHlPa05HVmo0aVU2RnRzS3JFCjhyUG1NU2EvbUtDMU9Ya0RrWG56UEZpS3h5V1JRZTF3eUxZVUlhWmJ0dk51eDdWWUpNWXovRCtEQ2ZKQmpjcUQKd1p4MWRuN0gwVVg0bDRRRGlzL3VlSnk5NTY5OXVDeE9YM3pyaUhtUms5dENxWHJBRHZmNDJoTTZTbitMWlQ5RQpTUTdLTXZBYXhKSzUyTGxrL3JvVkgrMDJSUjk4QzZYZXMzSWM2Q0NOeUFuMkVMWmdJcGJyQUZLWm9PNlI3NnFCCnpNTGh5VFNmK2FiaVNaaGZsaUMrVzJaNFVpSnczZVlTMGtSNFR2Zy9NQ0k1K0tKS0pLYTBqTGNPLzNJTmpzb2UKWDJyeldheXd2VXVzdXdJREFRQUJvMk13WVRBT0JnTlZIUThCQWY4RUJBTUNBUVl3RHdZRFZSMFRBUUgvQkFVdwpBd0VCL3pBZEJnTlZIUTRFRmdRVWNCQlNpenBXYm9KME1RVXl0eTA4dnlVY1dKSXdId1lEVlIwakJCZ3dGb0FVCmNCQlNpenBXYm9KME1RVXl0eTA4dnlVY1dKSXdRUVlKS29aSWh2Y05BUUVLTURTZ0R6QU5CZ2xnaGtnQlpRTUUKQWdFRkFLRWNNQm9HQ1NxR1NJYjNEUUVCQ0RBTkJnbGdoa2dCWlFNRUFnRUZBS0lEQWdFZ0E0SUNBUUNCQm9YRwpOYTg3c2s2TDZ4RG1tU0pUZTEzZndDaVIvRTI3WjV1Y3FzUTBmL09mWEJXZUo3b3ZJMzZESXgvdGIvT2VaMVYvCnQvZ2ZqeVpmUEpRbjFyNjhHSWZJNWZ3RjV1QTd4dXBwVEQwWWtyYXBNZ0hablhNWTYycWo1NjNZV29nbjRpdG8KaUdjbWJPVm14VVBBRTFGQzdPWHJFR1NaZ0ZYL29FeHQrNGNEdXZDMHFmNmtndVJKWmxGdStzNnlRcjFaS2ZKZgpycnJKMFhpTUJreWg3b0FUWFJ6VGlDb1Uxd0djWXgxOFM0L3pSbS96SlA4NkNDSlZuODFLSTd6b1lDRlRJR3FuCmZWVlcwUjg5eFNGRG5JTWo3VlB6VlAxUHFoUTFreWs1cjNONWRHNnlwYzJlWXNKNHdYcmtWbjY4Zzh0aDVFcnAKVklDcTlvUUFVcWxxalFRN083UzRGc1Yxb1NsZ1FBV1BDd3l5NUVaajR6SEJDamxvNC9FR0tqdlUyZ29FUGlJSQpGUGVyMWdiQjc4VFpGOW5oMTlsZ0FEdU9vdmlZZHlkbXhiVzFsTkRuSWJYOG4vblRzSHArR1JLSkNGODQzQkFlCkdrd1p6d2c1V2pWeEUxV1lRQUpGUERBVFYzZGdrYm04NWJ0VThHdi8wTC9RUW5RTnU1cXBsZTE2UlV5LzM4RlMKNHFxK005NHhGdm4wT2R1eVl3MmxlSG1oNlBkRzF0YXA0djZoYXB5bEVKUjgybFBsM2hYWnlvMElXOXBSU1pLYgoxQTd0TkY3YVBoM3JEaGJ5QTZwOEpWNHlvQ1BWNWJXakVpY0hGVjQvM0dVVExzTDZhN3lycGU1bld1Qjg1Ly82CnhtY1RpbG45YklwTUZmeTZmYzZFZEFMZHE2UUJnZE9CdndiY2VnPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQoK",
+              "secret_data_wo": null,
+              "secret_data_wo_version": null,
+              "timeouts": null,
+              "version": "1"
+            },
+            "sensitive_values": {
+              "secret_data": true
+            },
+            "depends_on": [
+              "google_secret_manager_secret.variable"
+            ],
+            "identity": {
+              "project": "",
+              "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_CA_B64",
+              "version": "1"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_secret_manager_secret_version.variable[\"REDIS_URL\"]",
+            "mode": "managed",
+            "type": "google_secret_manager_secret_version",
+            "name": "variable",
+            "index": "REDIS_URL",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 1,
+            "values": {
+              "create_time": "2026-11-06T18:30:31.998989Z",
+              "deletion_policy": "DELETE",
+              "destroy_time": "",
+              "enabled": true,
+              "id": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-REDIS_URL/versions/1",
+              "is_secret_data_base64": false,
+              "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-REDIS_URL/versions/1",
+              "project": null,
+              "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_URL",
+              "secret_data": "hunter2-very-secret",
+              "secret_data_wo": null,
+              "secret_data_wo_version": null,
+              "timeouts": null,
+              "version": "1"
+            },
+            "sensitive_values": {
+              "secret_data": true
+            },
+            "depends_on": [
+              "google_secret_manager_secret.variable"
+            ],
+            "identity": {
+              "project": "",
+              "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-REDIS_URL",
+              "version": "1"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_secret_manager_secret_version.variable[\"WALK_GREETING\"]",
+            "mode": "managed",
+            "type": "google_secret_manager_secret_version",
+            "name": "variable",
+            "index": "WALK_GREETING",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 1,
+            "values": {
+              "create_time": "2026-11-06T18:08:37.721565Z",
+              "deletion_policy": "DELETE",
+              "destroy_time": "",
+              "enabled": true,
+              "id": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING/versions/1",
+              "is_secret_data_base64": false,
+              "name": "projects/123456789012/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING/versions/1",
+              "project": null,
+              "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING",
+              "secret_data": "hunter2-very-secret",
+              "secret_data_wo": null,
+              "secret_data_wo_version": null,
+              "timeouts": null,
+              "version": "1"
+            },
+            "sensitive_values": {
+              "secret_data": true
+            },
+            "depends_on": [
+              "google_secret_manager_secret.variable"
+            ],
+            "identity": {
+              "project": "",
+              "secret": "projects/example-project-123/secrets/cloudgate-plb3nv2t74e6-WALK_GREETING",
+              "version": "1"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_service_account.service",
+            "mode": "managed",
+            "type": "google_service_account",
+            "name": "service",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "account_id": "cloudgate-plb3nv2t74e6",
+              "create_ignore_already_exists": null,
+              "deletion_policy": "DELETE",
+              "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+              "disabled": false,
+              "display_name": "",
+              "email": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "id": "projects/example-project-123/serviceAccounts/cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "name": "projects/example-project-123/serviceAccounts/cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "project": "example-project-123",
+              "timeouts": null,
+              "unique_id": "115272916555036410164"
+            },
+            "sensitive_values": {},
+            "identity": {
+              "email": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "project": "example-project-123"
+            },
+            "identity_schema_version": 1
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "google": {
+        "name": "google",
+        "full_name": "registry.opentofu.org/hashicorp/google",
+        "version_constraint": "8.8.0",
+        "expressions": {
+          "add_terraform_attribution_label": {
+            "constant_value": false
+          },
+          "project": {
+            "constant_value": "example-project-123"
+          },
+          "region": {
+            "constant_value": "europe-west1"
+          }
+        }
+      }
+    },
+    "root_module": {}
+  },
+  "timestamp": "2026-11-06T18:32:11Z",
+  "errored": false
+}

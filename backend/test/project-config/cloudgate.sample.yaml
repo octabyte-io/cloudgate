@@ -1,0 +1,62 @@
+# The prototype from prototype/project-config-format (f44f90cc), its size
+# placeholders replaced by the spec's size list.
+# yaml-language-server: $schema=https://cloudgate.example/schema/project-config/v1.json
+version: 1
+
+services:
+  web:
+    kind: web
+    size: small
+    source:
+      github: acme/shop
+      path: apps/web
+    build:
+      type: nixpacks
+    port: 3000
+    env: [DATABASE_URL, REDIS_URL, NEXT_PUBLIC_API_URL]
+    build_args: [SENTRY_RELEASE]
+
+  api:
+    kind: web
+    size: small
+    source:
+      github: acme/api
+    build:
+      type: dockerfile
+      dockerfile: Dockerfile
+      stage: runtime
+    command: node
+    args: [dist/main.js]
+    port: 4000
+    env: [DATABASE_URL, REDIS_URL, JWT_SECRET]
+
+  docs:
+    kind: static
+    source:
+      github: acme/shop
+      path: apps/docs
+    build:
+      publish: dist
+      spa: false
+
+  worker-image:
+    kind: web
+    source:
+      image: ghcr.io/acme/gotenberg:8
+    port: 3000
+
+  postgres:
+    kind: postgres
+    size: small
+    version: '18'
+    database: shop
+    user: shop
+
+  redis:
+    kind: redis
+    size: small
+    version: '8'
+
+  mongo-1:
+    kind: mongo
+    managed: console

@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+.next/
+out/
+build/
+# the /build skill is source, not a build output
+!.claude/skills/build/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# misc
+.DS_Store
+coverage/
+*.tsbuildinfo
+
+# agent worktrees (/build implementers)
+.claude/worktrees/

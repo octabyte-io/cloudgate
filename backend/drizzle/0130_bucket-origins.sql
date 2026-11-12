@@ -1,0 +1,1 @@
+ALTER TABLE "bucket" ADD COLUMN "origins" text[] DEFAULT '{}'::text[] NOT NULL;

@@ -1,0 +1,4238 @@
+{
+  "cloudgate_fixture": {
+    "source": "the live walk by hand",
+    "how": "Recorded by `tofu show -json` from a real plan in the live Google Cloud project on 2026-11-06 (a walk by hand; OpenTofu 1.13.1, hashicorp/google 8.8.0), then rewritten to the stored files' sample ids (cloud_1, env_1, svc_1, svc_pg_1, svc_redis_1 and their states, project example-project-123 / 123456789012, region europe-west1, deployment ids dep_N) and with every secret value masked (the default certificate's key, the database password, the wired variables' URLs; the typed variable values were the stored files' sample strings). The `web` given its first variable (WALK_GREETING): a secret, its version and access grant, and a new revision."
+  },
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "variables": {
+    "variable_value_WALK_GREETING": {
+      "value": "hunter2-very-secret"
+    }
+  },
+  "planned_values": {
+    "outputs": {
+      "repository_url": {
+        "sensitive": false,
+        "type": "string",
+        "value": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6"
+      },
+      "service_name": {
+        "sensitive": false,
+        "type": "string",
+        "value": "cloudgate-plb3nv2t74e6"
+      },
+      "service_uri": {
+        "sensitive": false,
+        "type": "string",
+        "value": "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app"
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "google_artifact_registry_repository.service",
+          "mode": "managed",
+          "type": "google_artifact_registry_repository",
+          "name": "service",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "cleanup_policies": [
+              {
+                "action": "DELETE",
+                "condition": [
+                  {
+                    "newer_than": "",
+                    "older_than": "86400s",
+                    "package_name_prefixes": [],
+                    "tag_prefixes": [],
+                    "tag_state": "UNTAGGED",
+                    "version_name_prefixes": []
+                  }
+                ],
+                "id": "delete-untagged",
+                "most_recent_versions": []
+              }
+            ],
+            "cleanup_policy_dry_run": false,
+            "create_time": "2026-11-06T17:24:23.815813Z",
+            "deletion_policy": "DELETE",
+            "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+            "docker_config": [],
+            "effective_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "7rhuqxy3gm43"
+            },
+            "format": "DOCKER",
+            "id": "projects/example-project-123/locations/europe-west1/repositories/cloudgate-plb3nv2t74e6",
+            "kms_key_name": "",
+            "labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "7rhuqxy3gm43"
+            },
+            "location": "europe-west1",
+            "maven_config": [],
+            "mode": "STANDARD_REPOSITORY",
+            "name": "cloudgate-plb3nv2t74e6",
+            "project": "example-project-123",
+            "registry_uri": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6",
+            "remote_repository_config": [],
+            "repository_id": "cloudgate-plb3nv2t74e6",
+            "terraform_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "7rhuqxy3gm43"
+            },
+            "timeouts": null,
+            "update_time": "2026-11-06T17:29:06.398846Z",
+            "virtual_repository_config": [],
+            "vulnerability_scanning_config": [
+              {
+                "enablement_config": "",
+                "enablement_state": "SCANNING_DISABLED",
+                "enablement_state_reason": "API containerscanning.googleapis.com is not enabled."
+              }
+            ]
+          },
+          "sensitive_values": {
+            "cleanup_policies": [
+              {
+                "condition": [
+                  {
+                    "package_name_prefixes": [],
+                    "tag_prefixes": [],
+                    "version_name_prefixes": []
+                  }
+                ],
+                "most_recent_versions": []
+              }
+            ],
+            "docker_config": [],
+            "effective_labels": {},
+            "labels": {},
+            "maven_config": [],
+            "remote_repository_config": [],
+            "terraform_labels": {},
+            "virtual_repository_config": [],
+            "vulnerability_scanning_config": [
+              {}
+            ]
+          },
+          "identity": {
+            "location": "europe-west1",
+            "project": "example-project-123",
+            "repository_id": "cloudgate-plb3nv2t74e6"
+          },
+          "identity_schema_version": 1
+        },
+        {
+          "address": "google_cloud_run_v2_service.service",
+          "mode": "managed",
+          "type": "google_cloud_run_v2_service",
+          "name": "service",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "annotations": {},
+            "binary_authorization": [],
+            "build_config": [],
+            "client": "",
+            "client_version": "",
+            "conditions": [
+              {
+                "execution_reason": "",
+                "last_transition_time": "2026-11-06T17:25:26.807160Z",
+                "message": "",
+                "reason": "",
+                "revision_reason": "",
+                "severity": "",
+                "state": "CONDITION_SUCCEEDED",
+                "type": "RoutesReady"
+              },
+              {
+                "execution_reason": "",
+                "last_transition_time": "2026-11-06T17:25:20.900728Z",
+                "message": "",
+                "reason": "",
+                "revision_reason": "",
+                "severity": "",
+                "state": "CONDITION_SUCCEEDED",
+                "type": "ConfigurationsReady"
+              }
+            ],
+            "create_time": "2026-11-06T17:25:16.547588Z",
+            "creator": "cloudgate-deploy-lqinodt54kzk@example-project-123.iam.gserviceaccount.com",
+            "custom_audiences": [],
+            "default_uri_disabled": false,
+            "delete_time": "",
+            "deletion_policy": "DELETE",
+            "deletion_protection": false,
+            "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+            "effective_annotations": {},
+            "effective_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "7rhuqxy3gm43"
+            },
+            "etag": "\"CPCbuNcGEICFl9YB/cHJvamVjdHMvY2xvdWRnYXRlLXRlc3QtMTIzL2xvY2F0aW9ucy91cy1jZW50cmFsMS9zZXJ2aWNlcy9jbG91ZGdhdGUtY3BoY3h2NmF4a25z\"",
+            "expire_time": "",
+            "generation": "2",
+            "iap_enabled": false,
+            "id": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6",
+            "ingress": "INGRESS_TRAFFIC_ALL",
+            "invoker_iam_disabled": true,
+            "labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "7rhuqxy3gm43"
+            },
+            "last_modifier": "cloudgate-deploy-lqinodt54kzk@example-project-123.iam.gserviceaccount.com",
+            "latest_created_revision": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6/revisions/cloudgate-plb3nv2t74e6-00001-lvj",
+            "latest_ready_revision": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6/revisions/cloudgate-plb3nv2t74e6-00001-lvj",
+            "launch_stage": "GA",
+            "location": "europe-west1",
+            "multi_region_settings": [],
+            "name": "cloudgate-plb3nv2t74e6",
+            "observed_generation": "2",
+            "project": "example-project-123",
+            "reconciling": false,
+            "scaling": [
+              {
+                "manual_instance_count": 0,
+                "max_instance_count": 12,
+                "min_instance_count": 0,
+                "scaling_mode": "AUTOMATIC"
+              }
+            ],
+            "ssh_enabled": false,
+            "tags": null,
+            "template": [
+              {
+                "annotations": {},
+                "containers": [
+                  {
+                    "args": [],
+                    "base_image_uri": "",
+                    "build_info": [],
+                    "command": [],
+                    "depends_on": [],
+                    "env": [
+                      {
+                        "name": "WALK_GREETING",
+                        "value": "",
+                        "value_source": [
+                          {
+                            "secret_key_ref": [
+                              {
+                                "secret": "cloudgate-plb3nv2t74e6-WALK_GREETING"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "image": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6/service:dep_2",
+                    "liveness_probe": [],
+                    "name": "service",
+                    "ports": [
+                      {
+                        "container_port": 8080,
+                        "name": "http1"
+                      }
+                    ],
+                    "readiness_probe": [],
+                    "resources": [
+                      {
+                        "cpu_idle": true,
+                        "limits": {
+                          "cpu": "1",
+                          "memory": "1Gi"
+                        },
+                        "startup_cpu_boost": false
+                      }
+                    ],
+                    "sandbox_launcher": false,
+                    "startup_probe": [
+                      {
+                        "failure_threshold": 1,
+                        "grpc": [],
+                        "http_get": [],
+                        "initial_delay_seconds": 0,
+                        "period_seconds": 240,
+                        "tcp_socket": [
+                          {
+                            "port": 8080
+                          }
+                        ],
+                        "timeout_seconds": 240
+                      }
+                    ],
+                    "volume_mounts": [],
+                    "working_dir": ""
+                  }
+                ],
+                "encryption_key": "",
+                "execution_environment": "",
+                "gpu_zonal_redundancy_disabled": false,
+                "health_check_disabled": false,
+                "labels": {},
+                "max_instance_request_concurrency": 80,
+                "node_selector": [],
+                "revision": "",
+                "sandboxes": [],
+                "scaling": [
+                  {
+                    "concurrency_utilization": 0,
+                    "cpu_utilization": 0,
+                    "max_instance_count": 10,
+                    "min_instance_count": 0
+                  }
+                ],
+                "service_account": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+                "session_affinity": false,
+                "timeout": "300s",
+                "volumes": [],
+                "vpc_access": [
+                  {
+                    "connector": "",
+                    "egress": "PRIVATE_RANGES_ONLY",
+                    "network_interfaces": [
+                      {
+                        "network": "cloudgate-w33lemwkholw-net",
+                        "subnetwork": "cloudgate-w33lemwkholw-subnet",
+                        "tags": []
+                      }
+                    ]
+                  }
+                ],
+                "workload_identity_config": []
+              }
+            ],
+            "terminal_condition": [
+              {
+                "execution_reason": "",
+                "last_transition_time": "2026-11-06T17:27:12.607175Z",
+                "message": "",
+                "reason": "",
+                "revision_reason": "",
+                "severity": "",
+                "state": "CONDITION_SUCCEEDED",
+                "type": "Ready"
+              }
+            ],
+            "terraform_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "7rhuqxy3gm43"
+            },
+            "timeouts": null,
+            "traffic": [
+              {
+                "percent": 100,
+                "revision": "",
+                "tag": "",
+                "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+              }
+            ],
+            "traffic_statuses": [
+              {
+                "percent": 100,
+                "revision": "cloudgate-plb3nv2t74e6-00001-lvj",
+                "tag": "",
+                "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
+                "uri": ""
+              }
+            ],
+            "uid": "d4bd79c1-547f-4a0c-ad67-498c11370429",
+            "update_time": "2026-11-06T17:27:12.449168Z",
+            "uri": "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app",
+            "urls": [
+              "https://cloudgate-plb3nv2t74e6-123456789012.europe-west1.run.app",
+              "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app"
+            ]
+          },
+          "sensitive_values": {
+            "annotations": {},
+            "binary_authorization": [],
+            "build_config": [],
+            "conditions": [
+              {},
+              {}
+            ],
+            "custom_audiences": [],
+            "effective_annotations": {},
+            "effective_labels": {},
+            "labels": {},
+            "multi_region_settings": [],
+            "scaling": [
+              {}
+            ],
+            "template": [
+              {
+                "annotations": {},
+                "containers": [
+                  {
+                    "args": [],
+                    "build_info": [],
+                    "command": [],
+                    "depends_on": [],
+                    "env": [
+                      {
+                        "value_source": [
+                          {
+                            "secret_key_ref": [
+                              {}
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "liveness_probe": [],
+                    "ports": [
+                      {}
+                    ],
+                    "readiness_probe": [],
+                    "resources": [
+                      {
+                        "limits": {}
+                      }
+                    ],
+                    "startup_probe": [
+                      {
+                        "grpc": [],
+                        "http_get": [],
+                        "tcp_socket": [
+                          {}
+                        ]
+                      }
+                    ],
+                    "volume_mounts": []
+                  }
+                ],
+                "labels": {},
+                "node_selector": [],
+                "sandboxes": [],
+                "scaling": [
+                  {}
+                ],
+                "volumes": [],
+                "vpc_access": [
+                  {
+                    "network_interfaces": [
+                      {
+                        "tags": []
+                      }
+                    ]
+                  }
+                ],
+                "workload_identity_config": []
+              }
+            ],
+            "terminal_condition": [
+              {}
+            ],
+            "terraform_labels": {},
+            "traffic": [
+              {}
+            ],
+            "traffic_statuses": [
+              {}
+            ],
+            "urls": [
+              false,
+              false
+            ]
+          },
+          "identity": {
+            "location": "europe-west1",
+            "name": "cloudgate-plb3nv2t74e6",
+            "project": "example-project-123"
+          },
+          "identity_schema_version": 1
+        },
+        {
+          "address": "google_compute_backend_service.service",
+          "mode": "managed",
+          "type": "google_compute_backend_service",
+          "name": "service",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 1,
+          "values": {
+            "affinity_cookie_ttl_sec": 0,
+            "backend": [
+              {
+                "balancing_mode": "UTILIZATION",
+                "capacity_scaler": 1,
+                "custom_metrics": [],
+                "description": "",
+                "group": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+                "max_connections": 0,
+                "max_connections_per_endpoint": 0,
+                "max_connections_per_instance": 0,
+                "max_rate": 0,
+                "max_rate_per_endpoint": 0,
+                "max_rate_per_instance": 0,
+                "max_utilization": 0,
+                "preference": ""
+              }
+            ],
+            "cdn_policy": [],
+            "circuit_breakers": [],
+            "compression_mode": "",
+            "connection_draining_timeout_sec": 300,
+            "consistent_hash": [],
+            "creation_timestamp": "2026-11-06T09:25:33.629-08:00",
+            "custom_metrics": [],
+            "custom_request_headers": [],
+            "custom_response_headers": [],
+            "deletion_policy": "DELETE",
+            "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+            "edge_security_policy": "",
+            "enable_cdn": false,
+            "external_managed_migration_state": "",
+            "external_managed_migration_testing_percentage": 0,
+            "fingerprint": "7YU4Gj-u4oE=",
+            "generated_id": 6446927883494732643,
+            "health_checks": [],
+            "iap": [],
+            "id": "projects/example-project-123/global/backendServices/cloudgate-plb3nv2t74e6",
+            "ip_address_selection_policy": "",
+            "load_balancing_scheme": "EXTERNAL_MANAGED",
+            "locality_lb_policies": [],
+            "locality_lb_policy": "",
+            "log_config": [],
+            "max_stream_duration": [],
+            "name": "cloudgate-plb3nv2t74e6",
+            "outlier_detection": [],
+            "params": [],
+            "port_name": "http",
+            "project": "example-project-123",
+            "protocol": "HTTPS",
+            "security_policy": "",
+            "security_settings": [],
+            "self_link": "https://www.googleapis.com/compute/v1/projects/example-project-123/global/backendServices/cloudgate-plb3nv2t74e6",
+            "service_lb_policy": "",
+            "session_affinity": "NONE",
+            "strong_session_affinity_cookie": [],
+            "timeout_sec": 30,
+            "timeouts": null,
+            "tls_settings": []
+          },
+          "sensitive_values": {
+            "backend": [
+              {
+                "custom_metrics": []
+              }
+            ],
+            "cdn_policy": [],
+            "circuit_breakers": [],
+            "consistent_hash": [],
+            "custom_metrics": [],
+            "custom_request_headers": [],
+            "custom_response_headers": [],
+            "health_checks": [],
+            "iap": [],
+            "locality_lb_policies": [],
+            "log_config": [],
+            "max_stream_duration": [],
+            "outlier_detection": [],
+            "params": [],
+            "security_settings": [],
+            "strong_session_affinity_cookie": [],
+            "tls_settings": []
+          },
+          "identity": {
+            "name": "cloudgate-plb3nv2t74e6",
+            "project": "example-project-123"
+          },
+          "identity_schema_version": 1
+        },
+        {
+          "address": "google_compute_region_network_endpoint_group.service",
+          "mode": "managed",
+          "type": "google_compute_region_network_endpoint_group",
+          "name": "service",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "app_engine": [],
+            "cloud_function": [],
+            "cloud_run": [
+              {
+                "service": "cloudgate-plb3nv2t74e6",
+                "tag": "",
+                "url_mask": ""
+              }
+            ],
+            "deletion_policy": "DELETE",
+            "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+            "id": "projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+            "name": "cloudgate-plb3nv2t74e6",
+            "network": "",
+            "network_endpoint_type": "SERVERLESS",
+            "project": "example-project-123",
+            "psc_data": [],
+            "psc_target_service": "",
+            "region": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1",
+            "self_link": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+            "subnetwork": "",
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "app_engine": [],
+            "cloud_function": [],
+            "cloud_run": [
+              {}
+            ],
+            "psc_data": []
+          },
+          "identity": {
+            "name": "cloudgate-plb3nv2t74e6",
+            "project": "example-project-123",
+            "region": "europe-west1"
+          },
+          "identity_schema_version": 1
+        },
+        {
+          "address": "google_secret_manager_secret.variable[\"WALK_GREETING\"]",
+          "mode": "managed",
+          "type": "google_secret_manager_secret",
+          "name": "variable",
+          "index": "WALK_GREETING",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "annotations": null,
+            "deletion_policy": "DELETE",
+            "deletion_protection": false,
+            "effective_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "7rhuqxy3gm43"
+            },
+            "labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "7rhuqxy3gm43"
+            },
+            "project": "example-project-123",
+            "replication": [
+              {
+                "auto": [
+                  {
+                    "customer_managed_encryption": []
+                  }
+                ],
+                "user_managed": []
+              }
+            ],
+            "rotation": [],
+            "secret_id": "cloudgate-plb3nv2t74e6-WALK_GREETING",
+            "secret_type": null,
+            "tags": null,
+            "terraform_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "7rhuqxy3gm43"
+            },
+            "timeouts": null,
+            "topics": [],
+            "ttl": null,
+            "version_aliases": null,
+            "version_destroy_ttl": null
+          },
+          "sensitive_values": {
+            "effective_annotations": {},
+            "effective_labels": {},
+            "labels": {},
+            "replication": [
+              {
+                "auto": [
+                  {
+                    "customer_managed_encryption": []
+                  }
+                ],
+                "user_managed": []
+              }
+            ],
+            "rotation": [],
+            "terraform_labels": {},
+            "topics": []
+          },
+          "identity": {
+            "project": null,
+            "secret_id": null
+          },
+          "identity_schema_version": 1
+        },
+        {
+          "address": "google_secret_manager_secret_iam_member.variable[\"WALK_GREETING\"]",
+          "mode": "managed",
+          "type": "google_secret_manager_secret_iam_member",
+          "name": "variable",
+          "index": "WALK_GREETING",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "condition": [],
+            "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+            "role": "roles/secretmanager.secretAccessor"
+          },
+          "sensitive_values": {
+            "condition": []
+          }
+        },
+        {
+          "address": "google_secret_manager_secret_version.variable[\"WALK_GREETING\"]",
+          "mode": "managed",
+          "type": "google_secret_manager_secret_version",
+          "name": "variable",
+          "index": "WALK_GREETING",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 1,
+          "values": {
+            "enabled": true,
+            "is_secret_data_base64": null,
+            "secret_data": "hunter2-very-secret",
+            "secret_data_wo": null,
+            "secret_data_wo_version": null,
+            "timeouts": null
+          },
+          "sensitive_values": {
+            "secret_data": true
+          }
+        },
+        {
+          "address": "google_service_account.service",
+          "mode": "managed",
+          "type": "google_service_account",
+          "name": "service",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "account_id": "cloudgate-plb3nv2t74e6",
+            "create_ignore_already_exists": null,
+            "deletion_policy": "DELETE",
+            "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+            "disabled": false,
+            "display_name": "",
+            "email": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+            "id": "projects/example-project-123/serviceAccounts/cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+            "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+            "name": "projects/example-project-123/serviceAccounts/cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+            "project": "example-project-123",
+            "timeouts": null,
+            "unique_id": "115272916555036410164"
+          },
+          "sensitive_values": {},
+          "identity": {
+            "email": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+            "project": "example-project-123"
+          },
+          "identity_schema_version": 1
+        }
+      ]
+    }
+  },
+  "resource_drift": [
+    {
+      "address": "google_artifact_registry_repository.service",
+      "mode": "managed",
+      "type": "google_artifact_registry_repository",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "cleanup_policies": [
+            {
+              "action": "DELETE",
+              "condition": [
+                {
+                  "newer_than": "",
+                  "older_than": "86400s",
+                  "package_name_prefixes": [],
+                  "tag_prefixes": [],
+                  "tag_state": "UNTAGGED",
+                  "version_name_prefixes": []
+                }
+              ],
+              "id": "delete-untagged",
+              "most_recent_versions": []
+            }
+          ],
+          "cleanup_policy_dry_run": false,
+          "create_time": "2026-11-06T17:24:23.815813Z",
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "docker_config": [],
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "format": "DOCKER",
+          "id": "projects/example-project-123/locations/europe-west1/repositories/cloudgate-plb3nv2t74e6",
+          "kms_key_name": "",
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "location": "europe-west1",
+          "maven_config": [],
+          "mode": "STANDARD_REPOSITORY",
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123",
+          "registry_uri": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6",
+          "remote_repository_config": [],
+          "repository_id": "cloudgate-plb3nv2t74e6",
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "timeouts": null,
+          "update_time": "2026-11-06T17:24:40.243742Z",
+          "virtual_repository_config": [],
+          "vulnerability_scanning_config": [
+            {
+              "enablement_config": "",
+              "enablement_state": "SCANNING_DISABLED",
+              "enablement_state_reason": "API containerscanning.googleapis.com is not enabled."
+            }
+          ]
+        },
+        "after": {
+          "cleanup_policies": [
+            {
+              "action": "DELETE",
+              "condition": [
+                {
+                  "newer_than": "",
+                  "older_than": "86400s",
+                  "package_name_prefixes": [],
+                  "tag_prefixes": [],
+                  "tag_state": "UNTAGGED",
+                  "version_name_prefixes": []
+                }
+              ],
+              "id": "delete-untagged",
+              "most_recent_versions": []
+            }
+          ],
+          "cleanup_policy_dry_run": false,
+          "create_time": "2026-11-06T17:24:23.815813Z",
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "docker_config": [],
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "format": "DOCKER",
+          "id": "projects/example-project-123/locations/europe-west1/repositories/cloudgate-plb3nv2t74e6",
+          "kms_key_name": "",
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "location": "europe-west1",
+          "maven_config": [],
+          "mode": "STANDARD_REPOSITORY",
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123",
+          "registry_uri": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6",
+          "remote_repository_config": [],
+          "repository_id": "cloudgate-plb3nv2t74e6",
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "timeouts": null,
+          "update_time": "2026-11-06T17:29:06.398846Z",
+          "virtual_repository_config": [],
+          "vulnerability_scanning_config": [
+            {
+              "enablement_config": "",
+              "enablement_state": "SCANNING_DISABLED",
+              "enablement_state_reason": "API containerscanning.googleapis.com is not enabled."
+            }
+          ]
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "cleanup_policies": [
+            {
+              "condition": [
+                {
+                  "package_name_prefixes": [],
+                  "tag_prefixes": [],
+                  "version_name_prefixes": []
+                }
+              ],
+              "most_recent_versions": []
+            }
+          ],
+          "docker_config": [],
+          "effective_labels": {},
+          "labels": {},
+          "maven_config": [],
+          "remote_repository_config": [],
+          "terraform_labels": {},
+          "virtual_repository_config": [],
+          "vulnerability_scanning_config": [
+            {}
+          ]
+        },
+        "after_sensitive": {
+          "cleanup_policies": [
+            {
+              "condition": [
+                {
+                  "package_name_prefixes": [],
+                  "tag_prefixes": [],
+                  "version_name_prefixes": []
+                }
+              ],
+              "most_recent_versions": []
+            }
+          ],
+          "docker_config": [],
+          "effective_labels": {},
+          "labels": {},
+          "maven_config": [],
+          "remote_repository_config": [],
+          "terraform_labels": {},
+          "virtual_repository_config": [],
+          "vulnerability_scanning_config": [
+            {}
+          ]
+        },
+        "before_identity": {
+          "location": "europe-west1",
+          "project": "example-project-123",
+          "repository_id": "cloudgate-plb3nv2t74e6"
+        },
+        "after_identity": {
+          "location": "europe-west1",
+          "project": "example-project-123",
+          "repository_id": "cloudgate-plb3nv2t74e6"
+        }
+      }
+    },
+    {
+      "address": "google_cloud_run_v2_service.service",
+      "mode": "managed",
+      "type": "google_cloud_run_v2_service",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "annotations": null,
+          "binary_authorization": [],
+          "build_config": [],
+          "client": "",
+          "client_version": "",
+          "conditions": [
+            {
+              "execution_reason": "",
+              "last_transition_time": "2026-11-06T17:25:26.807160Z",
+              "message": "",
+              "reason": "",
+              "revision_reason": "",
+              "severity": "",
+              "state": "CONDITION_SUCCEEDED",
+              "type": "RoutesReady"
+            },
+            {
+              "execution_reason": "",
+              "last_transition_time": "2026-11-06T17:25:20.900728Z",
+              "message": "",
+              "reason": "",
+              "revision_reason": "",
+              "severity": "",
+              "state": "CONDITION_SUCCEEDED",
+              "type": "ConfigurationsReady"
+            }
+          ],
+          "create_time": "2026-11-06T17:25:16.547588Z",
+          "creator": "cloudgate-deploy-lqinodt54kzk@example-project-123.iam.gserviceaccount.com",
+          "custom_audiences": null,
+          "default_uri_disabled": false,
+          "delete_time": "",
+          "deletion_policy": "DELETE",
+          "deletion_protection": false,
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "effective_annotations": {},
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "etag": "\"CPyauNcGEKCPjoUC/cHJvamVjdHMvY2xvdWRnYXRlLXRlc3QtMTIzL2xvY2F0aW9ucy91cy1jZW50cmFsMS9zZXJ2aWNlcy9jbG91ZGdhdGUtY3BoY3h2NmF4a25z\"",
+          "expire_time": "",
+          "generation": "1",
+          "iap_enabled": false,
+          "id": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6",
+          "ingress": "INGRESS_TRAFFIC_ALL",
+          "invoker_iam_disabled": true,
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "last_modifier": "cloudgate-deploy-lqinodt54kzk@example-project-123.iam.gserviceaccount.com",
+          "latest_created_revision": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6/revisions/cloudgate-plb3nv2t74e6-00001-lvj",
+          "latest_ready_revision": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6/revisions/cloudgate-plb3nv2t74e6-00001-lvj",
+          "launch_stage": "GA",
+          "location": "europe-west1",
+          "multi_region_settings": [],
+          "name": "cloudgate-plb3nv2t74e6",
+          "observed_generation": "1",
+          "project": "example-project-123",
+          "reconciling": false,
+          "scaling": [
+            {
+              "manual_instance_count": 0,
+              "max_instance_count": 12,
+              "min_instance_count": 0,
+              "scaling_mode": ""
+            }
+          ],
+          "ssh_enabled": false,
+          "tags": null,
+          "template": [
+            {
+              "annotations": null,
+              "containers": [
+                {
+                  "args": null,
+                  "base_image_uri": "",
+                  "build_info": [],
+                  "command": null,
+                  "depends_on": null,
+                  "env": [],
+                  "image": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6/service:dep_1",
+                  "liveness_probe": [],
+                  "name": "service",
+                  "ports": [
+                    {
+                      "container_port": 8080,
+                      "name": "http1"
+                    }
+                  ],
+                  "readiness_probe": [],
+                  "resources": [
+                    {
+                      "cpu_idle": true,
+                      "limits": {
+                        "cpu": "1",
+                        "memory": "1Gi"
+                      },
+                      "startup_cpu_boost": false
+                    }
+                  ],
+                  "sandbox_launcher": false,
+                  "startup_probe": [
+                    {
+                      "failure_threshold": 1,
+                      "grpc": [],
+                      "http_get": [],
+                      "initial_delay_seconds": 0,
+                      "period_seconds": 240,
+                      "tcp_socket": [
+                        {
+                          "port": 8080
+                        }
+                      ],
+                      "timeout_seconds": 240
+                    }
+                  ],
+                  "volume_mounts": [],
+                  "working_dir": ""
+                }
+              ],
+              "encryption_key": "",
+              "execution_environment": "",
+              "gpu_zonal_redundancy_disabled": false,
+              "health_check_disabled": false,
+              "labels": null,
+              "max_instance_request_concurrency": 80,
+              "node_selector": [],
+              "revision": "",
+              "sandboxes": [],
+              "scaling": [
+                {
+                  "concurrency_utilization": 0,
+                  "cpu_utilization": 0,
+                  "max_instance_count": 10,
+                  "min_instance_count": 0
+                }
+              ],
+              "service_account": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "session_affinity": false,
+              "timeout": "300s",
+              "volumes": [],
+              "vpc_access": [
+                {
+                  "connector": "",
+                  "egress": "PRIVATE_RANGES_ONLY",
+                  "network_interfaces": [
+                    {
+                      "network": "cloudgate-w33lemwkholw-net",
+                      "subnetwork": "cloudgate-w33lemwkholw-subnet",
+                      "tags": null
+                    }
+                  ]
+                }
+              ],
+              "workload_identity_config": []
+            }
+          ],
+          "terminal_condition": [
+            {
+              "execution_reason": "",
+              "last_transition_time": "2026-11-06T17:25:26.856100Z",
+              "message": "",
+              "reason": "",
+              "revision_reason": "",
+              "severity": "",
+              "state": "CONDITION_SUCCEEDED",
+              "type": "Ready"
+            }
+          ],
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "timeouts": null,
+          "traffic": [
+            {
+              "percent": 100,
+              "revision": "",
+              "tag": "",
+              "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+            }
+          ],
+          "traffic_statuses": [
+            {
+              "percent": 100,
+              "revision": "cloudgate-plb3nv2t74e6-00001-lvj",
+              "tag": "",
+              "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
+              "uri": ""
+            }
+          ],
+          "uid": "d4bd79c1-547f-4a0c-ad67-498c11370429",
+          "update_time": "2026-11-06T17:25:16.547588Z",
+          "uri": "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app",
+          "urls": [
+            "https://cloudgate-plb3nv2t74e6-123456789012.europe-west1.run.app",
+            "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app"
+          ]
+        },
+        "after": {
+          "annotations": {},
+          "binary_authorization": [],
+          "build_config": [],
+          "client": "",
+          "client_version": "",
+          "conditions": [
+            {
+              "execution_reason": "",
+              "last_transition_time": "2026-11-06T17:25:26.807160Z",
+              "message": "",
+              "reason": "",
+              "revision_reason": "",
+              "severity": "",
+              "state": "CONDITION_SUCCEEDED",
+              "type": "RoutesReady"
+            },
+            {
+              "execution_reason": "",
+              "last_transition_time": "2026-11-06T17:25:20.900728Z",
+              "message": "",
+              "reason": "",
+              "revision_reason": "",
+              "severity": "",
+              "state": "CONDITION_SUCCEEDED",
+              "type": "ConfigurationsReady"
+            }
+          ],
+          "create_time": "2026-11-06T17:25:16.547588Z",
+          "creator": "cloudgate-deploy-lqinodt54kzk@example-project-123.iam.gserviceaccount.com",
+          "custom_audiences": [],
+          "default_uri_disabled": false,
+          "delete_time": "",
+          "deletion_policy": "DELETE",
+          "deletion_protection": false,
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "effective_annotations": {},
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "etag": "\"CPCbuNcGEICFl9YB/cHJvamVjdHMvY2xvdWRnYXRlLXRlc3QtMTIzL2xvY2F0aW9ucy91cy1jZW50cmFsMS9zZXJ2aWNlcy9jbG91ZGdhdGUtY3BoY3h2NmF4a25z\"",
+          "expire_time": "",
+          "generation": "2",
+          "iap_enabled": false,
+          "id": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6",
+          "ingress": "INGRESS_TRAFFIC_ALL",
+          "invoker_iam_disabled": true,
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "last_modifier": "cloudgate-deploy-lqinodt54kzk@example-project-123.iam.gserviceaccount.com",
+          "latest_created_revision": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6/revisions/cloudgate-plb3nv2t74e6-00001-lvj",
+          "latest_ready_revision": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6/revisions/cloudgate-plb3nv2t74e6-00001-lvj",
+          "launch_stage": "GA",
+          "location": "europe-west1",
+          "multi_region_settings": [],
+          "name": "cloudgate-plb3nv2t74e6",
+          "observed_generation": "2",
+          "project": "example-project-123",
+          "reconciling": false,
+          "scaling": [
+            {
+              "manual_instance_count": 0,
+              "max_instance_count": 12,
+              "min_instance_count": 0,
+              "scaling_mode": "AUTOMATIC"
+            }
+          ],
+          "ssh_enabled": false,
+          "tags": null,
+          "template": [
+            {
+              "annotations": {},
+              "containers": [
+                {
+                  "args": [],
+                  "base_image_uri": "",
+                  "build_info": [],
+                  "command": [],
+                  "depends_on": [],
+                  "env": [],
+                  "image": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6/service:dep_1",
+                  "liveness_probe": [],
+                  "name": "service",
+                  "ports": [
+                    {
+                      "container_port": 8080,
+                      "name": "http1"
+                    }
+                  ],
+                  "readiness_probe": [],
+                  "resources": [
+                    {
+                      "cpu_idle": true,
+                      "limits": {
+                        "cpu": "1",
+                        "memory": "1Gi"
+                      },
+                      "startup_cpu_boost": false
+                    }
+                  ],
+                  "sandbox_launcher": false,
+                  "startup_probe": [
+                    {
+                      "failure_threshold": 1,
+                      "grpc": [],
+                      "http_get": [],
+                      "initial_delay_seconds": 0,
+                      "period_seconds": 240,
+                      "tcp_socket": [
+                        {
+                          "port": 8080
+                        }
+                      ],
+                      "timeout_seconds": 240
+                    }
+                  ],
+                  "volume_mounts": [],
+                  "working_dir": ""
+                }
+              ],
+              "encryption_key": "",
+              "execution_environment": "",
+              "gpu_zonal_redundancy_disabled": false,
+              "health_check_disabled": false,
+              "labels": {},
+              "max_instance_request_concurrency": 80,
+              "node_selector": [],
+              "revision": "",
+              "sandboxes": [],
+              "scaling": [
+                {
+                  "concurrency_utilization": 0,
+                  "cpu_utilization": 0,
+                  "max_instance_count": 10,
+                  "min_instance_count": 0
+                }
+              ],
+              "service_account": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "session_affinity": false,
+              "timeout": "300s",
+              "volumes": [],
+              "vpc_access": [
+                {
+                  "connector": "",
+                  "egress": "PRIVATE_RANGES_ONLY",
+                  "network_interfaces": [
+                    {
+                      "network": "cloudgate-w33lemwkholw-net",
+                      "subnetwork": "cloudgate-w33lemwkholw-subnet",
+                      "tags": []
+                    }
+                  ]
+                }
+              ],
+              "workload_identity_config": []
+            }
+          ],
+          "terminal_condition": [
+            {
+              "execution_reason": "",
+              "last_transition_time": "2026-11-06T17:27:12.607175Z",
+              "message": "",
+              "reason": "",
+              "revision_reason": "",
+              "severity": "",
+              "state": "CONDITION_SUCCEEDED",
+              "type": "Ready"
+            }
+          ],
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "timeouts": null,
+          "traffic": [
+            {
+              "percent": 100,
+              "revision": "",
+              "tag": "",
+              "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+            }
+          ],
+          "traffic_statuses": [
+            {
+              "percent": 100,
+              "revision": "cloudgate-plb3nv2t74e6-00001-lvj",
+              "tag": "",
+              "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
+              "uri": ""
+            }
+          ],
+          "uid": "d4bd79c1-547f-4a0c-ad67-498c11370429",
+          "update_time": "2026-11-06T17:27:12.449168Z",
+          "uri": "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app",
+          "urls": [
+            "https://cloudgate-plb3nv2t74e6-123456789012.europe-west1.run.app",
+            "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app"
+          ]
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "binary_authorization": [],
+          "build_config": [],
+          "conditions": [
+            {},
+            {}
+          ],
+          "effective_annotations": {},
+          "effective_labels": {},
+          "labels": {},
+          "multi_region_settings": [],
+          "scaling": [
+            {}
+          ],
+          "template": [
+            {
+              "containers": [
+                {
+                  "build_info": [],
+                  "env": [],
+                  "liveness_probe": [],
+                  "ports": [
+                    {}
+                  ],
+                  "readiness_probe": [],
+                  "resources": [
+                    {
+                      "limits": {}
+                    }
+                  ],
+                  "startup_probe": [
+                    {
+                      "grpc": [],
+                      "http_get": [],
+                      "tcp_socket": [
+                        {}
+                      ]
+                    }
+                  ],
+                  "volume_mounts": []
+                }
+              ],
+              "node_selector": [],
+              "sandboxes": [],
+              "scaling": [
+                {}
+              ],
+              "volumes": [],
+              "vpc_access": [
+                {
+                  "network_interfaces": [
+                    {}
+                  ]
+                }
+              ],
+              "workload_identity_config": []
+            }
+          ],
+          "terminal_condition": [
+            {}
+          ],
+          "terraform_labels": {},
+          "traffic": [
+            {}
+          ],
+          "traffic_statuses": [
+            {}
+          ],
+          "urls": [
+            false,
+            false
+          ]
+        },
+        "after_sensitive": {
+          "annotations": {},
+          "binary_authorization": [],
+          "build_config": [],
+          "conditions": [
+            {},
+            {}
+          ],
+          "custom_audiences": [],
+          "effective_annotations": {},
+          "effective_labels": {},
+          "labels": {},
+          "multi_region_settings": [],
+          "scaling": [
+            {}
+          ],
+          "template": [
+            {
+              "annotations": {},
+              "containers": [
+                {
+                  "args": [],
+                  "build_info": [],
+                  "command": [],
+                  "depends_on": [],
+                  "env": [],
+                  "liveness_probe": [],
+                  "ports": [
+                    {}
+                  ],
+                  "readiness_probe": [],
+                  "resources": [
+                    {
+                      "limits": {}
+                    }
+                  ],
+                  "startup_probe": [
+                    {
+                      "grpc": [],
+                      "http_get": [],
+                      "tcp_socket": [
+                        {}
+                      ]
+                    }
+                  ],
+                  "volume_mounts": []
+                }
+              ],
+              "labels": {},
+              "node_selector": [],
+              "sandboxes": [],
+              "scaling": [
+                {}
+              ],
+              "volumes": [],
+              "vpc_access": [
+                {
+                  "network_interfaces": [
+                    {
+                      "tags": []
+                    }
+                  ]
+                }
+              ],
+              "workload_identity_config": []
+            }
+          ],
+          "terminal_condition": [
+            {}
+          ],
+          "terraform_labels": {},
+          "traffic": [
+            {}
+          ],
+          "traffic_statuses": [
+            {}
+          ],
+          "urls": [
+            false,
+            false
+          ]
+        },
+        "before_identity": {
+          "location": "europe-west1",
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123"
+        },
+        "after_identity": {
+          "location": "europe-west1",
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123"
+        }
+      }
+    },
+    {
+      "address": "google_compute_backend_service.service",
+      "mode": "managed",
+      "type": "google_compute_backend_service",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "affinity_cookie_ttl_sec": 0,
+          "backend": [
+            {
+              "balancing_mode": "UTILIZATION",
+              "capacity_scaler": 1,
+              "custom_metrics": [],
+              "description": "",
+              "group": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+              "max_connections": 0,
+              "max_connections_per_endpoint": 0,
+              "max_connections_per_instance": 0,
+              "max_rate": 0,
+              "max_rate_per_endpoint": 0,
+              "max_rate_per_instance": 0,
+              "max_utilization": 0,
+              "preference": ""
+            }
+          ],
+          "cdn_policy": [],
+          "circuit_breakers": [],
+          "compression_mode": "",
+          "connection_draining_timeout_sec": 300,
+          "consistent_hash": [],
+          "creation_timestamp": "2026-11-06T09:25:33.629-08:00",
+          "custom_metrics": [],
+          "custom_request_headers": null,
+          "custom_response_headers": null,
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "edge_security_policy": "",
+          "enable_cdn": false,
+          "external_managed_migration_state": "",
+          "external_managed_migration_testing_percentage": 0,
+          "fingerprint": "7YU4Gj-u4oE=",
+          "generated_id": 6446927883494732643,
+          "health_checks": null,
+          "iap": [],
+          "id": "projects/example-project-123/global/backendServices/cloudgate-plb3nv2t74e6",
+          "ip_address_selection_policy": "",
+          "load_balancing_scheme": "EXTERNAL_MANAGED",
+          "locality_lb_policies": [],
+          "locality_lb_policy": "",
+          "log_config": [],
+          "max_stream_duration": [],
+          "name": "cloudgate-plb3nv2t74e6",
+          "outlier_detection": [],
+          "params": [],
+          "port_name": "http",
+          "project": "example-project-123",
+          "protocol": "HTTPS",
+          "security_policy": "",
+          "security_settings": [],
+          "self_link": "https://www.googleapis.com/compute/v1/projects/example-project-123/global/backendServices/cloudgate-plb3nv2t74e6",
+          "service_lb_policy": "",
+          "session_affinity": "NONE",
+          "strong_session_affinity_cookie": [],
+          "timeout_sec": 30,
+          "timeouts": null,
+          "tls_settings": []
+        },
+        "after": {
+          "affinity_cookie_ttl_sec": 0,
+          "backend": [
+            {
+              "balancing_mode": "UTILIZATION",
+              "capacity_scaler": 1,
+              "custom_metrics": [],
+              "description": "",
+              "group": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+              "max_connections": 0,
+              "max_connections_per_endpoint": 0,
+              "max_connections_per_instance": 0,
+              "max_rate": 0,
+              "max_rate_per_endpoint": 0,
+              "max_rate_per_instance": 0,
+              "max_utilization": 0,
+              "preference": ""
+            }
+          ],
+          "cdn_policy": [],
+          "circuit_breakers": [],
+          "compression_mode": "",
+          "connection_draining_timeout_sec": 300,
+          "consistent_hash": [],
+          "creation_timestamp": "2026-11-06T09:25:33.629-08:00",
+          "custom_metrics": [],
+          "custom_request_headers": [],
+          "custom_response_headers": [],
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "edge_security_policy": "",
+          "enable_cdn": false,
+          "external_managed_migration_state": "",
+          "external_managed_migration_testing_percentage": 0,
+          "fingerprint": "7YU4Gj-u4oE=",
+          "generated_id": 6446927883494732643,
+          "health_checks": [],
+          "iap": [],
+          "id": "projects/example-project-123/global/backendServices/cloudgate-plb3nv2t74e6",
+          "ip_address_selection_policy": "",
+          "load_balancing_scheme": "EXTERNAL_MANAGED",
+          "locality_lb_policies": [],
+          "locality_lb_policy": "",
+          "log_config": [],
+          "max_stream_duration": [],
+          "name": "cloudgate-plb3nv2t74e6",
+          "outlier_detection": [],
+          "params": [],
+          "port_name": "http",
+          "project": "example-project-123",
+          "protocol": "HTTPS",
+          "security_policy": "",
+          "security_settings": [],
+          "self_link": "https://www.googleapis.com/compute/v1/projects/example-project-123/global/backendServices/cloudgate-plb3nv2t74e6",
+          "service_lb_policy": "",
+          "session_affinity": "NONE",
+          "strong_session_affinity_cookie": [],
+          "timeout_sec": 30,
+          "timeouts": null,
+          "tls_settings": []
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "backend": [
+            {
+              "custom_metrics": []
+            }
+          ],
+          "cdn_policy": [],
+          "circuit_breakers": [],
+          "consistent_hash": [],
+          "custom_metrics": [],
+          "iap": [],
+          "locality_lb_policies": [],
+          "log_config": [],
+          "max_stream_duration": [],
+          "outlier_detection": [],
+          "params": [],
+          "security_settings": [],
+          "strong_session_affinity_cookie": [],
+          "tls_settings": []
+        },
+        "after_sensitive": {
+          "backend": [
+            {
+              "custom_metrics": []
+            }
+          ],
+          "cdn_policy": [],
+          "circuit_breakers": [],
+          "consistent_hash": [],
+          "custom_metrics": [],
+          "custom_request_headers": [],
+          "custom_response_headers": [],
+          "health_checks": [],
+          "iap": [],
+          "locality_lb_policies": [],
+          "log_config": [],
+          "max_stream_duration": [],
+          "outlier_detection": [],
+          "params": [],
+          "security_settings": [],
+          "strong_session_affinity_cookie": [],
+          "tls_settings": []
+        },
+        "before_identity": {
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123"
+        },
+        "after_identity": {
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123"
+        }
+      }
+    }
+  ],
+  "resource_changes": [
+    {
+      "address": "google_artifact_registry_repository.service",
+      "mode": "managed",
+      "type": "google_artifact_registry_repository",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "cleanup_policies": [
+            {
+              "action": "DELETE",
+              "condition": [
+                {
+                  "newer_than": "",
+                  "older_than": "86400s",
+                  "package_name_prefixes": [],
+                  "tag_prefixes": [],
+                  "tag_state": "UNTAGGED",
+                  "version_name_prefixes": []
+                }
+              ],
+              "id": "delete-untagged",
+              "most_recent_versions": []
+            }
+          ],
+          "cleanup_policy_dry_run": false,
+          "create_time": "2026-11-06T17:24:23.815813Z",
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "docker_config": [],
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "format": "DOCKER",
+          "id": "projects/example-project-123/locations/europe-west1/repositories/cloudgate-plb3nv2t74e6",
+          "kms_key_name": "",
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "location": "europe-west1",
+          "maven_config": [],
+          "mode": "STANDARD_REPOSITORY",
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123",
+          "registry_uri": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6",
+          "remote_repository_config": [],
+          "repository_id": "cloudgate-plb3nv2t74e6",
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "timeouts": null,
+          "update_time": "2026-11-06T17:29:06.398846Z",
+          "virtual_repository_config": [],
+          "vulnerability_scanning_config": [
+            {
+              "enablement_config": "",
+              "enablement_state": "SCANNING_DISABLED",
+              "enablement_state_reason": "API containerscanning.googleapis.com is not enabled."
+            }
+          ]
+        },
+        "after": {
+          "cleanup_policies": [
+            {
+              "action": "DELETE",
+              "condition": [
+                {
+                  "newer_than": "",
+                  "older_than": "86400s",
+                  "package_name_prefixes": [],
+                  "tag_prefixes": [],
+                  "tag_state": "UNTAGGED",
+                  "version_name_prefixes": []
+                }
+              ],
+              "id": "delete-untagged",
+              "most_recent_versions": []
+            }
+          ],
+          "cleanup_policy_dry_run": false,
+          "create_time": "2026-11-06T17:24:23.815813Z",
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "docker_config": [],
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "format": "DOCKER",
+          "id": "projects/example-project-123/locations/europe-west1/repositories/cloudgate-plb3nv2t74e6",
+          "kms_key_name": "",
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "location": "europe-west1",
+          "maven_config": [],
+          "mode": "STANDARD_REPOSITORY",
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123",
+          "registry_uri": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6",
+          "remote_repository_config": [],
+          "repository_id": "cloudgate-plb3nv2t74e6",
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "timeouts": null,
+          "update_time": "2026-11-06T17:29:06.398846Z",
+          "virtual_repository_config": [],
+          "vulnerability_scanning_config": [
+            {
+              "enablement_config": "",
+              "enablement_state": "SCANNING_DISABLED",
+              "enablement_state_reason": "API containerscanning.googleapis.com is not enabled."
+            }
+          ]
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "cleanup_policies": [
+            {
+              "condition": [
+                {
+                  "package_name_prefixes": [],
+                  "tag_prefixes": [],
+                  "version_name_prefixes": []
+                }
+              ],
+              "most_recent_versions": []
+            }
+          ],
+          "docker_config": [],
+          "effective_labels": {},
+          "labels": {},
+          "maven_config": [],
+          "remote_repository_config": [],
+          "terraform_labels": {},
+          "virtual_repository_config": [],
+          "vulnerability_scanning_config": [
+            {}
+          ]
+        },
+        "after_sensitive": {
+          "cleanup_policies": [
+            {
+              "condition": [
+                {
+                  "package_name_prefixes": [],
+                  "tag_prefixes": [],
+                  "version_name_prefixes": []
+                }
+              ],
+              "most_recent_versions": []
+            }
+          ],
+          "docker_config": [],
+          "effective_labels": {},
+          "labels": {},
+          "maven_config": [],
+          "remote_repository_config": [],
+          "terraform_labels": {},
+          "virtual_repository_config": [],
+          "vulnerability_scanning_config": [
+            {}
+          ]
+        },
+        "before_identity": {
+          "location": "europe-west1",
+          "project": "example-project-123",
+          "repository_id": "cloudgate-plb3nv2t74e6"
+        },
+        "after_identity": {
+          "location": "europe-west1",
+          "project": "example-project-123",
+          "repository_id": "cloudgate-plb3nv2t74e6"
+        }
+      }
+    },
+    {
+      "address": "google_cloud_run_v2_service.service",
+      "mode": "managed",
+      "type": "google_cloud_run_v2_service",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "annotations": {},
+          "binary_authorization": [],
+          "build_config": [],
+          "client": "",
+          "client_version": "",
+          "conditions": [
+            {
+              "execution_reason": "",
+              "last_transition_time": "2026-11-06T17:25:26.807160Z",
+              "message": "",
+              "reason": "",
+              "revision_reason": "",
+              "severity": "",
+              "state": "CONDITION_SUCCEEDED",
+              "type": "RoutesReady"
+            },
+            {
+              "execution_reason": "",
+              "last_transition_time": "2026-11-06T17:25:20.900728Z",
+              "message": "",
+              "reason": "",
+              "revision_reason": "",
+              "severity": "",
+              "state": "CONDITION_SUCCEEDED",
+              "type": "ConfigurationsReady"
+            }
+          ],
+          "create_time": "2026-11-06T17:25:16.547588Z",
+          "creator": "cloudgate-deploy-lqinodt54kzk@example-project-123.iam.gserviceaccount.com",
+          "custom_audiences": [],
+          "default_uri_disabled": false,
+          "delete_time": "",
+          "deletion_policy": "DELETE",
+          "deletion_protection": false,
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "effective_annotations": {},
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "etag": "\"CPCbuNcGEICFl9YB/cHJvamVjdHMvY2xvdWRnYXRlLXRlc3QtMTIzL2xvY2F0aW9ucy91cy1jZW50cmFsMS9zZXJ2aWNlcy9jbG91ZGdhdGUtY3BoY3h2NmF4a25z\"",
+          "expire_time": "",
+          "generation": "2",
+          "iap_enabled": false,
+          "id": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6",
+          "ingress": "INGRESS_TRAFFIC_ALL",
+          "invoker_iam_disabled": true,
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "last_modifier": "cloudgate-deploy-lqinodt54kzk@example-project-123.iam.gserviceaccount.com",
+          "latest_created_revision": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6/revisions/cloudgate-plb3nv2t74e6-00001-lvj",
+          "latest_ready_revision": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6/revisions/cloudgate-plb3nv2t74e6-00001-lvj",
+          "launch_stage": "GA",
+          "location": "europe-west1",
+          "multi_region_settings": [],
+          "name": "cloudgate-plb3nv2t74e6",
+          "observed_generation": "2",
+          "project": "example-project-123",
+          "reconciling": false,
+          "scaling": [
+            {
+              "manual_instance_count": 0,
+              "max_instance_count": 12,
+              "min_instance_count": 0,
+              "scaling_mode": "AUTOMATIC"
+            }
+          ],
+          "ssh_enabled": false,
+          "tags": null,
+          "template": [
+            {
+              "annotations": {},
+              "containers": [
+                {
+                  "args": [],
+                  "base_image_uri": "",
+                  "build_info": [],
+                  "command": [],
+                  "depends_on": [],
+                  "env": [],
+                  "image": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6/service:dep_1",
+                  "liveness_probe": [],
+                  "name": "service",
+                  "ports": [
+                    {
+                      "container_port": 8080,
+                      "name": "http1"
+                    }
+                  ],
+                  "readiness_probe": [],
+                  "resources": [
+                    {
+                      "cpu_idle": true,
+                      "limits": {
+                        "cpu": "1",
+                        "memory": "1Gi"
+                      },
+                      "startup_cpu_boost": false
+                    }
+                  ],
+                  "sandbox_launcher": false,
+                  "startup_probe": [
+                    {
+                      "failure_threshold": 1,
+                      "grpc": [],
+                      "http_get": [],
+                      "initial_delay_seconds": 0,
+                      "period_seconds": 240,
+                      "tcp_socket": [
+                        {
+                          "port": 8080
+                        }
+                      ],
+                      "timeout_seconds": 240
+                    }
+                  ],
+                  "volume_mounts": [],
+                  "working_dir": ""
+                }
+              ],
+              "encryption_key": "",
+              "execution_environment": "",
+              "gpu_zonal_redundancy_disabled": false,
+              "health_check_disabled": false,
+              "labels": {},
+              "max_instance_request_concurrency": 80,
+              "node_selector": [],
+              "revision": "",
+              "sandboxes": [],
+              "scaling": [
+                {
+                  "concurrency_utilization": 0,
+                  "cpu_utilization": 0,
+                  "max_instance_count": 10,
+                  "min_instance_count": 0
+                }
+              ],
+              "service_account": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "session_affinity": false,
+              "timeout": "300s",
+              "volumes": [],
+              "vpc_access": [
+                {
+                  "connector": "",
+                  "egress": "PRIVATE_RANGES_ONLY",
+                  "network_interfaces": [
+                    {
+                      "network": "cloudgate-w33lemwkholw-net",
+                      "subnetwork": "cloudgate-w33lemwkholw-subnet",
+                      "tags": []
+                    }
+                  ]
+                }
+              ],
+              "workload_identity_config": []
+            }
+          ],
+          "terminal_condition": [
+            {
+              "execution_reason": "",
+              "last_transition_time": "2026-11-06T17:27:12.607175Z",
+              "message": "",
+              "reason": "",
+              "revision_reason": "",
+              "severity": "",
+              "state": "CONDITION_SUCCEEDED",
+              "type": "Ready"
+            }
+          ],
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "timeouts": null,
+          "traffic": [
+            {
+              "percent": 100,
+              "revision": "",
+              "tag": "",
+              "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+            }
+          ],
+          "traffic_statuses": [
+            {
+              "percent": 100,
+              "revision": "cloudgate-plb3nv2t74e6-00001-lvj",
+              "tag": "",
+              "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
+              "uri": ""
+            }
+          ],
+          "uid": "d4bd79c1-547f-4a0c-ad67-498c11370429",
+          "update_time": "2026-11-06T17:27:12.449168Z",
+          "uri": "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app",
+          "urls": [
+            "https://cloudgate-plb3nv2t74e6-123456789012.europe-west1.run.app",
+            "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app"
+          ]
+        },
+        "after": {
+          "annotations": {},
+          "binary_authorization": [],
+          "build_config": [],
+          "client": "",
+          "client_version": "",
+          "conditions": [
+            {
+              "execution_reason": "",
+              "last_transition_time": "2026-11-06T17:25:26.807160Z",
+              "message": "",
+              "reason": "",
+              "revision_reason": "",
+              "severity": "",
+              "state": "CONDITION_SUCCEEDED",
+              "type": "RoutesReady"
+            },
+            {
+              "execution_reason": "",
+              "last_transition_time": "2026-11-06T17:25:20.900728Z",
+              "message": "",
+              "reason": "",
+              "revision_reason": "",
+              "severity": "",
+              "state": "CONDITION_SUCCEEDED",
+              "type": "ConfigurationsReady"
+            }
+          ],
+          "create_time": "2026-11-06T17:25:16.547588Z",
+          "creator": "cloudgate-deploy-lqinodt54kzk@example-project-123.iam.gserviceaccount.com",
+          "custom_audiences": [],
+          "default_uri_disabled": false,
+          "delete_time": "",
+          "deletion_policy": "DELETE",
+          "deletion_protection": false,
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "effective_annotations": {},
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "etag": "\"CPCbuNcGEICFl9YB/cHJvamVjdHMvY2xvdWRnYXRlLXRlc3QtMTIzL2xvY2F0aW9ucy91cy1jZW50cmFsMS9zZXJ2aWNlcy9jbG91ZGdhdGUtY3BoY3h2NmF4a25z\"",
+          "expire_time": "",
+          "generation": "2",
+          "iap_enabled": false,
+          "id": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6",
+          "ingress": "INGRESS_TRAFFIC_ALL",
+          "invoker_iam_disabled": true,
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "last_modifier": "cloudgate-deploy-lqinodt54kzk@example-project-123.iam.gserviceaccount.com",
+          "latest_created_revision": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6/revisions/cloudgate-plb3nv2t74e6-00001-lvj",
+          "latest_ready_revision": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6/revisions/cloudgate-plb3nv2t74e6-00001-lvj",
+          "launch_stage": "GA",
+          "location": "europe-west1",
+          "multi_region_settings": [],
+          "name": "cloudgate-plb3nv2t74e6",
+          "observed_generation": "2",
+          "project": "example-project-123",
+          "reconciling": false,
+          "scaling": [
+            {
+              "manual_instance_count": 0,
+              "max_instance_count": 12,
+              "min_instance_count": 0,
+              "scaling_mode": "AUTOMATIC"
+            }
+          ],
+          "ssh_enabled": false,
+          "tags": null,
+          "template": [
+            {
+              "annotations": {},
+              "containers": [
+                {
+                  "args": [],
+                  "base_image_uri": "",
+                  "build_info": [],
+                  "command": [],
+                  "depends_on": [],
+                  "env": [
+                    {
+                      "name": "WALK_GREETING",
+                      "value": "",
+                      "value_source": [
+                        {
+                          "secret_key_ref": [
+                            {
+                              "secret": "cloudgate-plb3nv2t74e6-WALK_GREETING"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "image": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6/service:dep_2",
+                  "liveness_probe": [],
+                  "name": "service",
+                  "ports": [
+                    {
+                      "container_port": 8080,
+                      "name": "http1"
+                    }
+                  ],
+                  "readiness_probe": [],
+                  "resources": [
+                    {
+                      "cpu_idle": true,
+                      "limits": {
+                        "cpu": "1",
+                        "memory": "1Gi"
+                      },
+                      "startup_cpu_boost": false
+                    }
+                  ],
+                  "sandbox_launcher": false,
+                  "startup_probe": [
+                    {
+                      "failure_threshold": 1,
+                      "grpc": [],
+                      "http_get": [],
+                      "initial_delay_seconds": 0,
+                      "period_seconds": 240,
+                      "tcp_socket": [
+                        {
+                          "port": 8080
+                        }
+                      ],
+                      "timeout_seconds": 240
+                    }
+                  ],
+                  "volume_mounts": [],
+                  "working_dir": ""
+                }
+              ],
+              "encryption_key": "",
+              "execution_environment": "",
+              "gpu_zonal_redundancy_disabled": false,
+              "health_check_disabled": false,
+              "labels": {},
+              "max_instance_request_concurrency": 80,
+              "node_selector": [],
+              "revision": "",
+              "sandboxes": [],
+              "scaling": [
+                {
+                  "concurrency_utilization": 0,
+                  "cpu_utilization": 0,
+                  "max_instance_count": 10,
+                  "min_instance_count": 0
+                }
+              ],
+              "service_account": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "session_affinity": false,
+              "timeout": "300s",
+              "volumes": [],
+              "vpc_access": [
+                {
+                  "connector": "",
+                  "egress": "PRIVATE_RANGES_ONLY",
+                  "network_interfaces": [
+                    {
+                      "network": "cloudgate-w33lemwkholw-net",
+                      "subnetwork": "cloudgate-w33lemwkholw-subnet",
+                      "tags": []
+                    }
+                  ]
+                }
+              ],
+              "workload_identity_config": []
+            }
+          ],
+          "terminal_condition": [
+            {
+              "execution_reason": "",
+              "last_transition_time": "2026-11-06T17:27:12.607175Z",
+              "message": "",
+              "reason": "",
+              "revision_reason": "",
+              "severity": "",
+              "state": "CONDITION_SUCCEEDED",
+              "type": "Ready"
+            }
+          ],
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "timeouts": null,
+          "traffic": [
+            {
+              "percent": 100,
+              "revision": "",
+              "tag": "",
+              "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+            }
+          ],
+          "traffic_statuses": [
+            {
+              "percent": 100,
+              "revision": "cloudgate-plb3nv2t74e6-00001-lvj",
+              "tag": "",
+              "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
+              "uri": ""
+            }
+          ],
+          "uid": "d4bd79c1-547f-4a0c-ad67-498c11370429",
+          "update_time": "2026-11-06T17:27:12.449168Z",
+          "uri": "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app",
+          "urls": [
+            "https://cloudgate-plb3nv2t74e6-123456789012.europe-west1.run.app",
+            "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app"
+          ]
+        },
+        "after_unknown": {
+          "annotations": {},
+          "binary_authorization": [],
+          "build_config": [],
+          "conditions": [
+            {},
+            {}
+          ],
+          "custom_audiences": [],
+          "effective_annotations": {},
+          "effective_labels": {},
+          "labels": {},
+          "multi_region_settings": [],
+          "scaling": [
+            {}
+          ],
+          "template": [
+            {
+              "annotations": {},
+              "containers": [
+                {
+                  "args": [],
+                  "build_info": [],
+                  "command": [],
+                  "depends_on": [],
+                  "env": [
+                    {
+                      "value_source": [
+                        {
+                          "secret_key_ref": [
+                            {
+                              "version": true
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "liveness_probe": [],
+                  "ports": [
+                    {}
+                  ],
+                  "readiness_probe": [],
+                  "resources": [
+                    {
+                      "limits": {}
+                    }
+                  ],
+                  "startup_probe": [
+                    {
+                      "grpc": [],
+                      "http_get": [],
+                      "tcp_socket": [
+                        {}
+                      ]
+                    }
+                  ],
+                  "volume_mounts": []
+                }
+              ],
+              "labels": {},
+              "node_selector": [],
+              "sandboxes": [],
+              "scaling": [
+                {}
+              ],
+              "volumes": [],
+              "vpc_access": [
+                {
+                  "network_interfaces": [
+                    {
+                      "tags": []
+                    }
+                  ]
+                }
+              ],
+              "workload_identity_config": []
+            }
+          ],
+          "terminal_condition": [
+            {}
+          ],
+          "terraform_labels": {},
+          "traffic": [
+            {}
+          ],
+          "traffic_statuses": [
+            {}
+          ],
+          "urls": [
+            false,
+            false
+          ]
+        },
+        "before_sensitive": {
+          "annotations": {},
+          "binary_authorization": [],
+          "build_config": [],
+          "conditions": [
+            {},
+            {}
+          ],
+          "custom_audiences": [],
+          "effective_annotations": {},
+          "effective_labels": {},
+          "labels": {},
+          "multi_region_settings": [],
+          "scaling": [
+            {}
+          ],
+          "template": [
+            {
+              "annotations": {},
+              "containers": [
+                {
+                  "args": [],
+                  "build_info": [],
+                  "command": [],
+                  "depends_on": [],
+                  "env": [],
+                  "liveness_probe": [],
+                  "ports": [
+                    {}
+                  ],
+                  "readiness_probe": [],
+                  "resources": [
+                    {
+                      "limits": {}
+                    }
+                  ],
+                  "startup_probe": [
+                    {
+                      "grpc": [],
+                      "http_get": [],
+                      "tcp_socket": [
+                        {}
+                      ]
+                    }
+                  ],
+                  "volume_mounts": []
+                }
+              ],
+              "labels": {},
+              "node_selector": [],
+              "sandboxes": [],
+              "scaling": [
+                {}
+              ],
+              "volumes": [],
+              "vpc_access": [
+                {
+                  "network_interfaces": [
+                    {
+                      "tags": []
+                    }
+                  ]
+                }
+              ],
+              "workload_identity_config": []
+            }
+          ],
+          "terminal_condition": [
+            {}
+          ],
+          "terraform_labels": {},
+          "traffic": [
+            {}
+          ],
+          "traffic_statuses": [
+            {}
+          ],
+          "urls": [
+            false,
+            false
+          ]
+        },
+        "after_sensitive": {
+          "annotations": {},
+          "binary_authorization": [],
+          "build_config": [],
+          "conditions": [
+            {},
+            {}
+          ],
+          "custom_audiences": [],
+          "effective_annotations": {},
+          "effective_labels": {},
+          "labels": {},
+          "multi_region_settings": [],
+          "scaling": [
+            {}
+          ],
+          "template": [
+            {
+              "annotations": {},
+              "containers": [
+                {
+                  "args": [],
+                  "build_info": [],
+                  "command": [],
+                  "depends_on": [],
+                  "env": [
+                    {
+                      "value_source": [
+                        {
+                          "secret_key_ref": [
+                            {}
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "liveness_probe": [],
+                  "ports": [
+                    {}
+                  ],
+                  "readiness_probe": [],
+                  "resources": [
+                    {
+                      "limits": {}
+                    }
+                  ],
+                  "startup_probe": [
+                    {
+                      "grpc": [],
+                      "http_get": [],
+                      "tcp_socket": [
+                        {}
+                      ]
+                    }
+                  ],
+                  "volume_mounts": []
+                }
+              ],
+              "labels": {},
+              "node_selector": [],
+              "sandboxes": [],
+              "scaling": [
+                {}
+              ],
+              "volumes": [],
+              "vpc_access": [
+                {
+                  "network_interfaces": [
+                    {
+                      "tags": []
+                    }
+                  ]
+                }
+              ],
+              "workload_identity_config": []
+            }
+          ],
+          "terminal_condition": [
+            {}
+          ],
+          "terraform_labels": {},
+          "traffic": [
+            {}
+          ],
+          "traffic_statuses": [
+            {}
+          ],
+          "urls": [
+            false,
+            false
+          ]
+        },
+        "before_identity": {
+          "location": "europe-west1",
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123"
+        },
+        "after_identity": {
+          "location": "europe-west1",
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123"
+        }
+      }
+    },
+    {
+      "address": "google_compute_backend_service.service",
+      "mode": "managed",
+      "type": "google_compute_backend_service",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "affinity_cookie_ttl_sec": 0,
+          "backend": [
+            {
+              "balancing_mode": "UTILIZATION",
+              "capacity_scaler": 1,
+              "custom_metrics": [],
+              "description": "",
+              "group": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+              "max_connections": 0,
+              "max_connections_per_endpoint": 0,
+              "max_connections_per_instance": 0,
+              "max_rate": 0,
+              "max_rate_per_endpoint": 0,
+              "max_rate_per_instance": 0,
+              "max_utilization": 0,
+              "preference": ""
+            }
+          ],
+          "cdn_policy": [],
+          "circuit_breakers": [],
+          "compression_mode": "",
+          "connection_draining_timeout_sec": 300,
+          "consistent_hash": [],
+          "creation_timestamp": "2026-11-06T09:25:33.629-08:00",
+          "custom_metrics": [],
+          "custom_request_headers": [],
+          "custom_response_headers": [],
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "edge_security_policy": "",
+          "enable_cdn": false,
+          "external_managed_migration_state": "",
+          "external_managed_migration_testing_percentage": 0,
+          "fingerprint": "7YU4Gj-u4oE=",
+          "generated_id": 6446927883494732643,
+          "health_checks": [],
+          "iap": [],
+          "id": "projects/example-project-123/global/backendServices/cloudgate-plb3nv2t74e6",
+          "ip_address_selection_policy": "",
+          "load_balancing_scheme": "EXTERNAL_MANAGED",
+          "locality_lb_policies": [],
+          "locality_lb_policy": "",
+          "log_config": [],
+          "max_stream_duration": [],
+          "name": "cloudgate-plb3nv2t74e6",
+          "outlier_detection": [],
+          "params": [],
+          "port_name": "http",
+          "project": "example-project-123",
+          "protocol": "HTTPS",
+          "security_policy": "",
+          "security_settings": [],
+          "self_link": "https://www.googleapis.com/compute/v1/projects/example-project-123/global/backendServices/cloudgate-plb3nv2t74e6",
+          "service_lb_policy": "",
+          "session_affinity": "NONE",
+          "strong_session_affinity_cookie": [],
+          "timeout_sec": 30,
+          "timeouts": null,
+          "tls_settings": []
+        },
+        "after": {
+          "affinity_cookie_ttl_sec": 0,
+          "backend": [
+            {
+              "balancing_mode": "UTILIZATION",
+              "capacity_scaler": 1,
+              "custom_metrics": [],
+              "description": "",
+              "group": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+              "max_connections": 0,
+              "max_connections_per_endpoint": 0,
+              "max_connections_per_instance": 0,
+              "max_rate": 0,
+              "max_rate_per_endpoint": 0,
+              "max_rate_per_instance": 0,
+              "max_utilization": 0,
+              "preference": ""
+            }
+          ],
+          "cdn_policy": [],
+          "circuit_breakers": [],
+          "compression_mode": "",
+          "connection_draining_timeout_sec": 300,
+          "consistent_hash": [],
+          "creation_timestamp": "2026-11-06T09:25:33.629-08:00",
+          "custom_metrics": [],
+          "custom_request_headers": [],
+          "custom_response_headers": [],
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "edge_security_policy": "",
+          "enable_cdn": false,
+          "external_managed_migration_state": "",
+          "external_managed_migration_testing_percentage": 0,
+          "fingerprint": "7YU4Gj-u4oE=",
+          "generated_id": 6446927883494732643,
+          "health_checks": [],
+          "iap": [],
+          "id": "projects/example-project-123/global/backendServices/cloudgate-plb3nv2t74e6",
+          "ip_address_selection_policy": "",
+          "load_balancing_scheme": "EXTERNAL_MANAGED",
+          "locality_lb_policies": [],
+          "locality_lb_policy": "",
+          "log_config": [],
+          "max_stream_duration": [],
+          "name": "cloudgate-plb3nv2t74e6",
+          "outlier_detection": [],
+          "params": [],
+          "port_name": "http",
+          "project": "example-project-123",
+          "protocol": "HTTPS",
+          "security_policy": "",
+          "security_settings": [],
+          "self_link": "https://www.googleapis.com/compute/v1/projects/example-project-123/global/backendServices/cloudgate-plb3nv2t74e6",
+          "service_lb_policy": "",
+          "session_affinity": "NONE",
+          "strong_session_affinity_cookie": [],
+          "timeout_sec": 30,
+          "timeouts": null,
+          "tls_settings": []
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "backend": [
+            {
+              "custom_metrics": []
+            }
+          ],
+          "cdn_policy": [],
+          "circuit_breakers": [],
+          "consistent_hash": [],
+          "custom_metrics": [],
+          "custom_request_headers": [],
+          "custom_response_headers": [],
+          "health_checks": [],
+          "iap": [],
+          "locality_lb_policies": [],
+          "log_config": [],
+          "max_stream_duration": [],
+          "outlier_detection": [],
+          "params": [],
+          "security_settings": [],
+          "strong_session_affinity_cookie": [],
+          "tls_settings": []
+        },
+        "after_sensitive": {
+          "backend": [
+            {
+              "custom_metrics": []
+            }
+          ],
+          "cdn_policy": [],
+          "circuit_breakers": [],
+          "consistent_hash": [],
+          "custom_metrics": [],
+          "custom_request_headers": [],
+          "custom_response_headers": [],
+          "health_checks": [],
+          "iap": [],
+          "locality_lb_policies": [],
+          "log_config": [],
+          "max_stream_duration": [],
+          "outlier_detection": [],
+          "params": [],
+          "security_settings": [],
+          "strong_session_affinity_cookie": [],
+          "tls_settings": []
+        },
+        "before_identity": {
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123"
+        },
+        "after_identity": {
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123"
+        }
+      }
+    },
+    {
+      "address": "google_compute_region_network_endpoint_group.service",
+      "mode": "managed",
+      "type": "google_compute_region_network_endpoint_group",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "app_engine": [],
+          "cloud_function": [],
+          "cloud_run": [
+            {
+              "service": "cloudgate-plb3nv2t74e6",
+              "tag": "",
+              "url_mask": ""
+            }
+          ],
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "id": "projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+          "name": "cloudgate-plb3nv2t74e6",
+          "network": "",
+          "network_endpoint_type": "SERVERLESS",
+          "project": "example-project-123",
+          "psc_data": [],
+          "psc_target_service": "",
+          "region": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1",
+          "self_link": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+          "subnetwork": "",
+          "timeouts": null
+        },
+        "after": {
+          "app_engine": [],
+          "cloud_function": [],
+          "cloud_run": [
+            {
+              "service": "cloudgate-plb3nv2t74e6",
+              "tag": "",
+              "url_mask": ""
+            }
+          ],
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "id": "projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+          "name": "cloudgate-plb3nv2t74e6",
+          "network": "",
+          "network_endpoint_type": "SERVERLESS",
+          "project": "example-project-123",
+          "psc_data": [],
+          "psc_target_service": "",
+          "region": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1",
+          "self_link": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+          "subnetwork": "",
+          "timeouts": null
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "app_engine": [],
+          "cloud_function": [],
+          "cloud_run": [
+            {}
+          ],
+          "psc_data": []
+        },
+        "after_sensitive": {
+          "app_engine": [],
+          "cloud_function": [],
+          "cloud_run": [
+            {}
+          ],
+          "psc_data": []
+        },
+        "before_identity": {
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123",
+          "region": "europe-west1"
+        },
+        "after_identity": {
+          "name": "cloudgate-plb3nv2t74e6",
+          "project": "example-project-123",
+          "region": "europe-west1"
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret.variable[\"WALK_GREETING\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret",
+      "name": "variable",
+      "index": "WALK_GREETING",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "annotations": null,
+          "deletion_policy": "DELETE",
+          "deletion_protection": false,
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "project": "example-project-123",
+          "replication": [
+            {
+              "auto": [
+                {
+                  "customer_managed_encryption": []
+                }
+              ],
+              "user_managed": []
+            }
+          ],
+          "rotation": [],
+          "secret_id": "cloudgate-plb3nv2t74e6-WALK_GREETING",
+          "secret_type": null,
+          "tags": null,
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "7rhuqxy3gm43"
+          },
+          "timeouts": null,
+          "topics": [],
+          "ttl": null,
+          "version_aliases": null,
+          "version_destroy_ttl": null
+        },
+        "after_unknown": {
+          "create_time": true,
+          "effective_annotations": true,
+          "effective_labels": {},
+          "expire_time": true,
+          "id": true,
+          "labels": {},
+          "name": true,
+          "replication": [
+            {
+              "auto": [
+                {
+                  "customer_managed_encryption": []
+                }
+              ],
+              "user_managed": []
+            }
+          ],
+          "rotation": [],
+          "terraform_labels": {},
+          "topics": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "effective_annotations": {},
+          "effective_labels": {},
+          "labels": {},
+          "replication": [
+            {
+              "auto": [
+                {
+                  "customer_managed_encryption": []
+                }
+              ],
+              "user_managed": []
+            }
+          ],
+          "rotation": [],
+          "terraform_labels": {},
+          "topics": []
+        },
+        "after_identity": {
+          "project": null,
+          "secret_id": null
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret_iam_member.variable[\"WALK_GREETING\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret_iam_member",
+      "name": "variable",
+      "index": "WALK_GREETING",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "condition": [],
+          "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "role": "roles/secretmanager.secretAccessor"
+        },
+        "after_unknown": {
+          "condition": [],
+          "etag": true,
+          "id": true,
+          "project": true,
+          "secret_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "condition": []
+        }
+      }
+    },
+    {
+      "address": "google_secret_manager_secret_version.variable[\"WALK_GREETING\"]",
+      "mode": "managed",
+      "type": "google_secret_manager_secret_version",
+      "name": "variable",
+      "index": "WALK_GREETING",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "enabled": true,
+          "is_secret_data_base64": null,
+          "secret_data": "hunter2-very-secret",
+          "secret_data_wo": null,
+          "secret_data_wo_version": null,
+          "timeouts": null
+        },
+        "after_unknown": {
+          "create_time": true,
+          "deletion_policy": true,
+          "destroy_time": true,
+          "id": true,
+          "name": true,
+          "project": true,
+          "secret": true,
+          "version": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "secret_data": true
+        }
+      }
+    },
+    {
+      "address": "google_service_account.service",
+      "mode": "managed",
+      "type": "google_service_account",
+      "name": "service",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "account_id": "cloudgate-plb3nv2t74e6",
+          "create_ignore_already_exists": null,
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "disabled": false,
+          "display_name": "",
+          "email": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "id": "projects/example-project-123/serviceAccounts/cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "name": "projects/example-project-123/serviceAccounts/cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123",
+          "timeouts": null,
+          "unique_id": "115272916555036410164"
+        },
+        "after": {
+          "account_id": "cloudgate-plb3nv2t74e6",
+          "create_ignore_already_exists": null,
+          "deletion_policy": "DELETE",
+          "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+          "disabled": false,
+          "display_name": "",
+          "email": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "id": "projects/example-project-123/serviceAccounts/cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "name": "projects/example-project-123/serviceAccounts/cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123",
+          "timeouts": null,
+          "unique_id": "115272916555036410164"
+        },
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": {},
+        "before_identity": {
+          "email": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123"
+        },
+        "after_identity": {
+          "email": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+          "project": "example-project-123"
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "repository_url": {
+      "actions": [
+        "no-op"
+      ],
+      "before": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6",
+      "after": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "service_name": {
+      "actions": [
+        "no-op"
+      ],
+      "before": "cloudgate-plb3nv2t74e6",
+      "after": "cloudgate-plb3nv2t74e6",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "service_uri": {
+      "actions": [
+        "no-op"
+      ],
+      "before": "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app",
+      "after": "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "outputs": {
+        "repository_url": {
+          "sensitive": false,
+          "value": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6",
+          "type": "string"
+        },
+        "service_name": {
+          "sensitive": false,
+          "value": "cloudgate-plb3nv2t74e6",
+          "type": "string"
+        },
+        "service_uri": {
+          "sensitive": false,
+          "value": "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app",
+          "type": "string"
+        }
+      },
+      "root_module": {
+        "resources": [
+          {
+            "address": "google_artifact_registry_repository.service",
+            "mode": "managed",
+            "type": "google_artifact_registry_repository",
+            "name": "service",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "cleanup_policies": [
+                {
+                  "action": "DELETE",
+                  "condition": [
+                    {
+                      "newer_than": "",
+                      "older_than": "86400s",
+                      "package_name_prefixes": [],
+                      "tag_prefixes": [],
+                      "tag_state": "UNTAGGED",
+                      "version_name_prefixes": []
+                    }
+                  ],
+                  "id": "delete-untagged",
+                  "most_recent_versions": []
+                }
+              ],
+              "cleanup_policy_dry_run": false,
+              "create_time": "2026-11-06T17:24:23.815813Z",
+              "deletion_policy": "DELETE",
+              "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+              "docker_config": [],
+              "effective_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "format": "DOCKER",
+              "id": "projects/example-project-123/locations/europe-west1/repositories/cloudgate-plb3nv2t74e6",
+              "kms_key_name": "",
+              "labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "location": "europe-west1",
+              "maven_config": [],
+              "mode": "STANDARD_REPOSITORY",
+              "name": "cloudgate-plb3nv2t74e6",
+              "project": "example-project-123",
+              "registry_uri": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6",
+              "remote_repository_config": [],
+              "repository_id": "cloudgate-plb3nv2t74e6",
+              "terraform_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "timeouts": null,
+              "update_time": "2026-11-06T17:29:06.398846Z",
+              "virtual_repository_config": [],
+              "vulnerability_scanning_config": [
+                {
+                  "enablement_config": "",
+                  "enablement_state": "SCANNING_DISABLED",
+                  "enablement_state_reason": "API containerscanning.googleapis.com is not enabled."
+                }
+              ]
+            },
+            "sensitive_values": {
+              "cleanup_policies": [
+                {
+                  "condition": [
+                    {
+                      "package_name_prefixes": [],
+                      "tag_prefixes": [],
+                      "version_name_prefixes": []
+                    }
+                  ],
+                  "most_recent_versions": []
+                }
+              ],
+              "docker_config": [],
+              "effective_labels": {},
+              "labels": {},
+              "maven_config": [],
+              "remote_repository_config": [],
+              "terraform_labels": {},
+              "virtual_repository_config": [],
+              "vulnerability_scanning_config": [
+                {}
+              ]
+            },
+            "identity": {
+              "location": "europe-west1",
+              "project": "example-project-123",
+              "repository_id": "cloudgate-plb3nv2t74e6"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_cloud_run_v2_service.service",
+            "mode": "managed",
+            "type": "google_cloud_run_v2_service",
+            "name": "service",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "annotations": {},
+              "binary_authorization": [],
+              "build_config": [],
+              "client": "",
+              "client_version": "",
+              "conditions": [
+                {
+                  "execution_reason": "",
+                  "last_transition_time": "2026-11-06T17:25:26.807160Z",
+                  "message": "",
+                  "reason": "",
+                  "revision_reason": "",
+                  "severity": "",
+                  "state": "CONDITION_SUCCEEDED",
+                  "type": "RoutesReady"
+                },
+                {
+                  "execution_reason": "",
+                  "last_transition_time": "2026-11-06T17:25:20.900728Z",
+                  "message": "",
+                  "reason": "",
+                  "revision_reason": "",
+                  "severity": "",
+                  "state": "CONDITION_SUCCEEDED",
+                  "type": "ConfigurationsReady"
+                }
+              ],
+              "create_time": "2026-11-06T17:25:16.547588Z",
+              "creator": "cloudgate-deploy-lqinodt54kzk@example-project-123.iam.gserviceaccount.com",
+              "custom_audiences": [],
+              "default_uri_disabled": false,
+              "delete_time": "",
+              "deletion_policy": "DELETE",
+              "deletion_protection": false,
+              "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+              "effective_annotations": {},
+              "effective_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "etag": "\"CPCbuNcGEICFl9YB/cHJvamVjdHMvY2xvdWRnYXRlLXRlc3QtMTIzL2xvY2F0aW9ucy91cy1jZW50cmFsMS9zZXJ2aWNlcy9jbG91ZGdhdGUtY3BoY3h2NmF4a25z\"",
+              "expire_time": "",
+              "generation": "2",
+              "iap_enabled": false,
+              "id": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6",
+              "ingress": "INGRESS_TRAFFIC_ALL",
+              "invoker_iam_disabled": true,
+              "labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "last_modifier": "cloudgate-deploy-lqinodt54kzk@example-project-123.iam.gserviceaccount.com",
+              "latest_created_revision": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6/revisions/cloudgate-plb3nv2t74e6-00001-lvj",
+              "latest_ready_revision": "projects/example-project-123/locations/europe-west1/services/cloudgate-plb3nv2t74e6/revisions/cloudgate-plb3nv2t74e6-00001-lvj",
+              "launch_stage": "GA",
+              "location": "europe-west1",
+              "multi_region_settings": [],
+              "name": "cloudgate-plb3nv2t74e6",
+              "observed_generation": "2",
+              "project": "example-project-123",
+              "reconciling": false,
+              "scaling": [
+                {
+                  "manual_instance_count": 0,
+                  "max_instance_count": 12,
+                  "min_instance_count": 0,
+                  "scaling_mode": "AUTOMATIC"
+                }
+              ],
+              "ssh_enabled": false,
+              "tags": null,
+              "template": [
+                {
+                  "annotations": {},
+                  "containers": [
+                    {
+                      "args": [],
+                      "base_image_uri": "",
+                      "build_info": [],
+                      "command": [],
+                      "depends_on": [],
+                      "env": [],
+                      "image": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6/service:dep_1",
+                      "liveness_probe": [],
+                      "name": "service",
+                      "ports": [
+                        {
+                          "container_port": 8080,
+                          "name": "http1"
+                        }
+                      ],
+                      "readiness_probe": [],
+                      "resources": [
+                        {
+                          "cpu_idle": true,
+                          "limits": {
+                            "cpu": "1",
+                            "memory": "1Gi"
+                          },
+                          "startup_cpu_boost": false
+                        }
+                      ],
+                      "sandbox_launcher": false,
+                      "startup_probe": [
+                        {
+                          "failure_threshold": 1,
+                          "grpc": [],
+                          "http_get": [],
+                          "initial_delay_seconds": 0,
+                          "period_seconds": 240,
+                          "tcp_socket": [
+                            {
+                              "port": 8080
+                            }
+                          ],
+                          "timeout_seconds": 240
+                        }
+                      ],
+                      "volume_mounts": [],
+                      "working_dir": ""
+                    }
+                  ],
+                  "encryption_key": "",
+                  "execution_environment": "",
+                  "gpu_zonal_redundancy_disabled": false,
+                  "health_check_disabled": false,
+                  "labels": {},
+                  "max_instance_request_concurrency": 80,
+                  "node_selector": [],
+                  "revision": "",
+                  "sandboxes": [],
+                  "scaling": [
+                    {
+                      "concurrency_utilization": 0,
+                      "cpu_utilization": 0,
+                      "max_instance_count": 10,
+                      "min_instance_count": 0
+                    }
+                  ],
+                  "service_account": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+                  "session_affinity": false,
+                  "timeout": "300s",
+                  "volumes": [],
+                  "vpc_access": [
+                    {
+                      "connector": "",
+                      "egress": "PRIVATE_RANGES_ONLY",
+                      "network_interfaces": [
+                        {
+                          "network": "cloudgate-w33lemwkholw-net",
+                          "subnetwork": "cloudgate-w33lemwkholw-subnet",
+                          "tags": []
+                        }
+                      ]
+                    }
+                  ],
+                  "workload_identity_config": []
+                }
+              ],
+              "terminal_condition": [
+                {
+                  "execution_reason": "",
+                  "last_transition_time": "2026-11-06T17:27:12.607175Z",
+                  "message": "",
+                  "reason": "",
+                  "revision_reason": "",
+                  "severity": "",
+                  "state": "CONDITION_SUCCEEDED",
+                  "type": "Ready"
+                }
+              ],
+              "terraform_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              },
+              "timeouts": null,
+              "traffic": [
+                {
+                  "percent": 100,
+                  "revision": "",
+                  "tag": "",
+                  "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+                }
+              ],
+              "traffic_statuses": [
+                {
+                  "percent": 100,
+                  "revision": "cloudgate-plb3nv2t74e6-00001-lvj",
+                  "tag": "",
+                  "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
+                  "uri": ""
+                }
+              ],
+              "uid": "d4bd79c1-547f-4a0c-ad67-498c11370429",
+              "update_time": "2026-11-06T17:27:12.449168Z",
+              "uri": "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app",
+              "urls": [
+                "https://cloudgate-plb3nv2t74e6-123456789012.europe-west1.run.app",
+                "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app"
+              ]
+            },
+            "sensitive_values": {
+              "annotations": {},
+              "binary_authorization": [],
+              "build_config": [],
+              "conditions": [
+                {},
+                {}
+              ],
+              "custom_audiences": [],
+              "effective_annotations": {},
+              "effective_labels": {},
+              "labels": {},
+              "multi_region_settings": [],
+              "scaling": [
+                {}
+              ],
+              "template": [
+                {
+                  "annotations": {},
+                  "containers": [
+                    {
+                      "args": [],
+                      "build_info": [],
+                      "command": [],
+                      "depends_on": [],
+                      "env": [],
+                      "liveness_probe": [],
+                      "ports": [
+                        {}
+                      ],
+                      "readiness_probe": [],
+                      "resources": [
+                        {
+                          "limits": {}
+                        }
+                      ],
+                      "startup_probe": [
+                        {
+                          "grpc": [],
+                          "http_get": [],
+                          "tcp_socket": [
+                            {}
+                          ]
+                        }
+                      ],
+                      "volume_mounts": []
+                    }
+                  ],
+                  "labels": {},
+                  "node_selector": [],
+                  "sandboxes": [],
+                  "scaling": [
+                    {}
+                  ],
+                  "volumes": [],
+                  "vpc_access": [
+                    {
+                      "network_interfaces": [
+                        {
+                          "tags": []
+                        }
+                      ]
+                    }
+                  ],
+                  "workload_identity_config": []
+                }
+              ],
+              "terminal_condition": [
+                {}
+              ],
+              "terraform_labels": {},
+              "traffic": [
+                {}
+              ],
+              "traffic_statuses": [
+                {}
+              ],
+              "urls": [
+                false,
+                false
+              ]
+            },
+            "depends_on": [
+              "google_artifact_registry_repository.service",
+              "google_secret_manager_secret.variable",
+              "google_secret_manager_secret_iam_member.variable",
+              "google_secret_manager_secret_version.variable",
+              "google_service_account.service"
+            ],
+            "identity": {
+              "location": "europe-west1",
+              "name": "cloudgate-plb3nv2t74e6",
+              "project": "example-project-123"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_compute_backend_service.service",
+            "mode": "managed",
+            "type": "google_compute_backend_service",
+            "name": "service",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 1,
+            "values": {
+              "affinity_cookie_ttl_sec": 0,
+              "backend": [
+                {
+                  "balancing_mode": "UTILIZATION",
+                  "capacity_scaler": 1,
+                  "custom_metrics": [],
+                  "description": "",
+                  "group": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+                  "max_connections": 0,
+                  "max_connections_per_endpoint": 0,
+                  "max_connections_per_instance": 0,
+                  "max_rate": 0,
+                  "max_rate_per_endpoint": 0,
+                  "max_rate_per_instance": 0,
+                  "max_utilization": 0,
+                  "preference": ""
+                }
+              ],
+              "cdn_policy": [],
+              "circuit_breakers": [],
+              "compression_mode": "",
+              "connection_draining_timeout_sec": 300,
+              "consistent_hash": [],
+              "creation_timestamp": "2026-11-06T09:25:33.629-08:00",
+              "custom_metrics": [],
+              "custom_request_headers": [],
+              "custom_response_headers": [],
+              "deletion_policy": "DELETE",
+              "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+              "edge_security_policy": "",
+              "enable_cdn": false,
+              "external_managed_migration_state": "",
+              "external_managed_migration_testing_percentage": 0,
+              "fingerprint": "7YU4Gj-u4oE=",
+              "generated_id": 6446927883494732643,
+              "health_checks": [],
+              "iap": [],
+              "id": "projects/example-project-123/global/backendServices/cloudgate-plb3nv2t74e6",
+              "ip_address_selection_policy": "",
+              "load_balancing_scheme": "EXTERNAL_MANAGED",
+              "locality_lb_policies": [],
+              "locality_lb_policy": "",
+              "log_config": [],
+              "max_stream_duration": [],
+              "name": "cloudgate-plb3nv2t74e6",
+              "outlier_detection": [],
+              "params": [],
+              "port_name": "http",
+              "project": "example-project-123",
+              "protocol": "HTTPS",
+              "security_policy": "",
+              "security_settings": [],
+              "self_link": "https://www.googleapis.com/compute/v1/projects/example-project-123/global/backendServices/cloudgate-plb3nv2t74e6",
+              "service_lb_policy": "",
+              "session_affinity": "NONE",
+              "strong_session_affinity_cookie": [],
+              "timeout_sec": 30,
+              "timeouts": null,
+              "tls_settings": []
+            },
+            "sensitive_values": {
+              "backend": [
+                {
+                  "custom_metrics": []
+                }
+              ],
+              "cdn_policy": [],
+              "circuit_breakers": [],
+              "consistent_hash": [],
+              "custom_metrics": [],
+              "custom_request_headers": [],
+              "custom_response_headers": [],
+              "health_checks": [],
+              "iap": [],
+              "locality_lb_policies": [],
+              "log_config": [],
+              "max_stream_duration": [],
+              "outlier_detection": [],
+              "params": [],
+              "security_settings": [],
+              "strong_session_affinity_cookie": [],
+              "tls_settings": []
+            },
+            "depends_on": [
+              "google_artifact_registry_repository.service",
+              "google_cloud_run_v2_service.service",
+              "google_compute_region_network_endpoint_group.service",
+              "google_secret_manager_secret.variable",
+              "google_secret_manager_secret_iam_member.variable",
+              "google_secret_manager_secret_version.variable",
+              "google_service_account.service"
+            ],
+            "identity": {
+              "name": "cloudgate-plb3nv2t74e6",
+              "project": "example-project-123"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_compute_region_network_endpoint_group.service",
+            "mode": "managed",
+            "type": "google_compute_region_network_endpoint_group",
+            "name": "service",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "app_engine": [],
+              "cloud_function": [],
+              "cloud_run": [
+                {
+                  "service": "cloudgate-plb3nv2t74e6",
+                  "tag": "",
+                  "url_mask": ""
+                }
+              ],
+              "deletion_policy": "DELETE",
+              "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+              "id": "projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+              "name": "cloudgate-plb3nv2t74e6",
+              "network": "",
+              "network_endpoint_type": "SERVERLESS",
+              "project": "example-project-123",
+              "psc_data": [],
+              "psc_target_service": "",
+              "region": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1",
+              "self_link": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/networkEndpointGroups/cloudgate-plb3nv2t74e6",
+              "subnetwork": "",
+              "timeouts": null
+            },
+            "sensitive_values": {
+              "app_engine": [],
+              "cloud_function": [],
+              "cloud_run": [
+                {}
+              ],
+              "psc_data": []
+            },
+            "depends_on": [
+              "google_artifact_registry_repository.service",
+              "google_cloud_run_v2_service.service",
+              "google_secret_manager_secret.variable",
+              "google_secret_manager_secret_iam_member.variable",
+              "google_secret_manager_secret_version.variable",
+              "google_service_account.service"
+            ],
+            "identity": {
+              "name": "cloudgate-plb3nv2t74e6",
+              "project": "example-project-123",
+              "region": "europe-west1"
+            },
+            "identity_schema_version": 1
+          },
+          {
+            "address": "google_service_account.service",
+            "mode": "managed",
+            "type": "google_service_account",
+            "name": "service",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "account_id": "cloudgate-plb3nv2t74e6",
+              "create_ignore_already_exists": null,
+              "deletion_policy": "DELETE",
+              "description": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1",
+              "disabled": false,
+              "display_name": "",
+              "email": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "id": "projects/example-project-123/serviceAccounts/cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "member": "serviceAccount:cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "name": "projects/example-project-123/serviceAccounts/cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "project": "example-project-123",
+              "timeouts": null,
+              "unique_id": "115272916555036410164"
+            },
+            "sensitive_values": {},
+            "identity": {
+              "email": "cloudgate-plb3nv2t74e6@example-project-123.iam.gserviceaccount.com",
+              "project": "example-project-123"
+            },
+            "identity_schema_version": 1
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "google": {
+        "name": "google",
+        "full_name": "registry.opentofu.org/hashicorp/google",
+        "version_constraint": "8.8.0",
+        "expressions": {
+          "add_terraform_attribution_label": {
+            "constant_value": false
+          },
+          "project": {
+            "constant_value": "example-project-123"
+          },
+          "region": {
+            "constant_value": "europe-west1"
+          }
+        }
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "repository_url": {
+          "expression": {
+            "constant_value": "europe-west1-docker.pkg.dev/example-project-123/${google_artifact_registry_repository.service.repository_id}",
+            "references": [
+              "google_artifact_registry_repository.service.repository_id",
+              "google_artifact_registry_repository.service"
+            ]
+          }
+        },
+        "service_name": {
+          "expression": {
+            "constant_value": "${google_cloud_run_v2_service.service.name}",
+            "references": [
+              "google_cloud_run_v2_service.service.name",
+              "google_cloud_run_v2_service.service"
+            ]
+          }
+        },
+        "service_uri": {
+          "expression": {
+            "constant_value": "${google_cloud_run_v2_service.service.uri}",
+            "references": [
+              "google_cloud_run_v2_service.service.uri",
+              "google_cloud_run_v2_service.service"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "google_artifact_registry_repository.service",
+          "mode": "managed",
+          "type": "google_artifact_registry_repository",
+          "name": "service",
+          "provider_config_key": "google",
+          "expressions": {
+            "cleanup_policies": [
+              {
+                "action": {
+                  "constant_value": "DELETE"
+                },
+                "condition": [
+                  {
+                    "older_than": {
+                      "constant_value": "86400s"
+                    },
+                    "tag_state": {
+                      "constant_value": "UNTAGGED"
+                    }
+                  }
+                ],
+                "id": {
+                  "constant_value": "delete-untagged"
+                }
+              }
+            ],
+            "cleanup_policy_dry_run": {
+              "constant_value": false
+            },
+            "description": {
+              "constant_value": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1"
+            },
+            "docker_config": [
+              {
+                "immutable_tags": {
+                  "constant_value": false
+                }
+              }
+            ],
+            "format": {
+              "constant_value": "DOCKER"
+            },
+            "labels": {
+              "constant_value": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              }
+            },
+            "location": {
+              "constant_value": "europe-west1"
+            },
+            "repository_id": {
+              "constant_value": "cloudgate-plb3nv2t74e6"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "google_cloud_run_v2_service.service",
+          "mode": "managed",
+          "type": "google_cloud_run_v2_service",
+          "name": "service",
+          "provider_config_key": "google",
+          "expressions": {
+            "deletion_protection": {
+              "constant_value": false
+            },
+            "description": {
+              "constant_value": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1"
+            },
+            "ingress": {
+              "constant_value": "INGRESS_TRAFFIC_ALL"
+            },
+            "invoker_iam_disabled": {
+              "constant_value": true
+            },
+            "labels": {
+              "constant_value": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              }
+            },
+            "location": {
+              "constant_value": "europe-west1"
+            },
+            "name": {
+              "constant_value": "cloudgate-plb3nv2t74e6"
+            },
+            "template": [
+              {
+                "containers": [
+                  {
+                    "env": [
+                      {
+                        "name": {
+                          "constant_value": "WALK_GREETING"
+                        },
+                        "value_source": [
+                          {
+                            "secret_key_ref": [
+                              {
+                                "secret": {
+                                  "constant_value": "${google_secret_manager_secret.variable[\"WALK_GREETING\"].secret_id}",
+                                  "references": [
+                                    "google_secret_manager_secret.variable[\"WALK_GREETING\"].secret_id",
+                                    "google_secret_manager_secret.variable[\"WALK_GREETING\"]",
+                                    "google_secret_manager_secret.variable"
+                                  ]
+                                },
+                                "version": {
+                                  "constant_value": "${google_secret_manager_secret_version.variable[\"WALK_GREETING\"].version}",
+                                  "references": [
+                                    "google_secret_manager_secret_version.variable[\"WALK_GREETING\"].version",
+                                    "google_secret_manager_secret_version.variable[\"WALK_GREETING\"]",
+                                    "google_secret_manager_secret_version.variable"
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "image": {
+                      "constant_value": "europe-west1-docker.pkg.dev/example-project-123/${google_artifact_registry_repository.service.repository_id}/service:dep_2",
+                      "references": [
+                        "google_artifact_registry_repository.service.repository_id",
+                        "google_artifact_registry_repository.service"
+                      ]
+                    },
+                    "name": {
+                      "constant_value": "service"
+                    },
+                    "ports": [
+                      {
+                        "container_port": {
+                          "constant_value": 8080
+                        }
+                      }
+                    ],
+                    "resources": [
+                      {
+                        "cpu_idle": {
+                          "constant_value": true
+                        },
+                        "limits": {
+                          "constant_value": {
+                            "cpu": "1",
+                            "memory": "1Gi"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "scaling": [
+                  {
+                    "max_instance_count": {
+                      "constant_value": 10
+                    },
+                    "min_instance_count": {
+                      "constant_value": 0
+                    }
+                  }
+                ],
+                "service_account": {
+                  "constant_value": "${google_service_account.service.email}",
+                  "references": [
+                    "google_service_account.service.email",
+                    "google_service_account.service"
+                  ]
+                },
+                "vpc_access": [
+                  {
+                    "egress": {
+                      "constant_value": "PRIVATE_RANGES_ONLY"
+                    },
+                    "network_interfaces": [
+                      {
+                        "network": {
+                          "constant_value": "cloudgate-w33lemwkholw-net"
+                        },
+                        "subnetwork": {
+                          "constant_value": "cloudgate-w33lemwkholw-subnet"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "schema_version": 0,
+          "depends_on": [
+            "google_secret_manager_secret_iam_member.variable"
+          ]
+        },
+        {
+          "address": "google_compute_backend_service.service",
+          "mode": "managed",
+          "type": "google_compute_backend_service",
+          "name": "service",
+          "provider_config_key": "google",
+          "expressions": {
+            "backend": [
+              {
+                "group": {
+                  "constant_value": "${google_compute_region_network_endpoint_group.service.id}",
+                  "references": [
+                    "google_compute_region_network_endpoint_group.service.id",
+                    "google_compute_region_network_endpoint_group.service"
+                  ]
+                }
+              }
+            ],
+            "description": {
+              "constant_value": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1"
+            },
+            "load_balancing_scheme": {
+              "constant_value": "EXTERNAL_MANAGED"
+            },
+            "name": {
+              "constant_value": "cloudgate-plb3nv2t74e6"
+            },
+            "protocol": {
+              "constant_value": "HTTPS"
+            }
+          },
+          "schema_version": 1
+        },
+        {
+          "address": "google_compute_region_network_endpoint_group.service",
+          "mode": "managed",
+          "type": "google_compute_region_network_endpoint_group",
+          "name": "service",
+          "provider_config_key": "google",
+          "expressions": {
+            "cloud_run": [
+              {
+                "service": {
+                  "constant_value": "${google_cloud_run_v2_service.service.name}",
+                  "references": [
+                    "google_cloud_run_v2_service.service.name",
+                    "google_cloud_run_v2_service.service"
+                  ]
+                }
+              }
+            ],
+            "description": {
+              "constant_value": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1"
+            },
+            "name": {
+              "constant_value": "cloudgate-plb3nv2t74e6"
+            },
+            "network_endpoint_type": {
+              "constant_value": "SERVERLESS"
+            },
+            "region": {
+              "constant_value": "europe-west1"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "google_secret_manager_secret.variable",
+          "mode": "managed",
+          "type": "google_secret_manager_secret",
+          "name": "variable",
+          "provider_config_key": "google",
+          "expressions": {
+            "labels": {
+              "constant_value": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "7rhuqxy3gm43"
+              }
+            },
+            "replication": [
+              {
+                "auto": [
+                  {}
+                ]
+              }
+            ],
+            "secret_id": {
+              "constant_value": "${each.value}",
+              "references": [
+                "each.value"
+              ]
+            }
+          },
+          "schema_version": 0,
+          "for_each_expression": {
+            "constant_value": {
+              "WALK_GREETING": "cloudgate-plb3nv2t74e6-WALK_GREETING"
+            }
+          }
+        },
+        {
+          "address": "google_secret_manager_secret_iam_member.variable",
+          "mode": "managed",
+          "type": "google_secret_manager_secret_iam_member",
+          "name": "variable",
+          "provider_config_key": "google",
+          "expressions": {
+            "member": {
+              "constant_value": "${google_service_account.service.member}",
+              "references": [
+                "google_service_account.service.member",
+                "google_service_account.service"
+              ]
+            },
+            "role": {
+              "constant_value": "roles/secretmanager.secretAccessor"
+            },
+            "secret_id": {
+              "constant_value": "${google_secret_manager_secret.variable[each.key].id}",
+              "references": [
+                "google_secret_manager_secret.variable",
+                "each.key"
+              ]
+            }
+          },
+          "schema_version": 0,
+          "for_each_expression": {
+            "constant_value": {
+              "WALK_GREETING": "cloudgate-plb3nv2t74e6-WALK_GREETING"
+            }
+          }
+        },
+        {
+          "address": "google_secret_manager_secret_version.variable",
+          "mode": "managed",
+          "type": "google_secret_manager_secret_version",
+          "name": "variable",
+          "provider_config_key": "google",
+          "expressions": {
+            "secret": {
+              "constant_value": "${google_secret_manager_secret.variable[each.key].id}",
+              "references": [
+                "google_secret_manager_secret.variable",
+                "each.key"
+              ]
+            },
+            "secret_data": {
+              "constant_value": "${local.variable_values[each.key]}",
+              "references": [
+                "local.variable_values",
+                "each.key"
+              ]
+            }
+          },
+          "schema_version": 1,
+          "for_each_expression": {
+            "constant_value": {
+              "WALK_GREETING": "cloudgate-plb3nv2t74e6-WALK_GREETING"
+            }
+          }
+        },
+        {
+          "address": "google_service_account.service",
+          "mode": "managed",
+          "type": "google_service_account",
+          "name": "service",
+          "provider_config_key": "google",
+          "expressions": {
+            "account_id": {
+              "constant_value": "cloudgate-plb3nv2t74e6"
+            },
+            "description": {
+              "constant_value": "Cloudgate cloud-account=cloud_1 environment=env_1 state=state_web_1"
+            }
+          },
+          "schema_version": 0
+        }
+      ],
+      "variables": {
+        "variable_value_WALK_GREETING": {
+          "type": "string",
+          "required": true,
+          "sensitive": true
+        }
+      }
+    }
+  },
+  "relevant_attributes": [
+    {
+      "resource": "google_artifact_registry_repository.service",
+      "attribute": [
+        "repository_id"
+      ]
+    },
+    {
+      "resource": "google_secret_manager_secret.variable",
+      "attribute": []
+    },
+    {
+      "resource": "google_secret_manager_secret.variable[\"WALK_GREETING\"]",
+      "attribute": [
+        "secret_id"
+      ]
+    },
+    {
+      "resource": "google_secret_manager_secret_version.variable[\"WALK_GREETING\"]",
+      "attribute": [
+        "version"
+      ]
+    },
+    {
+      "resource": "google_service_account.service",
+      "attribute": [
+        "member"
+      ]
+    },
+    {
+      "resource": "google_service_account.service",
+      "attribute": [
+        "email"
+      ]
+    }
+  ],
+  "timestamp": "2026-11-06T17:29:07Z",
+  "errored": false
+}

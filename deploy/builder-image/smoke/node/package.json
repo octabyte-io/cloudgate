@@ -1,0 +1,12 @@
+{
+  "name": "cloudgate-builder-smoke",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The sample app the buildpacks, Nixpacks and Railpack kinds build in the builder image's smoke check.",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "start": "node index.js"
+  }
+}

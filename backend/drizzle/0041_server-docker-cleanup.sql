@@ -1,0 +1,1 @@
+ALTER TABLE "server" ADD COLUMN "enable_docker_cleanup" boolean DEFAULT false NOT NULL;

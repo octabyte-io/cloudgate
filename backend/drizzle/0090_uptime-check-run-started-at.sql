@@ -1,0 +1,1 @@
+ALTER TABLE "uptime_check" ADD COLUMN "run_started_at" text;

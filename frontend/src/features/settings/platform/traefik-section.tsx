@@ -1,0 +1,160 @@
+"use client";
+
+import { DangerZone } from "@/components/console/danger-zone";
+import { DnsChallengeCard } from "@/components/console/dns-challenge-card";
+import { RequestMetricsCard } from "@/components/console/request-metrics-card";
+import {
+  RESTART_TRAEFIK_DESCRIPTION,
+  RESTART_TRAEFIK_DONE,
+  RestartTraefikConsequences,
+} from "@/components/console/restart-traefik-consequences";
+import { traefikApi } from "@/lib/api/endpoints/traefik";
+import { useInvalidate } from "@/lib/api/use-invalidate";
+import { useWebServerSettings } from "@/lib/api/use-web-server-settings";
+
+import {
+  TraefikConfigCard,
+  type TraefikConfigDescriptor,
+} from "./traefik-config-card";
+import { TraefikFilesCard } from "./traefik-files-card";
+import { TraefikRuntimeCard } from "./traefik-runtime-card";
+import { useInstanceGate } from "./use-platform";
+
+/**
+ * Traefik: the three named files, the whole directory, the container, and the
+ * one destructive control.
+ *
+ * The order is deliberate and is roughly "how likely is this to be what you came
+ * for": the main config, then the two generated ones, then the browser for
+ * everything else, then the container, then the restart. The restart is last
+ * because it is the only thing here that interrupts traffic, and it is in a
+ * `DangerZone` for the same reason. Its confirm says what the Requests
+ * screen's does, from the same words: a restart interrupts traffic and
+ * loses nothing, so it does not say "This cannot be undone."
+ *
+ * The DNS-01 card sits under the container's, because saving it is one more
+ * thing that recreates that container. This screen is the platform
+ * host's, so it sends no `serverId`, and the gate is the instance-authority
+ * read the container's writes take. Enable request metrics sits with it:
+ * it writes `traefik.yml` and restarts this Traefik, so it is one more control
+ * over this container, and it opens the restart confirmation the danger zone
+ * below does. Its state is `requestMetricsEnabled` on the web-server settings.
+ */
+export function TraefikSection() {
+  const invalidate = useInvalidate();
+  const gate = useInstanceGate();
+
+  return (
+    <>
+      {CONFIGS.map((descriptor) => (
+        <TraefikConfigCard key={descriptor.kind} descriptor={descriptor} />
+      ))}
+      <TraefikFilesCard />
+      <TraefikRuntimeCard />
+      <DnsChallengeCard serverId={null} gate={gate} />
+      <PlatformRequestMetricsCard />
+
+      <DangerZone
+        sub="This one interrupts live traffic."
+        actions={[
+          {
+            id: "reload-traefik",
+            title: "Restart Traefik",
+            description:
+              "Needed after editing traefik.yml, which is read once at start.",
+            button: "Restart Traefik",
+            caution: RESTART_TRAEFIK_DESCRIPTION,
+            consequences: (
+              <RestartTraefikConsequences change="an edit to it" />
+            ),
+            run: async () => {
+              await traefikApi.reloadTraefik(null);
+              await invalidate.traefikRequests();
+            },
+            done: RESTART_TRAEFIK_DONE,
+          },
+        ]}
+      />
+    </>
+  );
+}
+
+/**
+ * The platform host's Enable request metrics, read off the web-server
+ * settings. A failed read is said, not left as a skeleton that never resolves.
+ */
+export function PlatformRequestMetricsCard() {
+  const invalidate = useInvalidate();
+  const gate = useInstanceGate();
+  const webServer = useWebServerSettings();
+  return (
+    <RequestMetricsCard
+      serverId={null}
+      enabled={webServer.data?.requestMetricsEnabled}
+      readError={webServer.error}
+      gate={gate}
+      onEnabled={() => invalidate.instanceSettings()}
+    />
+  );
+}
+
+/**
+ * The three named files, and what a save to each one actually does.
+ *
+ * That last column is the reason this is a table and not three hardcoded cards:
+ * the three routes are identical and the *consequences* are not, and the
+ * difference is exactly what somebody editing one of them needs to know.
+ */
+export const CONFIGS: TraefikConfigDescriptor[] = [
+  {
+    kind: "main",
+    title: "Main configuration",
+    path: "traefik.yml",
+    lede: "Entry points, providers, certificate resolvers and the access log.",
+    effect: (
+      <>
+        This is the <strong className="font-medium">static</strong>{" "}
+        config.
+        Traefik reads it once at start — the file provider&rsquo;s{" "}
+        <code className="font-mono">watch: true</code>{" "}
+        covers{" "}
+        <code className="font-mono">dynamic/</code>{" "}
+        only — so nothing here takes
+        effect until Traefik is restarted, below.
+      </>
+    ),
+  },
+  {
+    kind: "web-server",
+    title: "This console's router",
+    path: "dynamic/cloudgate.yml",
+    lede: "How Cloudgate's own interface is routed. Written by Assign domain.",
+    effect: (
+      <>
+        Regenerated by <strong className="font-medium">Assign domain</strong>{" "}
+        on
+        the Instance screen, and deleted when the host is cleared — so a hand
+        edit survives until the next time somebody uses that form. Watched, so a
+        save takes effect within seconds.
+      </>
+    ),
+  },
+  {
+    kind: "middlewares",
+    title: "Shared middlewares",
+    path: "dynamic/middlewares.yml",
+    lede: "Middlewares any router can name, including the redirect-to-https every HTTPS domain uses.",
+    effect: (
+      <>
+        Cloudgate defines one middleware here and depends on it:{" "}
+        <code className="font-mono">redirect-to-https</code>, named by the
+        plain-HTTP router of every HTTPS domain &mdash; Applications, Compose
+        stacks and this console&rsquo;s own. Remove or rename it and Traefik
+        drops those routers, so HTTP stops redirecting to HTTPS and answers 404
+        instead. Anything else here is yours; an Application&rsquo;s path,
+        redirect and basic-auth middlewares go in that service&rsquo;s own file.
+        Watched, so a save takes effect within seconds.
+      </>
+    ),
+  },
+];

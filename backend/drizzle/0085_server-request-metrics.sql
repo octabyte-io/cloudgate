@@ -1,0 +1,1 @@
+ALTER TABLE "server" ADD COLUMN "request_metrics_enabled" boolean DEFAULT false NOT NULL;

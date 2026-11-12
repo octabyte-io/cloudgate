@@ -1,0 +1,13 @@
+[Unit]
+Description=Hourly Cloudgate Hosted instance backup
+
+[Timer]
+OnCalendar=hourly
+# Up to 10 minutes late, never so late that missed runs alone make an alert.
+RandomizedDelaySec=10min
+# A run missed while the box was off runs at boot.
+Persistent=true
+Unit=cloudgate-backup.service
+
+[Install]
+WantedBy=timers.target

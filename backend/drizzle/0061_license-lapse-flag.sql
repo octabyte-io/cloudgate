@@ -1,0 +1,1 @@
+ALTER TABLE "notification" ADD COLUMN "license_lapse" boolean DEFAULT false NOT NULL;

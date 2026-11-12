@@ -1,0 +1,162 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "planned_values": {
+    "root_module": {}
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "root_module": {
+        "resources": [
+          {
+            "address": "data.aws_resourcegroupstaggingapi_resources.bucket[0]",
+            "mode": "data",
+            "type": "aws_resourcegroupstaggingapi_resources",
+            "name": "bucket",
+            "index": 0,
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "exclude_compliant_resources": null,
+              "id": "aws",
+              "include_compliance_details": null,
+              "region": "eu-west-1",
+              "resource_arn_list": ["arn:aws:s3:::acme-prod-uploads"],
+              "resource_tag_mapping_list": [
+                {
+                  "compliance_details": [],
+                  "resource_arn": "arn:aws:s3:::acme-prod-uploads",
+                  "tags": {
+                    "Team": "shop"
+                  }
+                }
+              ],
+              "resource_type_filters": null,
+              "tag_filter": null
+            },
+            "sensitive_values": {
+              "resource_arn_list": [false],
+              "resource_tag_mapping_list": [
+                {
+                  "compliance_details": [],
+                  "tags": {}
+                }
+              ]
+            }
+          },
+          {
+            "address": "data.aws_s3_buckets.found",
+            "mode": "data",
+            "type": "aws_s3_buckets",
+            "name": "found",
+            "provider_name": "registry.opentofu.org/hashicorp/aws",
+            "schema_version": 0,
+            "values": {
+              "bucket_region": "eu-west-1",
+              "buckets": [
+                {
+                  "bucket_arn": "arn:aws:s3:::acme-prod-uploads",
+                  "bucket_region": "eu-west-1",
+                  "creation_date": "2026-01-01T00:00:00Z",
+                  "name": "acme-prod-uploads"
+                },
+                {
+                  "bucket_arn": "arn:aws:s3:::acme-prod-uploads-archive",
+                  "bucket_region": "eu-west-1",
+                  "creation_date": "2026-01-01T00:00:00Z",
+                  "name": "acme-prod-uploads-archive"
+                }
+              ],
+              "max_buckets": null,
+              "prefix": "acme-prod-uploads",
+              "region": "eu-west-1"
+            },
+            "sensitive_values": {
+              "buckets": [{}, {}]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "aws": {
+        "name": "aws",
+        "full_name": "registry.opentofu.org/hashicorp/aws",
+        "version_constraint": "6.69.1",
+        "expressions": {
+          "allowed_account_ids": {
+            "constant_value": ["123456789012"]
+          },
+          "default_tags": [
+            {
+              "tags": {
+                "constant_value": {
+                  "cloudgate:cloud-account": "ca_1",
+                  "cloudgate:environment": "env_1",
+                  "cloudgate:state": "bucket_1"
+                }
+              }
+            }
+          ],
+          "region": {
+            "constant_value": "eu-west-1"
+          }
+        }
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "data.aws_resourcegroupstaggingapi_resources.bucket",
+          "mode": "data",
+          "type": "aws_resourcegroupstaggingapi_resources",
+          "name": "bucket",
+          "provider_config_key": "aws",
+          "expressions": {
+            "resource_arn_list": {
+              "constant_value": "${[for one in (data.aws_s3_buckets.found.buckets == null ? [] : data.aws_s3_buckets.found.buckets) : one.bucket_arn if one.name == \"acme-prod-uploads\"]}",
+              "references": [
+                "data.aws_s3_buckets.found.buckets",
+                "data.aws_s3_buckets.found",
+                "data.aws_s3_buckets.found.buckets",
+                "data.aws_s3_buckets.found"
+              ]
+            }
+          },
+          "schema_version": 0,
+          "count_expression": {
+            "constant_value": "${length([for one in (data.aws_s3_buckets.found.buckets == null ? [] : data.aws_s3_buckets.found.buckets) : one.bucket_arn if one.name == \"acme-prod-uploads\"])}",
+            "references": [
+              "data.aws_s3_buckets.found.buckets",
+              "data.aws_s3_buckets.found",
+              "data.aws_s3_buckets.found.buckets",
+              "data.aws_s3_buckets.found"
+            ]
+          }
+        },
+        {
+          "address": "data.aws_s3_buckets.found",
+          "mode": "data",
+          "type": "aws_s3_buckets",
+          "name": "found",
+          "provider_config_key": "aws",
+          "expressions": {
+            "bucket_region": {
+              "constant_value": "eu-west-1"
+            },
+            "prefix": {
+              "constant_value": "acme-prod-uploads"
+            }
+          },
+          "schema_version": 0
+        }
+      ]
+    }
+  },
+  "timestamp": "2026-01-01T00:00:00Z",
+  "errored": false
+}

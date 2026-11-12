@@ -1,0 +1,14 @@
+-- `application_status` gains `stopped`.
+--
+-- `idle` is the column's default, so it was both "never deployed" and
+-- "deployed, then stopped": pressing Stop on a database scaled the Swarm
+-- service to 0 and wrote the same word a freshly created row already had. The
+-- console reads that column for the masthead pill and the Database card, and
+-- had nothing else to read — a database writes no `deployment` row.
+--
+-- Hand-written. `drizzle-kit generate` emits `ALTER TYPE … ADD VALUE` for this
+-- change, but generating it needs a live database to diff against; the value is
+-- appended, which is where `pgEnum`'s fifth member sits, so the two agree.
+-- `IF NOT EXISTS` because an enum value cannot be dropped: a database that
+-- somehow already carries it has nothing to do here.
+ALTER TYPE "public"."application_status" ADD VALUE IF NOT EXISTS 'stopped';

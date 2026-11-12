@@ -1,0 +1,1 @@
+ALTER TABLE "ai_model" ADD COLUMN "served_model" text;

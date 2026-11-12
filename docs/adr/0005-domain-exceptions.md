@@ -1,0 +1,7 @@
+# Nest HttpExceptions and one global exception filter
+
+Cloudgate is a REST NestJS app, so domain code throws Nest's built-in `HttpException` subclasses (`NotFoundException`, `ConflictException`, …) and a single global `AllExceptionsFilter` (registered via `APP_FILTER` in `CommonModule`) converts every error into one JSON shape: `{ statusCode, error, message, code?, details?, pointer?, path, timestamp }`. Zod validation failures from `nestjs-zod` are mapped to 400 with per-field `details`; anything unrecognized becomes a logged 500 with no internals leaked. A failure throws the matching `HttpException` (`NotFoundException`, `BadRequestException`, `ConflictException`, etc.) — do not invent per-module error formats or catch-and-respond in controllers.
+
+`code` and `pointer` are opt-in: they appear only where a specific answer needs them, published by a thrower whose object response carries them (`new ConflictException({ message, code, pointer })`), so every other throw keeps the body it had. A client branches on `code`, never on the message.
+
+**Amended 2026-10-16:** `pointer` was added for a write a repository-kept Project config refuses (`PROJECT_CONFIG_REPOSITORY_KEPT`, `CONFIG_UNREADABLE`): `{ repository, path, branch, fileUrl }`, where the change is made instead: `branch` is `null` only when the repository could not be reached to learn its default branch, and `fileUrl` (a link to the file at the commit read, which the console offers) is `null` when the file could not be read. The filter publishes it only in that shape and drops any other field.

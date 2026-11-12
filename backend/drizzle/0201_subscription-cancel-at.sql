@@ -1,0 +1,1 @@
+ALTER TABLE "subscription" ADD COLUMN "cancel_at" timestamp (3);

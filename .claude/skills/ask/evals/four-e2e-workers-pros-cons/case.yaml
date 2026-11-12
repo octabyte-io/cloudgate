@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: four-e2e-workers-pros-cons
+expected_outcome: |
+  Says what exists today (maxWorkers 2 in the e2e preset and why, the README's own note that 4 is 
+  affordable and faster), gives the options with pros and cons in a table, labels its 
+  recommendation as opinion, cites jest-preset.js, backend/README.md and docs/testing.md, and 
+  ends with /plan. No page. Nothing in the repo is changed.

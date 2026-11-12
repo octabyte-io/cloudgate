@@ -1,0 +1,329 @@
+# The Docker-backed lanes — `test:db` and the e2e suite, and in a job of its
+# own the moto lane (`test:moto`, described at that job) — on a GitHub runner,
+# once per release rather than once per push, beside the Google validate lane
+# (`test:google-validate`, described at its job), which needs no Docker.
+#
+# `ci.yml` runs on every push to main and leaves these two out. What they cost
+# here was measured before deciding where they run: three runs on e3f13de
+# (2026-09-10) took **1124, 1195 and 1275 s** of e2e on this 2-vCPU runner,
+# against ~300 s on the 16 GB Mac, and about 21 minutes of job each. Memory
+# fits — jest peaked at 4.6–5.0 GB and the machine never had less than 1.9 GB
+# available — so it is the time, not the box, that keeps this off every push.
+#
+# So it runs when a release is cut: on a pushed `v*` tag —
+# `git tag v0.2.0 && git push origin v0.2.0`. Push the tag that way before
+# publishing a GitHub Release on it, so the run exists before the
+# announcement: a red run cannot un-push a tag, so it is read, not enforced.
+# `workflow_dispatch` is there to run it on a commit before tagging
+# (`gh workflow run e2e.yml`).
+#
+# Those three runs were red, and on two causes, both fixed before this became
+# the release check: `app.e2e-spec.ts` needed the `backend/.env`
+# only a working copy has, and one of the six `startLegacyDatabase` suites per
+# run died on a drop racing its own pool's close (see `endAndWait` in
+# `test/utils/migrations-up-to.ts`). That second one is the shape of the
+# "one random suite two runs in three" docs/testing.md records, so
+# every suite that fails here is still re-run by itself, and the job summary
+# sorts the failures: red alone too (a real finding) or green alone (a flake,
+# or an OOM, which the summary names separately because it also passes alone).
+#
+# The preset's `maxWorkers: 2` is a number, not a percentage, so this runner
+# gets two workers and not jest's in-band mode, which is what red the unit lane
+# here with every test green (02af102).
+name: E2E (release)
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    name: E2E and test:db lanes
+    runs-on: ubuntu-latest
+    # The stall watchdog ends a wedged run with 124 after five silent minutes;
+    # this is only the backstop behind it.
+    timeout-minutes: 45
+    defaults:
+      run:
+        # Explicit, because only `shell: bash` gets `-o pipefail`, and the run
+        # below is piped through `tee`.
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Everything this job writes goes in one directory, which is what the
+      # artifact at the end uploads.
+      - name: Runner
+        run: |
+          echo "OUT=$RUNNER_TEMP/e2e-out" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/e2e-out"
+          {
+            echo "## Runner"
+            echo '```'
+            echo "vCPUs: $(nproc)"
+            free -m
+            docker version --format 'docker server {{.Server.Version}}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Every 5 s: the machine's used and available memory, the sum of every
+      # jest process's RSS and the largest single one. Read back by the summary.
+      - name: Sample memory
+        run: |
+          nohup bash -c '
+            while :; do
+              read -r used avail < <(free -m | awk "/^Mem:/ {print \$3, \$7}")
+              read -r sum max < <(ps -eo rss=,args= | awk "/jest/ && !/awk/ {s+=\$1; if (\$1>m) m=\$1} END {printf \"%d %d\n\", s/1024, m/1024}")
+              echo "$(date +%s) $used $avail $sum $max"
+              sleep 5
+            done' > "$OUT/mem.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/sampler.pid"
+
+      - name: test:db lane
+        working-directory: backend
+        run: pnpm test:db 2>&1 | tee "$OUT/db.log"
+
+      # `pnpm exec jest --config` rather than `pnpm test:e2e`, only to add the
+      # JSON report the re-run step reads; the config is the script's own.
+      - name: E2E suite
+        id: e2e
+        if: ${{ !cancelled() }}
+        working-directory: backend
+        run: |
+          start=$(date +%s)
+          set +e
+          pnpm exec jest --config ./test/jest-e2e.json \
+            --json --outputFile="$OUT/e2e.json" \
+            2>&1 | tee "$OUT/e2e.log"
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+          exit "$code"
+
+      # At most 20, each alone, in the order the full run reported them. A
+      # wedge (124) usually leaves no JSON report behind, so it re-runs nothing
+      # and the summary says so.
+      - name: Re-run each failed suite alone
+        id: rerun
+        if: ${{ !cancelled() && steps.e2e.outputs.code != '0' }}
+        working-directory: backend
+        run: |
+          : > "$OUT/rerun.txt"
+          if [ ! -s "$OUT/e2e.json" ]; then
+            echo "no JSON report — the run did not finish" >> "$OUT/rerun.txt"
+            exit 0
+          fi
+          jq -r '.testResults[] | select(.status == "failed") | .name' \
+            "$OUT/e2e.json" | head -n 20 > "$OUT/failed.txt"
+          while read -r file; do
+            rel=${file#"$PWD/"}
+            if pnpm exec jest --config ./test/jest-e2e.json --runTestsByPath "$file" \
+                > "$OUT/rerun-${rel//\//_}.log" 2>&1; then
+              echo "green alone  $rel" >> "$OUT/rerun.txt"
+            else
+              echo "RED ALONE    $rel" >> "$OUT/rerun.txt"
+            fi
+          done < "$OUT/failed.txt"
+
+      - name: Summary
+        if: ${{ !cancelled() }}
+        run: |
+          kill "$(cat "$RUNNER_TEMP/sampler.pid")" 2>/dev/null || true
+          {
+            echo "## E2E"
+            echo "- exit code: \`${{ steps.e2e.outputs.code }}\`$([ '${{ steps.e2e.outputs.code }}' = 124 ] && echo ' — the stall watchdog (a wedge)')"
+            echo "- wall clock: ${{ steps.e2e.outputs.seconds }} s"
+            if [ -s "$OUT/e2e.json" ]; then
+              jq -r '"- suites: \(.numPassedTestSuites) passed, \(.numFailedTestSuites) failed of \(.numTotalTestSuites)",
+                     "- tests: \(.numPassedTests) passed, \(.numFailedTests) failed of \(.numTotalTests)"' \
+                "$OUT/e2e.json"
+            fi
+            oom=$(grep -c 'ran out of memory' "$OUT/e2e.log" || true)
+            echo "- \`ran out of memory\` lines: ${oom:-0}"
+            if [ -s "$OUT/rerun.txt" ]; then
+              echo
+              echo "### Failed suites, re-run alone"
+              echo '```'
+              cat "$OUT/rerun.txt"
+              echo '```'
+            fi
+            if [ -s "$OUT/mem.log" ]; then
+              echo
+              echo "### Memory (MB, sampled every 5 s)"
+              awk 'NR==1 || $2>u {u=$2} NR==1 || $3<a {a=$3} $4>s {s=$4} $5>m {m=$5}
+                   END {printf "- machine used, peak: %d\n- machine available, low: %d\n- all jest processes, peak: %d\n- one jest process, peak: %d\n", u, a, s, m}' \
+                "$OUT/mem.log"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: e2e-logs
+          path: ${{ runner.temp }}/e2e-out
+          if-no-files-found: ignore
+
+  # The moto lane: the generated definitions for the
+  # sample `web` and its Environment network, run by the real pinned OpenTofu
+  # and AWS provider through the real runner, against moto in a container and
+  # the state in a migrated Postgres. It creates, plans clean against its own
+  # state (the key property), changes things by hand and plans them as
+  # drift, and destroys (`backend/test/cloud-accounts/moto/`). A postgres on
+  # RDS goes the same loop and is destroyed leaving its final snapshot; a
+  # redis on ElastiCache is planned only, and an Existing database's lookup
+  # reads an instance made by hand (`MOTO_MISSING` in moto-gaps.ts).
+  # A bucket and a `static` site with its Domain's
+  # us-east-1 certificate go the same loop, and the real
+  # object-storage adapter and CloudFront calls are checked against moto and a
+  # Garage container driven by the programs a Server runs
+  # (`backend/test/object-storage/*.moto-spec.ts`).
+  #
+  # It also re-saves the stored plan files the in-memory cloud port replays
+  # in every e2e spec (`backend/test/cloud-accounts/fixtures/plans/`), and
+  # fails when they differ from the committed ones, uploading the new ones.
+  #
+  # RULE: run it (`gh workflow run e2e.yml`, or locally as
+  # docs/testing.md says) and commit what it re-saves before
+  # merging any change to the pins (deploy/install.sh's OPENTOFU_*,
+  # deploy/opentofu/) or to the generated definitions
+  # (backend/src/cloud-accounts/aws/definitions/). A stored plan that no
+  # longer matches its definition is an e2e suite proving something tofu
+  # would not print.
+  #
+  # What moto cannot stand in for, this never claims to prove: the tag search
+  # after a Delete, the ENIs AWS makes, a certificate's DNS validation,
+  # running containers, and routing; for the databases, TLS, a real
+  # connection or endpoint, and the 7-day restart. Paid LocalStack is not used.
+  moto:
+    name: Moto lane (real tofu and AWS provider)
+    runs-on: ubuntu-latest
+    # The database lane alone takes about 10 minutes: each RDS
+    # create and modify waits about 1.5 minutes on the provider. The bucket
+    # and static lanes add about 6 minutes each, which puts the whole
+    # lane at about 35 here, so the backstop is an hour.
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: OpenTofu and the AWS provider, at their pins
+        run: backend/test/cloud-accounts/moto/install-opentofu.sh "$RUNNER_TEMP/opentofu" >> "$GITHUB_ENV"
+
+      # S3 Control, which the AWS provider reads a bucket's tags through,
+      # puts the account id in front of its endpoint's host, so moto
+      # is reached at `<account>.localhost` as well.
+      - name: S3 Control reaches moto
+        run: echo "127.0.0.1 123456789012.localhost" | sudo tee -a /etc/hosts
+
+      - name: Moto lane
+        working-directory: backend
+        run: pnpm test:moto
+
+      - name: Stored plan files are current
+        if: ${{ !cancelled() }}
+        run: |
+          if ! git diff --exit-code --stat -- backend/test/cloud-accounts/fixtures/plans; then
+            echo "::error::The stored plan files differ from what the pinned tofu prints for the generated definitions. Commit the re-saved files (the moto-plans artifact)."
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: moto-plans
+          path: backend/test/cloud-accounts/fixtures/plans
+          if-no-files-found: ignore
+
+  # The Google validate lane: Google has no moto, so
+  # before a release the generated Google definitions — an Environment
+  # network with Domains and with none, a `web` with variables, a command
+  # and args, and the destroy-only one — are rendered and run through
+  # `tofu init` and `tofu validate` with the pinned OpenTofu and Google
+  # provider from the mirror, laid out as a Google Cloud run lays out its
+  # folder (`backend/test/cloud-accounts/google/`). No project, credential or
+  # cost: `validate` reads the definitions against the provider's schema
+  # alone. A control case adds an attribute the provider does not have and
+  # expects it refused, so the lane cannot pass on anything.
+  #
+  # It also holds the release while any stored Google plan or apply output
+  # (`backend/test/cloud-accounts/fixtures/{plans,applies}/google/`) still carries the
+  # "not yet from a real project" mark (S20): those are planned offline, and
+  # only the walk by hand in a real project (docs/gcp-walk-by-hand.md)
+  # re-records them and removes the mark. It holds it as well while one was
+  # recorded on a Google provider version other than the pin.
+  #
+  # What this never claims to prove: that Google accepts a value the schema
+  # allows (a quota, an org policy, a name taken), the order things are made
+  # in, or anything at all about a running Service. Those are the walk's.
+  google-validate:
+    name: Google validate lane (real tofu and Google provider)
+    runs-on: ubuntu-latest
+    # About a minute: one provider download and five `init`s from the mirror.
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: OpenTofu and the Google provider, at their pins
+        run: backend/test/cloud-accounts/moto/install-opentofu.sh "$RUNNER_TEMP/opentofu" google >> "$GITHUB_ENV"
+
+      - name: Google validate lane
+        working-directory: backend
+        run: pnpm test:google-validate
+
+      - name: Stored Google plans and apply outputs are from a real project
+        if: ${{ !cancelled() }}
+        run: |
+          marked="$(jq -r 'select(.cloudgate_fixture.source == "not yet from a real project") | input_filename' \
+            backend/test/cloud-accounts/fixtures/plans/google/*.json \
+            backend/test/cloud-accounts/fixtures/applies/google/*.json)"
+          if [ -n "$marked" ]; then
+            while read -r file; do
+              echo "::error file=$file::$file is still marked \"not yet from a real project\". Walk by hand in the live Google Cloud project (docs/gcp-walk-by-hand.md) to re-record it from a real plan and remove the mark; a release with a marked stored plan is not shipped (S20)."
+            done <<<"$marked"
+            exit 1
+          fi
+
+      # A pin move re-records every stored Google plan from a walk (ADR-0030),
+      # and each one's `how` names the provider and version it was recorded
+      # on. One recorded on another version is what an older pin planned, not
+      # this checkout's, so the release is held until the walk re-records it
+      # (the pin moved to 8.8.0 ahead of its walk).
+      - name: Stored Google plans and apply outputs are from the pinned provider
+        if: ${{ !cancelled() }}
+        run: |
+          pin="$(jq -r '.terraform.required_providers.google.version' deploy/opentofu/versions.tf.json)"
+          stale="$(jq -r --arg want "hashicorp/google $pin" \
+            'select((.cloudgate_fixture.how // "") | contains($want) | not) | input_filename' \
+            backend/test/cloud-accounts/fixtures/plans/google/*.json \
+            backend/test/cloud-accounts/fixtures/applies/google/*.json)"
+          if [ -n "$stale" ]; then
+            while read -r file; do
+              echo "::error file=$file::$file was not recorded on hashicorp/google $pin, the pinned provider. Walk by hand in the live Google Cloud project (docs/gcp-walk-by-hand.md) to re-record it, naming hashicorp/google $pin in its \"how\"; a release whose stored plans are another pin's is not shipped."
+            done <<<"$stale"
+            exit 1
+          fi

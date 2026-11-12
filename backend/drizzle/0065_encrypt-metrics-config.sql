@@ -1,0 +1,86 @@
+-- `MetricsConfig.server.token` is a live shared secret — an operator
+-- supplies it, a metrics agent presents it to the unauthenticated
+-- `POST /notifications/receive`, and possession of it is the whole
+-- authorization — and it sat in cleartext `jsonb` on both tables that carry a
+-- `metrics_config`. So a `pg_dump`, a read replica or a backup handed its
+-- reader the ability to post metrics alerts as any Server on the instance, and
+-- on `web_server_settings` as the instance itself, which fans out to every
+-- organization. Both columns become `encryptedJson` (ADR 0006): `text` at
+-- rest, holding `enc:v1:` + the blob's JSON. `src/servers/server.schema.ts`
+-- carries the argument for converting the whole blob rather than splitting
+-- `token` into its own `encryptedText` column.
+--
+-- **Hand-corrected, not as generated.** `drizzle-kit generate` wrote this file
+-- and got the *default* wrong, because a `customType` with an object default is
+-- outside what it serializes: it emitted `SET DEFAULT [object Object]` —
+-- JavaScript's stringification of the default, which is not SQL.
+-- `drizzle/meta/0065_snapshot.json` is left exactly as generated: it records
+-- the default as the JS object, which is self-consistent with the schema, so
+-- the next `generate` diffs clean.
+--
+-- **Corrected later: this comment also claimed the bare `SET DATA TYPE text`
+-- `drizzle-kit` emitted was refused by Postgres on a `jsonb` column, and it is
+-- not.** Measured on PostgreSQL 17.11, with a `jsonb` default present and
+-- absent, over a populated row and a `NULL` row: it succeeds, and produces
+-- byte-for-byte what `::text` produces, because there is no `jsonb` → `text`
+-- entry in `pg_cast` at all and both forms reach a string-category target
+-- through `jsonb_out` (coercion via I/O, allowed in assignment context). The
+-- *"cannot be cast automatically … You might need to specify USING"* this
+-- comment quoted is the error for the other direction — `text` → `jsonb` — and
+-- was attached to the wrong one. So `USING "metrics_config"::text` below is
+-- belt-and-braces rather than the cast Postgres demanded; it is left in place
+-- because this migration has shipped and the statement is correct, and `0066`
+-- carries no `USING` clause. ADR 0006 said the same wrong thing and now
+-- carries the measurement.
+--
+-- **No data migration, and none is possible here.** The request asked for one "that
+-- reads each row's JSON and rewrites it through `encryptedJson`", and this
+-- file cannot be it. The key is `HMAC-SHA256(APP_ENCRYPTION_SECRET,
+-- 'cloudgate:db-encryption:v1')`, derived in the Node process; `db:migrate` is
+-- `drizzle-kit migrate`, which replays `.sql` and nothing else, and this
+-- database has no `pgcrypto` and no access to that env var. AES-256-GCM is not
+-- expressible in these statements.
+--
+-- That is not a gap, for two reasons. `decryptValue` returns a value without
+-- the `enc:v1:` prefix unchanged (ADR 0006), so a converted row holding plain
+-- JSON still parses — the column's `fromDriver` is `JSON.parse(decryptValue(…))`
+-- and the pass-through is what makes the conversion safe with no rewrite at
+-- all. And after this migration every *write* goes through `toDriver`, so no
+-- path can produce new cleartext; the residue is bounded to rows nobody
+-- touches, and closes on the next save. A token that was in cleartext before
+-- this migration is in every dump taken to date, and the remedy for a leaked
+-- shared secret is rotation rather than re-encryption — rotation is a write,
+-- which encrypts the row on the way past. A re-encrypt-in-place pass would
+-- have preserved a value that should be replaced, and told the operator they
+-- were finished.
+--
+-- The default stays plain JSON, and must. A ciphertext baked into DDL would be
+-- tied to whichever `APP_ENCRYPTION_SECRET` generated this file and
+-- undecryptable on every other instance. It carries no secret: a fresh row's
+-- `token` is `''`, which is what "never set up" means to
+-- `MonitoringService.registerTarget`. The two literals are the ones `0010` and
+-- `0040` already wrote, without the `::jsonb`.
+--
+-- `DROP DEFAULT` before the type change and `SET DEFAULT` after, rather than
+-- letting the `ALTER … TYPE` carry the old default across: the stored default
+-- is `'…'::jsonb`, and a later measurement showed what the carry-across actually does —
+-- the column converts, but the default is re-rendered as `jsonb`'s canonical
+-- text, so `{"a":1}` comes out `{"a": 1}` and the literal a later reader
+-- compares against `0010` and `0040` is no longer the literal anybody wrote.
+-- Dropping it first is what keeps these two literals exactly the ones those
+-- migrations already had. `USING "metrics_config"::text` renders `jsonb`'s
+-- canonical JSON text, which is exactly what `JSON.parse` wants back; it is
+-- not, per the correction above, a clause Postgres required.
+--
+-- Both tables in one migration because they must convert together. The token
+-- on `web_server_settings` is the wider of the two exposures — it
+-- authenticates `NotificationsService.receiveServerThreshold`'s instance-wide
+-- branch — so a migration that did `server` alone would leave the larger one
+-- in cleartext, and one that did `web_server_settings` alone would leave the
+-- per-Server tokens.
+ALTER TABLE "server" ALTER COLUMN "metrics_config" DROP DEFAULT;--> statement-breakpoint
+ALTER TABLE "server" ALTER COLUMN "metrics_config" SET DATA TYPE text USING "metrics_config"::text;--> statement-breakpoint
+ALTER TABLE "server" ALTER COLUMN "metrics_config" SET DEFAULT '{"server":{"type":"Remote","refreshRate":60,"port":4500,"token":"","urlCallback":"","cronJob":"","retentionDays":2,"thresholds":{"cpu":0,"memory":0}},"containers":{"refreshRate":60,"services":{"include":[],"exclude":[]}}}';--> statement-breakpoint
+ALTER TABLE "web_server_settings" ALTER COLUMN "metrics_config" DROP DEFAULT;--> statement-breakpoint
+ALTER TABLE "web_server_settings" ALTER COLUMN "metrics_config" SET DATA TYPE text USING "metrics_config"::text;--> statement-breakpoint
+ALTER TABLE "web_server_settings" ALTER COLUMN "metrics_config" SET DEFAULT '{"server":{"type":"Cloudgate","refreshRate":60,"port":4500,"token":"","retentionDays":2,"cronJob":"","urlCallback":"","thresholds":{"cpu":0,"memory":0}},"containers":{"refreshRate":60,"services":{"include":[],"exclude":[]}}}';

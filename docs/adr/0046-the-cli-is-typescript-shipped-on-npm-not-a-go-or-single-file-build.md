@@ -1,0 +1,15 @@
+# The CLI is TypeScript shipped on npm, not a Go or single-file build
+
+Status: accepted, answering "Which install route and build should the first version ship?". Amended by the owner's decision on #1360 (recorded at #1380): one exception to the sharing rule below. `cloudgate template check` must judge a template exactly as an instance will, and the Template check runs a template's `cloudgate.yaml` through the backend's own config parser, whose imports reach Nest, `nestjs-zod` DTOs and drizzle tables. So the CLI bundles the backend's Template check (`backend/src/templates/check/`) directly, through an esbuild alias, `cloudgate-template-check` in `cli/build.mjs` (and `cli/vitest.config.ts`), rather than through `api-schemas`. It costs a larger bundle (about 2.2 MB) with Nest and drizzle code in it, and `class-transformer` and `class-validator` left external. Every other schema the CLI shares still goes through `api-schemas`. **Follow-up:** move the config parser (`parseProjectConfig` and what it reads) into a dependency-free module the backend and the CLI both import, then drop the alias's Nest and drizzle weight.
+
+The `cloudgate` command is a TypeScript workspace package in this repo, published to npm as `@octabyte-io/cloudgate` (the bare name `cloudgate`, and the `@octabyte` and `@cloudgate` scopes, belong to someone else; the name was moved from `@octabyte/cloudgate` by a later change, which also settles how a version is released) and requiring Node 22 or newer. So unlike gh or flyctl, it needs Node on the machine. We accepted that because it lets the CLI share the server's zod schemas through a private `api-schemas` workspace package, costs nothing to release beyond `npm publish`, and works as-is on GitHub Actions runners, where Node is already installed. The package is laid out so that the same name can later carry a per-platform file through npm `optionalDependencies` (the route Supabase's v3 CLI takes) without changing anyone's install command.
+
+## Considered and rejected
+
+- **Go** (about 14 MB, nothing to install first): it reuses none of the TypeScript, and its types would have to be generated from `backend/openapi.json`, which is too thin to generate a client from.
+- **One file per platform built from TypeScript** (Bun, Deno or Node SEA): it needs nothing installed first, but each file is about 90–125 MB, and macOS/Windows signing plus Homebrew/Scoop manifests would have to be maintained from the first release. It stays open as a later addition behind the same npm name.
+
+## Consequences
+
+- **The DTO schemas must leave the Nest-wrapped files to be shared.** Importing a `backend/src/**/dto/*.dto.ts` file pulls in `nestjs-zod` and `@nestjs/common` and will not bundle. Each schema the CLI needs moves into `api-schemas` as plain zod, and the backend's DTO keeps its `createZodDto` wrapper around it.
+- **Updates are a notice, never a self-update.** At most once every 24 hours the CLI prints the npm command to update. It stays silent when `CI` is set, when output is not a terminal, or when `CLOUDGATE_NO_UPDATE_NOTIFIER` is set.

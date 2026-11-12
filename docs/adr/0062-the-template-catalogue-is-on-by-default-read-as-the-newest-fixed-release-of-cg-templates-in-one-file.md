@@ -1,0 +1,20 @@
+# The template catalogue is on by default, read as the newest fixed release of cg-templates in one file
+
+Status: accepted. **What the one file is changes in [ADR-0072](0072-the-template-catalogue-is-one-zip-of-template-folders-and-a-zip-holding-anything-else-is-refused-whole.md)**: a `catalogue.zip` of template folders, not a `catalogue.json` holding every file, and a zip holding anything Cloudgate does not expect is refused whole. The rest of this decision stands.
+
+Until now an install had no template catalogue unless its operator set `CLOUDGATE_TEMPLATES_BASE_URL`, and the reader fetched a Dokploy-style tree (`meta.json` plus `blueprints/<id>/…`) from wherever that pointed. We reverse "off until set": every install reads the official **Template catalogue**, [`octabyte-io/cg-templates`](https://github.com/octabyte-io/cg-templates), unless its operator points it elsewhere or turns it off. We trade a default call to GitHub on every install for templates that work out of the box.
+
+## Decision
+
+- **What is read.** Each published version of the catalogue is **one file** (`catalogue.json`) attached to a GitHub release of `cg-templates`, holding every template's files and logo. Releases are immutable, so a version never changes once published. An install reads the newest one through `https://github.com/octabyte-io/cg-templates/releases/latest/download/catalogue.json`. Not `main` (nothing reviewed as a whole, and it can move between a list and a setup), and not a version chosen by each Cloudgate release (Cloudgate releases too rarely; the catalogue would freeze).
+- **Compatibility.** Each template states the Cloudgate version it needs. An install hides templates it cannot read rather than failing on them.
+- **Setting.** `CLOUDGATE_TEMPLATES_URL` names the catalogue file and defaults to the official address above. `CLOUDGATE_TEMPLATES_URL=off` turns templates off, and the console says so (today's coded 503). The old `CLOUDGATE_TEMPLATES_BASE_URL` is not reused, because its meaning (the base of a tree) changes; how it is retired belongs to the `template.toml` retirement.
+- **Freshness and outages.** The last good copy is kept in the database. When someone opens the templates screen and the last check is more than an hour old, the install checks for a newer version; a version it already holds is never fetched again. If the catalogue can't be reached, the install serves the saved copy and says it can't be reached and how old the copy is. With no saved copy, it is still a 502/504, never an empty list. No copy is shipped in the image.
+- **Limits.** A file over 10 MB, or one that is not a valid catalogue, is refused and the last good copy kept. There is no signature or attestation check: HTTPS plus immutable releases are enough for content Cloudgate checks anyway, and a check would break operators who host their own copy.
+- **Same everywhere.** The hosted instance reads the catalogue exactly like a self-hosted one: one setting for the whole install, no per-Organization catalogue, and ADR-0053's refusal of the platform host still applies.
+- **Publishing.** In `cg-templates`, a pull request merges only when Cloudgate's own config checker passes on every template, run through a check command in the Cloudgate CLI (ADR-0046), not a JSON Schema subset. Every image must name a version tag; `latest` or no tag is refused, and digests are not required. CI builds `catalogue.json` from the template folders, and it is never edited by hand.
+
+## Consequences
+
+- Every trust rule from the old reader carries over (#225, #228, #231, #233, #46, #48, #67): the address is an instance setting and never a request field, http/https only, content is checked after substitution and before any write whatever its origin, only the backend talks to the catalogue (logos travel inside the file), and unreachable is never shown as empty. CI checks catch errors early but never replace the install's own checks.
+- When this is built, `deploy/env/cloudgate-backend.example` and the outbound-hosts row in `docs/deploy.md` change from "off until set" to the default, naming `github.com` and GitHub's release-download host.

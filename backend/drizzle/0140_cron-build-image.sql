@@ -1,0 +1,1 @@
+ALTER TABLE "deployment" ADD COLUMN "cron_image" text;

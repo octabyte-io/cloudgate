@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: maintenance-grant-short-answer
+expected_outcome: |
+  A short plain-text answer: the server: create grant (Owners and Admins; Agents cannot), with 
+  the route's file cited and the reason (every Server change takes server: create, ADR-0074). No 
+  table, no page. Nothing in the repo is changed.

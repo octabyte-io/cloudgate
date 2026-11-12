@@ -1,0 +1,16 @@
+-- The instance's metrics type is `'Cloudgate'`. `web_server_settings` is the
+-- one row that describes the machine this instance runs on, and
+-- `metricsConfig.server.type` names that; the per-Server rows say `'Remote'`.
+-- `0040` and `0065` now write this default for a database built from scratch;
+-- this file sets it on a database that already ran them with the earlier
+-- literal.
+--
+-- Hand-written, because `drizzle-kit generate` does not see a change inside an
+-- `encryptedJson` default (see `0065`'s header): the schema object and the
+-- snapshot already agree, so it would emit nothing.
+--
+-- **The default only, not the stored row.** The column is `enc:v1:` ciphertext
+-- keyed off `APP_ENCRYPTION_SECRET` in the Node process, which `drizzle-kit
+-- migrate` never has. `SettingsService.getWebServerSettings` corrects a stored
+-- row on its first read and writes it back through the column, encrypted.
+ALTER TABLE "web_server_settings" ALTER COLUMN "metrics_config" SET DEFAULT '{"server":{"type":"Cloudgate","refreshRate":60,"port":4500,"token":"","retentionDays":2,"cronJob":"","urlCallback":"","thresholds":{"cpu":0,"memory":0}},"containers":{"refreshRate":60,"services":{"include":[],"exclude":[]}}}';

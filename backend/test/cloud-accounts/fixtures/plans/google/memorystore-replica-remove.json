@@ -1,0 +1,1182 @@
+{
+  "cloudgate_fixture": {
+    "source": "the live walk by hand",
+    "how": "Recorded by `tofu show -json` from a real plan in the live Google Cloud project on 2026-11-06 (a walk by hand; OpenTofu 1.13.1, hashicorp/google 8.8.0), then rewritten to the stored files' sample ids (cloud_1, env_1, svc_1, svc_pg_1, svc_redis_1 and their states, project example-project-123 / 123456789012, region europe-west1, deployment ids dep_N) and with every secret value masked (the default certificate's key, the database password, the wired variables' URLs; the typed variable values were the stored files' sample strings). The applied redis with high availability turned off again: replica_count 1 -> 0, in place."
+  },
+  "format_version": "1.2",
+  "terraform_version": "1.13.1",
+  "planned_values": {
+    "outputs": {
+      "address": {
+        "sensitive": false,
+        "type": "string",
+        "value": "10.64.16.2"
+      },
+      "ca": {
+        "sensitive": true,
+        "type": "string",
+        "value": "-----BEGIN CERTIFICATE-----\nMIIGIDCCA9SgAwIBAgITNIRxfItaZXK4GXuQLT6L56dvoTBBBgkqhkiG9w0BAQow\nNKAPMA0GCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUA\nogMCASAwYDELMAkGA1UEBhMCVVMxEzARBgNVBAoTCkdvb2dsZSBMTEMxPDA6BgNV\nBAMTM0dvb2dsZS1Sb290LUNBLTZhZjcwMTNmLTAwMDAtMjZlMS1hMjRlLTI0MDU4\nODY5ZTA1NDAeFw0yNjExMDYxNzU0MTVaFw0zNjExMDYxNzUzNTVaMEwxCzAJBgNV\nBAYTAlVTMRMwEQYDVQQKEwpHb29nbGUgTExDMSgwJgYDVQQDEx9DQVMtTWFuYWdl\nZCBDQS11cy1jZW50cmFsMS02YWY1MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB\nCgKCAQEArOw82BJlm8/9JYf2K/esHhlWpe9JwQFmqqizzIKGxpSRiJcEJZEXtS21\nQPa/2/cjgORrPk2ZticE+8WaTx/c17Yi8/JvrF80zfUF/BdtMQHDWA+BNRLyrP/Q\nUEnLeV+m8xIbaN9GxPRG02kwUlSHaWRDJds0FUTCKhXVjudl0gBsrVfBEZDCW1gH\nSurQrn9VTt7L7hZbW6gkiA0xiDOYXbQhPgCI13AFJFyE+554ZXIhFVNvNZXWEHWE\nUSTsgqRBpYhIOKd41SSS3a2jyTCVlM8Dk+20Q4SoBtrPI3qw8mbuDvxUbZtMXIxO\nceKDqEcCo29KSS/+VgUeKHgrBHGZxwIDAQABo4IBfTCCAXkwDgYDVR0PAQH/BAQD\nAgEGMBIGA1UdEwEB/wQIMAYBAf8CAQAwHQYDVR0OBBYEFMzlW2rif6bMXi3DnO0c\ncqRjEc59MB8GA1UdIwQYMBaAFHAQUos6Vm6CdDEFMrctPL8lHFiSMIGNBggrBgEF\nBQcBAQSBgDB+MHwGCCsGAQUFBzAChnBodHRwOi8vcHJpdmF0ZWNhLWNvbnRlbnQt\nNmFmNGQ2OWUtMDAwMC0yNDA0LWEzYzktM2MyODZkMzk1ODRhLnN0b3JhZ2UuZ29v\nZ2xlYXBpcy5jb20vNTgyNDU4ZmU1NDUzYjZlYmU1MGEvY2EuY3J0MIGCBgNVHR8E\nezB5MHegdaBzhnFodHRwOi8vcHJpdmF0ZWNhLWNvbnRlbnQtNmFmNGQ2OWUtMDAw\nMC0yNDA0LWEzYzktM2MyODZkMzk1ODRhLnN0b3JhZ2UuZ29vZ2xlYXBpcy5jb20v\nNTgyNDU4ZmU1NDUzYjZlYmU1MGEvY3JsLmNybDBBBgkqhkiG9w0BAQowNKAPMA0G\nCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUAogMCASAD\nggIBAGqM7QEhsSNXRg3vjKPYDs7vpYYYzM6xPvtbb9ib427nQQFtzlZWU18HetpG\ncPlVxgj8N+S3pLuyzIFHjauHOP9VFys7uFyEUsN3Gik13dCs2gpaXA2PV8tTatfe\nL0W3csMc7aVeS7aaOVHt4xiM4z33YfZmhecGyFlRU6BDsdh1kMqPJBU5443NVZw4\nUlNDHfohZvnG3YITHCHw4Nl1Z3V61Gij6kyAp5+wOuWcKhw4N6QS7zhQ5qC4lZ0k\n8avguj1ODwIzLQ5KPokDKr4K5Dv5GARMaPr+ZY1wQdvM6Yuzfky8GLjE1MixOJ+n\n8dNm9m+ReI6A6OYS7sjbh5s1IBEvA3TPJaEZq91m7CwDtwQFHAvI4hH83rmzax2K\nns6lZtB6fQhizd1NnUgQH8G293Ik0WnI1akkgfhNCOkTtW/a1DeKFZd0JOqbtP0o\nj5laWOK2Iw/69kj8l1faUQDnmo+68WfwS0DkCDEWt92aaapi0ChpH1UKeBzRFGhg\nUSgbAfI9EoHmmx8aJBVRYJPRG9YErKRSMc8bxscDOaZ4uji0xHLvGEhkhjE9wyJ6\nqa65L2/1oMDqDYVkjJR19R3YvkbOQGtsyv3Dejx6OIFrSjfNLa4ppde3AyzeHhUW\nFh5Fkg55WQh8U89ZhZegv6lWHG0THPinXz0WZ1MMwHR8dm24\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\n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\nxmcTiln9bIpMFfy6fc6EdALdq6QBgdOBvwbceg==\n-----END CERTIFICATE-----\n"
+      },
+      "port": {
+        "sensitive": false,
+        "type": "number",
+        "value": 6379
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "google_memorystore_instance.cache",
+          "mode": "managed",
+          "type": "google_memorystore_instance",
+          "name": "cache",
+          "provider_name": "registry.opentofu.org/hashicorp/google",
+          "schema_version": 0,
+          "values": {
+            "acl_policy": null,
+            "authorization_mode": "AUTH_DISABLED",
+            "automated_backup_config": [
+              {
+                "fixed_frequency_schedule": [
+                  {
+                    "start_time": [
+                      {
+                        "hours": 3
+                      }
+                    ]
+                  }
+                ],
+                "retention": "86400s"
+              }
+            ],
+            "available_maintenance_versions": [],
+            "backup_collection": "",
+            "create_time": "2026-11-06T17:53:50.498030628Z",
+            "cross_instance_replication_config": [],
+            "deletion_policy": "DELETE",
+            "deletion_protection_enabled": false,
+            "desired_auto_created_endpoints": [
+              {
+                "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+                "project_id": "example-project-123"
+              }
+            ],
+            "desired_psc_auto_connections": [],
+            "discovery_endpoints": [],
+            "effective_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "iv5snyhcwnee"
+            },
+            "effective_maintenance_version": "MEMORYSTORE_20261102_00_00",
+            "endpoints": [
+              {
+                "connections": [
+                  {
+                    "psc_auto_connection": [
+                      {
+                        "connection_type": "CONNECTION_TYPE_PRIMARY",
+                        "forwarding_rule": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/forwardingRules/sca-auto-fr-22114ac6-57e9-44c5-8810-d907eee97b0c",
+                        "ip_address": "10.64.16.2",
+                        "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+                        "port": 6379,
+                        "project_id": "example-project-123",
+                        "psc_connection_id": "88155324908834818",
+                        "service_attachment": "projects/739238548766/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-d1ab61fabda7bf41-psc-sa"
+                      }
+                    ]
+                  },
+                  {
+                    "psc_auto_connection": [
+                      {
+                        "connection_type": "CONNECTION_TYPE_READER",
+                        "forwarding_rule": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/forwardingRules/sca-auto-fr-4951c1c8-30e0-47f4-988a-722a0d9a3a2e",
+                        "ip_address": "10.64.16.3",
+                        "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+                        "port": 6379,
+                        "project_id": "example-project-123",
+                        "psc_connection_id": "88155324908834819",
+                        "service_attachment": "projects/739238548766/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-d1ab61fabda7bf41-psc-sa-2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "engine_configs": {
+              "maxmemory-policy": "noeviction"
+            },
+            "engine_version": "VALKEY_8_0",
+            "gcs_source": [],
+            "id": "projects/example-project-123/locations/europe-west1/instances/cloudgate-rpwjluzdxftp",
+            "instance_id": "cloudgate-rpwjluzdxftp",
+            "is_acl_policy_in_sync": false,
+            "kms_key": "",
+            "labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "iv5snyhcwnee"
+            },
+            "location": "europe-west1",
+            "maintenance_policy": [],
+            "maintenance_schedule": [],
+            "maintenance_version": "",
+            "managed_backup_source": [],
+            "managed_server_ca": [
+              {
+                "ca_certs": [
+                  {
+                    "certificates": [
+                      "-----BEGIN CERTIFICATE-----\nMIIGIDCCA9SgAwIBAgITNIRxfItaZXK4GXuQLT6L56dvoTBBBgkqhkiG9w0BAQow\nNKAPMA0GCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUA\nogMCASAwYDELMAkGA1UEBhMCVVMxEzARBgNVBAoTCkdvb2dsZSBMTEMxPDA6BgNV\nBAMTM0dvb2dsZS1Sb290LUNBLTZhZjcwMTNmLTAwMDAtMjZlMS1hMjRlLTI0MDU4\nODY5ZTA1NDAeFw0yNjExMDYxNzU0MTVaFw0zNjExMDYxNzUzNTVaMEwxCzAJBgNV\nBAYTAlVTMRMwEQYDVQQKEwpHb29nbGUgTExDMSgwJgYDVQQDEx9DQVMtTWFuYWdl\nZCBDQS11cy1jZW50cmFsMS02YWY1MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB\nCgKCAQEArOw82BJlm8/9JYf2K/esHhlWpe9JwQFmqqizzIKGxpSRiJcEJZEXtS21\nQPa/2/cjgORrPk2ZticE+8WaTx/c17Yi8/JvrF80zfUF/BdtMQHDWA+BNRLyrP/Q\nUEnLeV+m8xIbaN9GxPRG02kwUlSHaWRDJds0FUTCKhXVjudl0gBsrVfBEZDCW1gH\nSurQrn9VTt7L7hZbW6gkiA0xiDOYXbQhPgCI13AFJFyE+554ZXIhFVNvNZXWEHWE\nUSTsgqRBpYhIOKd41SSS3a2jyTCVlM8Dk+20Q4SoBtrPI3qw8mbuDvxUbZtMXIxO\nceKDqEcCo29KSS/+VgUeKHgrBHGZxwIDAQABo4IBfTCCAXkwDgYDVR0PAQH/BAQD\nAgEGMBIGA1UdEwEB/wQIMAYBAf8CAQAwHQYDVR0OBBYEFMzlW2rif6bMXi3DnO0c\ncqRjEc59MB8GA1UdIwQYMBaAFHAQUos6Vm6CdDEFMrctPL8lHFiSMIGNBggrBgEF\nBQcBAQSBgDB+MHwGCCsGAQUFBzAChnBodHRwOi8vcHJpdmF0ZWNhLWNvbnRlbnQt\nNmFmNGQ2OWUtMDAwMC0yNDA0LWEzYzktM2MyODZkMzk1ODRhLnN0b3JhZ2UuZ29v\nZ2xlYXBpcy5jb20vNTgyNDU4ZmU1NDUzYjZlYmU1MGEvY2EuY3J0MIGCBgNVHR8E\nezB5MHegdaBzhnFodHRwOi8vcHJpdmF0ZWNhLWNvbnRlbnQtNmFmNGQ2OWUtMDAw\nMC0yNDA0LWEzYzktM2MyODZkMzk1ODRhLnN0b3JhZ2UuZ29vZ2xlYXBpcy5jb20v\nNTgyNDU4ZmU1NDUzYjZlYmU1MGEvY3JsLmNybDBBBgkqhkiG9w0BAQowNKAPMA0G\nCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUAogMCASAD\nggIBAGqM7QEhsSNXRg3vjKPYDs7vpYYYzM6xPvtbb9ib427nQQFtzlZWU18HetpG\ncPlVxgj8N+S3pLuyzIFHjauHOP9VFys7uFyEUsN3Gik13dCs2gpaXA2PV8tTatfe\nL0W3csMc7aVeS7aaOVHt4xiM4z33YfZmhecGyFlRU6BDsdh1kMqPJBU5443NVZw4\nUlNDHfohZvnG3YITHCHw4Nl1Z3V61Gij6kyAp5+wOuWcKhw4N6QS7zhQ5qC4lZ0k\n8avguj1ODwIzLQ5KPokDKr4K5Dv5GARMaPr+ZY1wQdvM6Yuzfky8GLjE1MixOJ+n\n8dNm9m+ReI6A6OYS7sjbh5s1IBEvA3TPJaEZq91m7CwDtwQFHAvI4hH83rmzax2K\nns6lZtB6fQhizd1NnUgQH8G293Ik0WnI1akkgfhNCOkTtW/a1DeKFZd0JOqbtP0o\nj5laWOK2Iw/69kj8l1faUQDnmo+68WfwS0DkCDEWt92aaapi0ChpH1UKeBzRFGhg\nUSgbAfI9EoHmmx8aJBVRYJPRG9YErKRSMc8bxscDOaZ4uji0xHLvGEhkhjE9wyJ6\nqa65L2/1oMDqDYVkjJR19R3YvkbOQGtsyv3Dejx6OIFrSjfNLa4ppde3AyzeHhUW\nFh5Fkg55WQh8U89ZhZegv6lWHG0THPinXz0WZ1MMwHR8dm24\n-----END CERTIFICATE-----\n",
+                      "-----BEGIN CERTIFICATE-----\n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\nxmcTiln9bIpMFfy6fc6EdALdq6QBgdOBvwbceg==\n-----END CERTIFICATE-----\n"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "mode": "CLUSTER_DISABLED",
+            "name": "projects/example-project-123/locations/europe-west1/instances/cloudgate-rpwjluzdxftp",
+            "node_config": [
+              {
+                "size_gb": 1.25
+              }
+            ],
+            "node_type": "CUSTOM_PICO",
+            "persistence_config": [
+              {
+                "aof_config": [],
+                "mode": "DISABLED",
+                "rdb_config": []
+              }
+            ],
+            "project": "example-project-123",
+            "psc_attachment_details": [
+              {
+                "connection_type": "CONNECTION_TYPE_PRIMARY",
+                "service_attachment": "projects/739238548766/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-d1ab61fabda7bf41-psc-sa"
+              },
+              {
+                "connection_type": "CONNECTION_TYPE_READER",
+                "service_attachment": "projects/739238548766/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-d1ab61fabda7bf41-psc-sa-2"
+              }
+            ],
+            "psc_auto_connections": [],
+            "replica_count": 0,
+            "server_ca_mode": "GOOGLE_MANAGED_PER_INSTANCE_CA",
+            "server_ca_pool": "",
+            "shard_count": 1,
+            "state": "ACTIVE",
+            "state_info": [],
+            "terraform_labels": {
+              "cloudgate-cloud-account": "lqinodt54kzk",
+              "cloudgate-environment": "w33lemwkholw",
+              "cloudgate-state": "iv5snyhcwnee"
+            },
+            "timeouts": null,
+            "transit_encryption_mode": "SERVER_AUTHENTICATION",
+            "uid": "ab535941-b602-42a6-996f-cf0628528e72",
+            "update_time": "2026-11-06T18:16:11.564972546Z",
+            "zone_distribution_config": [
+              {
+                "mode": "MULTI_ZONE",
+                "zone": ""
+              }
+            ]
+          },
+          "sensitive_values": {
+            "automated_backup_config": [
+              {
+                "fixed_frequency_schedule": [
+                  {
+                    "start_time": [
+                      {}
+                    ]
+                  }
+                ]
+              }
+            ],
+            "available_maintenance_versions": [],
+            "cross_instance_replication_config": [],
+            "desired_auto_created_endpoints": [
+              {}
+            ],
+            "desired_psc_auto_connections": [],
+            "discovery_endpoints": [],
+            "effective_labels": {},
+            "endpoints": [
+              {
+                "connections": [
+                  {
+                    "psc_auto_connection": [
+                      {}
+                    ]
+                  },
+                  {
+                    "psc_auto_connection": [
+                      {}
+                    ]
+                  }
+                ]
+              }
+            ],
+            "engine_configs": {},
+            "gcs_source": [],
+            "labels": {},
+            "maintenance_policy": [],
+            "maintenance_schedule": [],
+            "managed_backup_source": [],
+            "managed_server_ca": [
+              {
+                "ca_certs": [
+                  {
+                    "certificates": [
+                      false,
+                      false
+                    ]
+                  }
+                ]
+              }
+            ],
+            "node_config": [
+              {}
+            ],
+            "persistence_config": [
+              {
+                "aof_config": [],
+                "rdb_config": []
+              }
+            ],
+            "psc_attachment_details": [
+              {},
+              {}
+            ],
+            "psc_auto_connections": [],
+            "state_info": [],
+            "terraform_labels": {},
+            "zone_distribution_config": [
+              {}
+            ]
+          },
+          "identity": {
+            "instance_id": "cloudgate-rpwjluzdxftp",
+            "location": "europe-west1",
+            "project": "example-project-123"
+          },
+          "identity_schema_version": 1
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "google_memorystore_instance.cache",
+      "mode": "managed",
+      "type": "google_memorystore_instance",
+      "name": "cache",
+      "provider_name": "registry.opentofu.org/hashicorp/google",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "acl_policy": null,
+          "authorization_mode": "AUTH_DISABLED",
+          "automated_backup_config": [
+            {
+              "fixed_frequency_schedule": [
+                {
+                  "start_time": [
+                    {
+                      "hours": 3
+                    }
+                  ]
+                }
+              ],
+              "retention": "86400s"
+            }
+          ],
+          "available_maintenance_versions": [],
+          "backup_collection": "",
+          "create_time": "2026-11-06T17:53:50.498030628Z",
+          "cross_instance_replication_config": [],
+          "deletion_policy": "DELETE",
+          "deletion_protection_enabled": false,
+          "desired_auto_created_endpoints": [
+            {
+              "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+              "project_id": "example-project-123"
+            }
+          ],
+          "desired_psc_auto_connections": [],
+          "discovery_endpoints": [],
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "iv5snyhcwnee"
+          },
+          "effective_maintenance_version": "MEMORYSTORE_20261102_00_00",
+          "endpoints": [
+            {
+              "connections": [
+                {
+                  "psc_auto_connection": [
+                    {
+                      "connection_type": "CONNECTION_TYPE_PRIMARY",
+                      "forwarding_rule": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/forwardingRules/sca-auto-fr-22114ac6-57e9-44c5-8810-d907eee97b0c",
+                      "ip_address": "10.64.16.2",
+                      "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+                      "port": 6379,
+                      "project_id": "example-project-123",
+                      "psc_connection_id": "88155324908834818",
+                      "service_attachment": "projects/739238548766/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-d1ab61fabda7bf41-psc-sa"
+                    }
+                  ]
+                },
+                {
+                  "psc_auto_connection": [
+                    {
+                      "connection_type": "CONNECTION_TYPE_READER",
+                      "forwarding_rule": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/forwardingRules/sca-auto-fr-4951c1c8-30e0-47f4-988a-722a0d9a3a2e",
+                      "ip_address": "10.64.16.3",
+                      "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+                      "port": 6379,
+                      "project_id": "example-project-123",
+                      "psc_connection_id": "88155324908834819",
+                      "service_attachment": "projects/739238548766/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-d1ab61fabda7bf41-psc-sa-2"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "engine_configs": {
+            "maxmemory-policy": "noeviction"
+          },
+          "engine_version": "VALKEY_8_0",
+          "gcs_source": [],
+          "id": "projects/example-project-123/locations/europe-west1/instances/cloudgate-rpwjluzdxftp",
+          "instance_id": "cloudgate-rpwjluzdxftp",
+          "is_acl_policy_in_sync": false,
+          "kms_key": "",
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "iv5snyhcwnee"
+          },
+          "location": "europe-west1",
+          "maintenance_policy": [],
+          "maintenance_schedule": [],
+          "maintenance_version": "",
+          "managed_backup_source": [],
+          "managed_server_ca": [
+            {
+              "ca_certs": [
+                {
+                  "certificates": [
+                    "-----BEGIN CERTIFICATE-----\nMIIGIDCCA9SgAwIBAgITNIRxfItaZXK4GXuQLT6L56dvoTBBBgkqhkiG9w0BAQow\nNKAPMA0GCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUA\nogMCASAwYDELMAkGA1UEBhMCVVMxEzARBgNVBAoTCkdvb2dsZSBMTEMxPDA6BgNV\nBAMTM0dvb2dsZS1Sb290LUNBLTZhZjcwMTNmLTAwMDAtMjZlMS1hMjRlLTI0MDU4\nODY5ZTA1NDAeFw0yNjExMDYxNzU0MTVaFw0zNjExMDYxNzUzNTVaMEwxCzAJBgNV\nBAYTAlVTMRMwEQYDVQQKEwpHb29nbGUgTExDMSgwJgYDVQQDEx9DQVMtTWFuYWdl\nZCBDQS11cy1jZW50cmFsMS02YWY1MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB\nCgKCAQEArOw82BJlm8/9JYf2K/esHhlWpe9JwQFmqqizzIKGxpSRiJcEJZEXtS21\nQPa/2/cjgORrPk2ZticE+8WaTx/c17Yi8/JvrF80zfUF/BdtMQHDWA+BNRLyrP/Q\nUEnLeV+m8xIbaN9GxPRG02kwUlSHaWRDJds0FUTCKhXVjudl0gBsrVfBEZDCW1gH\nSurQrn9VTt7L7hZbW6gkiA0xiDOYXbQhPgCI13AFJFyE+554ZXIhFVNvNZXWEHWE\nUSTsgqRBpYhIOKd41SSS3a2jyTCVlM8Dk+20Q4SoBtrPI3qw8mbuDvxUbZtMXIxO\nceKDqEcCo29KSS/+VgUeKHgrBHGZxwIDAQABo4IBfTCCAXkwDgYDVR0PAQH/BAQD\nAgEGMBIGA1UdEwEB/wQIMAYBAf8CAQAwHQYDVR0OBBYEFMzlW2rif6bMXi3DnO0c\ncqRjEc59MB8GA1UdIwQYMBaAFHAQUos6Vm6CdDEFMrctPL8lHFiSMIGNBggrBgEF\nBQcBAQSBgDB+MHwGCCsGAQUFBzAChnBodHRwOi8vcHJpdmF0ZWNhLWNvbnRlbnQt\nNmFmNGQ2OWUtMDAwMC0yNDA0LWEzYzktM2MyODZkMzk1ODRhLnN0b3JhZ2UuZ29v\nZ2xlYXBpcy5jb20vNTgyNDU4ZmU1NDUzYjZlYmU1MGEvY2EuY3J0MIGCBgNVHR8E\nezB5MHegdaBzhnFodHRwOi8vcHJpdmF0ZWNhLWNvbnRlbnQtNmFmNGQ2OWUtMDAw\nMC0yNDA0LWEzYzktM2MyODZkMzk1ODRhLnN0b3JhZ2UuZ29vZ2xlYXBpcy5jb20v\nNTgyNDU4ZmU1NDUzYjZlYmU1MGEvY3JsLmNybDBBBgkqhkiG9w0BAQowNKAPMA0G\nCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUAogMCASAD\nggIBAGqM7QEhsSNXRg3vjKPYDs7vpYYYzM6xPvtbb9ib427nQQFtzlZWU18HetpG\ncPlVxgj8N+S3pLuyzIFHjauHOP9VFys7uFyEUsN3Gik13dCs2gpaXA2PV8tTatfe\nL0W3csMc7aVeS7aaOVHt4xiM4z33YfZmhecGyFlRU6BDsdh1kMqPJBU5443NVZw4\nUlNDHfohZvnG3YITHCHw4Nl1Z3V61Gij6kyAp5+wOuWcKhw4N6QS7zhQ5qC4lZ0k\n8avguj1ODwIzLQ5KPokDKr4K5Dv5GARMaPr+ZY1wQdvM6Yuzfky8GLjE1MixOJ+n\n8dNm9m+ReI6A6OYS7sjbh5s1IBEvA3TPJaEZq91m7CwDtwQFHAvI4hH83rmzax2K\nns6lZtB6fQhizd1NnUgQH8G293Ik0WnI1akkgfhNCOkTtW/a1DeKFZd0JOqbtP0o\nj5laWOK2Iw/69kj8l1faUQDnmo+68WfwS0DkCDEWt92aaapi0ChpH1UKeBzRFGhg\nUSgbAfI9EoHmmx8aJBVRYJPRG9YErKRSMc8bxscDOaZ4uji0xHLvGEhkhjE9wyJ6\nqa65L2/1oMDqDYVkjJR19R3YvkbOQGtsyv3Dejx6OIFrSjfNLa4ppde3AyzeHhUW\nFh5Fkg55WQh8U89ZhZegv6lWHG0THPinXz0WZ1MMwHR8dm24\n-----END CERTIFICATE-----\n",
+                    "-----BEGIN CERTIFICATE-----\n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\nxmcTiln9bIpMFfy6fc6EdALdq6QBgdOBvwbceg==\n-----END CERTIFICATE-----\n"
+                  ]
+                }
+              ]
+            }
+          ],
+          "mode": "CLUSTER_DISABLED",
+          "name": "projects/example-project-123/locations/europe-west1/instances/cloudgate-rpwjluzdxftp",
+          "node_config": [
+            {
+              "size_gb": 1.25
+            }
+          ],
+          "node_type": "CUSTOM_PICO",
+          "persistence_config": [
+            {
+              "aof_config": [],
+              "mode": "DISABLED",
+              "rdb_config": []
+            }
+          ],
+          "project": "example-project-123",
+          "psc_attachment_details": [
+            {
+              "connection_type": "CONNECTION_TYPE_PRIMARY",
+              "service_attachment": "projects/739238548766/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-d1ab61fabda7bf41-psc-sa"
+            },
+            {
+              "connection_type": "CONNECTION_TYPE_READER",
+              "service_attachment": "projects/739238548766/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-d1ab61fabda7bf41-psc-sa-2"
+            }
+          ],
+          "psc_auto_connections": [],
+          "replica_count": 1,
+          "server_ca_mode": "GOOGLE_MANAGED_PER_INSTANCE_CA",
+          "server_ca_pool": "",
+          "shard_count": 1,
+          "state": "ACTIVE",
+          "state_info": [],
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "iv5snyhcwnee"
+          },
+          "timeouts": null,
+          "transit_encryption_mode": "SERVER_AUTHENTICATION",
+          "uid": "ab535941-b602-42a6-996f-cf0628528e72",
+          "update_time": "2026-11-06T18:16:11.564972546Z",
+          "zone_distribution_config": [
+            {
+              "mode": "MULTI_ZONE",
+              "zone": ""
+            }
+          ]
+        },
+        "after": {
+          "acl_policy": null,
+          "authorization_mode": "AUTH_DISABLED",
+          "automated_backup_config": [
+            {
+              "fixed_frequency_schedule": [
+                {
+                  "start_time": [
+                    {
+                      "hours": 3
+                    }
+                  ]
+                }
+              ],
+              "retention": "86400s"
+            }
+          ],
+          "available_maintenance_versions": [],
+          "backup_collection": "",
+          "create_time": "2026-11-06T17:53:50.498030628Z",
+          "cross_instance_replication_config": [],
+          "deletion_policy": "DELETE",
+          "deletion_protection_enabled": false,
+          "desired_auto_created_endpoints": [
+            {
+              "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+              "project_id": "example-project-123"
+            }
+          ],
+          "desired_psc_auto_connections": [],
+          "discovery_endpoints": [],
+          "effective_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "iv5snyhcwnee"
+          },
+          "effective_maintenance_version": "MEMORYSTORE_20261102_00_00",
+          "endpoints": [
+            {
+              "connections": [
+                {
+                  "psc_auto_connection": [
+                    {
+                      "connection_type": "CONNECTION_TYPE_PRIMARY",
+                      "forwarding_rule": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/forwardingRules/sca-auto-fr-22114ac6-57e9-44c5-8810-d907eee97b0c",
+                      "ip_address": "10.64.16.2",
+                      "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+                      "port": 6379,
+                      "project_id": "example-project-123",
+                      "psc_connection_id": "88155324908834818",
+                      "service_attachment": "projects/739238548766/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-d1ab61fabda7bf41-psc-sa"
+                    }
+                  ]
+                },
+                {
+                  "psc_auto_connection": [
+                    {
+                      "connection_type": "CONNECTION_TYPE_READER",
+                      "forwarding_rule": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/forwardingRules/sca-auto-fr-4951c1c8-30e0-47f4-988a-722a0d9a3a2e",
+                      "ip_address": "10.64.16.3",
+                      "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+                      "port": 6379,
+                      "project_id": "example-project-123",
+                      "psc_connection_id": "88155324908834819",
+                      "service_attachment": "projects/739238548766/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-d1ab61fabda7bf41-psc-sa-2"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "engine_configs": {
+            "maxmemory-policy": "noeviction"
+          },
+          "engine_version": "VALKEY_8_0",
+          "gcs_source": [],
+          "id": "projects/example-project-123/locations/europe-west1/instances/cloudgate-rpwjluzdxftp",
+          "instance_id": "cloudgate-rpwjluzdxftp",
+          "is_acl_policy_in_sync": false,
+          "kms_key": "",
+          "labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "iv5snyhcwnee"
+          },
+          "location": "europe-west1",
+          "maintenance_policy": [],
+          "maintenance_schedule": [],
+          "maintenance_version": "",
+          "managed_backup_source": [],
+          "managed_server_ca": [
+            {
+              "ca_certs": [
+                {
+                  "certificates": [
+                    "-----BEGIN CERTIFICATE-----\nMIIGIDCCA9SgAwIBAgITNIRxfItaZXK4GXuQLT6L56dvoTBBBgkqhkiG9w0BAQow\nNKAPMA0GCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUA\nogMCASAwYDELMAkGA1UEBhMCVVMxEzARBgNVBAoTCkdvb2dsZSBMTEMxPDA6BgNV\nBAMTM0dvb2dsZS1Sb290LUNBLTZhZjcwMTNmLTAwMDAtMjZlMS1hMjRlLTI0MDU4\nODY5ZTA1NDAeFw0yNjExMDYxNzU0MTVaFw0zNjExMDYxNzUzNTVaMEwxCzAJBgNV\nBAYTAlVTMRMwEQYDVQQKEwpHb29nbGUgTExDMSgwJgYDVQQDEx9DQVMtTWFuYWdl\nZCBDQS11cy1jZW50cmFsMS02YWY1MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB\nCgKCAQEArOw82BJlm8/9JYf2K/esHhlWpe9JwQFmqqizzIKGxpSRiJcEJZEXtS21\nQPa/2/cjgORrPk2ZticE+8WaTx/c17Yi8/JvrF80zfUF/BdtMQHDWA+BNRLyrP/Q\nUEnLeV+m8xIbaN9GxPRG02kwUlSHaWRDJds0FUTCKhXVjudl0gBsrVfBEZDCW1gH\nSurQrn9VTt7L7hZbW6gkiA0xiDOYXbQhPgCI13AFJFyE+554ZXIhFVNvNZXWEHWE\nUSTsgqRBpYhIOKd41SSS3a2jyTCVlM8Dk+20Q4SoBtrPI3qw8mbuDvxUbZtMXIxO\nceKDqEcCo29KSS/+VgUeKHgrBHGZxwIDAQABo4IBfTCCAXkwDgYDVR0PAQH/BAQD\nAgEGMBIGA1UdEwEB/wQIMAYBAf8CAQAwHQYDVR0OBBYEFMzlW2rif6bMXi3DnO0c\ncqRjEc59MB8GA1UdIwQYMBaAFHAQUos6Vm6CdDEFMrctPL8lHFiSMIGNBggrBgEF\nBQcBAQSBgDB+MHwGCCsGAQUFBzAChnBodHRwOi8vcHJpdmF0ZWNhLWNvbnRlbnQt\nNmFmNGQ2OWUtMDAwMC0yNDA0LWEzYzktM2MyODZkMzk1ODRhLnN0b3JhZ2UuZ29v\nZ2xlYXBpcy5jb20vNTgyNDU4ZmU1NDUzYjZlYmU1MGEvY2EuY3J0MIGCBgNVHR8E\nezB5MHegdaBzhnFodHRwOi8vcHJpdmF0ZWNhLWNvbnRlbnQtNmFmNGQ2OWUtMDAw\nMC0yNDA0LWEzYzktM2MyODZkMzk1ODRhLnN0b3JhZ2UuZ29vZ2xlYXBpcy5jb20v\nNTgyNDU4ZmU1NDUzYjZlYmU1MGEvY3JsLmNybDBBBgkqhkiG9w0BAQowNKAPMA0G\nCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUAogMCASAD\nggIBAGqM7QEhsSNXRg3vjKPYDs7vpYYYzM6xPvtbb9ib427nQQFtzlZWU18HetpG\ncPlVxgj8N+S3pLuyzIFHjauHOP9VFys7uFyEUsN3Gik13dCs2gpaXA2PV8tTatfe\nL0W3csMc7aVeS7aaOVHt4xiM4z33YfZmhecGyFlRU6BDsdh1kMqPJBU5443NVZw4\nUlNDHfohZvnG3YITHCHw4Nl1Z3V61Gij6kyAp5+wOuWcKhw4N6QS7zhQ5qC4lZ0k\n8avguj1ODwIzLQ5KPokDKr4K5Dv5GARMaPr+ZY1wQdvM6Yuzfky8GLjE1MixOJ+n\n8dNm9m+ReI6A6OYS7sjbh5s1IBEvA3TPJaEZq91m7CwDtwQFHAvI4hH83rmzax2K\nns6lZtB6fQhizd1NnUgQH8G293Ik0WnI1akkgfhNCOkTtW/a1DeKFZd0JOqbtP0o\nj5laWOK2Iw/69kj8l1faUQDnmo+68WfwS0DkCDEWt92aaapi0ChpH1UKeBzRFGhg\nUSgbAfI9EoHmmx8aJBVRYJPRG9YErKRSMc8bxscDOaZ4uji0xHLvGEhkhjE9wyJ6\nqa65L2/1oMDqDYVkjJR19R3YvkbOQGtsyv3Dejx6OIFrSjfNLa4ppde3AyzeHhUW\nFh5Fkg55WQh8U89ZhZegv6lWHG0THPinXz0WZ1MMwHR8dm24\n-----END CERTIFICATE-----\n",
+                    "-----BEGIN CERTIFICATE-----\n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\nxmcTiln9bIpMFfy6fc6EdALdq6QBgdOBvwbceg==\n-----END CERTIFICATE-----\n"
+                  ]
+                }
+              ]
+            }
+          ],
+          "mode": "CLUSTER_DISABLED",
+          "name": "projects/example-project-123/locations/europe-west1/instances/cloudgate-rpwjluzdxftp",
+          "node_config": [
+            {
+              "size_gb": 1.25
+            }
+          ],
+          "node_type": "CUSTOM_PICO",
+          "persistence_config": [
+            {
+              "aof_config": [],
+              "mode": "DISABLED",
+              "rdb_config": []
+            }
+          ],
+          "project": "example-project-123",
+          "psc_attachment_details": [
+            {
+              "connection_type": "CONNECTION_TYPE_PRIMARY",
+              "service_attachment": "projects/739238548766/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-d1ab61fabda7bf41-psc-sa"
+            },
+            {
+              "connection_type": "CONNECTION_TYPE_READER",
+              "service_attachment": "projects/739238548766/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-d1ab61fabda7bf41-psc-sa-2"
+            }
+          ],
+          "psc_auto_connections": [],
+          "replica_count": 0,
+          "server_ca_mode": "GOOGLE_MANAGED_PER_INSTANCE_CA",
+          "server_ca_pool": "",
+          "shard_count": 1,
+          "state": "ACTIVE",
+          "state_info": [],
+          "terraform_labels": {
+            "cloudgate-cloud-account": "lqinodt54kzk",
+            "cloudgate-environment": "w33lemwkholw",
+            "cloudgate-state": "iv5snyhcwnee"
+          },
+          "timeouts": null,
+          "transit_encryption_mode": "SERVER_AUTHENTICATION",
+          "uid": "ab535941-b602-42a6-996f-cf0628528e72",
+          "update_time": "2026-11-06T18:16:11.564972546Z",
+          "zone_distribution_config": [
+            {
+              "mode": "MULTI_ZONE",
+              "zone": ""
+            }
+          ]
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "automated_backup_config": [
+            {
+              "fixed_frequency_schedule": [
+                {
+                  "start_time": [
+                    {}
+                  ]
+                }
+              ]
+            }
+          ],
+          "available_maintenance_versions": [],
+          "cross_instance_replication_config": [],
+          "desired_auto_created_endpoints": [
+            {}
+          ],
+          "desired_psc_auto_connections": [],
+          "discovery_endpoints": [],
+          "effective_labels": {},
+          "endpoints": [
+            {
+              "connections": [
+                {
+                  "psc_auto_connection": [
+                    {}
+                  ]
+                },
+                {
+                  "psc_auto_connection": [
+                    {}
+                  ]
+                }
+              ]
+            }
+          ],
+          "engine_configs": {},
+          "gcs_source": [],
+          "labels": {},
+          "maintenance_policy": [],
+          "maintenance_schedule": [],
+          "managed_backup_source": [],
+          "managed_server_ca": [
+            {
+              "ca_certs": [
+                {
+                  "certificates": [
+                    false,
+                    false
+                  ]
+                }
+              ]
+            }
+          ],
+          "node_config": [
+            {}
+          ],
+          "persistence_config": [
+            {
+              "aof_config": [],
+              "rdb_config": []
+            }
+          ],
+          "psc_attachment_details": [
+            {},
+            {}
+          ],
+          "psc_auto_connections": [],
+          "state_info": [],
+          "terraform_labels": {},
+          "zone_distribution_config": [
+            {}
+          ]
+        },
+        "after_sensitive": {
+          "automated_backup_config": [
+            {
+              "fixed_frequency_schedule": [
+                {
+                  "start_time": [
+                    {}
+                  ]
+                }
+              ]
+            }
+          ],
+          "available_maintenance_versions": [],
+          "cross_instance_replication_config": [],
+          "desired_auto_created_endpoints": [
+            {}
+          ],
+          "desired_psc_auto_connections": [],
+          "discovery_endpoints": [],
+          "effective_labels": {},
+          "endpoints": [
+            {
+              "connections": [
+                {
+                  "psc_auto_connection": [
+                    {}
+                  ]
+                },
+                {
+                  "psc_auto_connection": [
+                    {}
+                  ]
+                }
+              ]
+            }
+          ],
+          "engine_configs": {},
+          "gcs_source": [],
+          "labels": {},
+          "maintenance_policy": [],
+          "maintenance_schedule": [],
+          "managed_backup_source": [],
+          "managed_server_ca": [
+            {
+              "ca_certs": [
+                {
+                  "certificates": [
+                    false,
+                    false
+                  ]
+                }
+              ]
+            }
+          ],
+          "node_config": [
+            {}
+          ],
+          "persistence_config": [
+            {
+              "aof_config": [],
+              "rdb_config": []
+            }
+          ],
+          "psc_attachment_details": [
+            {},
+            {}
+          ],
+          "psc_auto_connections": [],
+          "state_info": [],
+          "terraform_labels": {},
+          "zone_distribution_config": [
+            {}
+          ]
+        },
+        "before_identity": {
+          "instance_id": "cloudgate-rpwjluzdxftp",
+          "location": "europe-west1",
+          "project": "example-project-123"
+        },
+        "after_identity": {
+          "instance_id": "cloudgate-rpwjluzdxftp",
+          "location": "europe-west1",
+          "project": "example-project-123"
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "address": {
+      "actions": [
+        "no-op"
+      ],
+      "before": "10.64.16.2",
+      "after": "10.64.16.2",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "ca": {
+      "actions": [
+        "no-op"
+      ],
+      "before": "-----BEGIN CERTIFICATE-----\nMIIGIDCCA9SgAwIBAgITNIRxfItaZXK4GXuQLT6L56dvoTBBBgkqhkiG9w0BAQow\nNKAPMA0GCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUA\nogMCASAwYDELMAkGA1UEBhMCVVMxEzARBgNVBAoTCkdvb2dsZSBMTEMxPDA6BgNV\nBAMTM0dvb2dsZS1Sb290LUNBLTZhZjcwMTNmLTAwMDAtMjZlMS1hMjRlLTI0MDU4\nODY5ZTA1NDAeFw0yNjExMDYxNzU0MTVaFw0zNjExMDYxNzUzNTVaMEwxCzAJBgNV\nBAYTAlVTMRMwEQYDVQQKEwpHb29nbGUgTExDMSgwJgYDVQQDEx9DQVMtTWFuYWdl\nZCBDQS11cy1jZW50cmFsMS02YWY1MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB\nCgKCAQEArOw82BJlm8/9JYf2K/esHhlWpe9JwQFmqqizzIKGxpSRiJcEJZEXtS21\nQPa/2/cjgORrPk2ZticE+8WaTx/c17Yi8/JvrF80zfUF/BdtMQHDWA+BNRLyrP/Q\nUEnLeV+m8xIbaN9GxPRG02kwUlSHaWRDJds0FUTCKhXVjudl0gBsrVfBEZDCW1gH\nSurQrn9VTt7L7hZbW6gkiA0xiDOYXbQhPgCI13AFJFyE+554ZXIhFVNvNZXWEHWE\nUSTsgqRBpYhIOKd41SSS3a2jyTCVlM8Dk+20Q4SoBtrPI3qw8mbuDvxUbZtMXIxO\nceKDqEcCo29KSS/+VgUeKHgrBHGZxwIDAQABo4IBfTCCAXkwDgYDVR0PAQH/BAQD\nAgEGMBIGA1UdEwEB/wQIMAYBAf8CAQAwHQYDVR0OBBYEFMzlW2rif6bMXi3DnO0c\ncqRjEc59MB8GA1UdIwQYMBaAFHAQUos6Vm6CdDEFMrctPL8lHFiSMIGNBggrBgEF\nBQcBAQSBgDB+MHwGCCsGAQUFBzAChnBodHRwOi8vcHJpdmF0ZWNhLWNvbnRlbnQt\nNmFmNGQ2OWUtMDAwMC0yNDA0LWEzYzktM2MyODZkMzk1ODRhLnN0b3JhZ2UuZ29v\nZ2xlYXBpcy5jb20vNTgyNDU4ZmU1NDUzYjZlYmU1MGEvY2EuY3J0MIGCBgNVHR8E\nezB5MHegdaBzhnFodHRwOi8vcHJpdmF0ZWNhLWNvbnRlbnQtNmFmNGQ2OWUtMDAw\nMC0yNDA0LWEzYzktM2MyODZkMzk1ODRhLnN0b3JhZ2UuZ29vZ2xlYXBpcy5jb20v\nNTgyNDU4ZmU1NDUzYjZlYmU1MGEvY3JsLmNybDBBBgkqhkiG9w0BAQowNKAPMA0G\nCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUAogMCASAD\nggIBAGqM7QEhsSNXRg3vjKPYDs7vpYYYzM6xPvtbb9ib427nQQFtzlZWU18HetpG\ncPlVxgj8N+S3pLuyzIFHjauHOP9VFys7uFyEUsN3Gik13dCs2gpaXA2PV8tTatfe\nL0W3csMc7aVeS7aaOVHt4xiM4z33YfZmhecGyFlRU6BDsdh1kMqPJBU5443NVZw4\nUlNDHfohZvnG3YITHCHw4Nl1Z3V61Gij6kyAp5+wOuWcKhw4N6QS7zhQ5qC4lZ0k\n8avguj1ODwIzLQ5KPokDKr4K5Dv5GARMaPr+ZY1wQdvM6Yuzfky8GLjE1MixOJ+n\n8dNm9m+ReI6A6OYS7sjbh5s1IBEvA3TPJaEZq91m7CwDtwQFHAvI4hH83rmzax2K\nns6lZtB6fQhizd1NnUgQH8G293Ik0WnI1akkgfhNCOkTtW/a1DeKFZd0JOqbtP0o\nj5laWOK2Iw/69kj8l1faUQDnmo+68WfwS0DkCDEWt92aaapi0ChpH1UKeBzRFGhg\nUSgbAfI9EoHmmx8aJBVRYJPRG9YErKRSMc8bxscDOaZ4uji0xHLvGEhkhjE9wyJ6\nqa65L2/1oMDqDYVkjJR19R3YvkbOQGtsyv3Dejx6OIFrSjfNLa4ppde3AyzeHhUW\nFh5Fkg55WQh8U89ZhZegv6lWHG0THPinXz0WZ1MMwHR8dm24\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\n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\nxmcTiln9bIpMFfy6fc6EdALdq6QBgdOBvwbceg==\n-----END CERTIFICATE-----\n",
+      "after": "-----BEGIN CERTIFICATE-----\nMIIGIDCCA9SgAwIBAgITNIRxfItaZXK4GXuQLT6L56dvoTBBBgkqhkiG9w0BAQow\nNKAPMA0GCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUA\nogMCASAwYDELMAkGA1UEBhMCVVMxEzARBgNVBAoTCkdvb2dsZSBMTEMxPDA6BgNV\nBAMTM0dvb2dsZS1Sb290LUNBLTZhZjcwMTNmLTAwMDAtMjZlMS1hMjRlLTI0MDU4\nODY5ZTA1NDAeFw0yNjExMDYxNzU0MTVaFw0zNjExMDYxNzUzNTVaMEwxCzAJBgNV\nBAYTAlVTMRMwEQYDVQQKEwpHb29nbGUgTExDMSgwJgYDVQQDEx9DQVMtTWFuYWdl\nZCBDQS11cy1jZW50cmFsMS02YWY1MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB\nCgKCAQEArOw82BJlm8/9JYf2K/esHhlWpe9JwQFmqqizzIKGxpSRiJcEJZEXtS21\nQPa/2/cjgORrPk2ZticE+8WaTx/c17Yi8/JvrF80zfUF/BdtMQHDWA+BNRLyrP/Q\nUEnLeV+m8xIbaN9GxPRG02kwUlSHaWRDJds0FUTCKhXVjudl0gBsrVfBEZDCW1gH\nSurQrn9VTt7L7hZbW6gkiA0xiDOYXbQhPgCI13AFJFyE+554ZXIhFVNvNZXWEHWE\nUSTsgqRBpYhIOKd41SSS3a2jyTCVlM8Dk+20Q4SoBtrPI3qw8mbuDvxUbZtMXIxO\nceKDqEcCo29KSS/+VgUeKHgrBHGZxwIDAQABo4IBfTCCAXkwDgYDVR0PAQH/BAQD\nAgEGMBIGA1UdEwEB/wQIMAYBAf8CAQAwHQYDVR0OBBYEFMzlW2rif6bMXi3DnO0c\ncqRjEc59MB8GA1UdIwQYMBaAFHAQUos6Vm6CdDEFMrctPL8lHFiSMIGNBggrBgEF\nBQcBAQSBgDB+MHwGCCsGAQUFBzAChnBodHRwOi8vcHJpdmF0ZWNhLWNvbnRlbnQt\nNmFmNGQ2OWUtMDAwMC0yNDA0LWEzYzktM2MyODZkMzk1ODRhLnN0b3JhZ2UuZ29v\nZ2xlYXBpcy5jb20vNTgyNDU4ZmU1NDUzYjZlYmU1MGEvY2EuY3J0MIGCBgNVHR8E\nezB5MHegdaBzhnFodHRwOi8vcHJpdmF0ZWNhLWNvbnRlbnQtNmFmNGQ2OWUtMDAw\nMC0yNDA0LWEzYzktM2MyODZkMzk1ODRhLnN0b3JhZ2UuZ29vZ2xlYXBpcy5jb20v\nNTgyNDU4ZmU1NDUzYjZlYmU1MGEvY3JsLmNybDBBBgkqhkiG9w0BAQowNKAPMA0G\nCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUAogMCASAD\nggIBAGqM7QEhsSNXRg3vjKPYDs7vpYYYzM6xPvtbb9ib427nQQFtzlZWU18HetpG\ncPlVxgj8N+S3pLuyzIFHjauHOP9VFys7uFyEUsN3Gik13dCs2gpaXA2PV8tTatfe\nL0W3csMc7aVeS7aaOVHt4xiM4z33YfZmhecGyFlRU6BDsdh1kMqPJBU5443NVZw4\nUlNDHfohZvnG3YITHCHw4Nl1Z3V61Gij6kyAp5+wOuWcKhw4N6QS7zhQ5qC4lZ0k\n8avguj1ODwIzLQ5KPokDKr4K5Dv5GARMaPr+ZY1wQdvM6Yuzfky8GLjE1MixOJ+n\n8dNm9m+ReI6A6OYS7sjbh5s1IBEvA3TPJaEZq91m7CwDtwQFHAvI4hH83rmzax2K\nns6lZtB6fQhizd1NnUgQH8G293Ik0WnI1akkgfhNCOkTtW/a1DeKFZd0JOqbtP0o\nj5laWOK2Iw/69kj8l1faUQDnmo+68WfwS0DkCDEWt92aaapi0ChpH1UKeBzRFGhg\nUSgbAfI9EoHmmx8aJBVRYJPRG9YErKRSMc8bxscDOaZ4uji0xHLvGEhkhjE9wyJ6\nqa65L2/1oMDqDYVkjJR19R3YvkbOQGtsyv3Dejx6OIFrSjfNLa4ppde3AyzeHhUW\nFh5Fkg55WQh8U89ZhZegv6lWHG0THPinXz0WZ1MMwHR8dm24\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\n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\nxmcTiln9bIpMFfy6fc6EdALdq6QBgdOBvwbceg==\n-----END CERTIFICATE-----\n",
+      "after_unknown": false,
+      "before_sensitive": true,
+      "after_sensitive": true
+    },
+    "port": {
+      "actions": [
+        "no-op"
+      ],
+      "before": 6379,
+      "after": 6379,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.13.1",
+    "values": {
+      "outputs": {
+        "address": {
+          "sensitive": false,
+          "value": "10.64.16.2",
+          "type": "string"
+        },
+        "ca": {
+          "sensitive": true,
+          "value": "-----BEGIN CERTIFICATE-----\nMIIGIDCCA9SgAwIBAgITNIRxfItaZXK4GXuQLT6L56dvoTBBBgkqhkiG9w0BAQow\nNKAPMA0GCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUA\nogMCASAwYDELMAkGA1UEBhMCVVMxEzARBgNVBAoTCkdvb2dsZSBMTEMxPDA6BgNV\nBAMTM0dvb2dsZS1Sb290LUNBLTZhZjcwMTNmLTAwMDAtMjZlMS1hMjRlLTI0MDU4\nODY5ZTA1NDAeFw0yNjExMDYxNzU0MTVaFw0zNjExMDYxNzUzNTVaMEwxCzAJBgNV\nBAYTAlVTMRMwEQYDVQQKEwpHb29nbGUgTExDMSgwJgYDVQQDEx9DQVMtTWFuYWdl\nZCBDQS11cy1jZW50cmFsMS02YWY1MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB\nCgKCAQEArOw82BJlm8/9JYf2K/esHhlWpe9JwQFmqqizzIKGxpSRiJcEJZEXtS21\nQPa/2/cjgORrPk2ZticE+8WaTx/c17Yi8/JvrF80zfUF/BdtMQHDWA+BNRLyrP/Q\nUEnLeV+m8xIbaN9GxPRG02kwUlSHaWRDJds0FUTCKhXVjudl0gBsrVfBEZDCW1gH\nSurQrn9VTt7L7hZbW6gkiA0xiDOYXbQhPgCI13AFJFyE+554ZXIhFVNvNZXWEHWE\nUSTsgqRBpYhIOKd41SSS3a2jyTCVlM8Dk+20Q4SoBtrPI3qw8mbuDvxUbZtMXIxO\nceKDqEcCo29KSS/+VgUeKHgrBHGZxwIDAQABo4IBfTCCAXkwDgYDVR0PAQH/BAQD\nAgEGMBIGA1UdEwEB/wQIMAYBAf8CAQAwHQYDVR0OBBYEFMzlW2rif6bMXi3DnO0c\ncqRjEc59MB8GA1UdIwQYMBaAFHAQUos6Vm6CdDEFMrctPL8lHFiSMIGNBggrBgEF\nBQcBAQSBgDB+MHwGCCsGAQUFBzAChnBodHRwOi8vcHJpdmF0ZWNhLWNvbnRlbnQt\nNmFmNGQ2OWUtMDAwMC0yNDA0LWEzYzktM2MyODZkMzk1ODRhLnN0b3JhZ2UuZ29v\nZ2xlYXBpcy5jb20vNTgyNDU4ZmU1NDUzYjZlYmU1MGEvY2EuY3J0MIGCBgNVHR8E\nezB5MHegdaBzhnFodHRwOi8vcHJpdmF0ZWNhLWNvbnRlbnQtNmFmNGQ2OWUtMDAw\nMC0yNDA0LWEzYzktM2MyODZkMzk1ODRhLnN0b3JhZ2UuZ29vZ2xlYXBpcy5jb20v\nNTgyNDU4ZmU1NDUzYjZlYmU1MGEvY3JsLmNybDBBBgkqhkiG9w0BAQowNKAPMA0G\nCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUAogMCASAD\nggIBAGqM7QEhsSNXRg3vjKPYDs7vpYYYzM6xPvtbb9ib427nQQFtzlZWU18HetpG\ncPlVxgj8N+S3pLuyzIFHjauHOP9VFys7uFyEUsN3Gik13dCs2gpaXA2PV8tTatfe\nL0W3csMc7aVeS7aaOVHt4xiM4z33YfZmhecGyFlRU6BDsdh1kMqPJBU5443NVZw4\nUlNDHfohZvnG3YITHCHw4Nl1Z3V61Gij6kyAp5+wOuWcKhw4N6QS7zhQ5qC4lZ0k\n8avguj1ODwIzLQ5KPokDKr4K5Dv5GARMaPr+ZY1wQdvM6Yuzfky8GLjE1MixOJ+n\n8dNm9m+ReI6A6OYS7sjbh5s1IBEvA3TPJaEZq91m7CwDtwQFHAvI4hH83rmzax2K\nns6lZtB6fQhizd1NnUgQH8G293Ik0WnI1akkgfhNCOkTtW/a1DeKFZd0JOqbtP0o\nj5laWOK2Iw/69kj8l1faUQDnmo+68WfwS0DkCDEWt92aaapi0ChpH1UKeBzRFGhg\nUSgbAfI9EoHmmx8aJBVRYJPRG9YErKRSMc8bxscDOaZ4uji0xHLvGEhkhjE9wyJ6\nqa65L2/1oMDqDYVkjJR19R3YvkbOQGtsyv3Dejx6OIFrSjfNLa4ppde3AyzeHhUW\nFh5Fkg55WQh8U89ZhZegv6lWHG0THPinXz0WZ1MMwHR8dm24\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\nMIIGGDCCA8ygAwIBAgITAxVpRxTAn4fTtPNXi61OScECLjBBBgkqhkiG9w0BAQow\nNKAPMA0GCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUA\nogMCASAwYDELMAkGA1UEBhMCVVMxEzARBgNVBAoTCkdvb2dsZSBMTEMxPDA6BgNV\nBAMTM0dvb2dsZS1Sb290LUNBLTZhZjcwMTNmLTAwMDAtMjZlMS1hMjRlLTI0MDU4\nODY5ZTA1NDAeFw0yNjExMDYxNzUzNTdaFw0zNjExMDYxNzUzNTVaMGAxCzAJBgNV\nBAYTAlVTMRMwEQYDVQQKEwpHb29nbGUgTExDMTwwOgYDVQQDEzNHb29nbGUtUm9v\ndC1DQS02YWY3MDEzZi0wMDAwLTI2ZTEtYTI0ZS0yNDA1ODg2OWUwNTQwggIiMA0G\nCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCT4tgyjnuBa3Gn7Bhw97RxvEhUdfEU\nDADg5X2sB3ACPL0/QF4M+24t1zHIjDv3jC8Eu6FyVTVrN+KPfi4mvcAy07Fg4rBk\nTb49Vl62G0eNBgJvFN4KWvrfJB6pj20jMuFQUVHTp3JByneRd7rjUKXd7yOd94IZ\nFJup1iSTKcRQivlu76t8bs9Fr0o5fvCBFL/J1YXUtJKlfUs9JbzNOdPwDV62Dvfh\nCergGjnnPMhc4l3bwAwK7or078MSMWflGY6lwyzoinP2NVUnXoBYhbz02cuZqopK\nxzy/nhBWgV8R9adsjjgYxGLWmL3XGAxmGYD/O2SZ22QirOUelQzNEYIC/n6w3Am7\ncReoxuRwz/Vx+FEALDRMj+dxHubU9duwhdKD6RokCnlEyUdyOkNGVj4iU6FtsKrE\n8rPmMSa/mKC1OXkDkXnzPFiKxyWRQe1wyLYUIaZbtvNux7VYJMYz/D+DCfJBjcqD\nwZx1dn7H0UX4l4QDis/ueJy95699uCxOX3zriHmRk9tCqXrADvf42hM6Sn+LZT9E\nSQ7KMvAaxJK52Llk/roVH+02RR98C6Xes3Ic6CCNyAn2ELZgIpbrAFKZoO6R76qB\nzMLhyTSf+abiSZhfliC+W2Z4UiJw3eYS0kR4Tvg/MCI5+KJKJKa0jLcO/3INjsoe\nX2rzWaywvUusuwIDAQABo2MwYTAOBgNVHQ8BAf8EBAMCAQYwDwYDVR0TAQH/BAUw\nAwEB/zAdBgNVHQ4EFgQUcBBSizpWboJ0MQUyty08vyUcWJIwHwYDVR0jBBgwFoAU\ncBBSizpWboJ0MQUyty08vyUcWJIwQQYJKoZIhvcNAQEKMDSgDzANBglghkgBZQME\nAgEFAKEcMBoGCSqGSIb3DQEBCDANBglghkgBZQMEAgEFAKIDAgEgA4ICAQCBBoXG\nNa87sk6L6xDmmSJTe13fwCiR/E27Z5ucqsQ0f/OfXBWeJ7ovI36DIx/tb/OeZ1V/\nt/gfjyZfPJQn1r68GIfI5fwF5uA7xuppTD0YkrapMgHZnXMY62qj563YWogn4ito\niGcmbOVmxUPAE1FC7OXrEGSZgFX/oExt+4cDuvC0qf6kguRJZlFu+s6yQr1ZKfJf\nrrrJ0XiMBkyh7oATXRzTiCoU1wGcYx18S4/zRm/zJP86CCJVn81KI7zoYCFTIGqn\nfVVW0R89xSFDnIMj7VPzVP1PqhQ1kyk5r3N5dG6ypc2eYsJ4wXrkVn68g8th5Erp\nVICq9oQAUqlqjQQ7O7S4FsV1oSlgQAWPCwyy5EZj4zHBCjlo4/EGKjvU2goEPiII\nFPer1gbB78TZF9nh19lgADuOoviYdydmxbW1lNDnIbX8n/nTsHp+GRKJCF843BAe\nGkwZzwg5WjVxE1WYQAJFPDATV3dgkbm85btU8Gv/0L/QQnQNu5qple16RUy/38FS\n4qq+M94xFvn0OduyYw2leHmh6PdG1tap4v6hapylEJR82lPl3hXZyo0IW9pRSZKb\n1A7tNF7aPh3rDhbyA6p8JV4yoCPV5bWjEicHFV4/3GUTLsL6a7yrpe5nWuB85//6\nxmcTiln9bIpMFfy6fc6EdALdq6QBgdOBvwbceg==\n-----END CERTIFICATE-----\n",
+          "type": "string"
+        },
+        "port": {
+          "sensitive": false,
+          "value": 6379,
+          "type": "number"
+        }
+      },
+      "root_module": {
+        "resources": [
+          {
+            "address": "google_memorystore_instance.cache",
+            "mode": "managed",
+            "type": "google_memorystore_instance",
+            "name": "cache",
+            "provider_name": "registry.opentofu.org/hashicorp/google",
+            "schema_version": 0,
+            "values": {
+              "acl_policy": null,
+              "authorization_mode": "AUTH_DISABLED",
+              "automated_backup_config": [
+                {
+                  "fixed_frequency_schedule": [
+                    {
+                      "start_time": [
+                        {
+                          "hours": 3
+                        }
+                      ]
+                    }
+                  ],
+                  "retention": "86400s"
+                }
+              ],
+              "available_maintenance_versions": [],
+              "backup_collection": "",
+              "create_time": "2026-11-06T17:53:50.498030628Z",
+              "cross_instance_replication_config": [],
+              "deletion_policy": "DELETE",
+              "deletion_protection_enabled": false,
+              "desired_auto_created_endpoints": [
+                {
+                  "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+                  "project_id": "example-project-123"
+                }
+              ],
+              "desired_psc_auto_connections": [],
+              "discovery_endpoints": [],
+              "effective_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "iv5snyhcwnee"
+              },
+              "effective_maintenance_version": "MEMORYSTORE_20261102_00_00",
+              "endpoints": [
+                {
+                  "connections": [
+                    {
+                      "psc_auto_connection": [
+                        {
+                          "connection_type": "CONNECTION_TYPE_PRIMARY",
+                          "forwarding_rule": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/forwardingRules/sca-auto-fr-22114ac6-57e9-44c5-8810-d907eee97b0c",
+                          "ip_address": "10.64.16.2",
+                          "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+                          "port": 6379,
+                          "project_id": "example-project-123",
+                          "psc_connection_id": "88155324908834818",
+                          "service_attachment": "projects/739238548766/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-d1ab61fabda7bf41-psc-sa"
+                        }
+                      ]
+                    },
+                    {
+                      "psc_auto_connection": [
+                        {
+                          "connection_type": "CONNECTION_TYPE_READER",
+                          "forwarding_rule": "https://www.googleapis.com/compute/v1/projects/example-project-123/regions/europe-west1/forwardingRules/sca-auto-fr-4951c1c8-30e0-47f4-988a-722a0d9a3a2e",
+                          "ip_address": "10.64.16.3",
+                          "network": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net",
+                          "port": 6379,
+                          "project_id": "example-project-123",
+                          "psc_connection_id": "88155324908834819",
+                          "service_attachment": "projects/739238548766/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-d1ab61fabda7bf41-psc-sa-2"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "engine_configs": {
+                "maxmemory-policy": "noeviction"
+              },
+              "engine_version": "VALKEY_8_0",
+              "gcs_source": [],
+              "id": "projects/example-project-123/locations/europe-west1/instances/cloudgate-rpwjluzdxftp",
+              "instance_id": "cloudgate-rpwjluzdxftp",
+              "is_acl_policy_in_sync": false,
+              "kms_key": "",
+              "labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "iv5snyhcwnee"
+              },
+              "location": "europe-west1",
+              "maintenance_policy": [],
+              "maintenance_schedule": [],
+              "maintenance_version": "",
+              "managed_backup_source": [],
+              "managed_server_ca": [
+                {
+                  "ca_certs": [
+                    {
+                      "certificates": [
+                        "-----BEGIN CERTIFICATE-----\nMIIGIDCCA9SgAwIBAgITNIRxfItaZXK4GXuQLT6L56dvoTBBBgkqhkiG9w0BAQow\nNKAPMA0GCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUA\nogMCASAwYDELMAkGA1UEBhMCVVMxEzARBgNVBAoTCkdvb2dsZSBMTEMxPDA6BgNV\nBAMTM0dvb2dsZS1Sb290LUNBLTZhZjcwMTNmLTAwMDAtMjZlMS1hMjRlLTI0MDU4\nODY5ZTA1NDAeFw0yNjExMDYxNzU0MTVaFw0zNjExMDYxNzUzNTVaMEwxCzAJBgNV\nBAYTAlVTMRMwEQYDVQQKEwpHb29nbGUgTExDMSgwJgYDVQQDEx9DQVMtTWFuYWdl\nZCBDQS11cy1jZW50cmFsMS02YWY1MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB\nCgKCAQEArOw82BJlm8/9JYf2K/esHhlWpe9JwQFmqqizzIKGxpSRiJcEJZEXtS21\nQPa/2/cjgORrPk2ZticE+8WaTx/c17Yi8/JvrF80zfUF/BdtMQHDWA+BNRLyrP/Q\nUEnLeV+m8xIbaN9GxPRG02kwUlSHaWRDJds0FUTCKhXVjudl0gBsrVfBEZDCW1gH\nSurQrn9VTt7L7hZbW6gkiA0xiDOYXbQhPgCI13AFJFyE+554ZXIhFVNvNZXWEHWE\nUSTsgqRBpYhIOKd41SSS3a2jyTCVlM8Dk+20Q4SoBtrPI3qw8mbuDvxUbZtMXIxO\nceKDqEcCo29KSS/+VgUeKHgrBHGZxwIDAQABo4IBfTCCAXkwDgYDVR0PAQH/BAQD\nAgEGMBIGA1UdEwEB/wQIMAYBAf8CAQAwHQYDVR0OBBYEFMzlW2rif6bMXi3DnO0c\ncqRjEc59MB8GA1UdIwQYMBaAFHAQUos6Vm6CdDEFMrctPL8lHFiSMIGNBggrBgEF\nBQcBAQSBgDB+MHwGCCsGAQUFBzAChnBodHRwOi8vcHJpdmF0ZWNhLWNvbnRlbnQt\nNmFmNGQ2OWUtMDAwMC0yNDA0LWEzYzktM2MyODZkMzk1ODRhLnN0b3JhZ2UuZ29v\nZ2xlYXBpcy5jb20vNTgyNDU4ZmU1NDUzYjZlYmU1MGEvY2EuY3J0MIGCBgNVHR8E\nezB5MHegdaBzhnFodHRwOi8vcHJpdmF0ZWNhLWNvbnRlbnQtNmFmNGQ2OWUtMDAw\nMC0yNDA0LWEzYzktM2MyODZkMzk1ODRhLnN0b3JhZ2UuZ29vZ2xlYXBpcy5jb20v\nNTgyNDU4ZmU1NDUzYjZlYmU1MGEvY3JsLmNybDBBBgkqhkiG9w0BAQowNKAPMA0G\nCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUAogMCASAD\nggIBAGqM7QEhsSNXRg3vjKPYDs7vpYYYzM6xPvtbb9ib427nQQFtzlZWU18HetpG\ncPlVxgj8N+S3pLuyzIFHjauHOP9VFys7uFyEUsN3Gik13dCs2gpaXA2PV8tTatfe\nL0W3csMc7aVeS7aaOVHt4xiM4z33YfZmhecGyFlRU6BDsdh1kMqPJBU5443NVZw4\nUlNDHfohZvnG3YITHCHw4Nl1Z3V61Gij6kyAp5+wOuWcKhw4N6QS7zhQ5qC4lZ0k\n8avguj1ODwIzLQ5KPokDKr4K5Dv5GARMaPr+ZY1wQdvM6Yuzfky8GLjE1MixOJ+n\n8dNm9m+ReI6A6OYS7sjbh5s1IBEvA3TPJaEZq91m7CwDtwQFHAvI4hH83rmzax2K\nns6lZtB6fQhizd1NnUgQH8G293Ik0WnI1akkgfhNCOkTtW/a1DeKFZd0JOqbtP0o\nj5laWOK2Iw/69kj8l1faUQDnmo+68WfwS0DkCDEWt92aaapi0ChpH1UKeBzRFGhg\nUSgbAfI9EoHmmx8aJBVRYJPRG9YErKRSMc8bxscDOaZ4uji0xHLvGEhkhjE9wyJ6\nqa65L2/1oMDqDYVkjJR19R3YvkbOQGtsyv3Dejx6OIFrSjfNLa4ppde3AyzeHhUW\nFh5Fkg55WQh8U89ZhZegv6lWHG0THPinXz0WZ1MMwHR8dm24\n-----END CERTIFICATE-----\n",
+                        "-----BEGIN CERTIFICATE-----\n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\nxmcTiln9bIpMFfy6fc6EdALdq6QBgdOBvwbceg==\n-----END CERTIFICATE-----\n"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "mode": "CLUSTER_DISABLED",
+              "name": "projects/example-project-123/locations/europe-west1/instances/cloudgate-rpwjluzdxftp",
+              "node_config": [
+                {
+                  "size_gb": 1.25
+                }
+              ],
+              "node_type": "CUSTOM_PICO",
+              "persistence_config": [
+                {
+                  "aof_config": [],
+                  "mode": "DISABLED",
+                  "rdb_config": []
+                }
+              ],
+              "project": "example-project-123",
+              "psc_attachment_details": [
+                {
+                  "connection_type": "CONNECTION_TYPE_PRIMARY",
+                  "service_attachment": "projects/739238548766/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-d1ab61fabda7bf41-psc-sa"
+                },
+                {
+                  "connection_type": "CONNECTION_TYPE_READER",
+                  "service_attachment": "projects/739238548766/regions/europe-west1/serviceAttachments/gcp-memorystore-auto-d1ab61fabda7bf41-psc-sa-2"
+                }
+              ],
+              "psc_auto_connections": [],
+              "replica_count": 1,
+              "server_ca_mode": "GOOGLE_MANAGED_PER_INSTANCE_CA",
+              "server_ca_pool": "",
+              "shard_count": 1,
+              "state": "ACTIVE",
+              "state_info": [],
+              "terraform_labels": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "iv5snyhcwnee"
+              },
+              "timeouts": null,
+              "transit_encryption_mode": "SERVER_AUTHENTICATION",
+              "uid": "ab535941-b602-42a6-996f-cf0628528e72",
+              "update_time": "2026-11-06T18:16:11.564972546Z",
+              "zone_distribution_config": [
+                {
+                  "mode": "MULTI_ZONE",
+                  "zone": ""
+                }
+              ]
+            },
+            "sensitive_values": {
+              "automated_backup_config": [
+                {
+                  "fixed_frequency_schedule": [
+                    {
+                      "start_time": [
+                        {}
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "available_maintenance_versions": [],
+              "cross_instance_replication_config": [],
+              "desired_auto_created_endpoints": [
+                {}
+              ],
+              "desired_psc_auto_connections": [],
+              "discovery_endpoints": [],
+              "effective_labels": {},
+              "endpoints": [
+                {
+                  "connections": [
+                    {
+                      "psc_auto_connection": [
+                        {}
+                      ]
+                    },
+                    {
+                      "psc_auto_connection": [
+                        {}
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "engine_configs": {},
+              "gcs_source": [],
+              "labels": {},
+              "maintenance_policy": [],
+              "maintenance_schedule": [],
+              "managed_backup_source": [],
+              "managed_server_ca": [
+                {
+                  "ca_certs": [
+                    {
+                      "certificates": [
+                        false,
+                        false
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "node_config": [
+                {}
+              ],
+              "persistence_config": [
+                {
+                  "aof_config": [],
+                  "rdb_config": []
+                }
+              ],
+              "psc_attachment_details": [
+                {},
+                {}
+              ],
+              "psc_auto_connections": [],
+              "state_info": [],
+              "terraform_labels": {},
+              "zone_distribution_config": [
+                {}
+              ]
+            },
+            "identity": {
+              "instance_id": "cloudgate-rpwjluzdxftp",
+              "location": "europe-west1",
+              "project": "example-project-123"
+            },
+            "identity_schema_version": 1
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "google": {
+        "name": "google",
+        "full_name": "registry.opentofu.org/hashicorp/google",
+        "version_constraint": "8.8.0",
+        "expressions": {
+          "add_terraform_attribution_label": {
+            "constant_value": false
+          },
+          "project": {
+            "constant_value": "example-project-123"
+          },
+          "region": {
+            "constant_value": "europe-west1"
+          }
+        }
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "address": {
+          "expression": {
+            "constant_value": "${try(one(flatten([for endpoint in google_memorystore_instance.cache.endpoints : [for connection in endpoint.connections : [for auto in connection.psc_auto_connection : auto.ip_address if auto.connection_type == \"CONNECTION_TYPE_PRIMARY\"]]])), \"\")}",
+            "references": [
+              "google_memorystore_instance.cache.endpoints",
+              "google_memorystore_instance.cache"
+            ]
+          }
+        },
+        "ca": {
+          "sensitive": true,
+          "expression": {
+            "constant_value": "${join(\"\", flatten([for ca in google_memorystore_instance.cache.managed_server_ca : [for chain in ca.ca_certs : chain.certificates]]))}",
+            "references": [
+              "google_memorystore_instance.cache.managed_server_ca",
+              "google_memorystore_instance.cache"
+            ]
+          }
+        },
+        "port": {
+          "expression": {
+            "constant_value": "${try(one(flatten([for endpoint in google_memorystore_instance.cache.endpoints : [for connection in endpoint.connections : [for auto in connection.psc_auto_connection : auto.port if auto.connection_type == \"CONNECTION_TYPE_PRIMARY\"]]])), \"\")}",
+            "references": [
+              "google_memorystore_instance.cache.endpoints",
+              "google_memorystore_instance.cache"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "google_memorystore_instance.cache",
+          "mode": "managed",
+          "type": "google_memorystore_instance",
+          "name": "cache",
+          "provider_config_key": "google",
+          "expressions": {
+            "authorization_mode": {
+              "constant_value": "AUTH_DISABLED"
+            },
+            "automated_backup_config": [
+              {
+                "fixed_frequency_schedule": [
+                  {
+                    "start_time": [
+                      {
+                        "hours": {
+                          "constant_value": 3
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "retention": {
+                  "constant_value": "86400s"
+                }
+              }
+            ],
+            "deletion_protection_enabled": {
+              "constant_value": false
+            },
+            "desired_auto_created_endpoints": [
+              {
+                "network": {
+                  "constant_value": "projects/example-project-123/global/networks/cloudgate-w33lemwkholw-net"
+                },
+                "project_id": {
+                  "constant_value": "example-project-123"
+                }
+              }
+            ],
+            "engine_configs": {
+              "constant_value": {
+                "maxmemory-policy": "noeviction"
+              }
+            },
+            "engine_version": {
+              "constant_value": "VALKEY_8_0"
+            },
+            "instance_id": {
+              "constant_value": "cloudgate-rpwjluzdxftp"
+            },
+            "labels": {
+              "constant_value": {
+                "cloudgate-cloud-account": "lqinodt54kzk",
+                "cloudgate-environment": "w33lemwkholw",
+                "cloudgate-state": "iv5snyhcwnee"
+              }
+            },
+            "location": {
+              "constant_value": "europe-west1"
+            },
+            "mode": {
+              "constant_value": "CLUSTER_DISABLED"
+            },
+            "node_type": {
+              "constant_value": "CUSTOM_PICO"
+            },
+            "replica_count": {
+              "constant_value": 0
+            },
+            "server_ca_mode": {
+              "constant_value": "GOOGLE_MANAGED_PER_INSTANCE_CA"
+            },
+            "shard_count": {
+              "constant_value": 1
+            },
+            "transit_encryption_mode": {
+              "constant_value": "SERVER_AUTHENTICATION"
+            }
+          },
+          "schema_version": 0
+        }
+      ]
+    }
+  },
+  "timestamp": "2026-11-06T18:19:32Z",
+  "errored": false
+}

@@ -1,0 +1,23 @@
+{
+  "cloudgate_fixture": {
+    "source": "the live walk by hand",
+    "how": "Recorded by `tofu output -json` from a real apply in the live Google Cloud project on 2026-11-06 (a walk by hand; OpenTofu 1.13.1, hashicorp/google 8.8.0), then rewritten to the stored files' sample ids (cloud_1, env_1, svc_1, svc_pg_1, svc_redis_1 and their states, project example-project-123 / 123456789012, region europe-west1, deployment ids dep_N) and with every secret value masked (the default certificate's key, the database password, the wired variables' URLs; the typed variable values were the stored files' sample strings). The `tofu output -json` of the `web`'s first apply."
+  },
+  "outputs": {
+    "repository_url": {
+      "sensitive": false,
+      "type": "string",
+      "value": "europe-west1-docker.pkg.dev/example-project-123/cloudgate-plb3nv2t74e6"
+    },
+    "service_name": {
+      "sensitive": false,
+      "type": "string",
+      "value": "cloudgate-plb3nv2t74e6"
+    },
+    "service_uri": {
+      "sensitive": false,
+      "type": "string",
+      "value": "https://cloudgate-plb3nv2t74e6-6qzq3k7vqa-ew.a.run.app"
+    }
+  }
+}

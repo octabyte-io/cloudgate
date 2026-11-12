@@ -1,0 +1,16 @@
+-- `web_server_settings.ssh_private_key` goes, and the stored key with it.
+--
+-- The column held "this instance's SSH key": a private key the console asked an
+-- operator to paste, stored encrypted, and never read by anything. The
+-- credential Servers are dialled with is `ssh_key.private_key`, resolved per
+-- Server through `SERVER_KEY_PROVIDER` — a different table and code path — and
+-- nothing outside the settings module's own save/clear pair and response
+-- projection ever touched this one. A write-only private key is a credential
+-- at rest with no benefit, and it had already ridden three responses out.
+--
+-- **Dropping the column is what destroys the ciphertext**, so no separate
+-- `UPDATE … SET ssh_private_key = NULL` precedes it: after this statement the
+-- value is gone from the live table on every install. It is not gone from a
+-- backup or a `pg_dump` taken before the upgrade — those still hold the
+-- `enc:v1:` ciphertext, which is only as readable as `APP_ENCRYPTION_SECRET` is.
+ALTER TABLE "web_server_settings" DROP COLUMN "ssh_private_key";
