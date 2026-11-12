@@ -2,36 +2,38 @@
 # and the issue forms and the /plan, /build and /fix skills rely on these exact
 # names. .github/workflows/labels.yml makes GitHub match this file on every
 # push to main: it creates and updates these labels and deletes any other.
+# Keep every colour quoted: unquoted, yq reads 5319e7 as the number 5.319e10
+# and GitHub refuses the label.
 - name: bug
-  color: d73a4a
+  color: "d73a4a"
   description: Something is broken.
 - name: enhancement
-  color: a2eeef
+  color: "a2eeef"
   description: A feature idea, before it is planned.
 - name: question
-  color: d876e3
+  color: "d876e3"
   description: One open decision inside a large feature's plan.
 - name: plan
-  color: 5319e7
+  color: "5319e7"
   description: The plan of a large feature; its questions are its sub-issues.
 - name: spec
-  color: 1d76db
+  color: "1d76db"
   description: An approved spec; its tickets are its sub-issues.
 - name: agent
-  color: 0e8a16
+  color: "0e8a16"
   description: A ticket ready to build, small and fully specified.
 - name: human
-  color: fbca04
+  color: "fbca04"
   description: A ticket only a maintainer can do (accounts, secrets, a check on a real server).
 - name: needs-info
-  color: c5def5
+  color: "c5def5"
   description: Waiting on whoever reported it.
 - name: documentation
-  color: 0075ca
+  color: "0075ca"
   description: Docs only.
 - name: good first issue
-  color: 7057ff
+  color: "7057ff"
   description: A good place to start.
 - name: help wanted
-  color: 008672
+  color: "008672"
   description: Contributions especially welcome.
