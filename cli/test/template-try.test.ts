@@ -536,6 +536,44 @@ files:
     expect(commands(docker).some((line) => line.includes(' up'))).toBe(false);
   });
 
+  it('names an ask input with no acceptable value as one to add to test-values.yaml', async () => {
+    const { runner } = fakeDocker();
+
+    const result = await tryTemplate(
+      ghost(
+        '  LICENCE: { ask: { label: Licence, pattern: "(?=x)y" } }\n',
+        'services:\n  ghost:\n    image: ghost:5.96.0\n    environment:\n      licence: ${LICENCE}\n',
+      ),
+      { runner },
+    );
+
+    expect(result.code).toBe(1);
+    expect(result.stderr).toMatch(/LICENCE.*test-values\.yaml/s);
+  });
+
+  it('does not point at test-values.yaml for a value input it cannot fill, which no file can answer', async () => {
+    const { docker, runner } = fakeDocker();
+    // `site` is the Template's own web, whose Domain the compose part never
+    // starts: `try` has no host for it, and test-values.yaml takes only asks.
+    const folder = templateFolder(
+      'compose: app\ninputs:\n  SITE_URL: { value: "{{domains.site.url}}" }\ndomains:\n  - { service: ghost, port: 2368 }\n',
+      {
+        'cloudgate.yaml':
+          'version: 1\nservices:\n  app: { kind: compose, managed: console }\n  site:\n    kind: web\n    source: { image: "louislam/uptime-kuma:1.23" }\n',
+        'docker-compose.yml':
+          'services:\n  ghost:\n    image: ghost:5.96.0\n    environment:\n      url: ${SITE_URL}\n',
+      },
+    );
+
+    const result = await tryTemplate(folder, { runner });
+
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain('SITE_URL');
+    expect(result.stderr).toContain('{{domains.site.url}}');
+    expect(result.stderr).not.toContain('test-values.yaml');
+    expect(commands(docker).some((line) => line.includes(' up'))).toBe(false);
+  });
+
   describe('test-values.yaml', () => {
     const ASKING =
       '  TZ: { ask: { label: Time zone, default: Etc/UTC } }\n' +

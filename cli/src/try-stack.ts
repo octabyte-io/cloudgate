@@ -13,7 +13,11 @@ import {
   publishStackVmPorts,
   setupDomains,
 } from 'cloudgate-template-setup';
-import type { InputRule, SetupAnswers } from 'cloudgate-template-setup';
+import type {
+  InputRule,
+  SetupAnswers,
+  ValueProblem,
+} from 'cloudgate-template-setup';
 import RandExp from 'randexp';
 import { parse, stringify } from 'yaml';
 
@@ -82,14 +86,7 @@ export async function prepareStack(
   };
 
   const made = makeValues(template.inputs, answers);
-  if (!made.ok) {
-    throw new CliError(
-      `${template.id}: try has no value it can use for ${made.problems
-        .map(({ input, message }) => `${input} (${message})`)
-        .join('; ')}`,
-      EXIT.failed,
-    );
-  }
+  if (!made.ok) throw noValue(template, made.problems);
 
   let published: string;
   try {
@@ -133,6 +130,32 @@ export async function prepareStack(
     files,
     domains,
   };
+}
+
+/**
+ * Why `try` cannot make `template`'s values. Only an `ask` input's value can
+ * be given in `test-values.yaml`, so only those problems point there: an
+ * input made any other way (a `{{domains.…}}` reference with no host here)
+ * is the Template's to change, and the file would refuse its name.
+ */
+function noValue(
+  template: Template,
+  problems: readonly ValueProblem[],
+): CliError {
+  const isAsk = ({ input }: ValueProblem) =>
+    Object.hasOwn(template.inputs, input) && 'ask' in template.inputs[input];
+  const listed = (some: readonly ValueProblem[]) =>
+    some.map(({ input, message }) => `${input} (${message})`).join('; ');
+  const asked = problems.filter(isAsk);
+  const made = problems.filter((problem) => !isAsk(problem));
+  const lines: string[] = [];
+  if (asked.length > 0) {
+    lines.push(
+      `try has no value it can use for ${listed(asked)}; give ${asked.length === 1 ? 'it' : 'each'} one in ${TEST_VALUES_FILE}: ${asked.map(({ input }) => input).join(', ')}`,
+    );
+  }
+  if (made.length > 0) lines.push(`try cannot make ${listed(made)}`);
+  return new CliError(`${template.id}: ${lines.join('\n')}`, EXIT.failed);
 }
 
 /**
