@@ -54,7 +54,7 @@
  *      `docker compose up` or `docker stack deploy` creates from a compose
  *      stack. These are invisible to the grep by construction, and they ran on
  *      Docker's stock unbounded driver until they were capped by the
- *      `logging:` block `compose/compose.utils.ts`'s `applyComposeDefaults`
+ *      `logging:` block `compose/compose-file.ts`'s `applyComposeDefaults`
  *      injects into the **converted** compose file, for both compose types.
  *      That injection accepts one residual deliberately — a service that
  *      declares its own `logging:` keeps it whole, an unbounded one included,

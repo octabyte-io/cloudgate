@@ -33,7 +33,7 @@ import type { StackVmSettings } from '../cloud-accounts/definitions/stack-vm';
 import type { StackVmCloudDeleteRecord } from './stack-vm-delete-record';
 import { server } from '../servers/server.schema';
 import { sshKey } from '../ssh-keys/ssh-key.schema';
-import type { ComposePublishedPort } from './compose.utils';
+import type { ComposePublishedPort } from './compose-file';
 
 // Phase 29 scope: no randomize/suffix columns (isolatedDeployment is what keeps
 // stacks collision-free), and no mounts/backups/schedules/patch relations

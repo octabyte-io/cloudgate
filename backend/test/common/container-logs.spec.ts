@@ -187,12 +187,13 @@ describe('backend/src', () => {
  * `logging:` block `applyComposeDefaults` writes into the converted file, which
  * is asserted in full in `test/compose/compose-domains.spec.ts`; what is pinned
  * here is only that the compose path reads *this* module rather than growing a
- * second copy of the ceiling.
+ * second copy of the ceiling. `applyComposeDefaults` lives in `compose-file.ts`,
+ * the pure part of `compose.utils.ts` the CLI bundles (spec #5).
  */
-describe('backend/src/compose/compose.utils.ts', () => {
+describe('backend/src/compose/compose-file.ts', () => {
   it('imports the driver and the options from here rather than restating them', () => {
     const utils = fs.readFileSync(
-      path.join(srcFile('compose/compose.utils.ts')),
+      path.join(srcFile('compose/compose-file.ts')),
       'utf8',
     );
 

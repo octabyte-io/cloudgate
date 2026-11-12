@@ -1,6 +1,6 @@
 import { stringify } from 'yaml';
 
-import { listComposePublishedPorts, parseComposeFile } from './compose.utils';
+import { listComposePublishedPorts, parseComposeFile } from './compose-file';
 
 /** A compose service's Domain on a Stack VM, as its deploy publishes it. */
 export interface StackVmRoute {

@@ -2,7 +2,7 @@ import { removeImagesOn } from '../common/teardown-steps';
 import type { ImageRelease, UnreclaimedImages } from '../common/teardown-steps';
 import type { Compose } from '../db/schema';
 import type { RemoteExecService } from '../remote/remote-exec.service';
-import { parseComposeFile } from './compose.utils';
+import { parseComposeFile } from './compose-file';
 
 /**
  * The images a Compose stack's own build leaves on its Server, and the delete

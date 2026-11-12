@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { ServiceType } from '../applications/application.schema';
 import { SERVICE_TABLES } from '../common/service-parent';
-import { listComposePublishedPorts } from '../compose/compose.utils';
+import { listComposePublishedPorts } from '../compose/compose-file';
 import { compose } from '../compose/compose.schema';
 import type { DrizzleDB } from '../db/drizzle.module';
 import { libsql } from '../databases/libsql/libsql.schema';
