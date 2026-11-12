@@ -833,15 +833,20 @@ describe('A postgres on a Google Cloud Deploy target becomes a Cloud SQL instanc
       });
 
     async function report(postgresId: string) {
-      const entry = (
-        await ctx.db
-          .select()
-          .from(auditLog)
-          .where(eq(auditLog.resourceId, postgresId))
-      ).find((one) =>
-        (one.metadata ?? '').includes('"cloudDelete":"finished"'),
+      // Waited for, not read once: the delete drops the row and then audits
+      // the report (`CloudDatabaseDeletes.finish`), so `gone` resolving does
+      // not yet mean the entry is written.
+      const entry = await until('the delete audited', async () =>
+        (
+          await ctx.db
+            .select()
+            .from(auditLog)
+            .where(eq(auditLog.resourceId, postgresId))
+        ).find((one) =>
+          (one.metadata ?? '').includes('"cloudDelete":"finished"'),
+        ),
       );
-      return JSON.parse(entry!.metadata!) as {
+      return JSON.parse(entry.metadata!) as {
         kept: unknown[];
         dataDeleted: boolean;
       };
