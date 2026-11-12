@@ -289,6 +289,14 @@ describe('readCatalogueFile', () => {
       );
     });
 
+    it('refuses the test-values.yaml that template try reads', () => {
+      expect(
+        refusal(ghostWith('test-values.yaml', 'LICENCE: ABCD-1234\n')),
+      ).toBe(
+        'The catalogue holds templates/ghost/test-values.yaml, the test values template try reads; a catalogue leaves them out',
+      );
+    });
+
     it('refuses a second compose file, by any of its usual names', () => {
       for (const name of [
         'docker-compose.yaml',
@@ -626,6 +634,24 @@ describe('encodeCatalogue', () => {
             ...bytesOf(folder),
             'index.md': Buffer.from('# Ghost'),
             'screenshots/home.png': Buffer.from(png(4, 4).base64, 'base64'),
+          },
+        },
+      ]),
+    );
+
+    expect(read.ok && read.entries[0].files).toEqual(folder.files);
+  });
+
+  it('leaves the test-values.yaml that template try reads out', () => {
+    const folder = ghost();
+    const read = readCatalogueFile(
+      encodeCatalogue([
+        {
+          id: 'ghost',
+          revision: 'r',
+          files: {
+            ...bytesOf(folder),
+            'test-values.yaml': Buffer.from('LICENCE: ABCD-1234\n'),
           },
         },
       ]),

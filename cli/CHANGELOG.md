@@ -4,6 +4,12 @@ The Cloudgate CLI's own changes, published to npm as `@octabyte-io/cloudgate`. A
 
 ## Unreleased
 
+### `test-values.yaml`: a template folder's values for `template try`
+
+A template folder may hold `test-values.yaml`, a map of an `ask` input's name to the text `template try` uses for it (ADR-0078).
+
+- **Check and pack skip it.** `template check` accepts a folder holding it by that exact name and skips it, as it does the website's `index.md` and `screenshots/`, and `template pack` leaves it out of `catalogue.zip`. A `catalogue.zip` that holds it is still refused whole.
+
 ### `cloudgate template try`: a Template's compose part started on the local Docker
 
 `cloudgate template try <template folder>` starts a Template's compose part on this computer's Docker the way an Instance would, checks that each Domain answers, and removes everything. It needs no Instance and no login.

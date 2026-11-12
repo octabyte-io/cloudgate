@@ -10,7 +10,7 @@ import {
   TEMPLATE_CONFIG_FILES_MAX_BYTES,
   TEMPLATES_FOLDER,
   fileCap,
-  isWebsiteFile,
+  isLeftOutOfCatalogue,
 } from './catalogue-layout';
 import { readZip, writeZip } from './catalogue-zip';
 import type { ZipFile } from './catalogue-zip';
@@ -179,8 +179,9 @@ export interface CatalogueFolder {
 /**
  * The `catalogue.zip` holding `folders`: what `cg-templates` CI publishes
  * and what `cloudgate template check` makes of a folder before checking it.
- * The website's `index.md` and `screenshots/` are left out, so a folder
- * that holds them is published, and checked, as Cloudgate reads it. Every
+ * The website's `index.md` and `screenshots/`, and the `test-values.yaml`
+ * `template try` reads, are left out, so a folder that holds them is
+ * published, and checked, as Cloudgate reads it. Every
  * other file is kept, so the check names a stray one rather than the build
  * dropping it unseen.
  */
@@ -200,7 +201,7 @@ export function encodeCatalogue(
   ];
   for (const folder of folders) {
     for (const [path, bytes] of Object.entries(folder.files)) {
-      if (isWebsiteFile(path)) continue;
+      if (isLeftOutOfCatalogue(path)) continue;
       files.push({ path: `${TEMPLATES_FOLDER}${folder.id}/${path}`, bytes });
     }
   }

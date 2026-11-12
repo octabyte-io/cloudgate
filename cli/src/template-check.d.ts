@@ -84,10 +84,17 @@ declare module 'cloudgate-template-check' {
   ): Uint8Array;
 
   /**
-   * Whether a path inside a template folder is the website's (`index.md`,
-   * `screenshots/…`), which a folder may hold and a catalogue leaves out.
+   * `test-values.yaml`: the values `template try` gives a template's `ask`
+   * inputs (ADR-0078), which a folder may hold and a catalogue leaves out.
    */
-  export function isWebsiteFile(pathInFolder: string): boolean;
+  export const TEST_VALUES_FILE: string;
+
+  /**
+   * Whether a path inside a template folder is one a folder may hold and a
+   * catalogue leaves out: the website's (`index.md`, `screenshots/…`) and
+   * `test-values.yaml`.
+   */
+  export function isLeftOutOfCatalogue(pathInFolder: string): boolean;
 
   /**
    * The variables a parsed compose file interpolates, as Docker Compose

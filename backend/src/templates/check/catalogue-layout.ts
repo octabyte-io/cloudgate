@@ -47,6 +47,23 @@ export function isWebsiteFile(pathInFolder: string): boolean {
 }
 
 /**
+ * The values `cloudgate template try` gives a template's `ask` inputs
+ * (ADR-0078). A template folder in `cg-templates` may hold it; like the
+ * website's files, building a catalogue leaves it out and
+ * `cloudgate template check <folder>` skips it, and inside a zip it is
+ * refused.
+ */
+export const TEST_VALUES_FILE = 'test-values.yaml';
+
+/**
+ * Whether a path inside a template folder is one the repository keeps and a
+ * catalogue leaves out: the website's files and the test values.
+ */
+export function isLeftOutOfCatalogue(pathInFolder: string): boolean {
+  return isWebsiteFile(pathInFolder) || pathInFolder === TEST_VALUES_FILE;
+}
+
+/**
  * The endings a config file under `files/` may have, and the few names
  * written without one. A config file is text the template's own containers
  * read; scripts, programs, archives and images are not config, and a new
@@ -126,6 +143,11 @@ export function fileCap(path: string): number | { readonly refused: string } {
   }
   if (isWebsiteFile(inFolder)) {
     return refused('a website file; a catalogue leaves the website out');
+  }
+  if (inFolder === TEST_VALUES_FILE) {
+    return refused(
+      'the test values template try reads; a catalogue leaves them out',
+    );
   }
   if (/compose\.ya?ml$/.test(inFolder)) {
     return refused(

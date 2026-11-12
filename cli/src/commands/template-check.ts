@@ -20,8 +20,8 @@ import { isFolder, templateFoldersAt } from '../template-folders.js';
  * `template.yaml`), or a folder of template folders. A folder is made into a
  * catalogue.zip first, exactly as `template pack` publishes it, so a folder
  * and the zip built from it get the same answer: the website's `index.md`
- * and `screenshots/` are left out, and any other file the zip may not hold
- * refuses it whole.
+ * and `screenshots/`, and the `test-values.yaml` that `template try` reads,
+ * are left out, and any other file the zip may not hold refuses it whole.
  */
 export const templateCheck: Command = {
   name: 'template check',
@@ -34,8 +34,9 @@ USAGE
 
   <path> is a catalogue.zip, a template folder, or a folder of template
   folders. A folder is checked as the catalogue.zip it would be packed
-  into: its website files (index.md, screenshots/) are skipped, and any
-  other file a template does not have refuses the whole catalogue (exit 1).
+  into: its website files (index.md, screenshots/) and the test-values.yaml
+  that template try reads are skipped, and any other file a template does
+  not have refuses the whole catalogue (exit 1).
   Otherwise prints each template with ✓, or ✗ and why Cloudgate would hide
   it, and exits 1 if any is hidden. Makes no request: the check is this
   CLI's copy of Cloudgate ${__CLOUDGATE_CHECK_VERSION__}'s own.

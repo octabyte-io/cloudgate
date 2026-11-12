@@ -101,6 +101,17 @@ describe('template check', () => {
     expect(result.stdout).toBe('✓ uptime-kuma\n');
   });
 
+  it('passes a folder holding the test-values.yaml that template try reads', async () => {
+    const parent = mkdtempSync(join(tmpdir(), 'cloudgate-templates-'));
+    const folder = templateFolder(parent, 'uptime-kuma');
+    writeFileSync(join(folder, 'test-values.yaml'), 'LICENCE: ABCD-1234\n');
+
+    const result = await check(folder);
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toBe('✓ uptime-kuma\n');
+  });
+
   it("refuses the whole folder over a stray file at a template's root", async () => {
     const parent = mkdtempSync(join(tmpdir(), 'cloudgate-templates-'));
     templateFolder(parent, 'uptime-kuma');
@@ -208,6 +219,28 @@ describe('template pack', () => {
       { id: 'ghost', revision: 'abc123' },
       { id: 'uptime-kuma', revision: 'abc123' },
     ]);
+  });
+
+  it('leaves the test-values.yaml that template try reads out of the zip', async () => {
+    const parent = mkdtempSync(join(tmpdir(), 'cloudgate-templates-'));
+    const templates = join(parent, 'templates');
+    const ghost = templateFolder(templates, 'ghost');
+    writeFileSync(join(ghost, 'test-values.yaml'), 'LICENCE: ABCD-1234\n');
+    const zip = join(parent, 'catalogue.zip');
+
+    const packed = await cloudgate(
+      'template',
+      'pack',
+      templates,
+      zip,
+      '--revision',
+      'abc123',
+    );
+
+    expect(packed.code).toBe(0);
+    expect(packed.stdout).toBe('✓ ghost\n');
+    // A zip's names are never compressed.
+    expect(readFileSync(zip).includes('test-values.yaml')).toBe(false);
   });
 
   it('refuses and writes nothing when a template is hidden', async () => {

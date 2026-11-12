@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, join, relative, sep } from 'node:path';
 
-import { isWebsiteFile } from 'cloudgate-template-check';
+import { isLeftOutOfCatalogue } from 'cloudgate-template-check';
 import type { CatalogueFolder } from 'cloudgate-template-check';
 
 import { usageError } from './errors.js';
@@ -12,9 +12,9 @@ import { usageError } from './errors.js';
  * template folders. `template check` and `template pack` both start here, so
  * a folder is checked exactly as it is packed.
  *
- * Every file is read except the website's (`index.md`, `screenshots/`),
- * which `encodeCatalogue` would leave out anyway; skipping them here only
- * spares reading the screenshots. Any other file is kept, so the check names
+ * Every file is read except the website's (`index.md`, `screenshots/`) and
+ * `test-values.yaml`, which `encodeCatalogue` would leave out anyway;
+ * skipping them here only spares reading the screenshots. Any other file is kept, so the check names
  * a stray one rather than this dropping it unseen (ADR-0072).
  */
 export function templateFoldersAt(
@@ -61,7 +61,7 @@ function filesUnder(folder: string): Record<string, Uint8Array> {
     if (!entry.isFile()) continue;
     const full = join(entry.parentPath, entry.name);
     const inFolder = relative(folder, full).split(sep).join('/');
-    if (isWebsiteFile(inFolder)) continue;
+    if (isLeftOutOfCatalogue(inFolder)) continue;
     files[inFolder] = readFileSync(full);
   }
   return files;

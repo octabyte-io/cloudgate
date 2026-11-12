@@ -17,7 +17,7 @@ export {
   encodeCatalogue,
 } from './catalogue-file';
 export type { CatalogueFolder } from './catalogue-file';
-export { isWebsiteFile } from './catalogue-layout';
+export { isLeftOutOfCatalogue, TEST_VALUES_FILE } from './catalogue-layout';
 export type { TemplateLogo } from './template-logo';
 export type { InputRule, TemplateYaml } from './template-yaml';
 export { askedValueProblem } from './template-inputs';
