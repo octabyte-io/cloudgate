@@ -64,6 +64,16 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
+      # Some suites run real shell commands that write a Deployment's log under
+      # the platform host's root, which every lane relocates to
+      # /var/lib/cloudgate-test-platform-root (backend/test/utils/platform-root.ts).
+      # The runner's user cannot create it, so those suites failed with
+      # "mkdir: … Permission denied"; a root user passes them as is.
+      - name: A platform root the runner can write
+        run: |
+          sudo mkdir -p /var/lib/cloudgate-test-platform-root
+          sudo chown "$(id -u):$(id -g)" /var/lib/cloudgate-test-platform-root
+
       # Everything this job writes goes in one directory, which is what the
       # artifact at the end uploads.
       - name: Runner

@@ -215,6 +215,18 @@ CLOUDGATE_DIRECTORY=/srv/some-other-root npx jest --runTestsByPath <file>
 
 `test/utils/platform-root-gate.spec.ts` fails if any lane stops setting the root.
 
+Some e2e suites run real shell commands that write a Deployment's log under that
+root, so they need it writable: as root they make it themselves, and anyone else
+gets `mkdir: … Permission denied` and a failed Apply. On a machine where you are
+not root, make it once:
+
+```bash
+sudo mkdir -p /var/lib/cloudgate-test-platform-root
+sudo chown "$(id -u):$(id -g)" /var/lib/cloudgate-test-platform-root
+```
+
+Both e2e workflows do the same on their runner.
+
 ## The moto lane: real `tofu` against moto, and the stored plan files
 
 `test/jest-moto.json` runs the generated AWS definitions through the real
