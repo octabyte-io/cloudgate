@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vitest/config';
 
-/** The backend whose Template check the CLI bundles (`build.mjs`). */
+/** The backend whose Template check and setup the CLI bundles (`build.mjs`). */
 const backend = (path: string) =>
   fileURLToPath(new URL(`../backend/${path}`, import.meta.url));
 const { version: checkVersion } = JSON.parse(
@@ -22,12 +22,15 @@ const { version: checkVersion } = JSON.parse(
  * default, which setting it would otherwise replace.
  *
  * `cloudgate-template-check` is the backend's Template check read from its
- * source, as the bundle reads it, so the CLI's test runs the real check.
+ * source, as the bundle reads it, so the CLI's test runs the real check;
+ * `cloudgate-template-setup` is its setup values and compose file
+ * preparation, the same way.
  */
 export default defineConfig({
   resolve: {
     alias: {
       'cloudgate-template-check': backend('src/templates/check/index.ts'),
+      'cloudgate-template-setup': backend('src/templates/setup/cli-bundle.ts'),
     },
   },
   ssr: {

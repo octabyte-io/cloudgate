@@ -14,6 +14,8 @@
 // `cloudgate template check` carries the backend's own Template check, bundled
 // from its source (`src/template-check.d.ts` says why it is not shared through
 // `api-schemas`), with the backend version it is that Cloudgate's check of.
+// `cloudgate template try` carries the backend's setup values and compose file
+// preparation the same way (`src/template-setup.d.ts`).
 // That source is CommonJS that reads `require` and `__dirname`, which an ES
 // module bundle does not have, so the banner gives it both. Nest's optional
 // `class-transformer` and `class-validator` are required lazily, never on the
@@ -44,6 +46,9 @@ await build({
   alias: {
     'cloudgate-template-check': fileURLToPath(
       new URL('../backend/src/templates/check/index.ts', import.meta.url),
+    ),
+    'cloudgate-template-setup': fileURLToPath(
+      new URL('../backend/src/templates/setup/cli-bundle.ts', import.meta.url),
     ),
   },
   banner: {
