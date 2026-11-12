@@ -1,0 +1,46 @@
+# Makes the repository's labels match .github/labels.yml: creates missing
+# labels, updates colours and descriptions, and deletes labels the file does
+# not list (GitHub removes a deleted label from its issues). Runs when the file
+# changes on main, or by hand.
+name: labels
+
+on:
+  push:
+    branches: [main]
+    paths: [.github/labels.yml, .github/workflows/labels.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: labels
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      # actions/checkout v4.2.2, pinned to its commit.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Sync labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          wanted=$(yq -o=json '.' .github/labels.yml)
+          jq -c '.[]' <<<"$wanted" | while read -r label; do
+            name=$(jq -r '.name' <<<"$label")
+            color=$(jq -r '.color' <<<"$label")
+            description=$(jq -r '.description' <<<"$label")
+            gh label create "$name" --repo "$REPO" --color "$color" \
+              --description "$description" --force
+          done
+          gh label list --repo "$REPO" --limit 500 --json name --jq '.[].name' |
+            while read -r name; do
+              if ! jq -e --arg n "$name" 'any(.[]; .name == $n)' <<<"$wanted" >/dev/null; then
+                gh label delete "$name" --repo "$REPO" --yes
+              fi
+            done
