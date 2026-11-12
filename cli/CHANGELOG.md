@@ -8,6 +8,7 @@ The Cloudgate CLI's own changes, published to npm as `@octabyte-io/cloudgate`. A
 
 A template folder may hold `test-values.yaml`, a map of an `ask` input's name to the text `template try` uses for it (ADR-0078).
 
+- **Try uses it first.** `template try` gives an `ask` input its value from the file, before the ask's default and before a sample, and every value still passes the ask's own rule. Each value is read as text as written. A name in the file that is not an `ask` input fails `try`, naming it, before anything starts.
 - **Check and pack skip it.** `template check` accepts a folder holding it by that exact name and skips it, as it does the website's `index.md` and `screenshots/`, and `template pack` leaves it out of `catalogue.zip`. A `catalogue.zip` that holds it is still refused whole.
 
 ### `cloudgate template try`: a Template's compose part started on the local Docker
@@ -15,7 +16,7 @@ A template folder may hold `test-values.yaml`, a map of an `ask` input's name to
 `cloudgate template try <template folder>` starts a Template's compose part on this computer's Docker the way an Instance would, checks that each Domain answers, and removes everything. It needs no Instance and no login.
 
 - **The check first.** A Template that `template check` would hide is refused with the check's own reason (exit 1). A Template with no compose part prints `<id>: no compose part, nothing to try` and exits 0.
-- **Values as setup makes them**, by Cloudgate's own code: generated inputs are generated, a `{{domains.<name>.url}}` is `http://localhost:<port>` and `.host` is `localhost`, and an `ask` input takes its default, else a sample (`try@example.com`, `https://example.com` or `1` for a format, a string made from its pattern, otherwise `try`). An input with no value `try` can use fails the run, naming it.
+- **Values as setup makes them**, by Cloudgate's own code: generated inputs are generated, a `{{domains.<name>.url}}` is `http://localhost:<port>` and `.host` is `localhost`, and an `ask` input takes its value in the folder's `test-values.yaml`, else its default, else a sample (`try@example.com`, `https://example.com` or `1` for a format, a string made from its pattern, otherwise `try`). An input with no value `try` can use fails the run, naming it.
 - **An Instance's stack layout.** The compose file gets a Server's restart and log defaults and no Traefik; each Domain's container port is published on a free `127.0.0.1` port. It sits in a temporary `code/` folder beside its `.env` and `files/`, so `../files/…` mounts resolve as on a Server.
 - **One line per Domain.** After `docker compose up --wait`, each Domain is asked every 2 seconds, without following redirects, until it answers anything but a 5xx: `✓ <service>:<port><path>`, or `✗ <service>:<port><path>: <the last status, or "no answer">`. Exit 0 when every Domain passes, 1 otherwise.
 - **Says why on failure.** When `up --wait` fails, a Domain never passes or the time runs out, it prints `docker compose ps --all` and `docker compose logs --no-color` for the project before tearing down.

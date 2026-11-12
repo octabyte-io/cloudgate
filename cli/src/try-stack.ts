@@ -1,7 +1,9 @@
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import type { AddressInfo } from 'node:net';
+import { join } from 'node:path';
 
-import { composeVariables } from 'cloudgate-template-check';
+import { composeVariables, TEST_VALUES_FILE } from 'cloudgate-template-check';
 import type { Template } from 'cloudgate-template-check';
 import {
   applyComposeDefaults,
@@ -49,11 +51,14 @@ export interface TryStack {
  * published on a free `127.0.0.1` port (by `publishStackVmPorts`' rules),
  * and that port is what the values' Domain URLs carry.
  *
- * Refused, naming the input, when an `ask` has no value `try` can make.
+ * An `ask` input takes its value in `testValues` (the folder's
+ * `test-values.yaml`), else its default, else a sample. Refused, naming the
+ * input, when an `ask` has no value `try` can make.
  */
 export async function prepareStack(
   template: Template & { readonly composeFile: string },
   project: string,
+  testValues: Readonly<Record<string, string>> = {},
 ): Promise<TryStack> {
   const hostPorts = new Map<string, number>();
   const named = new Map<string, TryDomain>();
@@ -66,7 +71,7 @@ export async function prepareStack(
     domains.push(reached);
   }
   const answers: SetupAnswers = {
-    asked: askedSamples(template.inputs),
+    asked: { ...askedSamples(template.inputs), ...testValues },
     domain: (name, part) => {
       const domain = named.get(name);
       if (domain === undefined) return null;
@@ -154,6 +159,60 @@ function envFile(
     lines.push(`${name}=${value}`);
   }
   return `${lines.map(composeDotenvLine).join('\n')}\n`;
+}
+
+/**
+ * The values `template`'s folder gives its `ask` inputs in
+ * `test-values.yaml` (ADR-0078), none when it has no such file. Every value
+ * is read as text, as written: `1` is `"1"`, not a number. Refused, naming
+ * them, when the file is not a map of names to text or names anything but
+ * an `ask` input.
+ */
+export function readTestValues(
+  folder: string,
+  template: Template,
+): Record<string, string> {
+  let text: string;
+  try {
+    text = readFileSync(join(folder, TEST_VALUES_FILE), 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    throw error;
+  }
+  const refused = (why: string) =>
+    new CliError(`${template.id}: ${TEST_VALUES_FILE} ${why}`, EXIT.failed);
+
+  let document: unknown;
+  try {
+    document = parse(text, { schema: 'failsafe' });
+  } catch (error) {
+    throw refused(`is not YAML: ${(error as Error).message}`);
+  }
+  if (document === null || document === undefined) return {};
+  if (typeof document !== 'object' || Array.isArray(document)) {
+    throw refused("is not a map of an ask input's name to its text");
+  }
+  const values = document as Record<string, unknown>;
+  const notText = Object.keys(values).filter(
+    (name) => typeof values[name] !== 'string',
+  );
+  if (notText.length > 0) {
+    throw refused(
+      `gives ${notText.join(', ')} something other than text; each value is one line or block of text`,
+    );
+  }
+  const notAsked = Object.keys(values).filter((name) => {
+    const rule = Object.hasOwn(template.inputs, name)
+      ? template.inputs[name]
+      : undefined;
+    return rule === undefined || !('ask' in rule);
+  });
+  if (notAsked.length > 0) {
+    throw refused(
+      `gives a value for ${notAsked.join(', ')}, but only an ask input of this template takes one`,
+    );
+  }
+  return values as Record<string, string>;
 }
 
 /** A sample for each `format`, fixed so a run's values can be read. */

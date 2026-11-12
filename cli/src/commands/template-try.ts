@@ -20,7 +20,7 @@ import { EXIT } from '../exit-codes.js';
 import type { ExitCode } from '../exit-codes.js';
 import { abortOf } from '../stopping.js';
 import { templateFoldersAt } from '../template-folders.js';
-import { prepareStack } from '../try-stack.js';
+import { prepareStack, readTestValues } from '../try-stack.js';
 import type { TryDomain, TryStack } from '../try-stack.js';
 
 /** How long a whole run may take, image pulls included, unless `--timeout` says (spec #5). */
@@ -58,10 +58,10 @@ USAGE
 
   Checks the template as template check does, and stops (exit 1) with the
   reason if Cloudgate would hide it. Then makes its values as setup does (an
-  ask input takes its default, or a sample that fits its format or
-  pattern), lays out the compose part as a Server's stack folder, publishes
-  each Domain's container port on a free 127.0.0.1 port, and runs
-  docker compose up --wait. Each Domain is asked at
+  ask input takes its value in the folder's test-values.yaml, else its
+  default, else a sample that fits its format or pattern), lays out the
+  compose part as a Server's stack folder, publishes each Domain's container
+  port on a free 127.0.0.1 port, and runs docker compose up --wait. Each Domain is asked at
   http://localhost:<port><path> every 2 seconds until it answers anything
   but a 5xx.
 
@@ -92,7 +92,8 @@ FLAGS
     }
     const minutes = runMinutes(context.values.timeout);
     const deadline = context.now().getTime() + minutes * 60_000;
-    const template = checkedTemplate(resolve(context.cwd, given));
+    const folder = resolve(context.cwd, given);
+    const template = checkedTemplate(folder);
     if (template.composeFile === null) {
       context.out.data(`${template.id}: no compose part, nothing to try\n`);
       return EXIT.ok;
@@ -102,6 +103,7 @@ FLAGS
     const stack = await prepareStack(
       { ...template, composeFile: template.composeFile },
       project,
+      readTestValues(folder, template),
     );
     await requireCompose(context.docker);
 

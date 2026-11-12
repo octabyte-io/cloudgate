@@ -536,6 +536,67 @@ files:
     expect(commands(docker).some((line) => line.includes(' up'))).toBe(false);
   });
 
+  describe('test-values.yaml', () => {
+    const ASKING =
+      '  TZ: { ask: { label: Time zone, default: Etc/UTC } }\n' +
+      '  LICENCE: { ask: { label: Licence, pattern: "[A-Z]{4}-[0-9]{4}" } }\n' +
+      '  SITE_URL: { value: "{{domains.ghost.url}}" }\n';
+    const READING =
+      'services:\n  ghost:\n    image: ghost:5.96.0\n    environment:\n      TZ: ${TZ}\n      licence: ${LICENCE}\n      url: ${SITE_URL}\n';
+
+    it('gives an ask input its value there over its default and over a sample', async () => {
+      const { docker, runner } = fakeDocker();
+      const folder = ghost(ASKING, READING);
+      writeFileSync(
+        join(folder, 'test-values.yaml'),
+        'TZ: Europe/Paris\nLICENCE: WXYZ-9876\n',
+      );
+
+      const result = await tryTemplate(folder, {
+        runner,
+        fetch: answering(200).fetch,
+      });
+
+      expect(result.code).toBe(0);
+      expect(envOf(docker.stack?.env ?? '')).toMatchObject({
+        TZ: 'Europe/Paris',
+        LICENCE: 'WXYZ-9876',
+      });
+    });
+
+    it('fails naming each name there that is not an ask input, and starts nothing', async () => {
+      const { docker, runner } = fakeDocker();
+      const folder = ghost(ASKING, READING);
+      writeFileSync(
+        join(folder, 'test-values.yaml'),
+        'TZ: Europe/Paris\nSITE_URL: http://example.com\nNOPE: x\n',
+      );
+
+      const result = await tryTemplate(folder, { runner });
+
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain('test-values.yaml');
+      expect(result.stderr).toContain('SITE_URL, NOPE');
+      expect(result.stderr).not.toContain('TZ');
+      expect(docker.calls).toEqual([]);
+    });
+
+    it('refuses one that is not a map of names to text, and starts nothing', async () => {
+      const { docker, runner } = fakeDocker();
+      const folder = ghost(ASKING, READING);
+      writeFileSync(
+        join(folder, 'test-values.yaml'),
+        'TZ:\n  - Europe/Paris\n',
+      );
+
+      const result = await tryTemplate(folder, { runner });
+
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain('test-values.yaml');
+      expect(docker.calls).toEqual([]);
+    });
+  });
+
   it('exits 1 with an install hint when there is no Docker', async () => {
     const { runner } = fakeDocker(() =>
       Object.assign(new Error('spawn docker ENOENT'), { code: 'ENOENT' }),
