@@ -12,7 +12,9 @@ The Cloudgate CLI's own changes, published to npm as `@octabyte-io/cloudgate`. A
 - **Values as setup makes them**, by Cloudgate's own code: generated inputs are generated, a `{{domains.<name>.url}}` is `http://localhost:<port>` and `.host` is `localhost`, and an `ask` input takes its default, else a sample (`try@example.com`, `https://example.com` or `1` for a format, a string made from its pattern, otherwise `try`). An input with no value `try` can use fails the run, naming it.
 - **An Instance's stack layout.** The compose file gets a Server's restart and log defaults and no Traefik; each Domain's container port is published on a free `127.0.0.1` port. It sits in a temporary `code/` folder beside its `.env` and `files/`, so `../files/…` mounts resolve as on a Server.
 - **One line per Domain.** After `docker compose up --wait`, each Domain is asked every 2 seconds, without following redirects, until it answers anything but a 5xx: `✓ <service>:<port><path>`, or `✗ <service>:<port><path>: <the last status, or "no answer">`. Exit 0 when every Domain passes, 1 otherwise.
-- **Always torn down.** After a pass or a fail, the project is removed with `docker compose down --volumes --remove-orphans` and its folder deleted.
+- **Says why on failure.** When `up --wait` fails, a Domain never passes or the time runs out, it prints `docker compose ps --all` and `docker compose logs --no-color` for the project before tearing down.
+- **A time limit.** The whole run, image pulls included, may take 10 minutes; `--timeout <minutes>` changes that. Past it, the run stops (a `docker compose up` still pulling is ended) and exits 1. `--timeout 0`, or a value that is not a number, is wrong use (exit 2).
+- **Always torn down.** After a pass, a fail, the time limit or Ctrl-C, the project is removed with `docker compose down --volumes --remove-orphans` and its folder deleted. Ctrl-C exits 130 once it is gone; a second Ctrl-C ends the CLI at once.
 - **Needs Docker with Compose v2.** Without Docker, or with a Compose older than v2, it exits 1 naming what to install.
 
 ## 0.0.2-beta.2

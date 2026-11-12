@@ -11,7 +11,8 @@ import { dirname, join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import type { DockerRun } from '../src/docker.js';
+import type { Interrupts } from '../src/command.js';
+import type { DockerResult, DockerRun } from '../src/docker.js';
 import { run } from '../src/run.js';
 
 /**
@@ -42,23 +43,24 @@ interface Docker {
 
 /** A Docker that has Compose v2 and starts whatever it is given. */
 function fakeDocker(
-  answer: (args: string[]) => Awaited<ReturnType<DockerRun>> | Error = () => ({
+  answer: (
+    args: string[],
+    signal?: AbortSignal,
+  ) => DockerResult | Error | Promise<DockerResult> = () => ({
     code: 0,
     stdout: '',
     stderr: '',
   }),
 ): { docker: Docker; runner: DockerRun } {
   const docker: Docker = { calls: [] };
-  const runner: DockerRun = (args, options) => {
+  const runner: DockerRun = async (args, options) => {
     docker.calls.push({ args, cwd: options?.cwd });
     if (args.join(' ') === 'compose version --short') {
-      const answered = answer(args);
-      if (answered instanceof Error) return Promise.reject(answered);
-      return Promise.resolve(
-        answered.stdout === '' && answered.code === 0
-          ? { code: 0, stdout: '2.29.1\n', stderr: '' }
-          : answered,
-      );
+      const answered = await answer(args);
+      if (answered instanceof Error) throw answered;
+      return answered.stdout === '' && answered.code === 0
+        ? { code: 0, stdout: '2.29.1\n', stderr: '' }
+        : answered;
     }
     if (args.includes('up') && options?.cwd) {
       docker.upFolder = options.cwd;
@@ -71,11 +73,57 @@ function fakeDocker(
         files: filesBelow(join(dirname(options.cwd), 'files')),
       };
     }
-    const answered = answer(args);
-    if (answered instanceof Error) return Promise.reject(answered);
-    return Promise.resolve(answered);
+    const answered = await answer(args, options?.signal);
+    if (answered instanceof Error) throw answered;
+    return answered;
   };
   return { docker, runner };
+}
+
+/**
+ * A `docker compose up` still pulling: it ends only when the run stops it,
+ * as a killed `docker` would.
+ */
+function pullingUntilStopped(signal?: AbortSignal): Promise<DockerResult> {
+  return new Promise((resolve) => {
+    signal?.addEventListener('abort', () =>
+      resolve({ code: 130, stdout: '', stderr: 'canceled\n' }),
+    );
+  });
+}
+
+/** What `ps --all` and `logs --no-color` say about the project. */
+function composeState(args: string[]): DockerResult | undefined {
+  if (args.includes('ps')) {
+    return {
+      code: 0,
+      stdout:
+        'NAME            STATUS\nghost-1   Restarting (1) 3 seconds ago\n',
+      stderr: '',
+    };
+  }
+  if (args.includes('logs')) {
+    return {
+      code: 0,
+      stdout: 'ghost-1  | Error: database is not reachable\n',
+      stderr: '',
+    };
+  }
+  return undefined;
+}
+
+/** Ctrl-C, pressed by the test. */
+function ctrlC(): { interrupts: Interrupts; press: () => void } {
+  let listener: (() => void) | undefined;
+  return {
+    interrupts: {
+      listen(listening) {
+        listener = listening;
+        return () => (listener = undefined);
+      },
+    },
+    press: () => listener?.(),
+  };
 }
 
 /** Every Domain answers `status`; records the URLs probed. */
@@ -89,17 +137,22 @@ function answering(status: number) {
   return { probed, fetch };
 }
 
+/** When a test run starts, by its clock. */
+const START = Date.parse('2026-11-12T12:00:00Z');
+
 async function tryTemplate(
   folder: string,
   options: {
     runner: DockerRun;
     fetch?: typeof globalThis.fetch;
+    flags?: string[];
+    interrupts?: Interrupts;
   },
 ) {
   const out = { stdout: '', stderr: '' };
-  let clock = Date.parse('2026-11-12T12:00:00Z');
+  let clock = START;
   const code = await run({
-    argv: ['template', 'try', folder],
+    argv: ['template', 'try', folder, ...(options.flags ?? [])],
     env: {},
     cwd: tmpdir(),
     stdinIsTTY: false,
@@ -111,6 +164,7 @@ async function tryTemplate(
       options.fetch ??
       (() => Promise.reject(new Error('this run probes nothing'))),
     docker: options.runner,
+    interrupts: options.interrupts,
     prompter: {
       ask: () => Promise.reject(new Error('never asked')),
     } as never,
@@ -120,7 +174,7 @@ async function tryTemplate(
       return Promise.resolve();
     },
   });
-  return { code, ...out };
+  return { code, ...out, elapsed: clock - START };
 }
 
 /** A template folder: `template.yaml`'s own lines below its header, and files. */
@@ -510,5 +564,164 @@ files:
     expect(result.code).toBe(1);
     expect(result.stderr).toMatch(/Compose v2/);
     expect(commands(docker)).toEqual(['compose version --short']);
+  });
+
+  it.each(['0', 'soon', '-5', ''])(
+    'refuses --timeout %j as wrong use (exit 2), and starts nothing',
+    async (minutes) => {
+      const { docker, runner } = fakeDocker();
+
+      const result = await tryTemplate(ghost(), {
+        runner,
+        flags: [`--timeout=${minutes}`],
+      });
+
+      expect(result.code).toBe(2);
+      expect(result.stderr).toMatch(
+        /Error: --timeout needs a number of minutes above 0/,
+      );
+      expect(docker.calls).toEqual([]);
+    },
+  );
+
+  it('stops an up still pulling once --timeout minutes have passed, prints the compose status and logs, tears down and exits 1', async () => {
+    const { docker, runner } = fakeDocker((args, signal) =>
+      args.includes('up')
+        ? pullingUntilStopped(signal)
+        : (composeState(args) ?? { code: 0, stdout: '', stderr: '' }),
+    );
+
+    const result = await tryTemplate(ghost(), {
+      runner,
+      flags: ['--timeout', '3'],
+    });
+
+    expect(result.code).toBe(1);
+    expect(result.elapsed).toBe(3 * 60_000);
+    expect(result.stderr).toMatch(/3 minutes/);
+    expect(result.stderr).toContain('ghost-1   Restarting (1) 3 seconds ago');
+    expect(result.stderr).toContain(
+      'ghost-1  | Error: database is not reachable',
+    );
+    expect(commands(docker).slice(1)).toEqual([
+      expect.stringMatching(/^compose -p cg-try-ghost-[a-z0-9]+ up --wait$/),
+      expect.stringMatching(/ ps --all$/),
+      expect.stringMatching(/ logs --no-color$/),
+      expect.stringMatching(/ down --volumes --remove-orphans$/),
+    ]);
+    expect(existsSync(dirname(docker.upFolder ?? ''))).toBe(false);
+  });
+
+  it('gives up on a Domain still answering 5xx once --timeout minutes have passed, prints ✗, the compose status and logs, and tears down', async () => {
+    const { docker, runner } = fakeDocker(
+      (args) => composeState(args) ?? { code: 0, stdout: '', stderr: '' },
+    );
+
+    const result = await tryTemplate(ghost(), {
+      runner,
+      fetch: answering(502).fetch,
+      flags: ['--timeout', '1'],
+    });
+
+    expect(result.code).toBe(1);
+    expect(result.elapsed).toBe(60_000);
+    expect(result.stdout).toBe('✗ ghost:2368/: 502\n');
+    expect(result.stderr).toContain('ghost-1   Restarting (1) 3 seconds ago');
+    expect(result.stderr).toContain(
+      'ghost-1  | Error: database is not reachable',
+    );
+    expect(commands(docker).slice(-3)).toEqual([
+      expect.stringMatching(/ ps --all$/),
+      expect.stringMatching(/ logs --no-color$/),
+      expect.stringMatching(/ down --volumes --remove-orphans$/),
+    ]);
+  });
+
+  it('gives a Domain 10 minutes in all when no --timeout is given', async () => {
+    const { runner } = fakeDocker();
+
+    const result = await tryTemplate(ghost(), {
+      runner,
+      fetch: answering(500).fetch,
+    });
+
+    expect(result.code).toBe(1);
+    expect(result.elapsed).toBe(10 * 60_000);
+  });
+
+  it('prints the compose status and logs when docker compose up fails, before tearing down', async () => {
+    const { docker, runner } = fakeDocker((args) =>
+      args.includes('up')
+        ? {
+            code: 1,
+            stdout: '',
+            stderr:
+              'dependency failed to start: container ghost-1 exited (1)\n',
+          }
+        : (composeState(args) ?? { code: 0, stdout: '', stderr: '' }),
+    );
+
+    const result = await tryTemplate(ghost(), { runner });
+
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain('container ghost-1 exited (1)');
+    expect(result.stderr).toContain('ghost-1   Restarting (1) 3 seconds ago');
+    expect(result.stderr).toContain(
+      'ghost-1  | Error: database is not reachable',
+    );
+    expect(commands(docker).slice(-4)).toEqual([
+      expect.stringMatching(/ up --wait$/),
+      expect.stringMatching(/ ps --all$/),
+      expect.stringMatching(/ logs --no-color$/),
+      expect.stringMatching(/ down --volumes --remove-orphans$/),
+    ]);
+  });
+
+  it('stops an up still pulling on Ctrl-C, tears down with its volumes and exits 130', async () => {
+    const ctrl = ctrlC();
+    const { docker, runner } = fakeDocker((args, signal) => {
+      if (!args.includes('up')) return { code: 0, stdout: '', stderr: '' };
+      queueMicrotask(ctrl.press);
+      return pullingUntilStopped(signal);
+    });
+
+    const result = await tryTemplate(ghost(), {
+      runner,
+      interrupts: ctrl.interrupts,
+    });
+
+    expect(result.code).toBe(130);
+    expect(commands(docker).slice(1)).toEqual([
+      expect.stringMatching(/ up --wait$/),
+      expect.stringMatching(
+        /^compose -p cg-try-ghost-[a-z0-9]+ down --volumes --remove-orphans$/,
+      ),
+    ]);
+    expect(existsSync(dirname(docker.upFolder ?? ''))).toBe(false);
+  });
+
+  it('stops asking a Domain on Ctrl-C, tears down with its volumes and exits 130', async () => {
+    const ctrl = ctrlC();
+    const { docker, runner } = fakeDocker();
+    let probes = 0;
+    const fetch = () => {
+      probes += 1;
+      if (probes === 3) ctrl.press();
+      return Promise.resolve(new Response('', { status: 503 }));
+    };
+
+    const result = await tryTemplate(ghost(), {
+      runner,
+      fetch,
+      interrupts: ctrl.interrupts,
+    });
+
+    expect(result.code).toBe(130);
+    expect(probes).toBe(3);
+    expect(result.stdout).toBe('');
+    expect(commands(docker).at(-1)).toMatch(
+      / down --volumes --remove-orphans$/,
+    );
+    expect(existsSync(dirname(docker.upFolder ?? ''))).toBe(false);
   });
 });

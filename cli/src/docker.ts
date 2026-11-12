@@ -12,10 +12,13 @@ export interface DockerResult {
  * `docker` could not be started at all (no Docker: an `ENOENT`). The one
  * way the CLI reaches Docker (`cloudgate template try`), so a test can
  * stand in for it as it does for `fetch`.
+ *
+ * `signal` stops the command (a time limit, Ctrl-C): it is ended, and the
+ * run still resolves once it has exited, so the caller can clean up after it.
  */
 export type DockerRun = (
   args: string[],
-  options?: { cwd?: string },
+  options?: { cwd?: string; signal?: AbortSignal },
 ) => Promise<DockerResult>;
 
 /** The `docker` on `PATH`, its output collected. */
@@ -29,8 +32,14 @@ export const runDocker: DockerRun = (args, options) =>
     let stderr = '';
     child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()));
     child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
+    const stop = () => child.kill('SIGTERM');
+    if (options?.signal?.aborted) stop();
+    options?.signal?.addEventListener('abort', stop, { once: true });
     child.on('error', reject);
-    child.on('close', (code) => resolve({ code: code ?? 1, stdout, stderr }));
+    child.on('close', (code) => {
+      options?.signal?.removeEventListener('abort', stop);
+      resolve({ code: code ?? 1, stdout, stderr });
+    });
   });
 
 /** Whether a {@link DockerRun} rejected because there is no `docker`. */
