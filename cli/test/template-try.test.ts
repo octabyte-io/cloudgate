@@ -9,7 +9,7 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { Interrupts } from '../src/command.js';
 import type { DockerResult, DockerRun } from '../src/docker.js';
@@ -771,6 +771,104 @@ files:
       expect.stringMatching(/ logs --no-color$/),
       expect.stringMatching(/ down --volumes --remove-orphans$/),
     ]);
+  });
+
+  describe('bounded waits', () => {
+    // These hold a docker command or a probe that never answers, and let the
+    // timer that bounds it fire. The run's own clock (`now`, `sleep`) is the
+    // test's as everywhere else; only `setTimeout` is faked.
+    afterEach(() => vi.useRealTimers());
+
+    /** A docker command or a probe that answers only once it is stopped. */
+    function hung<T>(signal: AbortSignal | undefined, stopped: T): Promise<T> {
+      return new Promise((resolve) => {
+        signal?.addEventListener('abort', () => resolve(stopped));
+      });
+    }
+    const KILLED = { code: 143, stdout: '', stderr: '' };
+
+    it('waits for a probe no longer than the time left before --timeout', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const { runner } = fakeDocker();
+      const stopped: boolean[] = [];
+      let first = true;
+      // --timeout 0.1 is 6 seconds in all, less than a probe's own 10: by
+      // the time the whole run's time has passed, the probe has stopped.
+      const fetch: typeof globalThis.fetch = (_url, init) => {
+        if (first) {
+          first = false;
+          stopped.push(init?.signal?.aborted ?? false);
+          vi.advanceTimersByTime(6_000);
+          stopped.push(init?.signal?.aborted ?? false);
+        }
+        return Promise.reject(new TypeError('fetch failed'));
+      };
+
+      const result = await tryTemplate(ghost(), {
+        runner,
+        fetch,
+        flags: ['--timeout', '0.1'],
+      });
+
+      expect(stopped).toEqual([false, true]);
+      expect(result.code).toBe(1);
+      expect(result.stdout).toBe('✗ ghost:2368/: no answer\n');
+    });
+
+    it('gives up on a docker compose ps or logs that never answers, and still removes the stack', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const { docker, runner } = fakeDocker((args, signal) => {
+        if (args.includes('ps') || args.includes('logs')) {
+          const answer = hung(signal, KILLED);
+          vi.runOnlyPendingTimers();
+          return answer;
+        }
+        return { code: 0, stdout: '', stderr: '' };
+      });
+
+      const result = await tryTemplate(ghost(), {
+        runner,
+        fetch: answering(503).fetch,
+        flags: ['--timeout', '1'],
+      });
+
+      expect(result.code).toBe(1);
+      expect(result.stderr).toMatch(
+        /docker compose ps --all:\n.*gave no answer within/,
+      );
+      expect(result.stderr).toMatch(
+        /docker compose logs --no-color:\n.*gave no answer within/,
+      );
+      expect(commands(docker).at(-1)).toMatch(
+        / down --volumes --remove-orphans$/,
+      );
+      expect(existsSync(dirname(docker.upFolder ?? ''))).toBe(false);
+    });
+
+    it('gives up on a docker compose down that never ends, deletes the folder and names the command that removes the stack', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const { docker, runner } = fakeDocker((args, signal) => {
+        if (args.includes('down')) {
+          const answer = hung(signal, KILLED);
+          vi.runOnlyPendingTimers();
+          return answer;
+        }
+        return { code: 0, stdout: '', stderr: '' };
+      });
+
+      const result = await tryTemplate(ghost(), {
+        runner,
+        fetch: answering(200).fetch,
+      });
+
+      const project = /cg-try-ghost-[a-z0-9]+/.exec(commands(docker)[1])?.[0];
+      expect(result.stdout).toBe('✓ ghost:2368/\n');
+      expect(result.stderr).toContain(
+        `docker compose -p ${project} down --volumes --remove-orphans`,
+      );
+      expect(result.stderr).toMatch(/did not finish within/);
+      expect(existsSync(dirname(docker.upFolder ?? ''))).toBe(false);
+    });
   });
 
   it('gives a Domain 10 minutes in all when no --timeout is given', async () => {

@@ -14,7 +14,7 @@ import type { Template } from 'cloudgate-template-check';
 
 import type { Command, CommandContext } from '../command.js';
 import { isDockerMissing } from '../docker.js';
-import type { DockerRun } from '../docker.js';
+import type { DockerResult, DockerRun } from '../docker.js';
 import { CliError, usageError } from '../errors.js';
 import { EXIT } from '../exit-codes.js';
 import type { ExitCode } from '../exit-codes.js';
@@ -32,8 +32,27 @@ const RUN_MINUTES = 10;
  */
 const PROBE_EVERY_MS = 2_000;
 
-/** How long one probe waits for an answer before it counts as none. */
+/**
+ * How long one probe waits for an answer before it counts as none, or less:
+ * never past the run's deadline.
+ */
 const PROBE_WAIT_MS = 10_000;
+
+/**
+ * How long `docker compose ps` and `logs` each get on a failed run. They
+ * are printed for the author's sake, so a Docker that hangs on one does not
+ * get to hold the run (or a CI runner) past it.
+ */
+const STATE_WAIT_MS = 30_000;
+
+/**
+ * How long `docker compose down` gets to remove the stack. Generous on
+ * purpose: it stops every container, each with its stop grace period (10
+ * seconds unless the Template sets more), and removes the volumes, and cutting
+ * it short leaves the stack behind. It is bounded at all only so that a
+ * Docker that hangs cannot hold a CI runner forever.
+ */
+const REMOVE_WAIT_MS = 5 * 60_000;
 
 /**
  * `cloudgate template try <template folder>`: starts a Template's compose
@@ -241,8 +260,10 @@ function writeStack(stack: TryStack): string {
  *
  * The time limit and Ctrl-C stop the run through one signal, which ends a
  * `docker compose up` still pulling and a probe still waiting. The deadline
- * is read from the run's own clock between waits, so a test's clock drives
- * it.
+ * is read from the run's own clock between waits and before each probe, and
+ * a probe waits no longer than the time left, so a test's clock drives it
+ * and a run cannot outlast `--timeout` by a round of probes. What runs after
+ * it, the failure output and the removal, has a bounded time of its own.
  */
 class TryRun {
   private tornDown = false;
@@ -309,7 +330,17 @@ class TryRun {
     );
     while (why.size > 0 && this.stopped === undefined) {
       for (const domain of [...why.keys()]) {
-        const answer = await probe(fetch, domain, this.stop.signal);
+        const left = this.limit.deadline - this.context.now().getTime();
+        if (left <= 0) {
+          this.halt('timeout');
+          break;
+        }
+        const limit = timeLimit(Math.min(PROBE_WAIT_MS, left));
+        const answer = await probe(
+          fetch,
+          domain,
+          AbortSignal.any([this.stop.signal, limit.signal]),
+        ).finally(limit.clear);
         if (this.stopped === 'interrupt') break;
         if (answer === null) why.delete(domain);
         else why.set(domain, answer);
@@ -369,23 +400,62 @@ class TryRun {
       ['ps', '--all'],
       ['logs', '--no-color'],
     ]) {
-      const said = await this.compose(args);
+      const { said, late } = await this.bounded(args, STATE_WAIT_MS);
+      const text = (said.stdout + said.stderr).trimEnd();
       this.context.out.note(
-        `docker compose ${args.join(' ')}:\n${(said.stdout + said.stderr).trimEnd()}`,
+        `docker compose ${args.join(' ')}:\n${late ? `${text ? `${text}\n` : ''}(gave no answer within ${STATE_WAIT_MS / 1000} seconds, and was stopped)` : text}`,
       );
     }
   }
 
-  /** Removes the project with its volumes, then its folder. Runs once. */
+  /**
+   * Runs `docker compose <args>` for the project, stopped once `ms` have
+   * passed; still waited for after that, until it has exited. `late` when
+   * it was stopped.
+   */
+  private async bounded(
+    args: string[],
+    ms: number,
+  ): Promise<{ said: DockerResult; late: boolean }> {
+    const limit = timeLimit(ms);
+    try {
+      const said = await this.compose(args, limit.signal);
+      return { said, late: limit.signal.aborted };
+    } finally {
+      limit.clear();
+    }
+  }
+
+  /**
+   * Removes the project with its volumes, then its folder. Runs once. A
+   * `down` that has not finished within {@link REMOVE_WAIT_MS} is stopped,
+   * and the command that removes the stack is printed instead.
+   */
   async tearDown(): Promise<void> {
     if (this.tornDown) return;
     this.tornDown = true;
+    const down = ['down', '--volumes', '--remove-orphans'];
     try {
-      await this.compose(['down', '--volumes', '--remove-orphans']);
+      const { late } = await this.bounded(down, REMOVE_WAIT_MS);
+      if (late) {
+        this.context.out.note(
+          `docker compose down did not finish within ${minutesText(REMOVE_WAIT_MS / 60_000)}, so ${this.project} may still be running. Remove it with:\n  docker compose -p ${this.project} ${down.join(' ')}`,
+        );
+      }
     } finally {
       rmSync(dirname(this.code), { recursive: true, force: true });
     }
   }
+}
+
+/**
+ * A signal that aborts once `ms` have passed; `clear` when done with it.
+ * By `setTimeout`, so a test's fake timers can fire it.
+ */
+function timeLimit(ms: number): { signal: AbortSignal; clear: () => void } {
+  const limit = new AbortController();
+  const timer = setTimeout(() => limit.abort(), ms);
+  return { signal: limit.signal, clear: () => clearTimeout(timer) };
 }
 
 /**
@@ -395,14 +465,15 @@ class TryRun {
 async function probe(
   fetch: typeof globalThis.fetch,
   domain: TryDomain,
-  stop: AbortSignal,
+  /** Aborts when the probe has waited long enough, or the run stops. */
+  signal: AbortSignal,
 ): Promise<string | null> {
   try {
     const response = await fetch(
       `http://localhost:${domain.hostPort}${domain.path}`,
       {
         redirect: 'manual',
-        signal: AbortSignal.any([stop, AbortSignal.timeout(PROBE_WAIT_MS)]),
+        signal,
       },
     );
     await response.body?.cancel();
