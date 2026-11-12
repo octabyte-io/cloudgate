@@ -27,9 +27,15 @@
 # sorts the failures: red alone too (a real finding) or green alone (a flake,
 # or an OOM, which the summary names separately because it also passes alone).
 #
-# The preset's `maxWorkers: 2` is a number, not a percentage, so this runner
-# gets two workers and not jest's in-band mode, which is what red the unit lane
-# here with every test green (02af102).
+# The preset's `maxWorkers` is a number sized to the machine
+# (`backend/test/utils/worker-budget.js`), not a percentage, so this 2-vCPU
+# runner gets two workers and not jest's in-band mode, which is what red the
+# unit lane here with every test green (02af102).
+#
+# Every push to main, `build/**` branch and pull request now also runs this
+# e2e suite and the `test:db` lane, split eight ways, in `e2e-shards.yml`.
+# This run stays as the release's single-runner record, with its memory
+# sampling, beside the moto and Google validate lanes.
 name: E2E (release)
 
 on:

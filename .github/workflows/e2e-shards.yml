@@ -1,0 +1,174 @@
+# The e2e suite and the `test:db` lane on every push to main, every `build/**`
+# branch and every pull request, split across eight runners so the whole suite
+# reads back in minutes rather than the better part of an hour.
+#
+# **Why it runs here now.** `e2e.yml` keeps these lanes to a release because
+# one 2-vCPU runner took about 20 minutes for 115 suites. The suite has since
+# tripled (380 suites), so one runner would take about an hour, and `/build`
+# used to pay a slice of that on the developer's machine for every spec it
+# landed. Split eight ways, each shard runs about 48 suites: a few minutes of
+# jest after install. `/build` pushes its work to a `build/<spec>` branch,
+# waits for the `E2E` check below, and only then moves `main`
+# (`.claude/skills/build/SKILL.md`, step 7).
+#
+# **How it splits.** `jest --shard=i/8` hashes the test paths, so each shard is
+# a fixed, roughly even eighth of the files, and a new suite lands in one of
+# them by itself. Each shard starts its own Postgres through the same
+# `globalSetup` a local run uses, at the worker count
+# `backend/test/utils/worker-budget.js` gives the runner (2 on a 2-vCPU one).
+#
+# **A red suite is re-run alone**, as on the release run, because a full run
+# reds one arbitrary suite about two runs in three (`docs/testing.md`). A shard
+# fails only when a suite is red alone too, or the run wedged (exit 124) and
+# left no report to re-run from; a suite that is green alone is named in the
+# shard's summary as a flake and does not hold the push.
+#
+# The moto and Google validate lanes stay in `e2e.yml`, at release.
+name: E2E
+
+on:
+  push:
+    branches: [main, 'build/**']
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch makes the older run's answer moot.
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shard:
+    name: E2E shard ${{ matrix.shard }}/8
+    runs-on: ubuntu-latest
+    # The stall watchdog ends a wedged run with 124 after five silent minutes;
+    # this is only the backstop behind it.
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    defaults:
+      run:
+        # Explicit, because only `shell: bash` gets `-o pipefail`, and the run
+        # below is piped through `tee`.
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Output directory
+        run: |
+          echo "OUT=$RUNNER_TEMP/e2e-out" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/e2e-out"
+
+      - name: E2E shard
+        id: e2e
+        working-directory: backend
+        run: |
+          start=$(date +%s)
+          set +e
+          pnpm exec jest --config ./test/jest-e2e.json \
+            --shard=${{ matrix.shard }}/8 \
+            --json --outputFile="$OUT/e2e.json" \
+            2>&1 | tee "$OUT/e2e.log"
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+
+      # At most 20, each alone. Fails the job only on a suite red alone too, or
+      # on a run that left no report (a wedge), which cannot be re-run from.
+      - name: Re-run each failed suite alone
+        if: ${{ steps.e2e.outputs.code != '0' }}
+        working-directory: backend
+        run: |
+          : > "$OUT/rerun.txt"
+          if [ ! -s "$OUT/e2e.json" ]; then
+            echo "no JSON report (exit ${{ steps.e2e.outputs.code }}): the run did not finish" >> "$OUT/rerun.txt"
+            exit 1
+          fi
+          jq -r '.testResults[] | select(.status == "failed") | .name' \
+            "$OUT/e2e.json" | head -n 20 > "$OUT/failed.txt"
+          if [ ! -s "$OUT/failed.txt" ]; then
+            echo "exit ${{ steps.e2e.outputs.code }} with no failed suite in the report" >> "$OUT/rerun.txt"
+            exit 1
+          fi
+          red=0
+          while read -r file; do
+            rel=${file#"$PWD/"}
+            if pnpm exec jest --config ./test/jest-e2e.json --runTestsByPath "$file" \
+                > "$OUT/rerun-${rel//\//_}.log" 2>&1; then
+              echo "green alone  $rel" >> "$OUT/rerun.txt"
+            else
+              echo "RED ALONE    $rel" >> "$OUT/rerun.txt"
+              red=1
+            fi
+          done < "$OUT/failed.txt"
+          exit "$red"
+
+      - name: Summary
+        if: ${{ !cancelled() }}
+        run: |
+          {
+            echo "## E2E shard ${{ matrix.shard }}/8"
+            echo "- exit code: \`${{ steps.e2e.outputs.code }}\`$([ '${{ steps.e2e.outputs.code }}' = 124 ] && echo ' — the stall watchdog (a wedge)')"
+            echo "- wall clock: ${{ steps.e2e.outputs.seconds }} s"
+            if [ -s "$OUT/e2e.json" ]; then
+              jq -r '"- suites: \(.numPassedTestSuites) passed, \(.numFailedTestSuites) failed of \(.numTotalTestSuites)",
+                     "- tests: \(.numPassedTests) passed, \(.numFailedTests) failed of \(.numTotalTests)"' \
+                "$OUT/e2e.json"
+            fi
+            oom=$(grep -c 'ran out of memory' "$OUT/e2e.log" || true)
+            echo "- \`ran out of memory\` lines: ${oom:-0}"
+            if [ -s "$OUT/rerun.txt" ]; then
+              echo
+              echo "### Failed suites, re-run alone"
+              echo '```'
+              cat "$OUT/rerun.txt"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: e2e-shard-${{ matrix.shard }}-logs
+          path: ${{ runner.temp }}/e2e-out
+          if-no-files-found: ignore
+
+  db:
+    name: test:db lane
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: test:db lane
+        working-directory: backend
+        run: pnpm test:db
+
+  # The one check to wait on or to require: green only when every shard and
+  # the database lane are.
+  e2e:
+    name: E2E
+    if: ${{ always() }}
+    needs: [shard, db]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every shard and the database lane passed
+        run: |
+          if [ "${{ needs.shard.result }}" != success ] || [ "${{ needs.db.result }}" != success ]; then
+            echo "::error::shards: ${{ needs.shard.result }}, test:db: ${{ needs.db.result }}"
+            exit 1
+          fi

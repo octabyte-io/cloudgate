@@ -51,7 +51,7 @@ pnpm dev                           # backend on :4000, console on :3000
 | `pnpm -r run typecheck` | `tsc --noEmit` in both workspaces. The backend's covers `src/` **and** `test/`. |
 | `pnpm -r run lint` | Check-only in both. `lint:fix` is the mutating one, and the split is deliberate: `lint` used to end in `--fix`, which rewrites the checkout and then reports success on what it just rewrote, so it could not fail and therefore could not gate. |
 | `pnpm --filter backend test` | Jest over `backend/test/**/*.spec.ts`. Around 8 seconds. |
-| `pnpm --filter backend test:e2e` | `backend/test/**/*.e2e-spec.ts`. Needs a Docker daemon, and wants `--maxWorkers=2` — see below. |
+| `pnpm --filter backend test:e2e` | `backend/test/**/*.e2e-spec.ts`. Needs a Docker daemon; sizes its workers to the machine — see below. |
 | `pnpm --filter frontend test` | Vitest, once through. `test:watch` to stay. |
 | `pnpm --filter backend db:generate` | Write a migration from a schema change. |
 | `pnpm --filter backend db:migrate` | Apply the committed migrations in `backend/drizzle/`. |
@@ -59,9 +59,10 @@ pnpm dev                           # backend on :4000, console on :3000
 
 Two things about those last rows that cost time to work out:
 
-**Give the e2e suite `--maxWorkers=2`, and pass the flag to jest rather than to the script.** At default worker count on a 10-core, 16 GB machine the run does not merely slow down, it *fails*: 18 of 79 suites died with `Right-hand side of 'instanceof' is not an object`, which is starvation rather than a fault — every one of them passes alone. The flag cannot be threaded through the script, because `pnpm run … -- --maxWorkers=2` reaches jest behind a literal `--` and is read as a test path pattern, so the run finds no tests at all. Call jest directly:
+**Let the e2e suite pick its worker count, and set it with `CLOUDGATE_E2E_WORKERS` rather than a flag to the script.** It forks as many workers as the machine has room for, up to 4 (`backend/test/utils/worker-budget.js`). Do not hand it jest's default: at 9 workers on a 10-core, 16 GB machine the run did not merely slow down, it *failed*: 18 of 79 suites died with `Right-hand side of 'instanceof' is not an object`, which is starvation rather than a fault — every one of them passes alone. A `--maxWorkers` flag cannot be threaded through the script, because `pnpm run … -- --maxWorkers=2` reaches jest behind a literal `--` and is read as a test path pattern, so the run finds no tests at all. Use the variable, or call jest directly:
 
 ```bash
+CLOUDGATE_E2E_WORKERS=2 pnpm --filter backend test:e2e
 pnpm --filter backend exec jest --config ./test/jest-e2e.json --maxWorkers=2
 ```
 
@@ -74,7 +75,7 @@ pnpm --filter backend exec jest --config ./test/jest-e2e.json --maxWorkers=2
 - **Type-check and lint**: `pnpm -r run typecheck`, `pnpm -r run lint` and `bash -n deploy/install.sh`.
 - **Unit lanes**: `pnpm --filter backend test` and `pnpm --filter frontend test`. The backend lane carries every census gate in `backend/test/coding-standards/` and the assertion that `backend/openapi.json` still matches what the DTOs generate. The frontend lane carries the console's tests and the custom eslint rules' own.
 
-**It does not run the e2e suite or `test:db`.** Both need a Docker daemon for their Postgres, and the e2e run takes about five minutes at the worker count it needs to be reliable; the workflow argues the cost in a comment. So a green run means the static checks, the contract check, the census gates and the unit tests passed on a fresh Linux checkout, and says nothing about the integration suites, which stay a local gate.
+**It does not run the e2e suite or `test:db`; `.github/workflows/e2e-shards.yml` does.** On every push to `main`, every `build/**` branch and every pull request, it splits the e2e suite across eight runners and runs `test:db` beside them, and its `E2E` check is green only when all of them are. A red suite is re-run alone first, so only a suite red alone too (or a wedged run) fails it. `/build` waits for that check on a `build/<spec>` branch before it moves `main`.
 
 ## Repo layout
 
@@ -121,9 +122,9 @@ container it owns — and `docs/deploy.md` is the operating guide: the origin mo
 posture, upgrades, instance backup and the known traps. There is no Dockerfile or compose file for
 Cloudgate itself; it deploys containers, it does not ship as one.
 
-CI runs typecheck, lint and the unit lanes on every push and pull request. The e2e suite and
-`test:db` need Docker: run them locally before a change lands, and `.github/workflows/e2e.yml` runs
-them on every pushed `v*` release tag — see `docs/testing.md`.
+CI runs typecheck, lint and the unit lanes on every push and pull request, and the e2e suite and
+`test:db` split eight ways (`.github/workflows/e2e-shards.yml`). `.github/workflows/e2e.yml` also
+runs them on one runner on every pushed `v*` release tag — see `docs/testing.md`.
 
 ## Contributing and security
 

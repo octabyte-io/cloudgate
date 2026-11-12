@@ -8,11 +8,10 @@
 # convention.
 #
 # The e2e suites and the `test:db` lane are not run here, deliberately. They are
-# Testcontainers-backed, need a Docker daemon, and the e2e run takes ~5 minutes
-# at the `--maxWorkers=2` it requires to be reliable; running them is a separate
-# decision with a separate cost. It was priced on 2026-09-10 — about 20 minutes
-# of e2e on this runner — and the answer is `e2e.yml`, which runs both on every
-# `v*` release tag instead of every push.
+# Testcontainers-backed, need a Docker daemon, and one runner would take about
+# an hour for the e2e suite's 380 files. `e2e-shards.yml` runs both on the same
+# pushes and pull requests as this workflow, the e2e suite split eight ways, and
+# `e2e.yml` runs them on one runner for every `v*` release tag.
 #
 # The unit lanes are not in that category, and the `unit` job runs them. When
 # this comment was first written it excluded "the suites" whole, and the
