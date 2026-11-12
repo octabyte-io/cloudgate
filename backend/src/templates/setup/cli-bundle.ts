@@ -21,4 +21,4 @@ export {
   composeDotenvLine,
 } from '../../compose/compose-file';
 export { publishStackVmPorts } from '../../compose/stack-vm-ports';
-export type { StackVmRoute } from '../../compose/stack-vm-ports';
+export type { HostSide, StackVmRoute } from '../../compose/stack-vm-ports';

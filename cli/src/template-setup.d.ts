@@ -132,12 +132,22 @@ declare module 'cloudgate-template-setup' {
     readonly port: number;
   }
 
+  /** Where a Domain's container port is published on the machine. */
+  export interface HostSide {
+    /** The address it is bound to; every address when absent. */
+    readonly ip?: string;
+    readonly port: number;
+  }
+
   /**
-   * The compose file with each Domain's container port published at the
-   * same number; refuses a Domain on a service the file does not declare.
+   * The compose file with each Domain's container port published on the
+   * host side `hostSide` gives it, the same number on every address unless
+   * given; refuses a Domain on a service the file does not declare, and
+   * leaves a mapping the file already has as it is.
    */
   export function publishStackVmPorts(
     content: string,
     routes: readonly StackVmRoute[],
+    hostSide?: (route: StackVmRoute) => HostSide,
   ): string;
 }

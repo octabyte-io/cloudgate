@@ -151,6 +151,18 @@ describe('publishStackVmPorts', () => {
     );
   });
 
+  it("publishes a Domain's container port on the loopback port it is given, beside the file's own mapping", () => {
+    const content = publishStackVmPorts(
+      'services:\n  web:\n    image: nginx\n    ports: ["8080:80"]\n',
+      [{ host: 'localhost', serviceName: 'web', port: 80 }],
+      () => ({ ip: '127.0.0.1', port: 49152 }),
+    );
+
+    expect(content).toMatch(
+      /ports:\n {6}- "?8080:80"?\n {6}- "?127\.0\.0\.1:49152:80"?\n/,
+    );
+  });
+
   it('refuses a Domain on a service the file does not declare', () => {
     expect(() =>
       publishStackVmPorts('services:\n  web:\n    image: nginx\n', [
