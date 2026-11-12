@@ -41,9 +41,15 @@ jobs:
   shard:
     name: E2E shard ${{ matrix.shard }}/8
     runs-on: ubuntu-latest
-    # The stall watchdog ends a wedged run with 124 after five silent minutes;
-    # this is only the backstop behind it.
+    # The stall watchdog ends a wedged run with 124 after ten silent minutes
+    # here (below); this is only the backstop behind it.
     timeout-minutes: 30
+    # Ten minutes, not the stall watchdog's default five, for one suite in
+    # flight or for silence. `docker-ops.e2e-spec.ts` (173 tests) takes about
+    # 150 s on a 4-core machine and passed 300 s on this 2-vCPU runner, where
+    # the five-minute budget read it as a wedge and failed its shard with 124.
+    env:
+      CLOUDGATE_E2E_STALL_MS: '600000'
     strategy:
       fail-fast: false
       matrix:
