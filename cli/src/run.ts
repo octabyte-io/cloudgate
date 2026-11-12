@@ -5,6 +5,8 @@ import type { Command, Interrupts } from './command.js';
 import { COMMANDS } from './commands/index.js';
 import { openWebSocket } from './deployment-log-stream.js';
 import type { SocketOpener } from './deployment-log-stream.js';
+import { runDocker } from './docker.js';
+import type { DockerRun } from './docker.js';
 import { reportError, usageError } from './errors.js';
 import { EXIT } from './exit-codes.js';
 import type { ExitCode } from './exit-codes.js';
@@ -34,6 +36,8 @@ export interface Invocation {
   stdout: (text: string) => void;
   stderr: (text: string) => void;
   fetch: typeof fetch;
+  /** The `docker` on `PATH` unless given (`template try`). */
+  docker?: DockerRun;
   /** Node's own `WebSocket` unless given. */
   openSocket?: SocketOpener;
   /** Ctrl-C (`main.ts`); never, unless given. */
@@ -226,6 +230,7 @@ async function dispatch(invocation: Invocation): Promise<ExitCode> {
       read: invocation.readStdin ?? (() => Promise.resolve('')),
     },
     fetch: invocation.fetch,
+    docker: invocation.docker ?? runDocker,
     openSocket: invocation.openSocket ?? openWebSocket,
     interrupts: invocation.interrupts ?? { listen: () => () => {} },
     now: invocation.now,

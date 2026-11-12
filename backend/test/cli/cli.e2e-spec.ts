@@ -9,6 +9,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 
 import { parse } from 'dotenv';
@@ -550,6 +551,73 @@ describe('Cloudgate CLI (e2e)', () => {
       const commandHelp = await runCli(['whoami', '--help'], { home });
       expect(commandHelp.code).toBe(0);
       expect(commandHelp.stdout).toContain('cloudgate whoami [--json]');
+    });
+  });
+
+  describe('template try on the local Docker', () => {
+    /** What Docker still holds of a Compose project, by kind. */
+    const leftOf = (project: string) =>
+      Object.fromEntries(
+        (['container', 'network', 'volume'] as const).map((kind) => [
+          kind,
+          execFileSync(
+            'docker',
+            [
+              kind,
+              'ls',
+              ...(kind === 'container' ? ['--all'] : []),
+              '--quiet',
+              '--filter',
+              `label=com.docker.compose.project=${project}`,
+            ],
+            { encoding: 'utf8' },
+          ).trim(),
+        ]),
+      );
+
+    it('starts a pinned nginx Template, passes its Domain, exits 0 and leaves no container, network or volume of its project', async () => {
+      const parent = emptyFolder('try');
+      const folder = join(parent, 'hello');
+      mkdirSync(folder);
+      writeFileSync(
+        join(folder, 'template.yaml'),
+        'name: Hello\ndescription: A static page.\ntags: [web]\ncloudgate: 0.1.0\ncompose: app\ndomains:\n  - { service: web, port: 80 }\n',
+      );
+      writeFileSync(
+        join(folder, 'cloudgate.yaml'),
+        'version: 1\nservices:\n  app: { kind: compose, managed: console }\n',
+      );
+      writeFileSync(
+        join(folder, 'docker-compose.yml'),
+        'services:\n  web:\n    image: nginx:1.27.3-alpine\n    volumes:\n      - html:/usr/share/nginx/html\nvolumes:\n  html: {}\n',
+      );
+      writeFileSync(
+        join(folder, 'logo.svg'),
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"></svg>',
+      );
+
+      try {
+        const result = await runCli(['template', 'try', folder], {
+          home,
+          env: process.env.DOCKER_HOST
+            ? { DOCKER_HOST: process.env.DOCKER_HOST }
+            : {},
+        });
+
+        expect(result.stdout).toBe('✓ web:80/\n');
+        expect(result.code).toBe(0);
+        const project = /Starting (cg-try-hello-[a-z0-9]+) /.exec(
+          result.stderr,
+        )?.[1];
+        expect(project).toBeDefined();
+        expect(leftOf(project as string)).toEqual({
+          container: '',
+          network: '',
+          volume: '',
+        });
+      } finally {
+        removeFolder(parent);
+      }
     });
   });
 

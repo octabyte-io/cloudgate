@@ -4,6 +4,17 @@ The Cloudgate CLI's own changes, published to npm as `@octabyte-io/cloudgate`. A
 
 ## Unreleased
 
+### `cloudgate template try`: a Template's compose part started on the local Docker
+
+`cloudgate template try <template folder>` starts a Template's compose part on this computer's Docker the way an Instance would, checks that each Domain answers, and removes everything. It needs no Instance and no login.
+
+- **The check first.** A Template that `template check` would hide is refused with the check's own reason (exit 1). A Template with no compose part prints `<id>: no compose part, nothing to try` and exits 0.
+- **Values as setup makes them**, by Cloudgate's own code: generated inputs are generated, a `{{domains.<name>.url}}` is `http://localhost:<port>` and `.host` is `localhost`, and an `ask` input takes its default, else a sample (`try@example.com`, `https://example.com` or `1` for a format, a string made from its pattern, otherwise `try`). An input with no value `try` can use fails the run, naming it.
+- **An Instance's stack layout.** The compose file gets a Server's restart and log defaults and no Traefik; each Domain's container port is published on a free `127.0.0.1` port. It sits in a temporary `code/` folder beside its `.env` and `files/`, so `../files/…` mounts resolve as on a Server.
+- **One line per Domain.** After `docker compose up --wait`, each Domain is asked every 2 seconds, without following redirects, until it answers anything but a 5xx: `✓ <service>:<port><path>`, or `✗ <service>:<port><path>: <the last status, or "no answer">`. Exit 0 when every Domain passes, 1 otherwise.
+- **Always torn down.** After a pass or a fail, the project is removed with `docker compose down --volumes --remove-orphans` and its folder deleted.
+- **Needs Docker with Compose v2.** Without Docker, or with a Compose older than v2, it exits 1 naming what to install.
+
 ## 0.0.2-beta.2
 
 ### `cloudgate template pack`: the release's catalogue.zip, built by Cloudgate's own builder

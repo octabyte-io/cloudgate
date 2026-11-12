@@ -1,6 +1,7 @@
 import type { ParseArgsOptionDescriptor } from 'node:util';
 
 import type { SocketOpener } from './deployment-log-stream.js';
+import type { DockerRun } from './docker.js';
 import type { ExitCode } from './exit-codes.js';
 import type { LoginStore } from './logins.js';
 import type { Output } from './output.js';
@@ -17,6 +18,8 @@ export interface CommandContext {
   /** Questions for the person; ask only when `out.mode.canAsk`. */
   prompter: Prompter;
   fetch: typeof fetch;
+  /** Runs a `docker` command on this computer (`template try`). */
+  docker: DockerRun;
   /** Opens a WebSocket (a Deployment log stream). */
   openSocket: SocketOpener;
   /** Ctrl-C, for a command whose work goes on elsewhere (see {@link Interrupts}). */

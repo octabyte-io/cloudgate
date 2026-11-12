@@ -8,6 +8,7 @@ import { logs } from './logs.js';
 import { status } from './status.js';
 import { templateCheck } from './template-check.js';
 import { templatePack } from './template-pack.js';
+import { templateTry } from './template-try.js';
 import { unlink } from './unlink.js';
 import { vars } from './vars.js';
 import { whoami } from './whoami.js';
@@ -31,4 +32,5 @@ export const COMMANDS: readonly Command[] = [
   vars,
   templateCheck,
   templatePack,
+  templateTry,
 ];

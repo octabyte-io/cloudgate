@@ -15,10 +15,39 @@
  * `test/template-check.test.ts`, which runs the real check through it.
  */
 declare module 'cloudgate-template-check' {
+  import type { InputRule } from 'cloudgate-template-setup';
+
+  /**
+   * A Template the check offers, as far as `template try` reads it: its
+   * `template.yaml` fields and its compose part's files.
+   */
+  export interface Template {
+    /** The folder name. */
+    readonly id: string;
+    /** The Config name of the compose entry, when the template has one. */
+    readonly compose?: string;
+    readonly inputs: Readonly<Record<string, InputRule>>;
+    readonly domains: readonly {
+      readonly service: string;
+      readonly port: number;
+      readonly path: string;
+    }[];
+    readonly files: readonly {
+      readonly path: string;
+      /** The entry it belongs to; the compose entry when absent. */
+      readonly entry?: string;
+      readonly mount?: string;
+    }[];
+    /** `docker-compose.yml` as written; null when there is no compose part. */
+    readonly composeFile: string | null;
+    /** The files under `files/`, by their path below it. */
+    readonly configFiles: Readonly<Record<string, string>>;
+  }
+
   export type CatalogueCheck =
     | {
         readonly ok: true;
-        readonly offered: readonly { readonly id: string }[];
+        readonly offered: readonly Template[];
         readonly hidden: readonly {
           readonly id: string;
           readonly reason: string;
@@ -59,6 +88,15 @@ declare module 'cloudgate-template-check' {
    * `screenshots/…`), which a folder may hold and a catalogue leaves out.
    */
   export function isWebsiteFile(pathInFolder: string): boolean;
+
+  /**
+   * The variables a parsed compose file interpolates, as Docker Compose
+   * reads them: those it `needs` (no default) and every one it `mentions`.
+   */
+  export function composeVariables(document: unknown): {
+    readonly needs: ReadonlySet<string>;
+    readonly mentions: ReadonlySet<string>;
+  };
 }
 
 /**
