@@ -6,6 +6,7 @@ import {
   TEMPLATE_DB,
   createTemplateDatabase,
   rememberSharedPostgres,
+  slotsFor,
   startSharedPostgres,
 } from './test-postgres';
 import { separatePlatformRoot } from './platform-root';
@@ -27,15 +28,28 @@ import { armStallWatchdog } from './stall-watchdog';
 export default async function globalSetup(globalConfig?: {
   watch?: boolean;
   watchAll?: boolean;
+  maxWorkers?: number;
+  runTestsByPath?: boolean;
+  nonFlagArgs?: string[];
 }): Promise<void> {
   // The platform host's root and a Server's are two values in every run, so a
   // suite that confuses them reds instead of passing on the coincidence.
   // Through the same `process.env` channel as the Postgres URL below.
   separatePlatformRoot();
 
+  // Warnings and errors only, unless the caller asked for more. At pino-http's
+  // default of `info` every request and response of every test was
+  // pretty-printed: about 140 KB of log per suite, 21 MB by suite 158 of a
+  // full run, all of it formatted on a thread the run then waits on. Inherited
+  // by every worker, like the Postgres URL below. `LOG_LEVEL=info` puts it
+  // back for a suite you are debugging.
+  process.env.LOG_LEVEL ??= 'warn';
+
   // Before the container, not after: the lock exists to stop a second server
   // being started at all, so taking it late would be taking it too late.
-  await acquireE2eLock();
+  // One slot per worker this run can use, so runs of a file or two from
+  // parallel agents go at once while a full run waits for the machine.
+  await acquireE2eLock(slotsFor(globalConfig));
   try {
     const shared = await startSharedPostgres();
     rememberSharedPostgres(shared);

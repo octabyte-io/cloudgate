@@ -1281,17 +1281,22 @@ describe('A redis on a Google Cloud Deploy target becomes a Memorystore instance
           .where(eq(redis.redisId, row.redisId));
         return rows.length === 0 ? true : null;
       });
-      const entry = (
-        await ctx.db
-          .select()
-          .from(auditLog)
-          .where(eq(auditLog.resourceId, row.redisId))
-      ).find((one) =>
-        (one.metadata ?? '').includes('"cloudDelete":"finished"'),
+      // Waited for, not read once: the delete drops the row and then audits
+      // the report (`CloudDatabaseDeletes.finish`), so the row being gone does
+      // not yet mean the entry is written.
+      const entry = await until('the delete audited', async () =>
+        (
+          await ctx.db
+            .select()
+            .from(auditLog)
+            .where(eq(auditLog.resourceId, row.redisId))
+        ).find((one) =>
+          (one.metadata ?? '').includes('"cloudDelete":"finished"'),
+        ),
       );
       return {
         body: res.body as { cloudDelete: { finalSnapshot: string | null } },
-        report: JSON.parse(entry!.metadata!) as {
+        report: JSON.parse(entry.metadata!) as {
           kept: unknown[];
           dataDeleted: boolean;
         },

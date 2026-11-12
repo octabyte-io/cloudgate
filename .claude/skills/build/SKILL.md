@@ -1,6 +1,6 @@
 ---
 name: build
-description: Build an approved spec's tickets onto `main`, one background agent per ready ticket, test first; then the full suites, live acceptance, a review, push, and close the tickets and the spec. Give it a spec or ticket number, or nothing to build every ticketed spec in turn.
+description: Build an approved spec's tickets onto `main`, one background agent per ready ticket, test first; then the local suites, live acceptance, a review, CI's sharded e2e run on a build branch, push, and close the tickets and the spec. Give it a spec or ticket number, or nothing to build every ticketed spec in turn.
 disable-model-invocation: true
 ---
 
@@ -40,7 +40,7 @@ Then recompute the frontier: a ticket the landed one unblocked starts at once (s
 
 Done when no agent is running and the frontier is empty.
 
-## 5. Run the full suites, once
+## 5. Run the local suites, once
 
 From `main`, run every lane the spec's changes reach, as `docs/testing.md` describes, one at a time (they share a machine-wide lock), with no implementer running alongside and no outer `timeout` of your own (the lanes' watchdog ends a stalled run with 124):
 
@@ -48,14 +48,14 @@ From `main`, run every lane the spec's changes reach, as `docs/testing.md` descr
 |---|---|
 | backend unit | `cd backend && npx jest` |
 | backend database | `cd backend && pnpm test:db` (Docker) |
-| backend e2e | the **related suites** only (Docker): every `test/<area>/**/*.e2e-spec.ts` for each `src/<area>/` the spec changed, plus every e2e spec it added or changed, run as `npx jest --config ./test/jest-e2e.json --runTestsByPath <files>`. Not `--findRelatedTests`: every e2e spec imports the whole app, so it selects all of them. The full lane (over 350 suites) is CI's |
+| backend e2e | only the e2e specs the spec **added or changed**, plus any a conflict in step 4 touched, in one invocation (Docker): `npx jest --config ./test/jest-e2e.json --runTestsByPath <files>`. The related suites and the full lane (380 suites) run in CI, split eight ways, on the push in step 7; they are not run here. Not `--findRelatedTests` either: every e2e spec imports the whole app, so it selects all of them |
 | frontend | `cd frontend && npx vitest run` |
 | CLI | `cd cli && npx vitest run` |
 | each changed package | `npm run typecheck` and `npm run lint` (the backend's need `NODE_OPTIONS=--max-old-space-size=8192`; exit 134 is the default heap running out) |
 
 A single red suite is usually the known flake: re-run it alone with `--runTestsByPath` before believing it. A worker that `ran out of memory` is a resource problem, and exit code **124** is a stalled run; re-run either alone. A suite red alone is real, unless it is red on the commit noted in step 2 as well: then it is not this spec's, so record it in the end report as a `/fix` candidate and move on. Fix the rest with one implementer agent and re-run the red lanes until green.
 
-If Docker is not available and the spec changed the backend, the database and e2e lanes cannot run here. Stop before pushing and tell the user, rather than landing untested backend work.
+If Docker is not available and the spec changed the backend, the local e2e specs cannot run here. CI's run in step 7 still gates `main`, so carry on and say so in the end report.
 
 **Live acceptance.** If the spec or a ticket has a `## Live acceptance` section, run it now by [`LIVE-ACCEPTANCE.md`](LIVE-ACCEPTANCE.md). It is done when every live criterion is recorded as passed, failed, or not runnable here, with the reason.
 
@@ -70,7 +70,12 @@ Show both reports side by side, unmerged. Fix every finding in one implementer a
 
 ## 7. Push and close
 
-`git pull --rebase origin main` (re-run the touched tests if anything came in), then `git push origin main`.
+`git pull --rebase origin main` (re-run the touched tests if anything came in). Then let CI run the full backend suites before `main` moves:
+
+1. `git push origin HEAD:refs/heads/build/spec-<n>` (`build/ticket-<n>` for a single ticket). That push starts `.github/workflows/e2e-shards.yml`: the whole e2e lane on eight runners and the `test:db` lane, about ten minutes, beside `ci.yml`'s type-check, lint and unit lanes.
+2. While it runs, do step 6's review if you have not, and write the closing comments. Do not start another spec's agents on this machine meanwhile, so that a red CI suite can be re-run here alone.
+3. Wait for the `E2E` check on that commit (the GitHub MCP `actions_list`/`actions_get` tools, otherwise `gh run watch`). A shard re-runs each red suite alone and fails only when one is red alone too, or the run wedged. On a failure, read the shard's summary, re-run the named suite here with `--runTestsByPath`, fix it with one implementer agent as in step 5, and push the branch again. A suite red on the commit noted in step 2 as well is not this spec's: record it as a `/fix` candidate and move on.
+4. Once `E2E` and `ci.yml` are green, `git push origin HEAD:main` (it is the same commit, so it fast-forwards; if `main` moved, rebase and go back to 1), then delete the branch: `git push origin --delete build/spec-<n>`.
 
 Close each ticket as completed with a comment naming its commits and what now shows it works (the test, or the live evidence). A ticket with a live criterion that failed or was not runnable stays open, with a comment naming each such criterion and why. Close the spec with its last ticket, with a comment listing the tickets and commits. Leave the spec open while any ticket is held or open, and say which.
 

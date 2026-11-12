@@ -14,7 +14,13 @@ You are building ticket #<n> of spec #<spec> in Cloudgate, in your own git workt
 
 Then the next behaviour. Refactor only once the ticket's tests are green, and only inside what the ticket touches.
 
-**Run only the test files your change touches**: `cd backend && npx jest --runTestsByPath <files>` (add `--config ./test/jest-e2e.json` for an e2e spec), `cd frontend && npx vitest run <files>`. Run the changed package's `npm run typecheck` and `npx eslint <changed files>` before you finish. The full suites are the orchestrator's, run once at the end; do not run them. A suite you did not touch that goes red is not yours until it is red alone.
+**Run only the test files your change touches**: `cd backend && npx jest --runTestsByPath <files>` (add `--config ./test/jest-e2e.json` for an e2e spec), `cd frontend && npx vitest run <files>`. Run the changed package's `npm run typecheck` and `npx eslint <changed files>` before you finish. The full suites are CI's, on the orchestrator's push; do not run them. A suite you did not touch that goes red is not yours until it is red alone.
+
+Every e2e invocation boots Postgres and, the first time in a fresh worktree, transforms the whole app (about 25 s), so keep them few:
+
+- While going red-green on one behaviour, run just that test: add `-t '<the test's name>'`. The file still boots the app once, but its other tests are skipped.
+- Before you finish, run every e2e spec you added or changed in **one** invocation (`--runTestsByPath a.e2e-spec.ts b.e2e-spec.ts`), not one per file.
+- Other implementers run their e2e files on the same machine at the same time. Each run takes one slot per file it runs, up to the machine's budget, and waits only when the slots are gone (`docs/testing.md`). Do not set `CLOUDGATE_E2E_NO_LOCK` or `CLOUDGATE_E2E_WORKERS` to get around a wait.
 
 **Stay in the ticket.** What the ticket's criteria need, and the prefactoring that makes it easy, nothing more. Something outside the ticket that you think should change goes in your final message, not in the code.
 

@@ -114,14 +114,16 @@ export default tseslint.config(
   },
   // The harness's hand-written CommonJS — `test/octokit-resolver.js` (both e2e
   // configs' `resolver`), `test/utils/heartbeat-reporter.js` (every e2e run's
-  // reporter) and `test/jest-preset.js` (everything those two configs share),
-  // the only three `.js` files under `{src,apps,libs,test}`. The preset is the
+  // reporter), `test/jest-preset.js` (everything those two configs share) and
+  // `test/utils/worker-budget.js` (the worker count the preset forks and the
+  // e2e slots the lock hands out, CommonJS so the preset can require it), the
+  // only four `.js` files under `{src,apps,libs,test}`. The preset is the
   // third and arrived with this same change: it is hand-written CommonJS for
   // the reason its own docblock gives — `__dirname`, so one set of paths reads
   // the same from either config's `rootDir` — which is exactly why it belongs
   // to this block rather than being a reason to shrink it.
   // `test/coding-standards/harness-js-is-linted.spec.ts` holds the list, so a
-  // fourth one reds rather than quietly making this count wrong again.
+  // fifth one reds rather than quietly making this count wrong again.
   //
   // **They were linted by nothing at all**, and by two mechanisms at once:
   // `package.json`'s glob passed only `{ts,tsx}`, and the parser refused them
