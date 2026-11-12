@@ -7,8 +7,8 @@
 #
 # Signatures live on their own branch because the action commits to it, and a
 # protected `main` would refuse that. The branch must exist before the first
-# outside pull request: `git switch --orphan cla-signatures`, commit nothing
-# but an empty README, push.
+# outside pull request: `git switch --orphan cla-signatures`, commit only a
+# one-line README, push. It exists now; do not add branch protection to it.
 #
 # pull_request_target runs this workflow from the base branch with write
 # access; that is safe here because no step checks out or runs the pull
