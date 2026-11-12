@@ -647,7 +647,7 @@ files:
     expect(result.stderr).toMatch(/[Ii]nstall Docker/);
   });
 
-  it('exits 1 naming Compose v2 when Docker has a Compose without up --wait', async () => {
+  it('exits 1 naming Compose 2.1.1 when Docker has no compose command', async () => {
     const { docker, runner } = fakeDocker((args) =>
       args.includes('version')
         ? {
@@ -661,9 +661,46 @@ files:
     const result = await tryTemplate(ghost(), { runner });
 
     expect(result.code).toBe(1);
-    expect(result.stderr).toMatch(/Compose v2/);
+    expect(result.stderr).toMatch(/Compose 2\.1\.1 or newer/);
     expect(commands(docker)).toEqual(['compose version --short']);
   });
+
+  it.each(['2.1.0', 'v2.0.1', '1.29.2', 'dev', ''])(
+    'exits 1 naming Compose 2.1.1, the first with up --wait, when Compose says it is %j, and starts nothing',
+    async (version) => {
+      const { docker, runner } = fakeDocker((args) =>
+        args.includes('version')
+          ? { code: 0, stdout: `${version}\n`, stderr: '' }
+          : { code: 0, stdout: '', stderr: '' },
+      );
+
+      const result = await tryTemplate(ghost(), { runner });
+
+      expect(result.code).toBe(1);
+      expect(result.stderr).toMatch(/Compose 2\.1\.1 or newer/);
+      expect(result.stderr).toMatch(/Install .*Compose/);
+      expect(commands(docker)).toEqual(['compose version --short']);
+    },
+  );
+
+  it.each(['2.1.1', 'v2.29.1-desktop.1', '3.0.0'])(
+    'starts the stack when Compose says it is %j',
+    async (version) => {
+      const { docker, runner } = fakeDocker((args) =>
+        args.includes('version')
+          ? { code: 0, stdout: `${version}\n`, stderr: '' }
+          : { code: 0, stdout: '', stderr: '' },
+      );
+
+      const result = await tryTemplate(ghost(), {
+        runner,
+        fetch: answering(200).fetch,
+      });
+
+      expect(result.code).toBe(0);
+      expect(commands(docker)[1]).toMatch(/ up --wait$/);
+    },
+  );
 
   it.each(['0', 'soon', '-5', ''])(
     'refuses --timeout %j as wrong use (exit 2), and starts nothing',

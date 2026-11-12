@@ -74,7 +74,7 @@ USAGE
   Ctrl-C removes it too, and exits 130. A template with no compose part has
   nothing to try and exits 0.
 
-  Needs Docker with Compose v2 or newer. Makes no request to an Instance.
+  Needs Docker with Compose 2.1.1 or newer. Makes no request to an Instance.
 
 FLAGS
   --timeout <minutes>  How long the whole run may take, image pulls
@@ -172,7 +172,18 @@ function isTemplateFolder(folder: string): boolean {
   }
 }
 
-/** Refuses, naming what to install, a computer without Docker Compose v2. */
+/**
+ * The first Docker Compose with `up --wait`, which `try` starts a stack with:
+ * 2.1.1 (Compose's release notes). A v2 before it would fail `up` with an
+ * unknown flag, which reads as the Template's fault.
+ */
+const COMPOSE_WITH_WAIT = [2, 1, 1] as const;
+
+/**
+ * Refuses, naming what to install, a computer without Docker or with a
+ * Compose older than {@link COMPOSE_WITH_WAIT}. A version that does not read
+ * as `major.minor.patch` is refused too: `try` cannot tell it has `--wait`.
+ */
 async function requireCompose(docker: DockerRun): Promise<void> {
   let answer;
   try {
@@ -182,17 +193,30 @@ async function requireCompose(docker: DockerRun): Promise<void> {
     throw new CliError(
       'cloudgate template try needs Docker, and there is no docker command here',
       EXIT.failed,
-      'Install Docker (https://docs.docker.com/get-docker/), with Compose v2 or newer.',
+      `Install Docker (https://docs.docker.com/get-docker/), with Compose ${COMPOSE_WITH_WAIT.join('.')} or newer.`,
     );
   }
-  const major = Number(/^v?(\d+)\./.exec(answer.stdout.trim())?.[1]);
-  if (answer.code !== 0 || major < 2) {
+  const read = /^v?(\d+)\.(\d+)\.(\d+)/.exec(answer.stdout.trim());
+  if (
+    answer.code !== 0 ||
+    read === null ||
+    isOlder(read.slice(1).map(Number))
+  ) {
+    const said = answer.code === 0 && answer.stdout.trim() !== '';
     throw new CliError(
-      'cloudgate template try needs Docker Compose v2 or newer, for docker compose up --wait',
+      `cloudgate template try needs Docker Compose ${COMPOSE_WITH_WAIT.join('.')} or newer, for docker compose up --wait${said ? `, and this one says it is ${answer.stdout.trim()}` : ''}`,
       EXIT.failed,
       'Install the Docker Compose plugin (https://docs.docker.com/compose/install/).',
     );
   }
+}
+
+/** Whether `version` comes before {@link COMPOSE_WITH_WAIT}. */
+function isOlder(version: readonly number[]): boolean {
+  for (const [at, wanted] of COMPOSE_WITH_WAIT.entries()) {
+    if (version[at] !== wanted) return version[at] < wanted;
+  }
+  return false;
 }
 
 /** Writes `stack` into a new temporary folder; its `code/` folder. */

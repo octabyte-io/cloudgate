@@ -22,7 +22,7 @@ A template folder may hold `test-values.yaml`, a map of an `ask` input's name to
 - **Says why on failure.** When `up --wait` fails, a Domain never passes or the time runs out, it prints `docker compose ps --all` and `docker compose logs --no-color` for the project before tearing down.
 - **A time limit.** The whole run, image pulls included, may take 10 minutes; `--timeout <minutes>` changes that. Past it, the run stops (a `docker compose up` still pulling is ended) and exits 1. `--timeout 0`, or a value that is not a number, is wrong use (exit 2).
 - **Always torn down.** After a pass, a fail, the time limit or Ctrl-C, the project is removed with `docker compose down --volumes --remove-orphans` and its folder deleted. Ctrl-C exits 130 once it is gone; a second Ctrl-C ends the CLI at once.
-- **Needs Docker with Compose v2.** Without Docker, or with a Compose older than v2, it exits 1 naming what to install.
+- **Needs Docker with Compose 2.1.1 or newer**, the first with `up --wait`. Without Docker, or with an older Compose or one whose version does not read as a version, it exits 1 naming what to install.
 
 ## 0.0.2-beta.2
 
