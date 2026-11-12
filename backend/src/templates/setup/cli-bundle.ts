@@ -15,10 +15,12 @@ export type {
   ValueProblem,
 } from './setup-values';
 export { setupDomains } from './setup-domains';
+export { composeEnvInputs } from './compose-env-inputs';
 export type { SetupDomain } from './setup-domains';
 export {
   applyComposeDefaults,
   composeDotenvLine,
+  composeEnvHeader,
 } from '../../compose/compose-file';
 export { publishStackVmPorts } from '../../compose/stack-vm-ports';
 export type { HostSide, StackVmRoute } from '../../compose/stack-vm-ports';

@@ -125,6 +125,23 @@ declare module 'cloudgate-template-setup' {
   /** One `KEY=value` line of a stack's `.env`, as Compose reads it back. */
   export function composeDotenvLine(line: string): string;
 
+  /**
+   * The lines a stack's `.env` opens with: `APP_NAME` and
+   * `COMPOSE_PROJECT_NAME`, both the project name.
+   */
+  export function composeEnvHeader(projectName: string): string[];
+
+  /**
+   * The inputs a compose part's `.env` carries, in the order its compose
+   * file first reads them: every one the file reads, but one it reads only
+   * with a default and made blank, so the default applies. Setup's own rule.
+   */
+  export function composeEnvInputs(
+    composeFile: string | null,
+    inputs: Readonly<Record<string, unknown>>,
+    values: Readonly<Record<string, string>>,
+  ): string[];
+
   /** A compose service's Domain, as a Stack VM's deploy publishes it. */
   export interface StackVmRoute {
     readonly host: string;

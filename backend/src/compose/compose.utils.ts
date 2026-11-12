@@ -6,6 +6,7 @@ import { stringify, YAMLParseError } from 'yaml';
 import {
   applyComposeDefaults,
   composeDotenvLine,
+  composeEnvHeader,
   parseComposeFile,
 } from './compose-file';
 import {
@@ -1625,8 +1626,9 @@ rm -f ${quote([dynamicTraefikConfigPath(composeStackConfigName(appName), serverI
 export function composeEnvFileContent(
   compose: DeployableComposeSource,
 ): string {
-  let envContent = `APP_NAME=${compose.appName}\n`;
-  envContent += `COMPOSE_PROJECT_NAME=${compose.appName}\n`;
+  let envContent = composeEnvHeader(compose.appName)
+    .map((line) => `${line}\n`)
+    .join('');
   envContent += compose.env || '';
   if (!('DOCKER_CONFIG' in parseEnv(envContent))) {
     envContent += '\nDOCKER_CONFIG=/root/.docker';

@@ -1,6 +1,8 @@
 import {
   applyComposeDefaults,
   composeDotenvLine,
+  composeEnvHeader,
+  composeEnvInputs,
   fillFileText,
   makeValues,
   publishStackVmPorts,
@@ -136,6 +138,27 @@ describe('composeDotenvLine', () => {
 
   it('leaves a plain value as it is', () => {
     expect(composeDotenvLine('APP_NAME=ghost')).toBe('APP_NAME=ghost');
+  });
+});
+
+describe('composeEnvHeader', () => {
+  it('opens a stack .env with its project name as APP_NAME and COMPOSE_PROJECT_NAME', () => {
+    expect(composeEnvHeader('cg-try-ghost-1a2b')).toEqual([
+      'APP_NAME=cg-try-ghost-1a2b',
+      'COMPOSE_PROJECT_NAME=cg-try-ghost-1a2b',
+    ]);
+  });
+});
+
+describe('composeEnvInputs', () => {
+  it('names the inputs the compose file reads, leaving out a blank one read only with a default', () => {
+    expect(
+      composeEnvInputs(
+        'services:\n  app:\n    environment:\n      a: ${TZ}\n      b: ${OPT:-x}\n      c: ${HOME}\n',
+        { TZ: { ask: { label: 'Time zone' } }, OPT: { generate: 'hex' } },
+        { TZ: 'Etc/UTC', OPT: '' },
+      ),
+    ).toEqual(['TZ']);
   });
 });
 

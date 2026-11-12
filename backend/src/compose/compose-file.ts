@@ -249,6 +249,15 @@ export function applyComposeDefaults(
 const DOTENV_SPECIAL = /[\s"'`$#\\]/;
 
 /**
+ * The lines a stack's `.env` opens with, before its values: the project
+ * name Compose runs it under, also given to the stack as `APP_NAME`. Shared
+ * by a Server's deploy and `cloudgate template try` (spec #5).
+ */
+export function composeEnvHeader(projectName: string): string[] {
+  return [`APP_NAME=${projectName}`, `COMPOSE_PROJECT_NAME=${projectName}`];
+}
+
+/**
  * One `KEY=value` line as Docker Compose reads it back exactly. A value
  * holding nothing special stays as it is; any other is double-quoted with
  * `\`, `"`, `$` and newlines escaped, the one quoting Compose reads every

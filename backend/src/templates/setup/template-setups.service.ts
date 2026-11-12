@@ -7,7 +7,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
-import { parse } from 'yaml';
 
 import type { CloudKind } from '../../cloud-accounts/cloud-account.schema';
 import { DRIZZLE } from '../../db/drizzle.module';
@@ -49,13 +48,13 @@ import {
 import { ProjectsService } from '../../projects/projects.service';
 import type { PermissionCtx } from '../../rbac/permission.service';
 import { PermissionService } from '../../rbac/permission.service';
-import { composeVariables } from '../check';
 import type { Template } from '../check';
 import type { TemplateSetupDto } from '../dto/template-setup.dto';
 import { TemplatesService } from '../templates.service';
 import type { PendingSetupBody } from './pending-setup.schema';
 import { PendingSetupAutoApply } from './pending-setup-auto-apply.service';
 import { pendingConfigNames, setupRecordsOf } from './pending-setups';
+import { composeEnvInputs } from './compose-env-inputs';
 import {
   deployTargetRefusals,
   environmentRefusal,
@@ -928,19 +927,11 @@ function partsOf(
     }[];
   },
 ): PendingSetupPart[] {
-  // Every input the compose file reads, with or without a default: an
-  // answer to `${TZ:-Etc/UTC}` is written so it wins over the default
-  // (#1406). One read only with a default and made blank is left out, so
-  // the compose default still applies, `${X-d}` included.
-  const composeVariablesRead =
-    template.composeFile === null
-      ? { needs: new Set<string>(), mentions: new Set<string>() }
-      : composeVariables(
-          parse(template.composeFile, {
-            logLevel: 'error',
-            maxAliasCount: 100,
-          }),
-        );
+  const composeInputs = composeEnvInputs(
+    template.composeFile,
+    template.inputs,
+    writes.values,
+  );
   return Object.entries(template.config.services).map(([part, entry]) => {
     const configName = names.get(part) ?? part;
     const made: Record<string, string> = {};
@@ -952,16 +943,8 @@ function partsOf(
         }
       }
     } else if (part === template.compose) {
-      for (const variable of composeVariablesRead.mentions) {
-        const rule = template.inputs[variable];
-        if (!rule) continue;
-        if (
-          !composeVariablesRead.needs.has(variable) &&
-          (writes.values[variable] ?? '') === ''
-        ) {
-          continue;
-        }
-        made[variable] = madeAs(rule);
+      for (const variable of composeInputs) {
+        made[variable] = madeAs(template.inputs[variable]);
       }
     }
     const host = ownHosts.get(part);

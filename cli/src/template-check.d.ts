@@ -95,15 +95,6 @@ declare module 'cloudgate-template-check' {
    * `test-values.yaml`.
    */
   export function isLeftOutOfCatalogue(pathInFolder: string): boolean;
-
-  /**
-   * The variables a parsed compose file interpolates, as Docker Compose
-   * reads them: those it `needs` (no default) and every one it `mentions`.
-   */
-  export function composeVariables(document: unknown): {
-    readonly needs: ReadonlySet<string>;
-    readonly mentions: ReadonlySet<string>;
-  };
 }
 
 /**

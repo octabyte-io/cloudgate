@@ -3,11 +3,13 @@ import { createServer } from 'node:net';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
 
-import { composeVariables, TEST_VALUES_FILE } from 'cloudgate-template-check';
+import { TEST_VALUES_FILE } from 'cloudgate-template-check';
 import type { Template } from 'cloudgate-template-check';
 import {
   applyComposeDefaults,
   composeDotenvLine,
+  composeEnvHeader,
+  composeEnvInputs,
   fillFileText,
   makeValues,
   publishStackVmPorts,
@@ -159,28 +161,23 @@ function noValue(
 }
 
 /**
- * The `.env` Cloudgate writes beside a stack's compose file: `APP_NAME`
- * and `COMPOSE_PROJECT_NAME`, then the inputs the compose file uses, each
- * line as Compose reads it back. Setup's own rule picks the inputs: every
- * one the file mentions, but one it reads only with a default and made
- * blank, so the default applies. `DOCKER_CONFIG` is left out: on a Server
- * it points at root's Docker config, and here it would hide the person's.
+ * The `.env` Cloudgate writes beside a stack's compose file, by the
+ * backend's own rules: its header (`APP_NAME`, `COMPOSE_PROJECT_NAME`),
+ * then the inputs setup would give the compose part, each line as Compose
+ * reads it back. `DOCKER_CONFIG` is left out: on a Server it points at
+ * root's Docker config, and here it would hide the person's.
  */
 function envFile(
   template: Template & { readonly composeFile: string },
   project: string,
   values: Readonly<Record<string, string>>,
 ): string {
-  const read = composeVariables(
-    parse(template.composeFile, { logLevel: 'error', maxAliasCount: 100 }),
-  );
-  const lines = [`APP_NAME=${project}`, `COMPOSE_PROJECT_NAME=${project}`];
-  for (const name of Object.keys(template.inputs)) {
-    if (!read.mentions.has(name)) continue;
-    const value = values[name] ?? '';
-    if (!read.needs.has(name) && value === '') continue;
-    lines.push(`${name}=${value}`);
-  }
+  const lines = [
+    ...composeEnvHeader(project),
+    ...composeEnvInputs(template.composeFile, template.inputs, values).map(
+      (name) => `${name}=${values[name] ?? ''}`,
+    ),
+  ];
   return `${lines.map(composeDotenvLine).join('\n')}\n`;
 }
 
