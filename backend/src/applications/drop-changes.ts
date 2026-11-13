@@ -189,6 +189,11 @@ const nulRecords = (records: string[]) =>
  * Rejected: `mv --exchange` (one atomic `renameat2`), which needs coreutils
  * 9.5, newer than the distributions a Server runs.
  *
+ * **A dropped connection stops it before the swap.** With no tty, killing
+ * the SSH session sends no SIGHUP, so the program writes one line just before
+ * swapping: with nobody reading, the write fails and it exits as any failed
+ * step does (#29).
+ *
  * `set -e` makes every step a gate. A pipeline's earlier command can fail
  * unseen, and whatever it then left undone is a tree that does not match the
  * listing, which the comparison refuses. The working directory's name is
@@ -216,7 +221,8 @@ export function applyDropChangesCommand(
     ownerOnlyDirectoryCommand(serviceDirectory),
     `trap ${quote([cleanUp])} EXIT`,
     // A signal leaves through `exit`, so the EXIT trap runs for it too.
-    `trap 'exit 1' HUP INT TERM`,
+    // PIPE is the one a dropped connection sends: see the write below.
+    `trap 'exit 1' HUP INT TERM PIPE`,
     `mkdir ${w} ${t}`,
     `if [ -d ${q} ]; then cp -a ${q}/. ${t}/; fi`,
     `cd ${t}`,
@@ -231,6 +237,12 @@ export function applyDropChangesCommand(
     `echo "${nulRecords(files.map((file) => `${file.sha256}  ./${file.path}`))}" | base64 -d | LC_ALL=C sort -z > ${w}/expected`,
     `{ ${TREE_LISTING}; } | LC_ALL=C sort -z > ${w}/actual`,
     `cmp -s ${w}/expected ${w}/actual || exit ${MISMATCH_EXIT}`,
+    // Still connected? The session has no tty, so a dropped SSH connection
+    // sends this shell no SIGHUP; but the channel's reading end is gone, so
+    // this write fails (SIGPIPE, or an error `set -e` stops on) and the trap
+    // keeps the previous tree. Without it an orphaned apply swapped its tree
+    // in after the backend had answered 409, beside the CLI's retry (#29).
+    'echo applying',
     'cd /',
     `if [ -d ${q} ]; then mv ${q} ${p}; fi`,
     `mv ${t} ${q}`,
