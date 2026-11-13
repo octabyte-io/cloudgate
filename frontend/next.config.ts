@@ -39,6 +39,23 @@ const nextConfig: NextConfig = {
      * why it is a number rather than an off switch.
      */
     proxyTimeout: 240_000,
+    /**
+     * How much of a request body the rewrite proxy passes on: 1 GiB.
+     *
+     * **Unset, it was 10 MB, and the rest of the body was dropped.** Next
+     * clones every request body before proxying it, and the clone the rewrite
+     * proxy sends ends at this limit (`server/body-streams.js`). The backend,
+     * told a longer `content-length`, waited for bytes that never came until
+     * `proxyTimeout` above cut the socket, so every `cloudgate deploy` or
+     * console upload over 10 MB failed four minutes later with a bare 500
+     * (#30). `server/upload-body.test.mjs` holds it.
+     *
+     * The clone is held in this process's memory while it is sent, as the
+     * backend holds the whole upload (multer's memory storage), so the
+     * number is a ceiling on one upload, not a size anyone is expected to
+     * reach: `cloudgate deploy` warns from 100 MB.
+     */
+    proxyClientMaxBodySize: 1024 * 1024 * 1024,
   },
   /**
    * The backend, served from our own origin, so the session cookie is

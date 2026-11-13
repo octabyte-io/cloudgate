@@ -160,6 +160,8 @@ interface Options {
   configLocation?: Record<string, unknown>;
   /** Variables beside the key and the Instance. */
   env?: Record<string, string>;
+  /** The compare's `upToDate`; left out, as an older Instance leaves it. */
+  upToDate?: boolean;
 }
 
 /** One `POST /applications/app_1/drop/apply`, as the Instance received it. */
@@ -303,6 +305,9 @@ async function deploy(argv: string[], options: Options = {}) {
         ).length,
         deleted: [...buildHost.keys()].filter((path) => !listed.has(path))
           .length,
+        ...(options.upToDate === undefined
+          ? {}
+          : { upToDate: options.upToDate }),
       });
     }
     if (method === 'POST' && path === '/applications/app_1/drop/apply') {
@@ -799,13 +804,41 @@ describe('cloudgate deploy', () => {
 
       expect(result.code).toBe(0);
       expect(result.stderr).toContain(
-        `Uploading 0 changed files, ${result.sent[0]} B (2 unchanged, 1 deleted)…\n`,
+        'No changed files to upload (2 unchanged, 1 deleted)…\n',
       );
       expect(result.applies.map((apply) => apply.zipped)).toEqual([[]]);
       expect(result.buildHost).toEqual({
         'index.js': SHA.index,
         'package.json': SHA.packageJson,
       });
+    });
+
+    it('sends nothing and applies nothing when nothing changed and the source is already this upload', async () => {
+      const result = await deploy([...TARGET, '--detach'], {
+        buildHost: { 'index.js': SHA.index, 'package.json': SHA.packageJson },
+        upToDate: true,
+      });
+
+      expect(result.code).toBe(0);
+      expect(result.stderr).toContain(
+        'Nothing changed since the last upload (2 unchanged).\n',
+      );
+      expect(result.stderr).not.toContain('Uploading');
+      expect(result.compares).toHaveLength(1);
+      expect(result.applies).toEqual([]);
+    });
+
+    it('still applies an unchanged folder whose source is not yet this upload, sending no files', async () => {
+      const result = await deploy([...TARGET, '--detach'], {
+        buildHost: { 'index.js': SHA.index, 'package.json': SHA.packageJson },
+        upToDate: false,
+      });
+
+      expect(result.code).toBe(0);
+      expect(result.stderr).toContain(
+        'No changed files to upload (2 unchanged)…\n',
+      );
+      expect(result.applies.map((apply) => apply.zipped)).toEqual([[]]);
     });
 
     it('with --full, uploads every file through the full upload and compares nothing', async () => {
@@ -1130,6 +1163,19 @@ describe('cloudgate deploy in a Project folder', () => {
           services: options.sources ?? SOURCES,
         });
       }
+      if (path === '/environments/env_1/config/repository-sources') {
+        return json({ keptIn: 'cloudgate', readable: true, services: [] });
+      }
+      const row = /^\/applications\/([^/]+)$/.exec(path);
+      if (row && method === 'GET') {
+        // A folder source a root deploy has uploaded to.
+        return json({
+          applicationId: row[1],
+          sourceType: 'drop',
+          dropUploaded: true,
+          env: '',
+        });
+      }
       const app = /^\/applications\/([^/]+)\/(.+)$/.exec(path);
       if (app && method === 'GET' && app[2] === 'deployments') {
         const builds = options.builds?.[app[1]] ?? [[]];
@@ -1449,15 +1495,32 @@ describe('cloudgate deploy in a Project folder', () => {
       expect(result.applies).toEqual([]);
     });
 
-    it('with --yes, applies it, then builds', async () => {
+    it('with --yes, applies it saying the folder-source apps are built next, then builds', async () => {
       const result = await deployProject(['--yes'], { steps: [change] });
+
+      expect(result.code).toBe(0);
+      // So the Apply does not first rebuild each one's previous upload.
+      expect(result.appliedPlans).toEqual([
+        {
+          planId: 'pln_1',
+          confirmDestroy: [],
+          confirmUpgrade: [],
+          folderSourcesDeployedNext: true,
+        },
+      ]);
+      expect(result.stderr).toContain('✓ Applied the plan in staging');
+      expect(result.started).toEqual(['app_web', 'app_wrk']);
+    });
+
+    it('with --service, leaves the other folder-source apps to the Apply to deploy', async () => {
+      const result = await deployProject(['--yes', '--service', 'web'], {
+        steps: [change],
+      });
 
       expect(result.code).toBe(0);
       expect(result.appliedPlans).toEqual([
         { planId: 'pln_1', confirmDestroy: [], confirmUpgrade: [] },
       ]);
-      expect(result.stderr).toContain('✓ Applied the plan in staging');
-      expect(result.started).toEqual(['app_web', 'app_wrk']);
     });
 
     it('with --yes, refuses a plan that destroys a Service, exit 2, dismisses it and uploads nothing', async () => {
@@ -1482,6 +1545,40 @@ describe('cloudgate deploy in a Project folder', () => {
       );
       expect(result.applies).toEqual([]);
     });
+  });
+
+  it("in an app folder linked to its one Service, uploads the Project folder with the app's subfolder as the build path", async () => {
+    const web = join(root, 'apps', 'web');
+    writeLink(web, {
+      instance: 'https://cloud.acme.dev',
+      organizationId: 'org_1',
+      projectId: 'prj_1',
+      environmentId: 'env_1',
+      serviceConfigName: 'web',
+      names: {
+        organization: 'Shop Inc',
+        project: 'shop',
+        environment: 'staging',
+        service: 'web',
+      },
+    });
+
+    const result = await deployProject(['--detach'], { cwd: web });
+
+    expect(result.stderr).not.toContain('Error');
+    expect(result.code).toBe(0);
+    // Its shared code with it, built from its own subfolder, so the config
+    // entry stays `source: { folder: apps/web }`.
+    expect(result.applies).toEqual([
+      {
+        app: 'app_web',
+        // The app folder's link wrote its own .gitignore.
+        files: [...WHOLE_FOLDER, 'apps/web/.gitignore'].sort(),
+        dropBuildPath: 'apps/web',
+      },
+    ]);
+    expect(result.sentPlans).toEqual([]);
+    expect(result.started).toEqual(['app_web']);
   });
 
   it('refuses a [folder] in a Project folder, which is deployed whole, exit 2', async () => {

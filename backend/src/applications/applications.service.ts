@@ -1178,6 +1178,7 @@ export class ApplicationsService {
     ctx: PermissionCtx,
     applicationId: string,
     files: Buffer,
+    data: UploadApplicationDropDto = {},
   ): Promise<DropComparison> {
     const current = await this.findDropTarget(ctx, applicationId);
     const list = readDropFileList(files);
@@ -1186,7 +1187,12 @@ export class ApplicationsService {
       buildHostServerId(current),
       dropCodeDirectory(current),
     );
-    return compareDropFiles(list, tree);
+    // What an apply's switch (`switchToDrop`) would write is already there.
+    const upToDate =
+      current.sourceType === 'drop' &&
+      current.dropUploaded === true &&
+      current.dropBuildPath === (data.dropBuildPath ?? '/');
+    return { ...compareDropFiles(list, tree), upToDate };
   }
 
   /**
@@ -2408,6 +2414,9 @@ export class ApplicationsService {
         // reclaim, or whether the image is the operator's own `dockerImage`
         // that this platform only pulled — `built-image.ts`'s `builtImageTag`.
         sourceType: application.sourceType,
+        // Whether an upload's switch would change the source (`compareDrop`).
+        dropUploaded: application.dropUploaded,
+        dropBuildPath: application.dropBuildPath,
         // What `update` admits the Previews DNS-01 switch by.
         previewWildcard: application.previewWildcard,
         previewDnsChallenge: application.previewDnsChallenge,

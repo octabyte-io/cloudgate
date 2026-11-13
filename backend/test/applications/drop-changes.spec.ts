@@ -9,6 +9,7 @@ import { ConflictException } from '@nestjs/common';
 import type { DropArchiveEntry } from '../../src/applications/drop-archive';
 import {
   applyDropChanges,
+  applyDropChangesCommand,
   readBuildHostTree,
 } from '../../src/applications/drop-changes';
 import { unverifiedHostKey } from '../../src/remote/host-key';
@@ -276,5 +277,39 @@ describe('applyDropChanges', () => {
       // The working directory went once the previous tree was back.
       expect(fs.readdirSync(nodePath.dirname(code))).toEqual(['code']);
     });
+  });
+});
+
+/**
+ * The SSH connection dropping mid-apply. The session has no tty, so killing
+ * `sshd-session` sends the apply's `sh -s` no SIGHUP and its hangup trap
+ * never fires: it went on and swapped its tree in after the backend had
+ * already answered 409, unsupervised beside the CLI's retried apply (#29).
+ * What it does see is its output: the channel's other end is gone, so a write
+ * fails. Run here as `sh -s` with that end already closed.
+ */
+describe('applyDropChangesCommand, its connection gone', () => {
+  it('swaps nothing in once nothing reads its output, and leaves the previous tree', async () => {
+    const previous: DropArchiveEntry[] = [
+      { path: 'index.js', content: Buffer.from('old\n') },
+    ];
+    plant(code, previous);
+    const next: DropArchiveEntry[] = [
+      { path: 'index.js', content: Buffer.from('new\n') },
+    ];
+
+    const child = spawn('/bin/sh', ['-s'], { stdio: ['pipe', 'pipe', 'pipe'] });
+    // The reading end of its output, closed as a dead SSH channel's is.
+    child.stdout.destroy();
+    child.stdin.end(applyDropChangesCommand(code, listOf(next), next));
+    const exitCode = await new Promise<number | null>((resolve) =>
+      child.on('close', (code) => resolve(code)),
+    );
+
+    expect(exitCode).not.toBe(0);
+    expect(treeAt(code)).toEqual(
+      Object.fromEntries(listOf(previous).map((f) => [f.path, f.sha256])),
+    );
+    expect(fs.readdirSync(nodePath.dirname(code))).toEqual(['code']);
   });
 });

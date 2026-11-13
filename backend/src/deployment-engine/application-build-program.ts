@@ -41,9 +41,29 @@ export function applicationBuildProgram(
     buildArgs: application.buildArgs,
     buildSecrets: application.buildSecrets,
     dockerBuildStage: application.dockerBuildStage,
-    dockerContextPath: application.dockerContextPath,
+    dockerContextPath: buildContextIn(
+      buildAppDirectory,
+      application.dockerContextPath,
+    ),
     createEnvFile: application.createEnvFile,
   });
+}
+
+/**
+ * The Docker build context: a relative `dockerContextPath` (`build.context`)
+ * counts from the build path, as the console's help says ("Empty means the
+ * build path"), so `../..` from `apps/web` is the monorepo's root. It was
+ * passed to `cd` as written, so it counted from wherever the build host's
+ * shell started (#27). An absolute one is taken as written, as before; none
+ * leaves the default, the Dockerfile's folder.
+ */
+function buildContextIn(
+  buildAppDirectory: string,
+  dockerContextPath: string | null | undefined,
+): string | null {
+  if (!dockerContextPath) return null;
+  if (path.posix.isAbsolute(dockerContextPath)) return dockerContextPath;
+  return path.posix.resolve(buildAppDirectory, dockerContextPath);
 }
 
 /** The build path inside the checkout, the folder `publish` is read from. */

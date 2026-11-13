@@ -137,6 +137,35 @@ describe('Device login (e2e)', () => {
     expect(again.body).toMatchObject({ code: 'INVALID_GRANT' });
   });
 
+  it('mints a key named after a long hostname, up to the longest name the CLI may send', async () => {
+    const { cookie } = await signUp();
+    const login = await startLogin();
+    expect((await approve(cookie, login.userCode)).status).toBe(200);
+
+    // `cloudgate on Admins-MacBook-Air.local` is 37 characters, and the CLI
+    // may send up to 100: better-auth's own default ceiling is 32.
+    const name = `cloudgate on ${'a'.repeat(87)}`;
+    expect(name).toHaveLength(100);
+    const res = await poll(login.deviceCode, { name });
+    expect(res.status).toBe(200);
+
+    const whoami = await request(httpServer)
+      .get('/users/me/whoami')
+      .set('x-api-key', (res.body as { key: string }).key);
+    expect(whoami.body).toMatchObject({ key: { name } });
+  });
+
+  it('names a Personal key made in the console with the longest name its form allows', async () => {
+    const { cookie } = await signUp();
+    const name = 'k'.repeat(255);
+    const res = await request(httpServer)
+      .post('/users/me/api-keys')
+      .set('Cookie', cookie)
+      .send({ name });
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ name });
+  });
+
   it('answers AUTHORIZATION_PENDING until the code is approved, and SLOW_DOWN to a poll inside the interval', async () => {
     const login = await startLogin();
     const first = await poll(login.deviceCode);

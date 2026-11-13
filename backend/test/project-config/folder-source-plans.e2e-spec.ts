@@ -247,6 +247,69 @@ services:
     );
   });
 
+  it('queues no Plan-applied Deployment of an uploaded folder-source app when the root deploy builds it next', async () => {
+    await storeConfig(folderWeb('apps/web'));
+    const created = await askForPlan();
+    expect((await apply((created.body as PlanBody).planId)).status).toBe(200);
+    // A root deploy's upload has reached it.
+    await ctx.db
+      .update(application)
+      .set({ dropUploaded: true })
+      .where(eq(application.applicationId, (await savedWeb()).applicationId));
+
+    await storeConfig(`version: 1
+services:
+  web:
+    kind: web
+    source:
+      folder: apps/web
+    build:
+      type: dockerfile
+      dockerfile: web.Dockerfile
+`);
+    const changed = await askForPlan();
+    const applied = await request(server)
+      .post(`/environments/${environmentId}/plan/apply`)
+      .set('Cookie', cookie)
+      .send({
+        planId: (changed.body as PlanBody).planId,
+        folderSourcesDeployedNext: true,
+      });
+
+    expect(applied.status).toBe(200);
+    expect((applied.body as PlanBody).status).toBe('applied');
+    // The previous upload is not rebuilt under the new settings: the root
+    // deploy uploads and builds it straight after.
+    expect(queue.jobs).toEqual([]);
+    expect(await savedWeb()).toMatchObject({
+      buildType: 'dockerfile',
+      dockerfile: 'web.Dockerfile',
+    });
+  });
+
+  it('still queues the Plan-applied Deployment of an uploaded folder-source app when nothing builds it next', async () => {
+    await storeConfig(folderWeb('apps/web'));
+    const created = await askForPlan();
+    expect((await apply((created.body as PlanBody).planId)).status).toBe(200);
+    await ctx.db
+      .update(application)
+      .set({ dropUploaded: true })
+      .where(eq(application.applicationId, (await savedWeb()).applicationId));
+
+    await storeConfig(`version: 1
+services:
+  web:
+    kind: web
+    source:
+      folder: apps/web
+    port: 4000
+`);
+    const changed = await askForPlan();
+    expect((await apply((changed.body as PlanBody).planId)).status).toBe(200);
+
+    expect(queue.jobs).toHaveLength(1);
+  });
+
   it('forgets the uploaded files once the source moves off them, so going back to a folder builds nothing stale', async () => {
     await storeConfig(folderWeb('apps/web'));
     const created = await askForPlan();

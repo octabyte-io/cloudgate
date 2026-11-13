@@ -46,6 +46,14 @@ export const applyPlanSchema = dismissPlanSchema.extend({
     .array(z.string().min(1, 'a database name cannot be empty'))
     .max(1000)
     .default([]),
+  /**
+   * The caller uploads and builds every folder-source app of this
+   * Environment straight after (a root `cloudgate deploy`, ADR-0080), so a
+   * changed one is not first rebuilt from its previous upload under the new
+   * settings, a build that fails whenever they name a file only the new
+   * upload has (#28). Absent is false: every change deploys, as before.
+   */
+  folderSourcesDeployedNext: z.boolean().default(false),
 });
 
 export class ApplyPlanDto extends createZodDto(applyPlanSchema) {}

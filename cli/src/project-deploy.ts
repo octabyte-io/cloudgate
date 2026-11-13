@@ -118,6 +118,11 @@ export async function deployProjectFolder(
   refuseMissingFolders(folder, inputs.service?.value);
   const plan = await runPlanStep(context, client, project, {
     yes: values.yes === true,
+    // Every folder-source app here is uploaded and built next, unless
+    // --service picks one.
+    ...(inputs.service === undefined
+      ? { folderSourcesDeployedNextIn: where.environment.id }
+      : {}),
   });
   if (plan.kind === 'declined') {
     out.note('Nothing was uploaded.');

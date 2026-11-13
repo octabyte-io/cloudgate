@@ -57,7 +57,15 @@ export async function runPlanStep(
   context: Pick<CommandContext, 'out' | 'prompter'>,
   client: ApiClient,
   project: FoundProjectFolder,
-  options: { readonly yes: boolean },
+  options: {
+    readonly yes: boolean;
+    /**
+     * The Environment whose folder-source apps the caller uploads and builds
+     * straight after (a root deploy), so its Apply queues no Deployment of
+     * their previous uploads (#28).
+     */
+    readonly folderSourcesDeployedNextIn?: string;
+  },
 ): Promise<PlanStepOutcome> {
   const { out, prompter } = context;
   const { folder, link } = project;
@@ -161,6 +169,9 @@ export async function runPlanStep(
               planId: one.plan.planId,
               confirmDestroy: one.destroy,
               confirmUpgrade: one.upgrade.map(({ name }) => name),
+              ...(one.plan.environmentId === options.folderSourcesDeployedNextIn
+                ? { folderSourcesDeployedNext: true }
+                : {}),
             },
             planViewSchema,
           ),
@@ -229,7 +240,9 @@ function stepLine(step: PlanStepView): string {
   if (step.action === 'redeploy') {
     return `  ~ ${what} redeploy: ${(step.because ?? []).join(', ')} changed${blocked}`;
   }
-  const fields = (step.fields ?? []).map((one) => one.field).join(', ');
+  const fields = (step.fields ?? [])
+    .map((one) => (one.removed ? `${one.field} (removed)` : one.field))
+    .join(', ');
   const upgrade = step.majorUpgrade
     ? ` (major upgrade ${step.majorUpgrade.from} to ${step.majorUpgrade.to})`
     : '';
