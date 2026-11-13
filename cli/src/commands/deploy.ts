@@ -80,6 +80,10 @@ USAGE
   One app or the whole Project? (one app by default). One app asks the
   Environment and Service and links this folder to it; the whole Project
   links it as cloudgate link --whole-project does and deploys it whole.
+  Create a new Project asks its name (this folder's by default) and once
+  where its apps run, from your Servers and Cloud accounts, then makes it
+  with one Environment, production, links this folder to it and writes a
+  starter cloudgate.yaml. Add your apps there and run deploy again.
 
   In a Project folder (cloudgate link --whole-project), it first sends
   cloudgate.yaml as a plan and applies it, as cloudgate config plan does.

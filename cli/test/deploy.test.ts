@@ -717,21 +717,6 @@ describe('cloudgate deploy', () => {
       expect(result.applies).toHaveLength(1);
     });
 
-    it('says "Create a new Project" is not here yet and exits 1, linking nothing and uploading nothing', async () => {
-      const terminal = scripted({ Project: 1 });
-      const result = await deploy([], { terminal: terminal.prompter });
-
-      expect(terminal.questions()).toEqual(['Project']);
-      expect(result.code).toBe(1);
-      expect(result.stderr).toContain(
-        'Error: creating a Project from the CLI is not here yet; nothing was changed',
-      );
-      expect(existsSync(join(folder, '.cloudgate'))).toBe(false);
-      expect(existsSync(join(folder, '.gitignore'))).toBe(false);
-      expect(result.applies).toEqual([]);
-      expect(result.uploads).toEqual([]);
-    });
-
     it('with a target flag, asks only the levels the flags leave, as before', async () => {
       const terminal = scripted();
       const result = await deploy(['--env', 'staging', '--detach'], {

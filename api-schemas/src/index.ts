@@ -19,3 +19,4 @@ export * from './deployments';
 export * from './drops';
 export * from './logs';
 export * from './return-to';
+export * from './new-project';

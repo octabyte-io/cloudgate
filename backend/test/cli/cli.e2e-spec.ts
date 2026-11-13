@@ -14,6 +14,7 @@ import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { deflateRawSync } from 'node:zlib';
 
+import { STARTER_PROJECT_CONFIG } from 'api-schemas';
 import { parse } from 'dotenv';
 import { eq } from 'drizzle-orm';
 import request from 'supertest';
@@ -1780,6 +1781,130 @@ describe('Cloudgate CLI (e2e)', () => {
           const worker = await appOf(seeded.environmentId, 'worker');
           expect(worker.row.dropUploaded).toBe(false);
           expect(worker.deployments).toEqual([]);
+        } finally {
+          removeFolder(repo);
+        }
+      });
+    });
+
+    describe('a Project created from the CLI', () => {
+      /**
+       * "Create a new Project" is asked only in a terminal, which this
+       * harness is not (its questions are `cli/test/new-project.test.ts`'s),
+       * so the walk makes the Project over the routes it uses, in its order,
+       * and goes on from there with the built CLI: a Server as the Deploy
+       * target of `production`, and the starter text as the config.
+       */
+      async function createdAsTheCliDoes() {
+        const seeded = await seededProject();
+        const [web1] = await ctx.db
+          .insert(schema.server)
+          .values({
+            name: 'web-1',
+            ipAddress: '198.51.100.20',
+            port: 22,
+            organizationId: seeded.organization.id,
+          })
+          .returning();
+        const api = (method: 'get' | 'post', path: string) =>
+          request(server)
+            [method](path)
+            .set('x-api-key', seeded.key)
+            .set('x-organization-id', seeded.organization.id);
+        const project = await api('post', '/projects').send({
+          name: 'storefront',
+        });
+        expect(project.status).toBe(201);
+        const projectId = (project.body as { projectId: string }).projectId;
+        const production = await api('post', '/environments').send({
+          name: 'production',
+          projectId,
+          deployTarget: { kind: 'server', serverId: web1.serverId },
+        });
+        expect(production.status).toBe(201);
+        const config = await configOf({ ...seeded, projectId });
+        const stored = await api(
+          'post',
+          `/projects/${projectId}/config/plans`,
+        ).send({ text: STARTER_PROJECT_CONFIG, version: config.version });
+        expect(stored.status).toBe(201);
+        // The starter parses, names no app, and is stored at once.
+        expect(stored.body).toMatchObject({
+          stored: true,
+          plans: [{ steps: [] }],
+        });
+        return {
+          ...seeded,
+          projectId,
+          environmentId: (production.body as { environmentId: string })
+            .environmentId,
+        };
+      }
+
+      it('its starter cloudgate.yaml, deployed unchanged, plans nothing and builds nothing; its example app, uncommented, parses and plans a web built from apps/web', async () => {
+        const created = await createdAsTheCliDoes();
+        const repo = emptyFolder('new-project');
+        try {
+          const linked = await runCli(
+            [
+              'link',
+              '--whole-project',
+              '--project',
+              'storefront',
+              '--env',
+              'production',
+            ],
+            { home, cwd: repo, env: created.env },
+          );
+          expect(linked.code).toBe(0);
+          expect(readFileSync(join(repo, 'cloudgate.yaml'), 'utf8')).toBe(
+            STARTER_PROJECT_CONFIG,
+          );
+
+          const deployed = await runCli(['deploy'], {
+            home,
+            cwd: repo,
+            env: { CLOUDGATE_KEY: created.key },
+          });
+
+          expect(deployed.stderr).not.toContain('Error');
+          expect(deployed.code).toBe(0);
+          expect(deployed.stdout).toContain('production: no changes\n');
+          expect(deployed.stderr).toContain('Nothing to change.\n');
+          expect(deployed.stderr).toContain(
+            'No app in the Project config is built from this folder.\n',
+          );
+          expect(
+            await ctx.db
+              .select({ applicationId: schema.application.applicationId })
+              .from(schema.application)
+              .where(
+                eq(schema.application.environmentId, created.environmentId),
+              ),
+          ).toEqual([]);
+          expect(await ctx.db.select().from(schema.deployment)).toEqual([]);
+
+          // The commented example, as a person uncomments it.
+          const uncommented = STARTER_PROJECT_CONFIG.replace(
+            /^ {2}# (?=web:| {2})/gm,
+            '  ',
+          );
+          expect(uncommented).toContain(
+            '  web:\n    kind: web\n    source: { folder: apps/web }\n',
+          );
+          writeFileSync(join(repo, 'cloudgate.yaml'), uncommented);
+
+          const planned = await runCli(['config', 'plan'], {
+            home,
+            cwd: repo,
+            env: { CLOUDGATE_KEY: created.key },
+          });
+
+          // Planned, and with no terminal and no --yes, not applied.
+          expect(planned.code).toBe(2);
+          expect(planned.stdout).toContain(
+            'production: 1 to create, 0 to change, 0 to destroy\n  + web (web) create\n',
+          );
         } finally {
           removeFolder(repo);
         }
