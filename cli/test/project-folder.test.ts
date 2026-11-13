@@ -315,8 +315,8 @@ describe('link --whole-project', () => {
   });
 });
 
-describe('in a Project folder', () => {
-  it('status asks for the Service the link does not name', async () => {
+describe('status', () => {
+  it('in a Project folder, asks for the Service the link does not name', async () => {
     writeLink(root, rootLink);
 
     const result = await inTerminal(['status'], { choose: [0] });
