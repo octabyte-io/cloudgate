@@ -1056,6 +1056,10 @@ const createAuthWith = (
       // body.
       after: createAuthMiddleware(async (ctx) => {
         await refuseBannedSession(ctx);
+        // The other Instance mode's cookies go with a sign-out (#32).
+        if (ctx.path === '/sign-out') {
+          expireOtherModeCookies(ctx, options.instanceMode.isHosted);
+        }
         // A SCIM route's schema refusal, in SCIM's error schema.
         restateScimValidationError(ctx);
         // Only the Hosted instance holds a sign-up's session back; an invited
@@ -1764,3 +1768,51 @@ const createAuthWith = (
 
 export type Auth = ReturnType<typeof createAuth>;
 export type AuthSession = Auth['$Infer']['Session'];
+
+/** better-auth's cookie prefix, and the one `useSecureCookies` puts before it. */
+const AUTH_COOKIE_PREFIX = 'better-auth.';
+const SECURE_COOKIE_PREFIX = '__Secure-';
+
+/**
+ * Expires the session cookies a request carries under the **other** Instance
+ * mode's spelling: `__Secure-better-auth.*` on a Self-hosted Instance,
+ * `better-auth.*` on the Hosted one.
+ *
+ * `set-instance-mode` changes the spelling (`useSecureCookies` above), and a
+ * browser signed in before the switch keeps the old cookie. better-auth's
+ * sign-out clears only its own spelling, while the console's gate
+ * (`frontend/src/proxy.ts`, `getSessionCookie`) accepts either, so the
+ * dead-session exit signed out and the gate still saw a session: a blank,
+ * refreshing console with no way to sign in (#32). Cleared here, on the
+ * sign-out that exit makes, with the attributes each spelling was set with,
+ * since a browser takes a `__Secure-` cookie, and so its removal, only with
+ * `Secure`.
+ */
+function expireOtherModeCookies(
+  ctx: {
+    headers?: Headers;
+    setCookie: (
+      name: string,
+      value: string,
+      attributes: Record<string, unknown>,
+    ) => unknown;
+  },
+  isHosted: boolean,
+): void {
+  const header = ctx.headers?.get('cookie') ?? '';
+  for (const pair of header.split(';')) {
+    const name = pair.split('=')[0]?.trim() ?? '';
+    const secure = name.startsWith(
+      `${SECURE_COOKIE_PREFIX}${AUTH_COOKIE_PREFIX}`,
+    );
+    const plain = name.startsWith(AUTH_COOKIE_PREFIX);
+    if (isHosted ? !plain : !secure) continue;
+    ctx.setCookie(name, '', {
+      maxAge: 0,
+      path: '/',
+      sameSite: 'lax',
+      httpOnly: true,
+      secure,
+    });
+  }
+}
