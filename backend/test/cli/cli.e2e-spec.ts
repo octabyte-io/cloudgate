@@ -2816,6 +2816,39 @@ describe('Cloudgate CLI (e2e)', () => {
           removeFolder(repo);
         }
       });
+
+      it('in an unlinked folder with no terminal and no target flag, asks no Project question, refusing as before naming --project, exit 2; no Project is made and nothing is written', async () => {
+        const seeded = await seededService();
+        const repo = emptyFolder('repo');
+        try {
+          writeFileSync(join(repo, 'index.js'), '1');
+          const projectsBefore = await ctx.db
+            .select({ projectId: schema.project.projectId })
+            .from(schema.project);
+
+          const refused = await runCli(['deploy'], {
+            home,
+            cwd: repo,
+            env: env(seeded.key),
+          });
+
+          expect(refused.code).toBe(2);
+          expect(refused.stderr).toContain(
+            'Error: no Project. Pass --project or set CLOUDGATE_PROJECT.',
+          );
+          expect(refused.stderr).not.toContain('Create a new Project');
+          expect(refused.stderr).not.toContain('One app or the whole Project');
+          expect(
+            await ctx.db
+              .select({ projectId: schema.project.projectId })
+              .from(schema.project),
+          ).toEqual(projectsBefore);
+          expect(filesUnder(repo)).toEqual(['index.js']);
+          expect(await deploymentsOf(seeded.staging.applicationId)).toEqual([]);
+        } finally {
+          removeFolder(repo);
+        }
+      });
     });
   });
 

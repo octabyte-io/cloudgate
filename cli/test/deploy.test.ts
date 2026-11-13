@@ -1,4 +1,5 @@
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -31,6 +32,39 @@ const neverAsked: Prompter = {
   secret: () => Promise.reject(new Error('asked a question')),
   text: () => Promise.reject(new Error('asked a question')),
 };
+
+/** One question a {@link scripted} prompter was asked. */
+interface Asked {
+  question: string;
+  choices?: string[];
+  default?: number;
+}
+
+/**
+ * A terminal's answers, by question: the index picked, or a yes/no. A
+ * question it has no answer for picks the first choice, or says yes.
+ */
+function scripted(answers: Record<string, number | boolean> = {}) {
+  const asked: Asked[] = [];
+  const prompter: Prompter = {
+    choose: (question, choices, options) => {
+      asked.push({
+        question,
+        choices: choices.map((choice) => choice.label),
+        ...(options?.default !== undefined ? { default: options.default } : {}),
+      });
+      const answer = answers[question];
+      return Promise.resolve(typeof answer === 'number' ? answer : 0);
+    },
+    confirm: (question) => {
+      asked.push({ question });
+      return Promise.resolve(answers[question] !== false);
+    },
+    secret: () => Promise.reject(new Error('asked a secret')),
+    text: () => Promise.reject(new Error('asked for text')),
+  };
+  return { prompter, asked, questions: () => asked.map((one) => one.question) };
+}
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -122,6 +156,10 @@ interface Options {
   buildHost?: Record<string, string>;
   /** What each apply answers; the last repeats. Applied by default. */
   applyAnswers?: (() => Response)[];
+  /** `GET /projects/prj_1/config`'s location; a Cloudgate-kept config by default. */
+  configLocation?: Record<string, unknown>;
+  /** Variables beside the key and the Instance. */
+  env?: Record<string, string>;
 }
 
 /** One `POST /applications/app_1/drop/apply`, as the Instance received it. */
@@ -215,6 +253,16 @@ async function deploy(argv: string[], options: Options = {}) {
         },
       );
     }
+    if (path === '/projects/prj_1/config') {
+      return json({
+        projectId: 'prj_1',
+        location: options.configLocation ?? {
+          kind: 'cloudgate',
+          text: 'version: 1\n',
+          version: 1,
+        },
+      });
+    }
     if (path === '/environments/env_1/config/repository-sources') {
       return json(
         options.repositorySources ?? {
@@ -292,7 +340,11 @@ async function deploy(argv: string[], options: Options = {}) {
   };
   const code = await run({
     argv: ['deploy', ...argv],
-    env: { CLOUDGATE_KEY: 'cg_secret', CLOUDGATE_INSTANCE: 'cloud.acme.dev' },
+    env: {
+      CLOUDGATE_KEY: 'cg_secret',
+      CLOUDGATE_INSTANCE: 'cloud.acme.dev',
+      ...options.env,
+    },
     cwd: folder,
     prompter: options.terminal ?? neverAsked,
     stdinIsTTY: options.terminal !== undefined,
@@ -600,11 +652,22 @@ describe('cloudgate deploy', () => {
       expect(result.applies).toEqual([]);
     });
 
-    it('in an unlinked folder, asks the link questions, saves the link, and deploys', async () => {
-      const { prompter, questions } = answering(true);
-      const result = await deploy(['--detach'], { terminal: prompter });
+    it('in an unlinked folder, asks which Project, then one app or the whole Project, defaulting to one app, then the Environment and Service; saves a one-Service link and deploys', async () => {
+      const terminal = scripted();
+      const result = await deploy(['--detach'], {
+        terminal: terminal.prompter,
+      });
 
-      expect(questions).toEqual(['Project', 'Environment', 'Service']);
+      expect(terminal.asked).toEqual([
+        { question: 'Project', choices: ['shop', 'Create a new Project'] },
+        {
+          question: 'One app or the whole Project?',
+          choices: ['One app', 'The whole Project'],
+          default: 0,
+        },
+        { question: 'Environment', choices: ['staging'] },
+        { question: 'Service', choices: ['api'] },
+      ]);
       expect(result.code).toBe(0);
       expect(result.stderr).toContain(
         '✓ Linked ./ to api in staging of Project shop on cloud.acme.dev\n',
@@ -613,14 +676,84 @@ describe('cloudgate deploy', () => {
         JSON.parse(
           readFileSync(join(folder, '.cloudgate', 'link.json'), 'utf8'),
         ),
-      ).toMatchObject({
+      ).toEqual({
         instance: 'https://cloud.acme.dev',
         organizationId: 'org_1',
         projectId: 'prj_1',
         environmentId: 'env_1',
         serviceConfigName: 'api',
+        names: {
+          organization: 'Shop Inc',
+          project: 'shop',
+          environment: 'staging',
+          service: 'api',
+        },
       });
+      expect(existsSync(join(folder, 'cloudgate.yaml'))).toBe(false);
       expect(result.applies).toHaveLength(1);
+      expect(result.stderr.match(/Using instance/g)).toHaveLength(1);
+    });
+
+    it('offers a Project whose config is kept in a repository for one app only, saying why', async () => {
+      const terminal = scripted();
+      const result = await deploy(['--detach'], {
+        terminal: terminal.prompter,
+        configLocation: {
+          kind: 'repository',
+          repository: 'octabyte-io/shop-config',
+          path: 'deploy/cloudgate.yaml',
+        },
+      });
+
+      expect(terminal.questions()).toEqual([
+        'Project',
+        'Environment',
+        'Service',
+      ]);
+      expect(result.stderr).toContain(
+        "Project shop's config is kept in the repository octabyte-io/shop-config at deploy/cloudgate.yaml, so this folder deploys one app of it, not the whole Project.\n",
+      );
+      expect(result.code).toBe(0);
+      expect(result.applies).toHaveLength(1);
+    });
+
+    it('says "Create a new Project" is not here yet and exits 1, linking nothing and uploading nothing', async () => {
+      const terminal = scripted({ Project: 1 });
+      const result = await deploy([], { terminal: terminal.prompter });
+
+      expect(terminal.questions()).toEqual(['Project']);
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain(
+        'Error: creating a Project from the CLI is not here yet; nothing was changed',
+      );
+      expect(existsSync(join(folder, '.cloudgate'))).toBe(false);
+      expect(existsSync(join(folder, '.gitignore'))).toBe(false);
+      expect(result.applies).toEqual([]);
+      expect(result.uploads).toEqual([]);
+    });
+
+    it('with a target flag, asks only the levels the flags leave, as before', async () => {
+      const terminal = scripted();
+      const result = await deploy(['--env', 'staging', '--detach'], {
+        terminal: terminal.prompter,
+      });
+
+      expect(terminal.asked).toEqual([
+        { question: 'Project', choices: ['shop'] },
+        { question: 'Service', choices: ['api'] },
+      ]);
+      expect(result.code).toBe(0);
+    });
+
+    it('with a CLOUDGATE_ target variable, asks only the levels it leaves, as before', async () => {
+      const terminal = scripted();
+      const result = await deploy(['--detach'], {
+        terminal: terminal.prompter,
+        env: { CLOUDGATE_PROJECT: 'shop' },
+      });
+
+      expect(terminal.questions()).toEqual(['Environment', 'Service']);
+      expect(result.code).toBe(0);
     });
   });
 
@@ -917,6 +1050,10 @@ describe('cloudgate deploy in a Project folder', () => {
     /** The Project config's version in Cloudgate; the copy's (3) by default. */
     version?: number;
     cwd?: string;
+    /** Run in a terminal, answering through this. */
+    terminal?: Prompter;
+    /** Variables beside the key. */
+    env?: Record<string, string>;
   }
 
   async function deployProject(argv: string[], options: ProjectOptions = {}) {
@@ -1045,12 +1182,12 @@ describe('cloudgate deploy in a Project folder', () => {
     };
     const code = await run({
       argv: ['deploy', ...argv],
-      env: { CLOUDGATE_KEY: 'cg_secret' },
+      env: { CLOUDGATE_KEY: 'cg_secret', ...options.env },
       cwd: options.cwd ?? root,
-      prompter: neverAsked,
-      stdinIsTTY: false,
-      stdoutIsTTY: false,
-      stderrIsTTY: false,
+      prompter: options.terminal ?? neverAsked,
+      stdinIsTTY: options.terminal !== undefined,
+      stdoutIsTTY: options.terminal !== undefined,
+      stderrIsTTY: options.terminal !== undefined,
       stdout: (text) => (out.stdout += text),
       stderr: (text) => (out.stderr += text),
       fetch: (input, init) => respond(input as string, init ?? {}),
@@ -1186,6 +1323,87 @@ describe('cloudgate deploy in a Project folder', () => {
       'waiting for Deployment dpl_before to finish\n',
     );
     expect(result.started).toEqual(['app_web', 'app_wrk']);
+  });
+
+  it('in an unlinked folder in a terminal, "The whole Project" makes it a Project folder as link --whole-project does, then deploys it whole', async () => {
+    rmSync(join(root, '.cloudgate'), { recursive: true });
+    rmSync(join(root, 'cloudgate.yaml'));
+    writeFileSync(join(root, '.gitignore'), 'node_modules/\n');
+    const terminal = scripted({ 'One app or the whole Project?': 1 });
+    const result = await deployProject([], {
+      terminal: terminal.prompter,
+      env: { CLOUDGATE_INSTANCE: 'cloud.acme.dev' },
+    });
+
+    expect(terminal.questions()).toEqual([
+      'Project',
+      'One app or the whole Project?',
+      'Environment',
+    ]);
+    expect(result.stderr).not.toContain('Error');
+    expect(result.code).toBe(0);
+    expect(readFileSync(join(root, 'cloudgate.yaml'), 'utf8')).toBe(TEXT);
+    expect(
+      JSON.parse(readFileSync(join(root, '.cloudgate', 'link.json'), 'utf8')),
+    ).toEqual({
+      instance: 'https://cloud.acme.dev',
+      organizationId: 'org_1',
+      projectId: 'prj_1',
+      environmentId: 'env_1',
+      names: {
+        organization: 'Shop Inc',
+        project: 'shop',
+        environment: 'staging',
+      },
+      // Downloaded at 3; the plan step then stored it, which made it 4.
+      workingCopy: { version: 4, sha256: hashText(TEXT) },
+    });
+    expect(result.stderr).toContain(
+      '✓ Saved the Project config, version 3, as cloudgate.yaml\n',
+    );
+    expect(readFileSync(join(root, '.gitignore'), 'utf8')).toBe(
+      'node_modules/\n.cloudgate/\n/cloudgate.yaml\n',
+    );
+    expect(result.stderr).toContain(
+      '✓ Linked ./ to the whole Project shop, staging by default, on cloud.acme.dev\n',
+    );
+    expect(result.stderr.match(/Using instance/g)).toHaveLength(1);
+    expect(result.applies.map((applied) => applied.dropBuildPath)).toEqual([
+      'apps/web',
+      'apps/worker',
+    ]);
+    expect(result.started).toEqual(['app_web', 'app_wrk']);
+  });
+
+  it('in an unlinked folder in a terminal, keeps a cloudgate.yaml already there when told to, linking and uploading nothing', async () => {
+    rmSync(join(root, '.cloudgate'), { recursive: true });
+    writeFileSync(join(root, 'cloudgate.yaml'), 'version: 1\n# mine\n');
+    const replace =
+      'cloudgate.yaml has edits not sent to Cloudgate. Replace them with the Project config, version 3?';
+    const terminal = scripted({
+      'One app or the whole Project?': 1,
+      [replace]: false,
+    });
+    const result = await deployProject([], {
+      terminal: terminal.prompter,
+      env: { CLOUDGATE_INSTANCE: 'cloud.acme.dev' },
+    });
+
+    expect(terminal.questions()).toEqual([
+      'Project',
+      'One app or the whole Project?',
+      'Environment',
+      replace,
+    ]);
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain(
+      'Kept cloudgate.yaml. Nothing changed.\nNothing was uploaded.\n',
+    );
+    expect(readFileSync(join(root, 'cloudgate.yaml'), 'utf8')).toBe(
+      'version: 1\n# mine\n',
+    );
+    expect(existsSync(join(root, '.cloudgate'))).toBe(false);
+    expect(result.applies).toEqual([]);
   });
 
   describe('its plan step, as config plan runs it', () => {

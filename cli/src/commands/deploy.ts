@@ -27,6 +27,8 @@ import {
   writeLink,
 } from '../folder-link.js';
 import { columns } from '../format.js';
+import { askFirstDeploy, asksFirstDeploy } from '../first-deploy.js';
+import { createProjectHere } from '../new-project.js';
 import { deployProjectFolder } from '../project-deploy.js';
 import { kindRefusal, sourceOf } from '../service-status.js';
 import type { ServiceSource } from '../service-status.js';
@@ -72,7 +74,12 @@ USAGE
   Waits for any running build first, then uploads, then follows the
   Deployment log until the Deployment ends, and exits 0 only if it is
   done. Ctrl-C stops watching; the build goes on. Applications only.
-  An unlinked folder is linked first, by the link questions.
+
+  In a folder with no link, in a terminal and with no target flag or
+  variable, it first asks which Project (or Create a new Project), then
+  One app or the whole Project? (one app by default). One app asks the
+  Environment and Service and links this folder to it; the whole Project
+  links it as cloudgate link --whole-project does and deploys it whole.
 
   In a Project folder (cloudgate link --whole-project), it first sends
   cloudgate.yaml as a plan and applies it, as cloudgate config plan does.
@@ -129,21 +136,45 @@ FLAGS
       return deployProjectFolder(context, { ...found, link: found.link });
     }
     const folder = uploadFolder(context);
-    // The lookup starts in the folder uploaded, so `cloudgate deploy
-    // ../other` deploys to the Service ../other is linked to.
     let asked = false;
-    const choose = out.mode.canAsk ? chooserFor(context.prompter) : undefined;
-    const session = await lookUpTarget(
-      { ...context, cwd: folder },
-      choose
-        ? {
-            choose: (level, candidates) => {
-              asked = true;
-              return choose(level, candidates);
-            },
-          }
-        : {},
-    );
+    let session: TargetSession;
+    if (asksFirstDeploy(context, findNearestLink(folder))) {
+      // A first deploy here, in a terminal: which Project, and one app of
+      // it or the whole Project (ADR-0080).
+      const first = await askFirstDeploy(context, folder);
+      if (first.kind === 'kept') {
+        out.note('Nothing was uploaded.');
+        return EXIT.failed;
+      }
+      if (first.kind === 'new project') {
+        return createProjectHere(
+          context,
+          first.connection,
+          first.organization,
+          folder,
+        );
+      }
+      if (first.kind === 'whole project') {
+        return deployProjectFolder(context, first.project, first.connection);
+      }
+      session = first.session;
+      asked = true;
+    } else {
+      // The lookup starts in the folder uploaded, so `cloudgate deploy
+      // ../other` deploys to the Service ../other is linked to.
+      const choose = out.mode.canAsk ? chooserFor(context.prompter) : undefined;
+      session = await lookUpTarget(
+        { ...context, cwd: folder },
+        choose
+          ? {
+              choose: (level, candidates) => {
+                asked = true;
+                return choose(level, candidates);
+              },
+            }
+          : {},
+      );
+    }
     const { target, instance } = session;
     const shown = shownFolder(context.cwd, folder);
 
