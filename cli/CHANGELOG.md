@@ -24,6 +24,15 @@ A template folder may hold `test-values.yaml`, a map of an `ask` input's name to
 - **Always removed.** After a pass, a fail, the time limit or Ctrl-C, the project is removed with `docker compose down --volumes --remove-orphans` and its folder deleted. Ctrl-C exits 130 once it is gone; a second Ctrl-C ends the CLI at once.
 - **Needs Docker with Compose 2.1.1 or newer**, the first with `up --wait`. Without Docker, or with an older Compose or one whose version does not read as a version, it exits 1 naming what to install.
 
+### `cloudgate deploy` uploads only the files that changed
+
+`deploy` now sends a list of the folder's files with the SHA-256 of each, asks the Instance which ones its build host lacks or holds different, and uploads only those. Files deleted locally are deleted on the Instance too, and the new tree replaces the old one only once every file matches. It says what it sent: `Uploading 3 changed files, 12.0 kB (211 unchanged, 1 deleted)…`, and the 100 MB warning is about what is actually sent.
+
+- **`--full`** sends every file through the full upload, as before.
+- **An Instance older than 0.2.0** gets the full upload, with no error and no question. 0.1.0 is still the lowest Instance version this CLI works with.
+- **If the build host's files change during the upload**, `deploy` compares once more; a second change fails with exit 1 and changes nothing.
+- `--detach --json` is unchanged.
+
 ## 0.0.2-beta.2
 
 ### `cloudgate template pack`: the release's catalogue.zip, built by Cloudgate's own builder

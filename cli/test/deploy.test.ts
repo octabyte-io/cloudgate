@@ -4,6 +4,7 @@ import {
   readFileSync,
   rmSync,
   symlinkSync,
+  truncateSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -108,6 +109,48 @@ interface Options {
   terminal?: Prompter;
   /** `GET /environments/env_1/config/repository-sources`; a Cloudgate-kept config naming none by default. */
   repositorySources?: Record<string, unknown>;
+  /** The version `GET /settings/about` reports; `0.2.0` by default. */
+  version?: string;
+  /**
+   * The files on the build host, path to SHA-256, which compare compares the
+   * list with and a successful apply replaces with it. Empty by default.
+   */
+  buildHost?: Record<string, string>;
+  /** What each apply answers; the last repeats. Applied by default. */
+  applyAnswers?: (() => Response)[];
+}
+
+/** One `POST /applications/app_1/drop/apply`, as the Instance received it. */
+interface Applied {
+  files: { path: string; sha256: string }[];
+  /** The zip's entry names, from its central directory. */
+  zipped: string[];
+  dropBuildPath: unknown;
+}
+
+/** The entry names of a zip, read from its central directory. */
+function zipNames(zip: Buffer): string[] {
+  const end = zip.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  const count = zip.readUInt16LE(end + 10);
+  let cursor = zip.readUInt32LE(end + 16);
+  const names: string[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const nameLength = zip.readUInt16LE(cursor + 28);
+    const extraLength = zip.readUInt16LE(cursor + 30);
+    const commentLength = zip.readUInt16LE(cursor + 32);
+    names.push(zip.toString('utf8', cursor + 46, cursor + 46 + nameLength));
+    cursor += 46 + nameLength + extraLength + commentLength;
+  }
+  return names;
+}
+
+async function listOf(
+  form: FormData,
+): Promise<{ path: string; sha256: string }[]> {
+  return JSON.parse(await (form.get('files') as Blob).text()) as {
+    path: string;
+    sha256: string;
+  }[];
 }
 
 async function deploy(argv: string[], options: Options = {}) {
@@ -117,18 +160,22 @@ async function deploy(argv: string[], options: Options = {}) {
     deployment('done', { finishedAt: '2026-11-03T12:01:47.000Z' }),
   ];
   const uploads: FormData[] = [];
+  const compares: { path: string; sha256: string }[][] = [];
+  const applies: Applied[] = [];
+  const buildHost = new Map(Object.entries(options.buildHost ?? {}));
+  let applied = 0;
   let asked = 0;
   let listed = 0;
   let uploaded = 0;
   let interrupt: (() => void) | undefined;
   const socket = neverClosingSocket(options.frames ?? ['[build] step\n']);
-  const respond = (url: string, init: RequestInit): Response => {
+  const respond = async (url: string, init: RequestInit): Promise<Response> => {
     const path = url.replace('https://cloud.acme.dev/backend', '');
     const method = init.method ?? 'GET';
     if (path === '/settings/about') {
       return json({
         product: 'cloudgate',
-        version: '9.9.9',
+        version: options.version ?? '0.2.0',
         apiUrl: 'https://api.cloud.acme.dev',
       });
     }
@@ -188,6 +235,42 @@ async function deploy(argv: string[], options: Options = {}) {
       uploads.push(init.body as FormData);
       return json({ applicationId: 'app_1', sourceType: 'drop', env: 'S=1' });
     }
+    if (method === 'POST' && path === '/applications/app_1/drop/compare') {
+      const files = await listOf(init.body as FormData);
+      compares.push(files);
+      const listed = new Set(files.map((file) => file.path));
+      return json({
+        missing: files
+          .filter((file) => buildHost.get(file.path) !== file.sha256)
+          .map((file) => file.path),
+        unchanged: files.filter(
+          (file) => buildHost.get(file.path) === file.sha256,
+        ).length,
+        deleted: [...buildHost.keys()].filter((path) => !listed.has(path))
+          .length,
+      });
+    }
+    if (method === 'POST' && path === '/applications/app_1/drop/apply') {
+      const form = init.body as FormData;
+      const files = await listOf(form);
+      applies.push({
+        files,
+        zipped: zipNames(
+          Buffer.from(await (form.get('zip') as Blob).arrayBuffer()),
+        ),
+        dropBuildPath: form.get('dropBuildPath'),
+      });
+      const answers = options.applyAnswers ?? [];
+      const answer = answers[Math.min(applied, answers.length - 1)];
+      applied += 1;
+      if (answer) {
+        const response = answer();
+        if (!response.ok) return response;
+      }
+      buildHost.clear();
+      for (const file of files) buildHost.set(file.path, file.sha256);
+      return json({ applicationId: 'app_1', sourceType: 'drop', env: 'S=1' });
+    }
     if (method === 'POST' && path === '/applications/app_1/deployments') {
       return options.trigger?.() ?? json(deployment('pending'), 201);
     }
@@ -209,8 +292,7 @@ async function deploy(argv: string[], options: Options = {}) {
     stderrIsTTY: options.terminal !== undefined,
     stdout: (text) => (out.stdout += text),
     stderr: (text) => (out.stderr += text),
-    fetch: (input, init) =>
-      Promise.resolve(respond(input as string, init ?? {})),
+    fetch: (input, init) => respond(input as string, init ?? {}),
     openSocket: socket.open,
     sleep: () => new Promise((resolve) => setImmediate(resolve)),
     interrupts: {
@@ -221,7 +303,15 @@ async function deploy(argv: string[], options: Options = {}) {
     },
     now: () => new Date('2026-11-03T12:00:00Z'),
   });
-  return { code, ...out, uploads, socket };
+  return {
+    code,
+    ...out,
+    uploads,
+    compares,
+    applies,
+    buildHost: Object.fromEntries(buildHost),
+    socket,
+  };
 }
 
 describe('cloudgate deploy', () => {
@@ -232,15 +322,25 @@ describe('cloudgate deploy', () => {
     expect(result.stderr).toContain(
       'Deploying ./ to api in staging of Project shop on cloud.acme.dev\n',
     );
-    expect(result.stderr).toContain('Uploading 2 files, 18 B…\n');
+    expect(result.stderr).toContain(
+      'Uploading 2 changed files, 18 B (0 unchanged)…\n',
+    );
     expect(result.stderr).toContain('Deployment dpl_7Hq2Xc queued\n');
     expect(result.stderr).toContain('✓ Deployment dpl_7Hq2Xc done in 1m 42s\n');
     // The log is the data: on stdout.
     expect(result.stdout).toBe('[build] step\n');
-    // The upload is a zip in the `zip` part, landing at the build root.
-    const [upload] = result.uploads;
-    expect(upload.get('zip')).toBeInstanceOf(Blob);
-    expect(upload.get('dropBuildPath')).toBe('/');
+    // A new Application's build host holds nothing, so every file is sent,
+    // zipped, landing at the build root.
+    expect(result.applies).toEqual([
+      {
+        files: [
+          { path: 'index.js', sha256: expect.any(String) as string },
+          { path: 'package.json', sha256: expect.any(String) as string },
+        ],
+        zipped: ['index.js', 'package.json'],
+        dropBuildPath: '/',
+      },
+    ]);
     // The stream was dialled on the API's own origin with the key, and
     // closed once the Deployment was done, though it never closed itself.
     expect(result.socket.opened).toEqual([
@@ -351,7 +451,9 @@ describe('cloudgate deploy', () => {
     expect(result.stderr).toContain(
       'Warning: left out main.js, a symlink; an upload keeps no symlinks.\n',
     );
-    expect(result.stderr).toContain('Uploading 3 files, 25 B…\n');
+    expect(result.stderr).toContain(
+      'Uploading 3 changed files, 25 B (0 unchanged)…\n',
+    );
   });
 
   it('uploads [folder] when one is named, saying which', async () => {
@@ -362,7 +464,9 @@ describe('cloudgate deploy', () => {
 
     expect(result.code).toBe(0);
     expect(result.stderr).toContain('Deploying ./dist/ to api in staging');
-    expect(result.stderr).toContain('Uploading 1 file, 1 B…\n');
+    expect(result.stderr).toContain(
+      'Uploading 1 changed file, 1 B (0 unchanged)…\n',
+    );
   });
 
   it('refuses with exit 1, uploading nothing, when the Project config kept in a repository could not be read', async () => {
@@ -405,13 +509,13 @@ describe('cloudgate deploy', () => {
       expect(
         result.stderr.match(/waiting for Deployment dpl_before to finish\n/g),
       ).toHaveLength(1);
-      expect(result.uploads).toHaveLength(1);
+      expect(result.applies).toHaveLength(1);
     });
 
     it('waits and uploads again when the upload is refused because a build started meanwhile', async () => {
       const result = await deploy([...TARGET, '--detach'], {
         builds: [[], [build('running')], [build('done')]],
-        uploadAnswers: [
+        applyAnswers: [
           () =>
             json(
               {
@@ -429,7 +533,9 @@ describe('cloudgate deploy', () => {
       expect(result.stderr).toContain(
         'A build started meanwhile.\nwaiting for Deployment dpl_before to finish\n',
       );
-      expect(result.uploads).toHaveLength(1);
+      // The refused apply, then a fresh comparison and the apply after the wait.
+      expect(result.compares).toHaveLength(2);
+      expect(result.applies).toHaveLength(2);
     });
 
     it('goes ahead with a warning past a build running for more than 60 minutes', async () => {
@@ -442,7 +548,7 @@ describe('cloudgate deploy', () => {
         'Warning: Deployment dpl_before has been running for 1h 30m; deploying without waiting for it.\n',
       );
       expect(result.stderr).not.toContain('waiting for Deployment');
-      expect(result.uploads).toHaveLength(1);
+      expect(result.applies).toHaveLength(1);
     });
   });
 
@@ -480,7 +586,7 @@ describe('cloudgate deploy', () => {
       ]);
       expect(result.code).toBe(1);
       expect(result.stderr).toContain('Nothing was uploaded.\n');
-      expect(result.uploads).toEqual([]);
+      expect(result.applies).toEqual([]);
     });
 
     it('in an unlinked folder, asks the link questions, saves the link, and deploys', async () => {
@@ -503,7 +609,164 @@ describe('cloudgate deploy', () => {
         environmentId: 'env_1',
         serviceConfigName: 'api',
       });
+      expect(result.applies).toHaveLength(1);
+    });
+  });
+
+  describe('uploading only what changed', () => {
+    // `sha256sum` of each content, the independent source of the fingerprints.
+    const SHA = {
+      index: 'b603d946eb2b396ca4ecf65c223daff659dbe6f1cfeac235b7c61d3ba6964cae', // 'console.log(1);\n'
+      packageJson:
+        '44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a', // '{}'
+      old: 'cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4', // 'old'
+      big: '653db61125cf65c74d6128fd78cbeb257ce2bb86dbdb7eedb141e8e164bf97c5', // 101,000,000 zero bytes
+    };
+    const conflict = () =>
+      json(
+        {
+          statusCode: 409,
+          message:
+            'The files on the build host changed since they were compared',
+          code: 'UPLOAD_CONFLICT',
+        },
+        409,
+      );
+
+    it('uploads only the one changed file, saying how many were unchanged', async () => {
+      const result = await deploy([...TARGET, '--detach'], {
+        buildHost: { 'index.js': SHA.old, 'package.json': SHA.packageJson },
+      });
+
+      expect(result.code).toBe(0);
+      expect(result.stderr).toContain(
+        'Uploading 1 changed file, 16 B (1 unchanged)…\n',
+      );
+      expect(result.compares).toEqual([
+        [
+          { path: 'index.js', sha256: SHA.index },
+          { path: 'package.json', sha256: SHA.packageJson },
+        ],
+      ]);
+      expect(result.applies).toEqual([
+        {
+          files: [
+            { path: 'index.js', sha256: SHA.index },
+            { path: 'package.json', sha256: SHA.packageJson },
+          ],
+          zipped: ['index.js'],
+          dropBuildPath: '/',
+        },
+      ]);
+      expect(result.uploads).toEqual([]);
+    });
+
+    it('counts a file deleted locally as deleted, and the build host no longer holds it', async () => {
+      const result = await deploy([...TARGET, '--detach'], {
+        buildHost: {
+          'index.js': SHA.index,
+          'package.json': SHA.packageJson,
+          'old.js': SHA.old,
+        },
+      });
+
+      expect(result.code).toBe(0);
+      expect(result.stderr).toContain(
+        'Uploading 0 changed files, 0 B (2 unchanged, 1 deleted)…\n',
+      );
+      expect(result.applies.map((apply) => apply.zipped)).toEqual([[]]);
+      expect(result.buildHost).toEqual({
+        'index.js': SHA.index,
+        'package.json': SHA.packageJson,
+      });
+    });
+
+    it('with --full, uploads every file through the full upload and compares nothing', async () => {
+      const result = await deploy([...TARGET, '--detach', '--full'], {
+        buildHost: { 'index.js': SHA.index, 'package.json': SHA.packageJson },
+      });
+
+      expect(result.code).toBe(0);
+      expect(result.stderr).toContain('Uploading 2 files, 18 B…\n');
+      expect(result.compares).toEqual([]);
+      expect(result.applies).toEqual([]);
       expect(result.uploads).toHaveLength(1);
+    });
+
+    it('falls back to the full upload on an Instance older than 0.2.0, with no error and no question', async () => {
+      // 0.1.0 is MINIMUM_SERVER_VERSION, so the Instance is still accepted;
+      // the terminal's prompter fails the run if anything is asked.
+      const result = await deploy([...TARGET, '--detach'], {
+        version: '0.1.0',
+        terminal: neverAsked,
+      });
+
+      expect(result.code).toBe(0);
+      expect(result.stderr).toContain('Uploading 2 files, 18 B…\n');
+      expect(result.stderr).not.toContain('Error');
+      expect(result.compares).toEqual([]);
+      expect(result.uploads).toHaveLength(1);
+    });
+
+    it('compares again once when the apply answers a conflict, then deploys', async () => {
+      const result = await deploy([...TARGET, '--detach'], {
+        applyAnswers: [conflict, () => json({})],
+      });
+
+      expect(result.code).toBe(0);
+      expect(result.stderr).toContain(
+        "The build host's files changed meanwhile; comparing again.\n",
+      );
+      expect(result.compares).toHaveLength(2);
+      expect(result.applies).toHaveLength(2);
+      expect(result.stderr).toContain('Deployment dpl_7Hq2Xc queued\n');
+    });
+
+    it('fails with exit 1, starting no Deployment, when the apply answers a conflict a second time', async () => {
+      const result = await deploy([...TARGET, '--detach'], {
+        applyAnswers: [conflict],
+      });
+
+      expect(result.code).toBe(1);
+      expect(result.compares).toHaveLength(2);
+      expect(result.applies).toHaveLength(2);
+      expect(result.stderr).toContain(
+        "Error: the build host's files changed while they were being uploaded, twice; nothing was changed\n" +
+          'Run cloudgate deploy again, or cloudgate deploy --full to send every file.\n',
+      );
+      expect(result.stderr).not.toContain('queued');
+    });
+
+    it('warns about an upload over 100 MB by the bytes it sends, not the size of the folder', async () => {
+      writeFileSync(join(folder, 'big.bin'), '');
+      truncateSync(join(folder, 'big.bin'), 101_000_000);
+
+      const unchanged = await deploy([...TARGET, '--detach'], {
+        buildHost: { 'big.bin': SHA.big, 'package.json': SHA.packageJson },
+      });
+      expect(unchanged.code).toBe(0);
+      expect(unchanged.stderr).not.toContain('more than 100 MB');
+      expect(unchanged.stderr).toContain(
+        'Uploading 1 changed file, 16 B (2 unchanged)…\n',
+      );
+
+      const changed = await deploy([...TARGET, '--detach'], {
+        buildHost: { 'index.js': SHA.index, 'package.json': SHA.packageJson },
+      });
+      expect(changed.code).toBe(0);
+      expect(changed.stderr).toContain(
+        'Warning: this upload is 101.0 MB, more than 100 MB.',
+      );
+      expect(changed.stderr).toContain(
+        'Uploading 1 changed file, 101.0 MB (2 unchanged)…\n',
+      );
+    });
+
+    it('lists --full in cloudgate deploy --help', async () => {
+      const result = await deploy(['--help']);
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toMatch(/^ {2}--full {2,}\S/m);
     });
   });
 

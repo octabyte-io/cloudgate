@@ -15,6 +15,15 @@
  */
 export const MINIMUM_SERVER_VERSION = '0.1.0';
 
+/**
+ * The lowest Instance version that uploads only the changed files (spec #10):
+ * `POST /applications/:id/drop/compare` and `/drop/apply`. `deploy` uses
+ * them from this version on and the full `/drop` upload below it, so a new
+ * CLI keeps working against an older Instance; unlike
+ * {@link MINIMUM_SERVER_VERSION}, nothing is refused for it.
+ */
+export const CHANGED_FILES_SERVER_VERSION = '0.2.0';
+
 export type ServerVersionVerdict = 'supported' | 'older' | 'unreadable';
 
 interface Parsed {

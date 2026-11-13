@@ -6,10 +6,12 @@ import {
   configRepositorySourcesSchema,
   DEPLOYMENT_IN_PROGRESS_CODE,
   deploymentSchema,
+  dropComparisonSchema,
   serviceRowSchema,
+  UPLOAD_CONFLICT_CODE,
   uploadedDropSchema,
 } from 'api-schemas';
-import type { DeploymentView } from 'api-schemas';
+import type { DeploymentView, DropFile } from 'api-schemas';
 
 import type { ApiClient } from '../api-client.js';
 import type { Command, CommandContext } from '../command.js';
@@ -27,9 +29,14 @@ import { abortOf, POLL_MILLISECONDS, withInterrupts } from '../stopping.js';
 import type { ServiceSource } from '../service-status.js';
 import { TARGET_OPTIONS } from '../target.js';
 import type { Target } from '../target.js';
+import {
+  CHANGED_FILES_SERVER_VERSION,
+  serverVersionAgainst,
+} from '../server-version.js';
 import { chooserFor, describeTarget, lookUpTarget } from '../target-session.js';
 import type { TargetSession } from '../target-session.js';
 import { selectUploadFiles, summarizeUpload } from '../upload-files.js';
+import type { UploadFile } from '../upload-files.js';
 import { packUpload } from '../zip.js';
 
 /**
@@ -37,6 +44,10 @@ import { packUpload } from '../zip.js';
  * behaviour", the twelve deploy steps): uploads the folder as it is on
  * disk, starts a Deployment, follows its Deployment log, and exits 0 only if
  * it ended done.
+ *
+ * The upload sends only the files the build host lacks or holds different
+ * (spec #10), on an Instance at {@link CHANGED_FILES_SERVER_VERSION} or newer;
+ * `--full`, or an older Instance, sends every file through the full `/drop`.
  *
  * Before anything is uploaded (`deploy-guards.ts`): only an
  * Application, never against a repository the Project config names, a git
@@ -51,7 +62,7 @@ export const deploy: Command = {
 
 USAGE
   cloudgate deploy [folder] [--env <name|id>] [--detach [--json]]
-                   [--switch-source]
+                   [--switch-source] [--full]
 
   Uploads the linked folder (the one holding the nearest .cloudgate/), or
   [folder]; with no link, the current folder. Uncommitted files are
@@ -59,6 +70,8 @@ USAGE
   .cloudgateignore lists (same syntax; ! brings a file back), and .env
   files except .env.example (put secrets in with cloudgate vars set).
   Symlinks are left out with a warning, and file modes are not kept.
+  Only the files that changed since the last upload are sent, and files
+  deleted here are deleted on the Instance too; --full sends every file.
   Waits for any running build first, then uploads, then follows the
   Deployment log until the Deployment ends, and exits 0 only if it is
   done. Ctrl-C stops watching; the build goes on. Applications only.
@@ -75,6 +88,7 @@ FLAGS
   --json                 With --detach, print it as JSON
   --switch-source        Allow switching a git or image source to
                          uploaded files without asking (needed in CI)
+  --full                 Upload every file, not only the changed ones
   --instance <url>       The Instance to deploy to (CLOUDGATE_INSTANCE)
 `,
   options: {
@@ -82,6 +96,7 @@ FLAGS
     detach: { type: 'boolean' },
     json: { type: 'boolean' },
     'switch-source': { type: 'boolean' },
+    full: { type: 'boolean' },
   },
   maxPositionals: 1,
   async run(context) {
@@ -152,42 +167,23 @@ FLAGS
         `Warning: left out ${listed(selection.symlinks)}, ${selection.symlinks.length === 1 ? 'a symlink' : 'symlinks'}; an upload keeps no symlinks.`,
       );
     }
-    const summary = summarizeUpload(selection.files);
-    if (summary.large) {
-      out.note(
-        `Warning: this upload is ${describeSize(summary.totalSize)}, more than 100 MB. Its biggest folders:`,
-      );
-      for (const biggest of summary.biggestFolders) {
-        out.note(
-          `  ${describeSize(biggest.size).padStart(9)}  ${biggest.path}/`,
-        );
-      }
-      out.note('  A .cloudgateignore can leave some out.');
-    }
-    out.note(
-      `Uploading ${summary.count} ${summary.count === 1 ? 'file' : 'files'}, ${describeSize(summary.totalSize)}…`,
-    );
     const applicationId = target.service.id;
-    const archive = packUpload(folder, selection.files);
-    const form = new FormData();
-    form.set('dropBuildPath', '/');
-    form.set(
-      'zip',
-      new Blob([archive], { type: 'application/zip' }),
-      'folder.zip',
-    );
+    const onlyChanges =
+      values.full !== true &&
+      serverVersionAgainst(
+        session.checked.version,
+        CHANGED_FILES_SERVER_VERSION,
+      ) === 'supported';
     // The server refuses an upload while a build is in progress (409), so
     // one that started since the check above is waited for, then the upload
     // is made again.
     for (let attempt = 1; ; attempt += 1) {
       try {
-        await out.withSpinner('Uploading…', () =>
-          session.client.post(
-            `/applications/${encodeURIComponent(applicationId)}/drop`,
-            form,
-            uploadedDropSchema,
-          ),
-        );
+        if (onlyChanges) {
+          await uploadChanges(context, session, folder, selection.files);
+        } else {
+          await uploadWhole(context, session, folder, selection.files);
+        }
         break;
       } catch (error) {
         if (
@@ -231,6 +227,126 @@ FLAGS
 
 /** How many times an upload the server refuses during a build is made. */
 const UPLOAD_ATTEMPTS = 3;
+
+/** How many times the files are compared when an apply finds they changed. */
+const COMPARE_ATTEMPTS = 2;
+
+/**
+ * The full upload (`POST /applications/:id/drop`): every file, zipped, as
+ * the console and older CLIs send it.
+ */
+async function uploadWhole(
+  context: CommandContext,
+  session: TargetSession,
+  folder: string,
+  files: readonly UploadFile[],
+): Promise<void> {
+  const { out } = context;
+  const summary = announceUpload(out, files);
+  out.note(
+    `Uploading ${summary.count} ${summary.count === 1 ? 'file' : 'files'}, ${describeSize(summary.totalSize)}…`,
+  );
+  const form = new FormData();
+  form.set('dropBuildPath', '/');
+  form.set('zip', zipBlob(folder, files), 'folder.zip');
+  await out.withSpinner('Uploading…', () =>
+    session.client.post(
+      `/applications/${encodeURIComponent(session.target.service.id)}/drop`,
+      form,
+      uploadedDropSchema,
+    ),
+  );
+}
+
+/**
+ * The upload of only what changed (spec #10): the file list is compared with
+ * the build host's files, and the apply sends the list with a zip of only the
+ * files the build host is missing. An apply that finds the build host's
+ * files changed since the comparison (409 `UPLOAD_CONFLICT`, nothing
+ * changed) is compared and applied once more, then fails.
+ */
+async function uploadChanges(
+  context: CommandContext,
+  session: TargetSession,
+  folder: string,
+  files: readonly UploadFile[],
+): Promise<void> {
+  const { out } = context;
+  const path = `/applications/${encodeURIComponent(session.target.service.id)}/drop`;
+  const list: DropFile[] = files.map(({ path, sha256 }) => ({
+    path,
+    sha256,
+  }));
+  for (let attempt = 1; ; attempt += 1) {
+    const compareForm = new FormData();
+    compareForm.set('files', listBlob(list), 'files.json');
+    const comparison = await out.withSpinner('Comparing…', () =>
+      session.client.post(`${path}/compare`, compareForm, dropComparisonSchema),
+    );
+    const missing = new Set(comparison.missing);
+    const changed = files.filter((file) => missing.has(file.path));
+    const summary = announceUpload(out, changed);
+    const counts = [
+      `${comparison.unchanged} unchanged`,
+      ...(comparison.deleted > 0 ? [`${comparison.deleted} deleted`] : []),
+    ].join(', ');
+    out.note(
+      `Uploading ${summary.count} changed ${summary.count === 1 ? 'file' : 'files'}, ${describeSize(summary.totalSize)} (${counts})…`,
+    );
+    const applyForm = new FormData();
+    applyForm.set('dropBuildPath', '/');
+    applyForm.set('files', listBlob(list), 'files.json');
+    applyForm.set('zip', zipBlob(folder, changed), 'changes.zip');
+    try {
+      await out.withSpinner('Uploading…', () =>
+        session.client.post(`${path}/apply`, applyForm, uploadedDropSchema),
+      );
+      return;
+    } catch (error) {
+      if (!(error instanceof CliError) || error.code !== UPLOAD_CONFLICT_CODE) {
+        throw error;
+      }
+      if (attempt >= COMPARE_ATTEMPTS) {
+        throw new CliError(
+          "the build host's files changed while they were being uploaded, twice; nothing was changed",
+          EXIT.failed,
+          'Run cloudgate deploy again, or cloudgate deploy --full to send every file.',
+        );
+      }
+      out.note("The build host's files changed meanwhile; comparing again.");
+    }
+  }
+}
+
+/**
+ * Warns, naming the biggest folders, when what is about to be sent passes
+ * 100 MB (deploy step 9), and answers its summary.
+ */
+function announceUpload(
+  out: CommandContext['out'],
+  files: readonly UploadFile[],
+): ReturnType<typeof summarizeUpload> {
+  const summary = summarizeUpload(files);
+  if (summary.large) {
+    out.note(
+      `Warning: this upload is ${describeSize(summary.totalSize)}, more than 100 MB. Its biggest folders:`,
+    );
+    for (const biggest of summary.biggestFolders) {
+      out.note(`  ${describeSize(biggest.size).padStart(9)}  ${biggest.path}/`);
+    }
+    out.note('  A .cloudgateignore can leave some out.');
+  }
+  return summary;
+}
+
+function zipBlob(folder: string, files: readonly UploadFile[]): Blob {
+  return new Blob([packUpload(folder, files)], { type: 'application/zip' });
+}
+
+/** The file list as the `files` part carries it: JSON. */
+function listBlob(list: readonly DropFile[]): Blob {
+  return new Blob([JSON.stringify(list)], { type: 'application/json' });
+}
 
 /** Saves the link the run's questions just answered, as `cloudgate link` does. */
 function saveLink(folder: string, instance: string, target: Target): void {
