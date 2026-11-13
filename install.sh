@@ -175,15 +175,14 @@ main() {
   fi
 
   # A box installed from a git checkout, before the install installed
-  # versions. Switching one over is not this run's yet, so it stops before
-  # downloading anything.
-  if [ -d "$INSTALL_DIR/.git" ]; then
-    fail \
-      "$INSTALL_DIR is a git checkout, which this install no longer builds or updates." \
-      "Switching a checkout over to a Cloudgate version is not supported yet. Nothing was changed."
-  fi
+  # versions, is switched over: the checkout holds no version, so the run
+  # installs as on a new box, and the version's own deploy/install.sh moves
+  # the checkout aside when it puts itself in place. /etc/default/cloudgate-*
+  # and the database are the instance, and are kept.
   installed=''
-  if [ -e "$INSTALL_DIR" ]; then
+  if [ -d "$INSTALL_DIR/.git" ]; then
+    echo "$INSTALL_DIR is a git checkout; it will be moved aside and a Cloudgate version installed in its place."
+  elif [ -e "$INSTALL_DIR" ]; then
     installed="$(cat "$INSTALL_DIR/VERSION" 2>/dev/null)" || fail \
       "$INSTALL_DIR exists but holds no Cloudgate version (it has no VERSION file)." \
       "Move it aside and run this again. Nothing was changed."

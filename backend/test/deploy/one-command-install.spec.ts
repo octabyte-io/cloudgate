@@ -380,20 +380,55 @@ describe('install.sh (the one-command install)', () => {
       expect(called()).toBe('');
     });
 
-    // Until a checkout is switched over by the run itself (ADR-0082), a box
-    // still holding one is refused rather than half-converted.
-    it('refuses a git checkout at /opt/cloudgate before changing anything', () => {
+    // A box installed from a git checkout, before the install installed
+    // versions, is switched over by its next run (ADR-0082). The checkout has
+    // no VERSION, so the run installs as on a new box; the version's own
+    // deploy/install.sh moves the checkout aside (place_version, below).
+    it('installs the latest version over a git checkout, keeping the checkout and /etc/default/cloudgate-* as they are', () => {
       releases('v0.10.0');
       publish('0.10.0');
-      fs.mkdirSync(path.join(root, 'opt/cloudgate/.git'), { recursive: true });
-      const before = opt();
+      const checkout = path.join(root, 'opt/cloudgate');
+      fs.mkdirSync(path.join(checkout, '.git'), { recursive: true });
+      fs.writeFileSync(
+        path.join(checkout, '.git/HEAD'),
+        'ref: refs/heads/main\n',
+      );
+      fs.mkdirSync(path.join(checkout, 'deploy'));
+      fs.writeFileSync(path.join(checkout, 'deploy/install.sh'), 'exit 99\n');
+      const identity = {
+        'cloudgate-backend':
+          'APP_ENCRYPTION_SECRET=kept\nBETTER_AUTH_SECRET=kept\nDATABASE_URL=postgresql://cloudgate:pw@127.0.0.1:5432/cloudgate\n',
+        'cloudgate-console':
+          'NODE_ENV=production\nNEXT_PUBLIC_API_URL=http://198.51.100.7:4000\n',
+        'cloudgate-secrets': 'PGPW=pw\nAPP_ENCRYPTION_SECRET=kept\n',
+      };
+      fs.mkdirSync(path.join(root, 'etc/default'));
+      for (const [name, content] of Object.entries(identity)) {
+        fs.writeFileSync(path.join(root, 'etc/default', name), content);
+      }
+      const checkoutBefore = opt().filter((entry) =>
+        entry.startsWith('cloudgate/'),
+      );
 
-      const refused = install();
+      const switched = install({ CLOUDGATE_PUBLIC_HOST: '' });
 
-      expect(refused.status).toBe(1);
-      expect(refused.stderr).toContain('is a git checkout');
-      expect(opt()).toEqual(before);
-      expect(called()).toBe('');
+      expect(switched.stderr).toBe('');
+      expect(switched.status).toBe(0);
+      expect(called()).toContain(
+        `curl https://${DOWNLOAD}/v0.10.0/cloudgate-0.10.0-linux-amd64.tar.gz\n`,
+      );
+      // The staged version's install, with the host the checkout's console had.
+      expect(called()).toContain(
+        `deploy/install.sh 0.10.0 from ${root}/opt/cloudgate.next host=198.51.100.7\n`,
+      );
+      expect(opt().filter((entry) => entry.startsWith('cloudgate/'))).toEqual(
+        checkoutBefore,
+      );
+      for (const [name, content] of Object.entries(identity)) {
+        expect(
+          fs.readFileSync(path.join(root, 'etc/default', name), 'utf8'),
+        ).toBe(content);
+      }
     });
 
     it('refuses an /opt/cloudgate that holds no Cloudgate version', () => {
