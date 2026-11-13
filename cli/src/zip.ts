@@ -17,7 +17,10 @@ import type { UploadFile } from './upload-files.js';
  * format. Every entry is deflated, named in UTF-8 (flag bit 11), and carries
  * no mode: the server keeps none (CLI spec, Out of Scope).
  */
-export function packUpload(root: string, files: readonly UploadFile[]): Buffer {
+export function packUpload(
+  root: string,
+  files: readonly Pick<UploadFile, 'path' | 'size'>[],
+): Buffer {
   if (files.length > MAX_ENTRIES) {
     throw new CliError(
       `the folder has ${files.length} files to upload, more than the ${MAX_ENTRIES} one upload can hold`,

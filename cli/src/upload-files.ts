@@ -1,13 +1,20 @@
+import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { ignoredBy, parseIgnoreFile } from './ignore-rules.js';
 import type { IgnoreRule } from './ignore-rules.js';
 
-/** One file `deploy` uploads: its path under the folder (`/`-separated) and its size. */
+/**
+ * One file `deploy` uploads: its path under the folder (`/`-separated), its
+ * size, and the SHA-256 of its contents as 64 lowercase hex digits, the
+ * fingerprint the Instance compares with the file on its build host (spec
+ * #10: contents, never timestamps).
+ */
 export interface UploadFile {
   path: string;
   size: number;
+  sha256: string;
 }
 
 /** What {@link selectUploadFiles} found. */
@@ -83,7 +90,11 @@ export function selectUploadFiles(root: string): UploadSelection {
       } else if (isDirectory) {
         walk(path, own);
       } else if (stat.isFile()) {
-        files.push({ path, size: stat.size });
+        files.push({
+          path,
+          size: stat.size,
+          sha256: sha256Of(join(root, path)),
+        });
       }
     }
   };
@@ -109,10 +120,12 @@ export interface UploadSummary {
    * Top-level only, because a folder is never smaller than one inside it, so
    * the five biggest of every folder would be one folder and its insides.
    */
-  biggestFolders: UploadFile[];
+  biggestFolders: Pick<UploadFile, 'path' | 'size'>[];
 }
 
-export function summarizeUpload(files: readonly UploadFile[]): UploadSummary {
+export function summarizeUpload(
+  files: readonly Pick<UploadFile, 'path' | 'size'>[],
+): UploadSummary {
   const totalSize = files.reduce((sum, file) => sum + file.size, 0);
   const large = totalSize > LARGE_UPLOAD_BYTES;
   const byFolder = new Map<string, number>();
@@ -129,6 +142,10 @@ export function summarizeUpload(files: readonly UploadFile[]): UploadSummary {
     .sort((a, b) => b.size - a.size || byPath(a.path, b.path))
     .slice(0, 5);
   return { count: files.length, totalSize, large, biggestFolders };
+}
+
+function sha256Of(file: string): string {
+  return createHash('sha256').update(readFileSync(file)).digest('hex');
 }
 
 /** The rules of the ignore file `name` in `folder`, if it has one. */
