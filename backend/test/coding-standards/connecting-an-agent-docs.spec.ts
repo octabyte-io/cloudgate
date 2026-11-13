@@ -327,11 +327,10 @@ describe('docs/connecting-an-agent.md — every number it states read from the c
   });
 });
 
-describe('CHANGELOG.md — the section above the first tagged version answers the personal-key question', () => {
+describe('CHANGELOG.md — 0.2.0, the first tagged version, answers the personal-key question', () => {
   const changelog = readFileSync(join(repoRoot, 'CHANGELOG.md'), 'utf8');
   const unreleased =
-    /^## Unreleased\s*$([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(changelog)?.[1] ??
-    '';
+    /^## 0\.2\.0\b.*$([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(changelog)?.[1] ?? '';
 
   it('asks the question and answers both halves: a script keeps its key, an AI agent gets an Agent', () => {
     expect(unreleased).toContain(

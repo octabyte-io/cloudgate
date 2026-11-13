@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 (2026-11-13)
+
 ### The Hosted instance upgrades itself to each green version
 
 A pushed `v*` tag whose `E2E (release)` run ends green now reaches the Hosted instance by itself. `.github/workflows/deploy-hosted.yml` checks the version first: the tag must be `backend/package.json`'s version, and a version whose `CHANGELOG.md` section asks for anything under "What to do on upgrade" stops and waits for a person, who then runs the workflow by hand with `manual_steps_done`. It SSHes to the box as `cloudgate-deploy`, whose key can run only `/usr/local/sbin/cloudgate-update`. That takes a B2 backup, then re-runs the install at the tag in its own systemd unit, so a dropped connection cannot cut it off, and the workflow waits until `/backend/settings/about` reports the new version (ADR-0081, `docs/deploy.md` §11).
