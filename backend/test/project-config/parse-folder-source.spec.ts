@@ -211,9 +211,8 @@ interface SchemaNode {
 /** The entry schema anywhere in `node` whose `kind` is the constant `kind`. */
 function schemaOfKind(node: unknown, kind: string): SchemaNode | undefined {
   if (typeof node !== 'object' || node === null) return undefined;
-  if ((node as SchemaNode).properties?.kind?.const === kind) {
-    return node as SchemaNode;
-  }
+  const candidate: SchemaNode = node;
+  if (candidate.properties?.kind?.const === kind) return candidate;
   for (const child of Object.values(node)) {
     const found = schemaOfKind(child, kind);
     if (found) return found;
