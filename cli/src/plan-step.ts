@@ -101,7 +101,8 @@ export async function runPlanStep(
       ...namesToConfirm(plan.steps),
     }));
   if (pending.length === 0) {
-    // Nothing to change stores the text at once, which moves the version.
+    // Nothing to change stores the text at once: a text that differs from
+    // Cloudgate's (a comment) moves the version, the same text keeps it.
     if (saved.stored) await recordStored(client, project, text);
     out.note('Nothing to change.');
     return { kind: 'unchanged' };

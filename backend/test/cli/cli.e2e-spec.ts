@@ -1462,7 +1462,7 @@ describe('Cloudgate CLI (e2e)', () => {
         }
       });
 
-      it('with --yes applies a plan that destroys nothing, starting no build for a Service it does not touch; the recorded version is the new one, and a second run says nothing changed', async () => {
+      it('with --yes applies a plan that destroys nothing, starting no build for a Service it does not touch; the recorded version is the new one, and a second run says nothing changed and keeps the version', async () => {
         const seeded = await seededProject();
         const untouched = await ctx.app
           .get(ApplicationsService)
@@ -1519,6 +1519,9 @@ describe('Cloudgate CLI (e2e)', () => {
           expect(again.code).toBe(0);
           expect(again.stdout).toBe('staging: no changes\n');
           expect(again.stderr).toContain('Nothing to change.');
+          // A run that changes nothing stales no teammate's copy.
+          expect((await configOf(seeded)).version).toBe(kept.version);
+          expect(recordedVersion(repo)).toBe(kept.version);
         } finally {
           removeFolder(repo);
         }

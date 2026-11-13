@@ -588,6 +588,27 @@ services:
       expect(now.version).not.toBe(started.version);
       expect(now.text).toBe(`# kept by hand\n${started.text}`);
     });
+
+    it("keeps the version when an edit sends the stored text unchanged, so a teammate's copy is still current", async () => {
+      const downloaded = await readConfig();
+      const teammate = await signUpMember(server, cookie, {
+        name: 'Ida Rhodes',
+        role: 'admin',
+      });
+      const unchanged = await request(server)
+        .post(`/projects/${projectId}/config/plans`)
+        .set('Cookie', teammate.cookie)
+        .send({ text: downloaded.text, version: downloaded.version });
+      expect(unchanged.status).toBe(201);
+
+      const res = await editWhole({
+        text: CHANGES,
+        version: downloaded.version,
+      });
+
+      expect(res.status).toBe(201);
+      expect((await readConfig()).version).toBe(downloaded.version);
+    });
   });
 
   describe('dismissing a plan', () => {

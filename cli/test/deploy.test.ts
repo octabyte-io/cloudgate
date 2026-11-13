@@ -1096,7 +1096,9 @@ describe('cloudgate deploy in a Project folder', () => {
       }
       if (path === '/projects/prj_1/config/plans' && method === 'POST') {
         const body = JSON.parse(init.body as string) as { text: string };
-        if (steps.length === 0) {
+        // Nothing to change stores the text at once; the same text again
+        // keeps the version.
+        if (steps.length === 0 && body.text !== configText) {
           configText = body.text;
           configVersion += 1;
         }
@@ -1340,8 +1342,8 @@ describe('cloudgate deploy in a Project folder', () => {
         project: 'shop',
         environment: 'staging',
       },
-      // Downloaded at 3; the plan step then stored it, which made it 4.
-      workingCopy: { version: 4, sha256: hashText(TEXT) },
+      // Downloaded at 3; the plan step sent it back unchanged, which keeps 3.
+      workingCopy: { version: 3, sha256: hashText(TEXT) },
     });
     expect(result.stderr).toContain(
       '✓ Saved the Project config, version 3, as cloudgate.yaml\n',

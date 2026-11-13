@@ -172,13 +172,26 @@ export class ConfigLocations {
     });
   }
 
-  /** Stores the Cloudgate-kept text, which moves the version. */
+  /**
+   * Stores the Cloudgate-kept text, which moves the version. A text identical
+   * to the stored one writes nothing and keeps the version, so a run that
+   * changes nothing never stales anyone's working copy (ADR-0080). Not
+   * scoped here: the caller has already found the Project inside its
+   * organization and asked the statement the write needs.
+   */
   async writeText(
     tx: DrizzleTx,
     projectId: string,
     text: string,
     changedBy: string | null,
   ) {
+    const [found] = await tx
+      .select({ text: projectConfigLocation.text })
+      .from(projectConfigLocation)
+      .where(eq(projectConfigLocation.projectId, projectId))
+      .limit(1)
+      .for('update');
+    if (found?.text === text) return;
     await moveVersion(tx, projectId, changedBy, { text });
   }
 
