@@ -62,6 +62,8 @@ Every CLI ticket adds its walk to that suite (`backend/test/cli/cli.e2e-spec.ts`
 | `src/upload-files.ts` | Which files `deploy` uploads (`selectUploadFiles`: `.git`, `.cloudgate`, ignore files, `.env`, symlinks) and what it says about their size (`summarizeUpload`). |
 | `src/ignore-rules.ts` | The `.gitignore` pattern syntax, read for `.gitignore` and `.cloudgateignore` alike. |
 | `src/zip.ts` | `packUpload`: the zip the upload route reads (deflate, UTF-8 names, no Zip64). |
+| `src/deploy-steps.ts` | What `deploy` does for one Application, shared by a deploy of one Service and a root deploy: `untilNoBuildInProgress`, `uploadFiles` (only the changed files, or every file, with a build path), `startDeployment`, `watchBuild`. |
+| `src/project-deploy.ts` | `deployProjectFolder`: `deploy` in a Project folder (ADR-0080). `runPlanStep`, then the whole folder uploaded to each app the config (`GET /environments/:id/config/sources`) builds from a subfolder, each built and followed, one line per app at the end. |
 | `src/deploy-guards.ts` | What `deploy` checks before it uploads, as rules with no network: `sourceVerdict` (refuse, ask or go for a source switch), `runningBuildVerdict` (wait for a build in progress, or go ahead past a held or stuck one). |
 | `src/deployment-watch.ts` | `watchDeployment`: follows a Deployment to its end, which `GET /deployments/:id` decides, never the stream. |
 | `src/runtime-log.ts` | A Service's Runtime log (`logs`): `readServerRuntimeLog` over `/docker-container-logs` (`follow=false` without `-f`, ends on close code 4014) and `readCloudRuntimeLog` polling `GET /applications/:id/runtime-log`. |

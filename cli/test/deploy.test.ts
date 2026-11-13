@@ -14,8 +14,10 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { SocketLike } from '../src/deployment-log-stream.js';
+import { writeLink } from '../src/folder-link.js';
 import type { Prompter } from '../src/prompt.js';
 import { run } from '../src/run.js';
+import { hashText } from '../src/working-copy.js';
 
 /**
  * `cloudgate deploy`, driven as a CI job drives it, against an Instance that
@@ -805,5 +807,448 @@ describe('cloudgate deploy', () => {
 
     expect(result.code).toBe(2);
     expect(result.stderr).toContain('Error: nowhere is not a folder');
+  });
+});
+
+/**
+ * A root deploy in a **Project folder** (ADR-0080): the plan step of
+ * `cloudgate config plan`, then the whole folder uploaded to each app whose
+ * config entry names a subfolder of it, built from that subfolder.
+ */
+describe('cloudgate deploy in a Project folder', () => {
+  const TEXT = [
+    'version: 1',
+    'services:',
+    '  web:',
+    '    kind: web',
+    '    source:',
+    '      folder: apps/web',
+    '  worker:',
+    '    kind: worker',
+    '    source:',
+    '      folder: apps/worker',
+    '  api:',
+    '    kind: web',
+    '    source:',
+    '      github: acme/api',
+    '  db:',
+    '    kind: postgres',
+    '  legacy:',
+    '    kind: mongo',
+    '    managed: console',
+    '',
+  ].join('\n');
+
+  const SOURCES = [
+    { configName: 'web', kind: 'web', source: 'folder', folder: 'apps/web' },
+    {
+      configName: 'worker',
+      kind: 'worker',
+      source: 'folder',
+      folder: 'apps/worker',
+    },
+    { configName: 'api', kind: 'web', source: 'repository', folder: null },
+    { configName: 'db', kind: 'postgres', source: 'none', folder: null },
+    { configName: 'legacy', kind: 'mongo', source: 'console', folder: null },
+  ];
+
+  const SERVICES = [
+    ['application', 'app_web', 'web'],
+    ['application', 'app_wrk', 'worker'],
+    ['application', 'app_api', 'api'],
+    ['postgres', 'pg_1', 'db'],
+    ['mongo', 'mg_1', 'legacy'],
+  ].map(([serviceType, serviceId, configName]) => ({
+    serviceType,
+    serviceId,
+    name: configName,
+    configName,
+  }));
+
+  /** Every file of the folder an upload keeps, as each app is sent it. */
+  const WHOLE_FOLDER = [
+    '.gitignore',
+    'apps/web/index.js',
+    'apps/worker/main.js',
+    'shared/lib.js',
+  ];
+
+  let root: string;
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'cloudgate-project-deploy-'));
+    writeLink(root, {
+      instance: 'https://cloud.acme.dev',
+      organizationId: 'org_1',
+      projectId: 'prj_1',
+      environmentId: 'env_1',
+      workingCopy: { version: 3, sha256: hashText(TEXT) },
+      names: {
+        organization: 'Shop Inc',
+        project: 'shop',
+        environment: 'staging',
+      },
+    });
+    const files: Record<string, string> = {
+      'cloudgate.yaml': TEXT,
+      '.gitignore': '.cloudgate/\n/cloudgate.yaml\n',
+      'apps/web/index.js': 'require("../../shared/lib");\n',
+      'apps/worker/main.js': 'require("../../shared/lib");\n',
+      'shared/lib.js': 'module.exports = {};\n',
+    };
+    for (const [path, content] of Object.entries(files)) {
+      mkdirSync(join(root, path, '..'), { recursive: true });
+      writeFileSync(join(root, path), content);
+    }
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  interface ProjectOptions {
+    /** The steps the plan finds in staging; none by default. */
+    steps?: Record<string, unknown>[];
+    sources?: Record<string, unknown>[];
+    /** `GET /deployments/:id` per Deployment, one per ask; the last repeats. */
+    statuses?: Record<string, Record<string, unknown>[]>;
+    /** `GET /applications/:id/deployments` per app, one per ask; the last repeats. */
+    builds?: Record<string, Record<string, unknown>[][]>;
+    /** The Project config's version in Cloudgate; the copy's (3) by default. */
+    version?: number;
+    cwd?: string;
+  }
+
+  async function deployProject(argv: string[], options: ProjectOptions = {}) {
+    const out = { stdout: '', stderr: '' };
+    /** Each apply, by app: the files listed and the build path sent. */
+    const applies: { app: string; files: string[]; dropBuildPath: unknown }[] =
+      [];
+    const started: string[] = [];
+    const appliedPlans: unknown[] = [];
+    const asked = new Map<string, number>();
+    const listed = new Map<string, number>();
+    let configText = TEXT;
+    let configVersion = options.version ?? 3;
+    const socket = neverClosingSocket(['[build] step\n']);
+    const steps = options.steps ?? [];
+    const plan = (status: string) => ({
+      planId: 'pln_1',
+      environmentId: 'env_1',
+      status,
+      steps,
+      notes: [],
+      results:
+        status === 'applied'
+          ? steps.map((step) => ({ ...step, status: 'applied', message: null }))
+          : null,
+    });
+    const respond = async (
+      url: string,
+      init: RequestInit,
+    ): Promise<Response> => {
+      const path = url.replace('https://cloud.acme.dev/backend', '');
+      const method = init.method ?? 'GET';
+      if (path === '/settings/about') {
+        return json({
+          product: 'cloudgate',
+          version: '0.2.0',
+          apiUrl: 'https://api.cloud.acme.dev',
+        });
+      }
+      if (path === '/organizations')
+        return json([{ id: 'org_1', name: 'Shop Inc' }]);
+      if (path === '/projects')
+        return json([{ projectId: 'prj_1', name: 'shop' }]);
+      if (path === '/environments?projectId=prj_1')
+        return json([{ environmentId: 'env_1', name: 'staging' }]);
+      if (path === '/projects/prj_1/config' && method === 'GET') {
+        return json({
+          projectId: 'prj_1',
+          location: {
+            kind: 'cloudgate',
+            text: configText,
+            version: configVersion,
+          },
+        });
+      }
+      if (path === '/projects/prj_1/config/plans' && method === 'POST') {
+        const body = JSON.parse(init.body as string) as { text: string };
+        if (steps.length === 0) {
+          configText = body.text;
+          configVersion += 1;
+        }
+        return json({ stored: steps.length === 0, plans: [plan('open')] }, 201);
+      }
+      if (path === '/environments/env_1/plan/apply' && method === 'POST') {
+        appliedPlans.push(JSON.parse(init.body as string));
+        configVersion += 1;
+        return json(plan('applied'));
+      }
+      if (path === '/environments/env_1') {
+        return json({
+          environmentId: 'env_1',
+          name: 'staging',
+          services: SERVICES,
+        });
+      }
+      if (path === '/environments/env_1/config/sources') {
+        return json({
+          keptIn: 'cloudgate',
+          readable: true,
+          services: options.sources ?? SOURCES,
+        });
+      }
+      const app = /^\/applications\/([^/]+)\/(.+)$/.exec(path);
+      if (app && method === 'GET' && app[2] === 'deployments') {
+        const builds = options.builds?.[app[1]] ?? [[]];
+        const count = listed.get(app[1]) ?? 0;
+        listed.set(app[1], count + 1);
+        return json(builds[Math.min(count, builds.length - 1)]);
+      }
+      if (app && method === 'POST' && app[2] === 'drop/compare') {
+        const files = await listOf(init.body as FormData);
+        return json({
+          missing: files.map((file) => file.path),
+          unchanged: 0,
+          deleted: 0,
+        });
+      }
+      if (app && method === 'POST' && app[2] === 'drop/apply') {
+        const form = init.body as FormData;
+        applies.push({
+          app: app[1],
+          files: (await listOf(form)).map((file) => file.path),
+          dropBuildPath: form.get('dropBuildPath'),
+        });
+        return json({ applicationId: app[1], sourceType: 'drop' });
+      }
+      if (app && method === 'POST' && app[2] === 'deployments') {
+        started.push(app[1]);
+        return json(deployment('pending', { deploymentId: `dpl_${app[1]}` }));
+      }
+      const watched = /^\/deployments\/(.+)$/.exec(path);
+      if (watched) {
+        const id = watched[1];
+        const statuses = options.statuses?.[id] ?? [
+          deployment('running', { deploymentId: id }),
+          deployment('done', {
+            deploymentId: id,
+            finishedAt: '2026-11-03T12:01:47.000Z',
+          }),
+        ];
+        const count = asked.get(id) ?? 0;
+        asked.set(id, count + 1);
+        return json(statuses[Math.min(count, statuses.length - 1)]);
+      }
+      return new Response(null, { status: 599 });
+    };
+    const code = await run({
+      argv: ['deploy', ...argv],
+      env: { CLOUDGATE_KEY: 'cg_secret' },
+      cwd: options.cwd ?? root,
+      prompter: neverAsked,
+      stdinIsTTY: false,
+      stdoutIsTTY: false,
+      stderrIsTTY: false,
+      stdout: (text) => (out.stdout += text),
+      stderr: (text) => (out.stderr += text),
+      fetch: (input, init) => respond(input as string, init ?? {}),
+      openSocket: socket.open,
+      sleep: () => new Promise((resolve) => setImmediate(resolve)),
+      interrupts: { listen: () => () => undefined },
+      now: () => new Date('2026-11-03T12:00:00Z'),
+    });
+    return { code, ...out, applies, started, appliedPlans, socket };
+  }
+
+  it('uploads the whole folder to each app built from a subfolder, builds each from it, and prints one line per app', async () => {
+    const result = await deployProject([], {
+      cwd: join(root, 'apps', 'web'),
+    });
+
+    expect(result.stderr).not.toContain('Error');
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain('staging: no changes\n');
+    expect(result.applies).toEqual([
+      { app: 'app_web', files: WHOLE_FOLDER, dropBuildPath: 'apps/web' },
+      { app: 'app_wrk', files: WHOLE_FOLDER, dropBuildPath: 'apps/worker' },
+    ]);
+    expect(result.started).toEqual(['app_web', 'app_wrk']);
+    expect(result.stderr).toContain(
+      'Deploying ../../ to web in staging of Project shop on cloud.acme.dev, built from apps/web\n',
+    );
+    expect(result.stderr).toContain(
+      [
+        '✓ web: Deployment dpl_app_web done in 1m 42s',
+        '✓ worker: Deployment dpl_app_wrk done in 1m 42s',
+        '- api: skipped, built from a repository',
+        '- db: skipped, a database',
+        '- legacy: skipped, console-managed',
+        '',
+      ].join('\n'),
+    );
+    // Each Deployment's log, followed in turn.
+    expect(result.socket.opened.map((one) => one.url)).toEqual([
+      'wss://api.cloud.acme.dev/listen-deployment?deploymentId=dpl_app_web',
+      'wss://api.cloud.acme.dev/listen-deployment?deploymentId=dpl_app_wrk',
+    ]);
+  });
+
+  it('refuses a subfolder that is not in the Project folder, naming the app, before anything is uploaded', async () => {
+    const result = await deployProject([], {
+      sources: [
+        SOURCES[0],
+        { ...SOURCES[1], folder: 'apps/jobs' },
+        ...SOURCES.slice(2),
+      ],
+    });
+
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain(
+      'Error: worker builds from apps/jobs, which is not a folder in this Project folder',
+    );
+    expect(result.applies).toEqual([]);
+    expect(result.started).toEqual([]);
+  });
+
+  it('with --service, deploys that one app only', async () => {
+    const result = await deployProject(['--service', 'worker']);
+
+    expect(result.code).toBe(0);
+    expect(result.applies).toEqual([
+      { app: 'app_wrk', files: WHOLE_FOLDER, dropBuildPath: 'apps/worker' },
+    ]);
+    expect(result.started).toEqual(['app_wrk']);
+    expect(result.stderr).toContain(
+      '✓ worker: Deployment dpl_app_wrk done in 1m 42s\n',
+    );
+    expect(result.stderr).not.toContain('skipped');
+  });
+
+  it('with --service, refuses an app not built from this folder, uploading nothing', async () => {
+    const result = await deployProject(['--service', 'api']);
+
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain(
+      'Error: api is not built from this Project folder (built from a repository)',
+    );
+    expect(result.applies).toEqual([]);
+  });
+
+  it('with --detach, stops once every build is queued, printing each', async () => {
+    const result = await deployProject(['--detach']);
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain(
+      'Service  Deployment   Status\nweb      dpl_app_web  pending\nworker   dpl_app_wrk  pending\n',
+    );
+    expect(result.socket.opened).toEqual([]);
+  });
+
+  it('exits 1 when one build fails, after following the others to their end', async () => {
+    const result = await deployProject([], {
+      statuses: {
+        dpl_app_web: [
+          deployment('error', {
+            deploymentId: 'dpl_app_web',
+            finishedAt: '2026-11-03T12:00:47.000Z',
+          }),
+        ],
+      },
+    });
+
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain(
+      '✗ web: Deployment dpl_app_web failed after 42s; its log: cloudgate logs --deployment dpl_app_web\n✓ worker: Deployment dpl_app_wrk done in 1m 42s\n',
+    );
+  });
+
+  it('waits for an app’s own running build before uploading to it', async () => {
+    const before = {
+      deploymentId: 'dpl_before',
+      createdAt: '2026-11-03T11:58:00.000Z',
+      applicationId: 'app_wrk',
+      previewDeploymentId: null,
+      cronRun: null,
+    };
+    const result = await deployProject(['--detach'], {
+      builds: {
+        app_wrk: [
+          [{ ...before, status: 'running' }],
+          [{ ...before, status: 'done' }],
+        ],
+      },
+    });
+
+    expect(result.code).toBe(0);
+    expect(result.stderr).toContain(
+      'waiting for Deployment dpl_before to finish\n',
+    );
+    expect(result.started).toEqual(['app_web', 'app_wrk']);
+  });
+
+  describe('its plan step, as config plan runs it', () => {
+    const change = {
+      action: 'change',
+      configName: 'web',
+      kind: 'web',
+      fields: [{ field: 'command' }],
+    };
+
+    it('with no terminal and no --yes, refuses a plan with changes, exit 2, and uploads nothing', async () => {
+      const result = await deployProject([], { steps: [change] });
+
+      expect(result.code).toBe(2);
+      expect(result.stdout).toContain('  ~ web (web) change command\n');
+      expect(result.stderr).toContain(
+        'Error: nothing was applied: applying the plan needs a yes',
+      );
+      expect(result.appliedPlans).toEqual([]);
+      expect(result.applies).toEqual([]);
+    });
+
+    it('with --yes, applies it, then builds', async () => {
+      const result = await deployProject(['--yes'], { steps: [change] });
+
+      expect(result.code).toBe(0);
+      expect(result.appliedPlans).toEqual([
+        { planId: 'pln_1', confirmDestroy: [], confirmUpgrade: [] },
+      ]);
+      expect(result.stderr).toContain('✓ Applied the plan in staging');
+      expect(result.started).toEqual(['app_web', 'app_wrk']);
+    });
+
+    it('with --yes, refuses a plan that destroys a Service, exit 2, and uploads nothing', async () => {
+      const result = await deployProject(['--yes'], {
+        steps: [{ action: 'destroy', configName: 'api', kind: 'web' }],
+      });
+
+      expect(result.code).toBe(2);
+      expect(result.stderr).toContain(
+        'Error: the plan destroys api in staging, which --yes alone never does; nothing was applied',
+      );
+      expect(result.applies).toEqual([]);
+    });
+
+    it('refuses a copy the Project config has moved on from, exit 1, and uploads nothing', async () => {
+      const result = await deployProject(['--yes'], { version: 4 });
+
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain(
+        'Error: cloudgate.yaml is version 3 of the Project config, which has changed in Cloudgate since; nothing was sent',
+      );
+      expect(result.applies).toEqual([]);
+    });
+  });
+
+  it('refuses a [folder] in a Project folder, which is deployed whole, exit 2', async () => {
+    const result = await deployProject(['apps/web']);
+
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain(
+      'Error: a Project folder is deployed whole, not a folder in it',
+    );
+    expect(result.applies).toEqual([]);
   });
 });

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### A root `cloudgate deploy` reads which apps a Project folder builds, and an app built from a folder is never built before its first upload
+
+- **`GET /environments/:environmentId/config/sources`** lists every entry of the Project config, as that Environment reads it, with where its code comes from (`folder` and its subfolder, `repository`, `image`, `console` or `none`). `cloudgate deploy` in a Project folder builds the `folder` ones (ADR-0080). It needs `environment: ['read']` and never returns the text.
+- **No build without uploaded files.** Applying a plan that creates an app with `source: { folder }` queues no Deployment, and a Deployment of an uploaded-files app is refused with 409 ("no files have been uploaded") until an upload has reached it. A plan writes such an app's build path before any upload, so the build path alone no longer counts as an upload; before, that first Deployment ran with no files and failed.
+
+**What to do on upgrade**: nothing. Migration `0227_drop-uploaded` adds `application.drop_uploaded` and marks every row that already has an upload's build path as uploaded.
+
 ### The Instance reports version 0.2.0, the first that takes an upload of only the changed files
 
 `backend/package.json`, and so `GET /settings/about`, `GET /settings/version` and the update check, now say `0.2.0`. It is the first version with `POST /applications/:id/drop/compare` and `POST /applications/:id/drop/apply` (spec #10): compare takes the folder's file list with the SHA-256 of each file and answers which files the build host lacks or holds different, plus how many are unchanged and how many it will delete. Apply takes the list and a zip of only those files, builds the new tree beside the current one, and swaps it in only once every file matches. A tree that changed since the comparison is refused with 409 `UPLOAD_CONFLICT` and the previous tree is left as it was. Both routes refuse during a build as `/drop` does. `cloudgate deploy` uses them from `0.2.0` on and sends the full `/drop` upload to an older Instance, so it still works against `0.1.0`. `POST /applications/:id/drop` is unchanged.

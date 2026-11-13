@@ -1603,6 +1603,188 @@ describe('Cloudgate CLI (e2e)', () => {
         }
       });
     });
+
+    describe('deploy at its root', () => {
+      /** The copy with a `web` and a `worker` built from subfolders of it. */
+      const withFolderApps = (text: string) => {
+        expect(text).toContain('services:\n');
+        return text.replace(
+          'services:\n',
+          [
+            'services:',
+            '  web:',
+            '    kind: web',
+            '    source:',
+            '      folder: apps/web',
+            '  worker:',
+            '    kind: worker',
+            '    source:',
+            '      folder: apps/worker',
+            '',
+          ].join('\n'),
+        );
+      };
+
+      /** Where an upload lands for an Application on the platform host. */
+      const codeOf = (appName: string) =>
+        join(cloudgateDirectoryOn(null), 'applications', appName, 'code');
+
+      /** The Application a Config name names in `environmentId`, and its Deployments. */
+      async function appOf(environmentId: string, configName: string) {
+        const [row] = await ctx.db
+          .select()
+          .from(schema.application)
+          .where(eq(schema.application.environmentId, environmentId))
+          .then((rows) => rows.filter((one) => one.configName === configName));
+        const deployments = row
+          ? await ctx.db
+              .select({
+                deploymentId: schema.deployment.deploymentId,
+                status: schema.deployment.status,
+              })
+              .from(schema.deployment)
+              .where(eq(schema.deployment.applicationId, row.applicationId))
+          : [];
+        return { row, deployments };
+      }
+
+      it("applies the plan, then uploads the whole folder to each app built from a subfolder, whose first build is that deploy's, and skips the rest", async () => {
+        const seeded = await seededProject();
+        // The platform host's address, which a created web's Domain carries.
+        await ctx.db
+          .insert(schema.webServerSettings)
+          .values({ serverIp: '198.51.100.7' });
+        const repo = emptyFolder('monorepo');
+        try {
+          expect(
+            (await runCli(wholeProject, { home, cwd: repo, env: seeded.env }))
+              .code,
+          ).toBe(0);
+          const files: Record<string, string> = {
+            'apps/web/index.js': 'require("../../shared/lib");\n',
+            'apps/worker/main.js': 'require("../../shared/lib");\n',
+            'shared/lib.js': 'module.exports = {};\n',
+          };
+          for (const [path, content] of Object.entries(files)) {
+            mkdirSync(join(repo, path, '..'), { recursive: true });
+            writeFileSync(join(repo, path), content);
+          }
+          const copy = join(repo, 'cloudgate.yaml');
+          writeFileSync(copy, withFolderApps(readFileSync(copy, 'utf8')));
+
+          const deployed = await runCli(['deploy', '--yes'], {
+            home,
+            cwd: repo,
+            env: { CLOUDGATE_KEY: seeded.key },
+          });
+
+          expect(deployed.stderr).not.toContain('Error');
+          expect(deployed.code).toBe(0);
+          expect(deployed.stdout).toContain(
+            'staging: 2 to create, 0 to change, 0 to destroy\n  + web (web) create\n  + worker (worker) create\n',
+          );
+          expect(deployed.stderr).toContain('✓ Applied the plan in staging');
+          const web = await appOf(seeded.environmentId, 'web');
+          const worker = await appOf(seeded.environmentId, 'worker');
+          for (const [app, folder] of [
+            [web, 'apps/web'],
+            [worker, 'apps/worker'],
+          ] as const) {
+            expect(app.row).toMatchObject({
+              sourceType: 'drop',
+              dropBuildPath: folder,
+            });
+            // No build at the plan's Apply, with nothing uploaded yet: the
+            // root deploy's own is the first, and it is done.
+            expect(app.deployments).toEqual([
+              { deploymentId: expect.any(String) as string, status: 'done' },
+            ]);
+            // The whole folder, less what an upload leaves out.
+            expect(filesUnder(codeOf(app.row.appName)).sort()).toEqual(
+              [
+                '.gitignore',
+                'apps',
+                'apps/web',
+                'apps/web/index.js',
+                'apps/worker',
+                'apps/worker/main.js',
+                'shared',
+                'shared/lib.js',
+              ].sort(),
+            );
+          }
+          expect(deployed.stderr).toContain(
+            `Deploying ./ to web in staging of Project shop on ${instance.replace('http://', '')}, built from apps/web\n`,
+          );
+          expect(deployed.stderr).toMatch(
+            new RegExp(
+              `✓ web: Deployment ${web.deployments[0].deploymentId} done in \\d+s\\n` +
+                `✓ worker: Deployment ${worker.deployments[0].deploymentId} done in \\d+s\\n` +
+                `- ${seeded.configName}: skipped, names no source\\n`,
+            ),
+          );
+          // The Application with no source in the config was left alone.
+          expect(
+            (await appOf(seeded.environmentId, seeded.configName)).deployments,
+          ).toEqual([]);
+
+          // Again, for one app: the copy is still current, so the plan
+          // changes nothing, and only worker is built.
+          const one = await runCli(['deploy', '--service', 'worker'], {
+            home,
+            cwd: join(repo, 'apps', 'web'),
+            env: { CLOUDGATE_KEY: seeded.key },
+          });
+
+          expect(one.stderr).not.toContain('Error');
+          expect(one.code).toBe(0);
+          expect(one.stdout).toContain('staging: no changes\n');
+          expect(
+            (await appOf(seeded.environmentId, 'worker')).deployments,
+          ).toHaveLength(2);
+          expect(
+            (await appOf(seeded.environmentId, 'web')).deployments,
+          ).toHaveLength(1);
+        } finally {
+          removeFolder(repo);
+        }
+      });
+
+      it('refuses a subfolder that is not there, naming its app, and uploads nothing', async () => {
+        const seeded = await seededProject();
+        const repo = emptyFolder('monorepo');
+        try {
+          expect(
+            (await runCli(wholeProject, { home, cwd: repo, env: seeded.env }))
+              .code,
+          ).toBe(0);
+          const copy = join(repo, 'cloudgate.yaml');
+          writeFileSync(
+            copy,
+            readFileSync(copy, 'utf8').replace(
+              'services:\n',
+              'services:\n  worker:\n    kind: worker\n    source:\n      folder: apps/worker\n',
+            ),
+          );
+
+          const refused = await runCli(['deploy', '--yes'], {
+            home,
+            cwd: repo,
+            env: { CLOUDGATE_KEY: seeded.key },
+          });
+
+          expect(refused.code).toBe(1);
+          expect(refused.stderr).toContain(
+            'Error: worker builds from apps/worker, which is not a folder in this Project folder',
+          );
+          const worker = await appOf(seeded.environmentId, 'worker');
+          expect(worker.row.dropUploaded).toBe(false);
+          expect(worker.deployments).toEqual([]);
+        } finally {
+          removeFolder(repo);
+        }
+      });
+    });
   });
 
   describe('status with CLOUDGATE_KEY', () => {
