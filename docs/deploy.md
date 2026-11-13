@@ -572,11 +572,13 @@ Each Cloudgate version reaches the Hosted instance by itself once it is publishe
 
 1. `git tag v0.3.0 && git push origin v0.3.0` starts `E2E (release)`.
 2. When that run ends green, **Publish Cloudgate version** (`.github/workflows/publish-version.yml`) builds the version's tarball, boots it, and puts it and its `.sha256` on the tag's GitHub Release.
-3. When that run ends green, `.github/workflows/deploy-hosted.yml` checks the tag is on `main` and still names the commit E2E tested, then checks the version with `deploy/hosted-release-gate.sh`: the tag must be `backend/package.json`'s version, and every "What to do on upgrade" line in its `CHANGELOG.md` section must read "nothing.". Anything else stops the run and names the lines.
+3. Its last job starts `.github/workflows/deploy-hosted.yml` on `main`, passing the tag and the commit E2E tested. That run checks the tag is on `main` and still names that commit, then checks the version with `deploy/hosted-release-gate.sh`: the tag must be `backend/package.json`'s version, and every "What to do on upgrade" line in its `CHANGELOG.md` section must read "nothing.". Anything else stops the run and names the lines.
 4. It SSHes to the box as `cloudgate-deploy`, whose key runs only `/usr/local/sbin/cloudgate-update` (`deploy/hosted-update.sh`). In its own unit, `cloudgate-update.service`, so a dropped connection cannot cut it off, that refuses a tag with no published release, takes a B2 backup, installs the published tarball with the tag's own `install.sh`, and checks `/opt/cloudgate/VERSION` is the tag.
 5. It waits until `https://<hostname>/backend/settings/about` reports the new version in hosted mode.
 
-A version that stopped at step 3: do what its lines ask, then run **Deploy the Hosted instance** by hand (Actions > Run workflow) with the tag and `manual_steps_done` ticked. Running it by hand also deploys a version again. Either way only a published version is installed: a tag whose E2E or publish run was red has no release, and the box refuses it before its backup.
+A version that stopped at step 3: do what its lines ask, then run **Deploy the Hosted instance** by hand (Actions > Run workflow) with the tag and `manual_steps_done` ticked, leaving `tested_sha` empty. Running it by hand also deploys a version again. With no `tested_sha` the run checks instead that the tag's release carries its tarball. Either way only a published version is installed: a tag whose E2E or publish run was red has no release, and the box refuses it before its backup.
+
+The deploy is a dispatch rather than a `workflow_run` on the publish workflow because the publish workflow is itself started by `workflow_run`: its run carries the default branch's name and commit, not the tag's, so a `workflow_run` on it could not tell which version to deploy.
 
 **Setting it up, once.** On your laptop make a key used for nothing else:
 
@@ -590,7 +592,7 @@ On the box, as root, give its public half to the access script. It makes the `cl
 bash /opt/cloudgate/deploy/hosted-update-access.sh "$(cat cloudgate-deploy.pub)"   # the .pub copied to the box
 ```
 
-In GitHub, Settings > Environments > New environment `hosted`. Under deployment branches and tags allow **`main` only**: a `workflow_run` job runs on the default branch, never on the tag. Then add:
+In GitHub, Settings > Environments > New environment `hosted`. Under deployment branches and tags allow **`main` only**: the publish workflow dispatches the deploy on `main`, never on the tag, and a by-hand run is started on `main` too. Then add:
 
 | Name | Kind | Value |
 |---|---|---|

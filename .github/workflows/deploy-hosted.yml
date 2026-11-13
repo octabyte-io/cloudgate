@@ -5,38 +5,49 @@
 #   2. when that run ends green, `Publish Cloudgate version`
 #      (publish-version.yml) builds the version's tarball and puts it on the
 #      tag's GitHub Release;
-#   3. when that run ends green, this one checks the version with
-#      deploy/hosted-release-gate.sh, SSHes to the box as cloudgate-deploy and
-#      runs deploy/hosted-update.sh there with the tag, which installs the
-#      published tarball;
+#   3. its last job dispatches this workflow with the tag and the commit E2E
+#      tested; this one checks the tag still names that commit and is on main,
+#      checks the version with deploy/hosted-release-gate.sh, SSHes to the box
+#      as cloudgate-deploy and runs deploy/hosted-update.sh there with the tag,
+#      which installs the published tarball;
 #   4. then it waits for https://<hostname>/backend/settings/about to report
 #      the new version in hosted mode.
 #
 # A red E2E or publish run deploys nothing. A version whose CHANGELOG.md
 # section asks for something on upgrade stops at the gate, naming it; do it,
 # then run this workflow by hand with the tag and `manual_steps_done` ticked.
-# Running it by hand is also how a version is deployed again. The box installs
-# only a published version, so a tag with no release is refused there, before
-# its backup, by hand or not.
+# Running it by hand is also how a version is deployed again: leave
+# `tested_sha` empty, and the run checks instead that the tag's release has its
+# tarball. The box installs only a published version, so a tag with no release
+# is refused there too, before its backup, by hand or not.
+#
+# Why a dispatch and not `workflow_run` on the publish workflow: that workflow
+# is itself started by `workflow_run`, so its run's head_branch and head_sha
+# are the default branch's, never the tag's, and nothing here could tell which
+# version to deploy. The publish workflow passes both explicitly instead;
+# GITHUB_TOKEN may start a workflow_dispatch run, where it may not start most
+# other events.
 #
 # Everything it needs is on the GitHub environment `hosted`: the secrets
 # HOSTED_SSH_HOST, HOSTED_SSH_PRIVATE_KEY and HOSTED_SSH_KNOWN_HOSTS, and the
 # variables HOSTED_URL and, when sshd is not on 22, HOSTED_SSH_PORT. Limit that
-# environment's deployment branches to `main`: a workflow_run job runs on the
-# default branch, never on the tag. The Stripe, Resend and B2 secrets never
+# environment's deployment branches to `main`: this workflow is dispatched on
+# main (publish-version.yml passes --ref main), never on the tag. The Stripe, Resend and B2 secrets never
 # come here; the box keeps them in /etc/default/cloudgate-hosted.
 name: Deploy the Hosted instance
 
 on:
-  workflow_run:
-    workflows: ['Publish Cloudgate version']
-    types: [completed]
   workflow_dispatch:
     inputs:
       tag:
         description: The Cloudgate version to deploy, such as v0.3.0
         required: true
         type: string
+      tested_sha:
+        description: The commit E2E tested and the version was published from; publish-version.yml passes it, leave empty by hand
+        required: false
+        type: string
+        default: ''
       manual_steps_done:
         description: The version's "What to do on upgrade" steps are done; deploy anyway
         type: boolean
@@ -57,21 +68,13 @@ defaults:
 jobs:
   deploy:
     name: Upgrade the Hosted instance
-    # From the publish workflow: only a green run for a tag. Its own event is
-    # workflow_run, never push; it runs only for E2E's green run on a pushed
-    # tag, and a run started from E2E carries that run's head_branch (the tag)
-    # and head_sha (the commit E2E tested).
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       startsWith(github.event.workflow_run.head_branch, 'v'))
     runs-on: ubuntu-latest
     environment: hosted
     timeout-minutes: 45
     env:
-      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.workflow_run.head_branch }}
-      TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
-      MANUAL_STEPS_DONE: ${{ github.event_name == 'workflow_dispatch' && inputs.manual_steps_done || false }}
+      TAG: ${{ inputs.tag }}
+      TESTED_SHA: ${{ inputs.tested_sha }}
+      MANUAL_STEPS_DONE: ${{ inputs.manual_steps_done }}
     steps:
       # Before the tag is used anywhere.
       - name: The tag is a Cloudgate version
@@ -89,7 +92,9 @@ jobs:
 
       # Only a tag on main is deployed (ADR-0081). The box used to check this
       # with its own checkout; it installs a published version now and has no
-      # checkout to ask, so the check is made here, before the box is reached.
+      # checkout to ask, so the check is made here, before the box is reached,
+      # as deploy/version-gate.sh made it before the version was published
+      # (ADR-0082).
       - name: The tag is on main
         run: |
           if ! git merge-base --is-ancestor HEAD origin/main; then
@@ -97,13 +102,28 @@ jobs:
             exit 1
           fi
 
-      # The commit E2E tested and the version was published from is the one
-      # whose release gate is read: a tag moved since then is refused.
+      # From publish-version.yml: the commit E2E tested and the version was
+      # published from is the one whose release gate is read, so a tag moved
+      # since then is refused.
       - name: The tag still names the commit E2E tested
-        if: github.event_name == 'workflow_run'
+        if: env.TESTED_SHA != ''
         run: |
           if [ "$(git rev-parse HEAD)" != "$TESTED_SHA" ]; then
             echo "::error::$TAG now names $(git rev-parse HEAD), but E2E tested and the version was published from $TESTED_SHA."
+            exit 1
+          fi
+
+      # By hand, with no commit passed: the tag's release must already carry
+      # its tarball, which only a green publish run puts there. The box refuses
+      # a tag without one anyway; this says so before the gate and the SSH.
+      - name: The tag's Cloudgate version is published
+        if: env.TESTED_SHA == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tarball="cloudgate-${TAG#v}-linux-amd64.tar.gz"
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | grep -qxF "$tarball"; then
+            echo "::error::$TAG has no published release with $tarball. Only a version Publish Cloudgate version has published is deployed."
             exit 1
           fi
 

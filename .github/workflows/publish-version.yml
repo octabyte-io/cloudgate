@@ -11,7 +11,11 @@
 #      migrates an empty Postgres from it and boots the backend and the console
 #      from it (deploy/version-smoke.sh);
 #   4. only then deploy/version-publish.sh creates the GitHub Release for the
-#      tag with the tarball and its .sha256.
+#      tag with the tarball and its .sha256;
+#   5. and it dispatches `Deploy the Hosted instance` (deploy-hosted.yml) with
+#      the tag and the commit E2E tested. That workflow cannot start from this
+#      one's `workflow_run`: this run was itself started by `workflow_run`, so
+#      its head_branch and head_sha are the default branch's, not the tag's.
 #
 # A red E2E run, a tag moved since the commit E2E tested, a tag that is not on
 # main, or a tag that is not backend/package.json's version publishes nothing; so does a tarball that does
@@ -175,3 +179,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash deploy/version-publish.sh "$TAG" "$RUNNER_TEMP/version"
+
+  deploy-hosted:
+    name: Start the Hosted instance's upgrade
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write # workflow_dispatch, which GITHUB_TOKEN may start
+    steps:
+      # On main, where the `hosted` environment allows deployments; the tag
+      # and the tested commit travel as inputs, and deploy-hosted.yml checks
+      # the tag still names that commit before it reaches the box.
+      - name: Dispatch deploy-hosted.yml for ${{ env.TAG }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          gh workflow run deploy-hosted.yml --repo "$GITHUB_REPOSITORY" --ref main \
+            -f tag="$TAG" -f tested_sha="$TESTED_SHA"
