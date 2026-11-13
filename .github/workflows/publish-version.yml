@@ -1,0 +1,174 @@
+# Publishes a Cloudgate version (ADR-0082; CONTEXT.md, Cloudgate version):
+# the tarball the install downloads, on the GitHub Release for its tag, once
+# that tag's `E2E (release)` run is green.
+#
+#   1. `git tag v0.3.0 && git push origin v0.3.0` starts `E2E (release)`;
+#   2. when that run ends green, this one checks the tag with
+#      deploy/version-gate.sh, builds the tarball with deploy/version-tarball.sh
+#      on ubuntu-24.04 (node-pty is compiled there, for the one platform the
+#      install accepts), with the Node the install puts on a box;
+#   3. a second, clean runner checks the tarball's checksum, unpacks it,
+#      migrates an empty Postgres from it and boots the backend and the console
+#      from it (deploy/version-smoke.sh);
+#   4. only then deploy/version-publish.sh creates the GitHub Release for the
+#      tag with the tarball and its .sha256.
+#
+# A red E2E run, a tag moved since the commit E2E tested, or a tag that is not
+# backend/package.json's version publishes nothing; so does a tarball that does
+# not boot. Re-running this workflow on a tag whose release already has its
+# tarball leaves that release as it is: a published version is never replaced.
+# A release made by hand on github.com before this run gets the two files added.
+#
+# There is no workflow_dispatch: a version is published only from a green E2E
+# run of its tag. To publish again after a failure, re-run this workflow's run.
+name: Publish Cloudgate version
+
+on:
+  workflow_run:
+    workflows: ['E2E (release)']
+    types: [completed]
+
+permissions:
+  contents: read
+
+# One publish per tag at a time, never cancelled half-way.
+concurrency:
+  group: publish-version-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  TAG: ${{ github.event.workflow_run.head_branch }}
+
+jobs:
+  build:
+    name: Build the tarball
+    # From E2E: only a green run on a pushed tag. deploy/version-gate.sh checks
+    # the conclusion again, beside the tag.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      tarball: ${{ steps.tarball.outputs.name }}
+      node: ${{ steps.node.outputs.version }}
+    steps:
+      # Before the tag is used anywhere.
+      - name: The tag is a Cloudgate version
+        run: |
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::\"$TAG\" is not a Cloudgate version tag (vX.Y.Z)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ env.TAG }}
+
+      # pty.node is built for one Node ABI: the one deploy/install.sh installs.
+      - name: The Node the install puts on a box
+        id: node
+        run: |
+          version="$(sed -n 's/^NODE_VERSION="${NODE_VERSION:-v\(.*\)}"$/\1/p' deploy/install.sh)"
+          [ -n "$version" ] || { echo "::error::No NODE_VERSION default in deploy/install.sh."; exit 1; }
+          echo "version=$version" | tee -a "$GITHUB_OUTPUT"
+
+      - uses: pnpm/action-setup@v4
+      # No dependency cache: what goes into the tarball is built from a clean
+      # install of the lockfile.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ steps.node.outputs.version }}
+
+      - name: E2E passed on the commit the tag names, at backend/package.json's version
+        env:
+          E2E_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: bash deploy/version-gate.sh "$TAG"
+
+      - name: Build the tarball
+        id: tarball
+        run: |
+          bash deploy/version-tarball.sh "$RUNNER_TEMP/version"
+          echo "name=cloudgate-${TAG#v}-linux-amd64.tar.gz" | tee -a "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cloudgate-version
+          path: ${{ runner.temp }}/version/
+          if-no-files-found: error
+          retention-days: 7
+          # Already gzipped.
+          compression-level: 0
+
+  smoke:
+    name: Unpack, migrate and boot it
+    needs: build
+    # A runner with nothing installed from the repository: only the tarball,
+    # Node and an empty Postgres, as on a box after the install's other steps.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: cloudgate
+          POSTGRES_PASSWORD: cloudgate
+          POSTGRES_DB: cloudgate
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U cloudgate"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      # The smoke script alone, not the tree: nothing else from the
+      # repository is on this runner.
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          sparse-checkout: deploy/version-smoke.sh
+          sparse-checkout-cone-mode: false
+          path: repository
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ needs.build.outputs.node }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: cloudgate-version
+          path: ${{ runner.temp }}/version
+
+      - name: Unpack, migrate and boot ${{ needs.build.outputs.tarball }}
+        env:
+          DATABASE_URL: postgresql://cloudgate:cloudgate@127.0.0.1:5432/cloudgate
+        run: |
+          bash repository/deploy/version-smoke.sh \
+            "$RUNNER_TEMP/version/${{ needs.build.outputs.tarball }}" \
+            "$RUNNER_TEMP/cloudgate"
+
+  publish:
+    name: Publish the GitHub Release
+    needs: [build, smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # the GitHub Release
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ env.TAG }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: cloudgate-version
+          path: ${{ runner.temp }}/version
+
+      - name: The release for ${{ env.TAG }}, with the tarball and its checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash deploy/version-publish.sh "$TAG" "$RUNNER_TEMP/version"
