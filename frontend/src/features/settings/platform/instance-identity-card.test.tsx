@@ -34,6 +34,14 @@ function modeRow(): HTMLElement {
  * the `mode` on `GET /settings/about`.
  */
 describe("IdentityCard: instance mode", () => {
+  it("names the running Cloudgate version's tag without calling it an image", () => {
+    useInstanceMode.mockReturnValue({ data: "self-hosted" });
+    render(<IdentityCard checked={false} onCheck={() => undefined} />);
+
+    expect(screen.getByText("Version tag")).toBeDefined();
+    expect(screen.queryByText(/image/i)).toBeNull();
+  });
+
   it.each([
     ["hosted", "Hosted"],
     ["self-hosted", "Self-hosted"],
@@ -62,15 +70,18 @@ describe("IdentityCard: the update notice", () => {
   const UPGRADE =
     "curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo CLOUDGATE_VERSION=v0.4.0 sh";
 
-  function answer(data: {
-    latestVersion: string | null;
-    updateAvailable: boolean;
-    upgradeCommand: string | null;
-    error: string | null;
-  }) {
-    useInstanceMode.mockReturnValue({ data: "self-hosted" });
+  function answer(
+    data: {
+      latestVersion: string | null;
+      updateAvailable: boolean;
+      upgradeCommand: string | null;
+      error: string | null;
+    },
+    mode: "hosted" | "self-hosted" = "self-hosted",
+  ) {
+    useInstanceMode.mockReturnValue({ data: mode });
     useUpdateData.mockReturnValue({
-      data,
+      data: { ...data, canUpdateInPlace: false },
       isFetching: false,
       error: null,
     } as never);
@@ -92,6 +103,26 @@ describe("IdentityCard: the update notice", () => {
     expect(
       screen.getByRole("button", { name: /upgrade command/i }),
     ).toBeDefined();
+    expect(
+      screen.getByText("Run this on the platform host, as root, to upgrade."),
+    ).toBeDefined();
+  });
+
+  it("says the Hosted instance upgrades itself, and shows no command for it", () => {
+    answer(
+      {
+        latestVersion: "v0.4.0",
+        updateAvailable: true,
+        upgradeCommand: null,
+        error: null,
+      },
+      "hosted",
+    );
+
+    expect(screen.getByText("v0.4.0")).toBeDefined();
+    expect(screen.getByText(/upgrades itself/)).toBeDefined();
+    expect(screen.queryByText(/CLOUDGATE_VERSION/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /upgrade command/i })).toBeNull();
   });
 
   it("shows no upgrade command when this instance runs the latest version", () => {

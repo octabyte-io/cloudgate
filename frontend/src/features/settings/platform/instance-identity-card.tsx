@@ -14,9 +14,14 @@ import {
 } from "./use-platform";
 
 /**
- * Version, release tag, whether a newer Cloudgate version is on GitHub
- * Releases with the command that installs it, and the instance mode: Hosted or
+ * Version, its tag, whether a newer Cloudgate version is on GitHub Releases
+ * with the command that installs it, and the instance mode: Hosted or
  * Self-hosted, off `GET /settings/about`.
+ *
+ * The Hosted instance is answered with no command (`upgradeCommand: null`):
+ * its updater installs each Cloudgate version by itself (ADR-0081), and the
+ * one-command install typed there by hand would leave hosted mode out. So the
+ * card says that instead of showing nothing under a newer version.
  *
  * The check is GitHub's, by way of `POST /settings/update-data`. An unreachable
  * or failing API comes back as `error` and is shown as a check that did not
@@ -38,6 +43,7 @@ export function IdentityCard({
     checked && !update.isFetching && update.data?.updateAvailable
       ? update.data
       : null;
+  const hosted = mode.data === "hosted";
 
   return (
     <Card>
@@ -79,7 +85,7 @@ export function IdentityCard({
             }
           />
           <KVRow
-            label="Image tag"
+            label="Version tag"
             mono
             value={releaseTag.data || <Dash word="Unknown" />}
           />
@@ -118,7 +124,7 @@ export function IdentityCard({
           <div className="mt-3.5 animate-rise">
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <p className="min-w-0 flex-1 text-ui text-tx-2">
-                Run this on this host, as root, to upgrade.
+                Run this on the platform host, as root, to upgrade.
               </p>
               <CopyButton
                 value={upgrade.upgradeCommand}
@@ -130,6 +136,11 @@ export function IdentityCard({
               label={`Command that upgrades to ${upgrade.latestVersion}`}
             />
           </div>
+        ) : upgrade && hosted ? (
+          <p className="mt-3.5 text-ui text-tx-2">
+            The Hosted instance upgrades itself to each Cloudgate version once
+            it is published.
+          </p>
         ) : null}
       </Card.Body>
       <Card.Footer>
