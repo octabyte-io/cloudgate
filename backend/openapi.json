@@ -3206,6 +3206,36 @@
         ]
       }
     },
+    "/environments/{environmentId}/config/sources": {
+      "get": {
+        "operationId": "PlansController_configSources",
+        "parameters": [
+          {
+            "name": "environmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigSourcesDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Plans"
+        ]
+      }
+    },
     "/environments/{environmentId}/plan": {
       "get": {
         "operationId": "PlansController_findOne",
@@ -20246,6 +20276,62 @@
                 "configName",
                 "provider",
                 "repository"
+              ]
+            }
+          }
+        },
+        "required": [
+          "keptIn",
+          "readable",
+          "services"
+        ]
+      },
+      "ConfigSourcesDto": {
+        "type": "object",
+        "properties": {
+          "keptIn": {
+            "type": "string",
+            "enum": [
+              "cloudgate",
+              "repository",
+              null
+            ],
+            "nullable": true
+          },
+          "readable": {
+            "type": "boolean"
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "configName": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "folder",
+                    "repository",
+                    "image",
+                    "console",
+                    "none"
+                  ]
+                },
+                "folder": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "configName",
+                "kind",
+                "source",
+                "folder"
               ]
             }
           }

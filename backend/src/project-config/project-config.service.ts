@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { ConfigRepositorySources } from 'api-schemas';
+import type { ConfigRepositorySources, ConfigSources } from 'api-schemas';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import type { Node } from 'yaml';
 
@@ -42,6 +42,7 @@ import {
 } from './console-saves/repository-kept';
 import type { ConfigLocationTarget, ConfigRead } from './dto/plan.dto';
 import { parseProjectConfig } from './format/parse-config';
+import type { ProjectConfig } from './project-config.types';
 import { serviceEntries, withServiceEntries } from './format/config-entries';
 import {
   dropPendingSetups,
@@ -216,28 +217,11 @@ export class ProjectConfigService {
     ctx: PermissionCtx,
     environmentId: string,
   ): Promise<ConfigRepositorySources> {
-    const env = await this.locations.findEnvironment(
-      ctx,
-      environmentId,
-      'read',
-    );
-    const location = await this.locations.findLocation(env.projectId);
-    const keptIn = location?.kind ?? null;
-    let text: string | null = null;
-    if (location?.kind === 'cloudgate') {
-      text = location.text;
-    } else if (location?.kind === 'repository') {
-      const place = await this.locations.repositoryPlace(env.projectId);
-      const read = place
-        ? await this.locations.readCopy(place, env.configBranch)
-        : null;
-      if (!read?.ok) return { keptIn, readable: false, services: [] };
-      text = read.text;
+    const read = await this.configAsRead(ctx, environmentId);
+    if (!read.parsed) {
+      return { keptIn: read.keptIn, readable: read.readable, services: [] };
     }
-    if (text === null) return { keptIn, readable: true, services: [] };
-    const parsed = parseProjectConfig(text);
-    if (!parsed.ok) return { keptIn, readable: false, services: [] };
-    const services = Object.entries(parsed.config.services).flatMap(
+    const services = Object.entries(read.parsed.services).flatMap(
       ([configName, entry]) => {
         const source =
           entry.managed === false && 'source' in entry ? entry.source : null;
@@ -261,7 +245,83 @@ export class ProjectConfigService {
         ];
       },
     );
-    return { keptIn, readable: true, services };
+    return { keptIn: read.keptIn, readable: true, services };
+  }
+
+  /**
+   * Every entry of the config, as this Environment reads it, and where its
+   * code comes from: what a root `cloudgate deploy` in a Project folder
+   * builds (a `folder` source, ADR-0080) and lists as left alone. Read and
+   * refused as {@link repositorySources} is.
+   */
+  async configSources(
+    ctx: PermissionCtx,
+    environmentId: string,
+  ): Promise<ConfigSources> {
+    const read = await this.configAsRead(ctx, environmentId);
+    if (!read.parsed) {
+      return { keptIn: read.keptIn, readable: read.readable, services: [] };
+    }
+    const services = Object.entries(read.parsed.services).map(
+      ([configName, entry]) => {
+        const source =
+          entry.managed === false && 'source' in entry ? entry.source : null;
+        return {
+          configName,
+          kind: entry.kind,
+          source:
+            entry.managed === 'console'
+              ? ('console' as const)
+              : !source
+                ? ('none' as const)
+                : source.sourceType === 'drop'
+                  ? ('folder' as const)
+                  : source.sourceType === 'docker'
+                    ? ('image' as const)
+                    : ('repository' as const),
+          folder: source?.sourceType === 'drop' ? source.buildPath : null,
+        };
+      },
+    );
+    return { keptIn: read.keptIn, readable: true, services };
+  }
+
+  /**
+   * The config as `environmentId` reads it: a Cloudgate-kept config's
+   * stored text, a repository-kept one's copy on the Environment's Config
+   * branch, parsed. `parsed` is null when the Project has none (`readable`)
+   * or the copy cannot be read or parsed (not `readable`).
+   */
+  private async configAsRead(
+    ctx: PermissionCtx,
+    environmentId: string,
+  ): Promise<{
+    keptIn: 'cloudgate' | 'repository' | null;
+    readable: boolean;
+    parsed: ProjectConfig | null;
+  }> {
+    const env = await this.locations.findEnvironment(
+      ctx,
+      environmentId,
+      'read',
+    );
+    const location = await this.locations.findLocation(env.projectId);
+    const keptIn = location?.kind ?? null;
+    let text: string | null = null;
+    if (location?.kind === 'cloudgate') {
+      text = location.text;
+    } else if (location?.kind === 'repository') {
+      const place = await this.locations.repositoryPlace(env.projectId);
+      const read = place
+        ? await this.locations.readCopy(place, env.configBranch)
+        : null;
+      if (!read?.ok) return { keptIn, readable: false, parsed: null };
+      text = read.text;
+    }
+    if (text === null) return { keptIn, readable: true, parsed: null };
+    const parsed = parseProjectConfig(text);
+    if (!parsed.ok) return { keptIn, readable: false, parsed: null };
+    return { keptIn, readable: true, parsed: parsed.config };
   }
 
   /** A move's preview; see {@link ConfigMoves.preview}. */

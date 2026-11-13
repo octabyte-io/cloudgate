@@ -26,6 +26,7 @@ import {
   PreviewMoveDto,
   SaveConfigTextDto,
 } from './dto/plan.dto';
+import { ConfigSourcesDto } from './dto/config-sources.dto';
 import { ConfigRepositorySourcesDto } from './dto/repository-sources.dto';
 import { projectConfigJsonSchema } from './format/config-schema';
 import { ProjectConfigService } from './project-config.service';
@@ -196,6 +197,25 @@ export class PlansController {
     @Param('environmentId') environmentId: string,
   ) {
     return this.projectConfig.repositorySources(
+      toCtx(user, session),
+      environmentId,
+    );
+  }
+
+  /**
+   * Every entry of the config, as this Environment reads it, and where its
+   * code comes from: a root `cloudgate deploy` in a Project folder builds
+   * the ones from a subfolder of it (ADR-0080). Never the text.
+   */
+  @Get(':environmentId/config/sources')
+  @RequirePermission('environment', 'read')
+  @ApiOkResponse({ type: ConfigSourcesDto })
+  configSources(
+    @CurrentUser() user: AuthSession['user'],
+    @CurrentSession() session: Session,
+    @Param('environmentId') environmentId: string,
+  ) {
+    return this.projectConfig.configSources(
       toCtx(user, session),
       environmentId,
     );

@@ -121,6 +121,34 @@ export type ConfigRepositorySources = z.infer<
   typeof configRepositorySourcesSchema
 >;
 
+/**
+ * `GET /environments/:environmentId/config/sources`: every entry of the
+ * Project config, as this Environment reads it, with where its code comes
+ * from, for a root `cloudgate deploy` in a **Project folder** (ADR-0080). It
+ * builds the `folder` ones, from that subfolder, and lists the rest as left
+ * alone.
+ *
+ * `source` is `folder` (with `folder`, relative to the Project folder),
+ * `repository`, `image`, `console` for a console-managed entry, or `none` for
+ * an entry naming no source (every database and bucket). `readable` and
+ * `keptIn` are {@link configRepositorySourcesSchema}'s: a config that cannot
+ * be read or parsed lists nothing.
+ */
+export const configSourcesSchema = z.object({
+  keptIn: z.enum(["cloudgate", "repository"]).nullable(),
+  readable: z.boolean(),
+  services: z.array(
+    z.object({
+      configName: z.string(),
+      kind: z.string(),
+      source: z.enum(["folder", "repository", "image", "console", "none"]),
+      folder: z.string().nullable(),
+    }),
+  ),
+});
+
+export type ConfigSources = z.infer<typeof configSourcesSchema>;
+
 export type OrganizationList = z.infer<typeof organizationListSchema>;
 export type ProjectList = z.infer<typeof projectListSchema>;
 export type EnvironmentList = z.infer<typeof environmentListSchema>;
