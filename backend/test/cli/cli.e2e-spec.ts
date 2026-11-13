@@ -1406,7 +1406,7 @@ describe('Cloudgate CLI (e2e)', () => {
           ) as { workingCopy: { version: number } }
         ).workingCopy.version;
 
-      it("prints each Environment's plan and, with no terminal and no --yes, refuses with exit 2 and applies nothing", async () => {
+      it("prints each Environment's plan and, with no terminal and no --yes, refuses with exit 2, applies nothing and dismisses the plans it stored", async () => {
         const seeded = await seededProject();
         const production = await ctx.app
           .get(EnvironmentsService)
@@ -1447,8 +1447,10 @@ describe('Cloudgate CLI (e2e)', () => {
             seeded.environmentId,
             production.environmentId,
           ]) {
-            // The plan this run made is still open, waiting for an Apply.
-            expect((await plansIn(environmentId)).at(-1)?.status).toBe('open');
+            // Nothing the run declined is left open for anyone to Apply.
+            expect((await plansIn(environmentId)).at(-1)?.status).toBe(
+              'dismissed',
+            );
           }
           const [inProduction] = await ctx.db
             .select({ id: schema.application.applicationId })
@@ -1527,7 +1529,7 @@ describe('Cloudgate CLI (e2e)', () => {
         }
       });
 
-      it('with --yes refuses a plan that destroys a Service, naming it, exit 2, and applies nothing', async () => {
+      it('with --yes refuses a plan that destroys a Service, naming it, exit 2, applies nothing and dismisses the plan it stored', async () => {
         const seeded = await seededProject();
         const repo = emptyFolder('monorepo');
         try {
@@ -1561,6 +1563,9 @@ describe('Cloudgate CLI (e2e)', () => {
           expect(still?.configName).toBe(seeded.configName);
           expect(await configOf(seeded)).toEqual(before);
           expect(recordedVersion(repo)).toBe(before.version);
+          expect((await plansIn(seeded.environmentId)).at(-1)?.status).toBe(
+            'dismissed',
+          );
         } finally {
           removeFolder(repo);
         }

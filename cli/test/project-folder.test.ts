@@ -111,7 +111,8 @@ interface Sent {
 
 /**
  * One run in `cwd`, in a terminal that answers `answers` in order. A POST is
- * answered from `routes` under `POST <path>`, and recorded in `sent`.
+ * answered from `routes` under `POST <path>`, and recorded in `sent`; a
+ * `Response` in `more` is answered as it is.
  */
 async function inTerminal(
   argv: string[],
@@ -169,7 +170,9 @@ async function inTerminal(
       return Promise.resolve(
         body === undefined
           ? json({ statusCode: 404, message: 'Not found' }, 404)
-          : json(body),
+          : body instanceof Response
+            ? body
+            : json(body),
       );
     },
     now: () => now,
@@ -377,6 +380,7 @@ describe('config plan', () => {
   const answers = {
     ...downloadedAt3,
     'POST /projects/prj_1/config/plans': { stored: false, plans: [open] },
+    'POST /environments/env_s/plan/dismiss': { ...open, status: 'dismissed' },
     'POST /environments/env_s/plan/apply': {
       ...open,
       status: 'applied',
@@ -390,13 +394,17 @@ describe('config plan', () => {
   };
   const applies = (sent: Sent[]) =>
     sent.filter((one) => one.path.endsWith('/plan/apply'));
+  const dismissed = {
+    path: '/environments/env_s/plan/dismiss',
+    body: { planId: 'plan_s' },
+  };
 
   beforeEach(() => {
     writeLink(root, rootLink);
     writeFileSync(join(root, 'cloudgate.yaml'), CURRENT);
   });
 
-  it("prints each step of each Environment's plan, and applies nothing on no", async () => {
+  it("prints each step of each Environment's plan, and on no applies nothing and dismisses the plan it stored", async () => {
     const result = await inTerminal(
       ['config', 'plan'],
       { confirm: [false] },
@@ -420,8 +428,35 @@ describe('config plan', () => {
         path: '/projects/prj_1/config/plans',
         body: { text: CURRENT, version: 3 },
       },
+      dismissed,
     ]);
     expect(result.stderr).toContain('Nothing was applied.');
+  });
+
+  it('on no, says the plan is left open when the role cannot dismiss it, and ends as a no does', async () => {
+    const result = await inTerminal(
+      ['config', 'plan'],
+      { confirm: [false] },
+      root,
+      {
+        ...answers,
+        'POST /environments/env_s/plan/dismiss': json(
+          {
+            statusCode: 403,
+            message: 'Your role cannot do this',
+          },
+          403,
+        ),
+      },
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.sent).toContainEqual(dismissed);
+    expect(result.stderr).toContain('Nothing was applied.');
+    expect(result.stderr).toContain(
+      'The plan in staging is left open in Cloudgate: dismissing it needs the environment: update statement, which your role does not have.',
+    );
+    expect(result.stderr).not.toContain('Error');
   });
 
   it('applies a destroy and a major upgrade only once each Config name is typed', async () => {
@@ -451,7 +486,7 @@ describe('config plan', () => {
     expect(result.stderr).toContain('✓ Applied the plan in staging');
   });
 
-  it('applies nothing when a typed name is not the Config name', async () => {
+  it('applies nothing and dismisses the plan when a typed name is not the Config name', async () => {
     const result = await inTerminal(
       ['config', 'plan'],
       { confirm: [true], text: ['wroker'] },
@@ -461,10 +496,11 @@ describe('config plan', () => {
 
     expect(result.code).toBe(0);
     expect(applies(result.sent)).toEqual([]);
+    expect(result.sent).toContainEqual(dismissed);
     expect(result.stderr).toContain('That is not worker. Nothing was applied.');
   });
 
-  it('with --yes refuses a plan that destroys or makes a major upgrade, naming each, exit 2, asking nothing', async () => {
+  it('with --yes refuses a plan that destroys or makes a major upgrade, naming each, exit 2, asking nothing and dismissing the plan', async () => {
     const result = await inTerminal(
       ['config', 'plan', '--yes'],
       {},
@@ -475,6 +511,7 @@ describe('config plan', () => {
     expect(result.code).toBe(2);
     expect(result.asked).toEqual([]);
     expect(applies(result.sent)).toEqual([]);
+    expect(result.sent).toContainEqual(dismissed);
     expect(result.stderr).toContain(
       'Error: the plan destroys worker in staging and upgrades pg in staging to a new major version, which --yes alone never does; nothing was applied',
     );

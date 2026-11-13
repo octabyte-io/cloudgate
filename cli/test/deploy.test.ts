@@ -1048,6 +1048,7 @@ describe('cloudgate deploy in a Project folder', () => {
       [];
     const started: string[] = [];
     const appliedPlans: unknown[] = [];
+    const dismissedPlans: unknown[] = [];
     const asked = new Map<string, number>();
     const listed = new Map<string, number>();
     let configText = TEXT;
@@ -1103,6 +1104,10 @@ describe('cloudgate deploy in a Project folder', () => {
           configVersion += 1;
         }
         return json({ stored: steps.length === 0, plans: [plan('open')] }, 201);
+      }
+      if (path === '/environments/env_1/plan/dismiss' && method === 'POST') {
+        dismissedPlans.push(JSON.parse(init.body as string));
+        return json(plan('dismissed'));
       }
       if (path === '/environments/env_1/plan/apply' && method === 'POST') {
         appliedPlans.push(JSON.parse(init.body as string));
@@ -1183,7 +1188,15 @@ describe('cloudgate deploy in a Project folder', () => {
       interrupts: { listen: () => () => undefined },
       now: () => new Date('2026-11-03T12:00:00Z'),
     });
-    return { code, ...out, applies, started, appliedPlans, socket };
+    return {
+      code,
+      ...out,
+      applies,
+      started,
+      appliedPlans,
+      dismissedPlans,
+      socket,
+    };
   }
 
   it('uploads the whole folder to each app built from a subfolder, builds each from it, and prints one line per app', async () => {
@@ -1401,7 +1414,7 @@ describe('cloudgate deploy in a Project folder', () => {
       fields: [{ field: 'command' }],
     };
 
-    it('with no terminal and no --yes, refuses a plan with changes, exit 2, and uploads nothing', async () => {
+    it('with no terminal and no --yes, refuses a plan with changes, exit 2, dismisses it and uploads nothing', async () => {
       const result = await deployProject([], { steps: [change] });
 
       expect(result.code).toBe(2);
@@ -1410,6 +1423,7 @@ describe('cloudgate deploy in a Project folder', () => {
         'Error: nothing was applied: applying the plan needs a yes',
       );
       expect(result.appliedPlans).toEqual([]);
+      expect(result.dismissedPlans).toEqual([{ planId: 'pln_1' }]);
       expect(result.applies).toEqual([]);
     });
 
@@ -1424,7 +1438,7 @@ describe('cloudgate deploy in a Project folder', () => {
       expect(result.started).toEqual(['app_web', 'app_wrk']);
     });
 
-    it('with --yes, refuses a plan that destroys a Service, exit 2, and uploads nothing', async () => {
+    it('with --yes, refuses a plan that destroys a Service, exit 2, dismisses it and uploads nothing', async () => {
       const result = await deployProject(['--yes'], {
         steps: [{ action: 'destroy', configName: 'api', kind: 'web' }],
       });
@@ -1433,6 +1447,7 @@ describe('cloudgate deploy in a Project folder', () => {
       expect(result.stderr).toContain(
         'Error: the plan destroys api in staging, which --yes alone never does; nothing was applied',
       );
+      expect(result.dismissedPlans).toEqual([{ planId: 'pln_1' }]);
       expect(result.applies).toEqual([]);
     });
 

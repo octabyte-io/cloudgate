@@ -47,7 +47,8 @@ export type PlanStepOutcome =
  * nothing, but refuses a plan with either, naming them (exit 2); with no
  * terminal and no `yes` it refuses (exit 2). Nothing is applied before all
  * of that has passed. Applying starts only the Deployments the plans
- * themselves queue.
+ * themselves queue. A run that applies nothing dismisses the plans it
+ * stored, so no one can Apply in the console what was declined here.
  *
  * Once anything was stored, the copy's recorded version is moved to
  * Cloudgate's, as long as Cloudgate now keeps the text that was sent.
@@ -108,18 +109,23 @@ export async function runPlanStep(
     return { kind: 'unchanged' };
   }
 
-  if (options.yes) {
-    refuseNamesUnderYes(pending);
-  } else {
-    if (!out.mode.canAsk) {
-      throw usageError(
-        'nothing was applied: applying the plan needs a yes',
-        'Pass --yes to apply a plan that destroys nothing, or run this in a terminal.',
-      );
-    }
+  const refusal = options.yes
+    ? refusalUnderYes(pending)
+    : out.mode.canAsk
+      ? null
+      : usageError(
+          'nothing was applied: applying the plan needs a yes',
+          'Pass --yes to apply a plan that destroys nothing, or run this in a terminal.',
+        );
+  if (refusal) {
+    await dismissUnapplied(out, client, pending);
+    throw refusal;
+  }
+  if (!options.yes) {
     const where = pending.map((one) => one.environment).join(' and ');
     if (!(await prompter.confirm(`Apply the plan in ${where}?`))) {
       out.note('Nothing was applied.');
+      await dismissUnapplied(out, client, pending);
       return { kind: 'declined' };
     }
     for (const one of pending) {
@@ -136,6 +142,7 @@ export async function runPlanStep(
       for (const { name, question } of asks) {
         if ((await prompter.text(question)) !== name) {
           out.note(`That is not ${name}. Nothing was applied.`);
+          await dismissUnapplied(out, client, pending);
           return { kind: 'declined' };
         }
       }
@@ -252,14 +259,17 @@ function namesToConfirm(steps: readonly PlanStepView[]): {
   };
 }
 
-/** `--yes` alone never destroys and never makes a major upgrade (ADR-0080). */
-function refuseNamesUnderYes(
+/**
+ * The refusal of a plan `--yes` alone may not apply, or `null`: it never
+ * destroys and never makes a major upgrade (ADR-0080).
+ */
+function refusalUnderYes(
   pending: readonly {
     environment: string;
     destroy: readonly string[];
     upgrade: readonly { name: string }[];
   }[],
-): void {
+): CliError | null {
   const destroys = pending.flatMap((one) =>
     one.destroy.map((name) => `${name} in ${one.environment}`),
   );
@@ -272,10 +282,41 @@ function refuseNamesUnderYes(
       ? `upgrades ${upgrades.join(', ')} to a new major version`
       : null,
   ].filter((part): part is string => part !== null);
-  if (parts.length === 0) return;
-  throw usageError(
+  if (parts.length === 0) return null;
+  return usageError(
     `the plan ${parts.join(' and ')}, which --yes alone never does; nothing was applied`,
     'Run cloudgate config plan in a terminal, which asks you to type each name.',
+  );
+}
+
+/**
+ * Dismisses the plans a run stored and then did not apply. A role that may
+ * not dismiss (`environment: update`) leaves them open; that is said, and
+ * the run ends as it would have.
+ */
+async function dismissUnapplied(
+  out: Output,
+  client: ApiClient,
+  pending: readonly { plan: PlanView; environment: string }[],
+): Promise<void> {
+  const leftOpen: string[] = [];
+  for (const one of pending) {
+    try {
+      await client.post(
+        `/environments/${encodeURIComponent(one.plan.environmentId)}/plan/dismiss`,
+        { planId: one.plan.planId },
+        planViewSchema,
+      );
+    } catch (error) {
+      if (!(error instanceof CliError && error.status === 403)) throw error;
+      leftOpen.push(one.environment);
+    }
+  }
+  if (leftOpen.length === 0) return;
+  const [plans, is, it] =
+    leftOpen.length === 1 ? ['plan', 'is', 'it'] : ['plans', 'are', 'them'];
+  out.note(
+    `The ${plans} in ${leftOpen.join(' and ')} ${is} left open in Cloudgate: dismissing ${it} needs the environment: update statement, which your role does not have. Ask an owner or an admin to dismiss ${it} on the Project config page.`,
   );
 }
 
