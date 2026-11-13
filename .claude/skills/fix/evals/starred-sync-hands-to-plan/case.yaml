@@ -3,4 +3,4 @@ name: starred-sync-hands-to-plan
 expected_outcome: |
   Stars are kept in the browser on purpose (the code and design-system doc say so). The run finds 
   that written decision, says this is not a bug but a design question, names where it was 
-  decided, and hands it to /plan instead of changing code or writing a failing test.
+  decided, and hands it to /planning instead of changing code or writing a failing test.

@@ -4,4 +4,4 @@ focus: trace
 weight: 1
 ---
 
-It ends by pointing to /plan to build a cap
+It ends by pointing to /planning to build a cap

@@ -49,7 +49,7 @@ For a page, read [`PAGE.md`](PAGE.md) and follow it. The page is designed for th
 
 `/ask` answers; it does not act. When the answer leads somewhere, end with one line naming the step:
 
-- the answer is "we should build this", or it surfaced a feature worth having: `/plan <the idea>`;
+- the answer is "we should build this", or it surfaced a feature worth having: `/planning <the idea>`;
 - the answer found something broken: `/fix <what is wrong>`;
 - the answer found a security problem: private reporting, as `SECURITY.md` says, and nothing more in the chat than that it exists.
 

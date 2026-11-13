@@ -4,7 +4,7 @@ description: Build an approved spec's tickets onto `main`, one background agent 
 disable-model-invocation: true
 ---
 
-`/build` turns the tickets `/plan` published into commits on `main`. You orchestrate: implementer agents write the code, you land it, check it and close the issues. History stays linear, and work lands on `main` directly, with no feature branch and no pull request.
+`/build` turns the tickets `/planning` published into commits on `main`. You orchestrate: implementer agents write the code, you land it, check it and close the issues. History stays linear, and work lands on `main` directly, with no feature branch and no pull request.
 
 GitHub reads and writes go through the GitHub MCP tools where the session has them, otherwise `gh`.
 

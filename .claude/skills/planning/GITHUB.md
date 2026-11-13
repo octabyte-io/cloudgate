@@ -1,10 +1,10 @@
 # Writing to GitHub
 
-Issues, labels, sub-issues and blocking links for `/plan`. Use the GitHub MCP tools (`mcp__github__*`) where the session has them, otherwise `gh`.
+Issues, labels, sub-issues and blocking links for `/planning`. Use the GitHub MCP tools (`mcp__github__*`) where the session has them, otherwise `gh`.
 
 ## Labels
 
-`/plan` uses five of the repo's eleven labels: `plan` (a map), `question` (one open decision on a map), `spec` (an approved spec), `agent` and `human` (a ticket's builder). Every ticket carries exactly one of `agent` or `human`. If a label is missing from the repo, stop and tell the user rather than creating it or publishing unlabelled issues.
+`/planning` uses five of the repo's eleven labels: `plan` (a map), `question` (one open decision on a map), `spec` (an approved spec), `agent` and `human` (a ticket's builder). Every ticket carries exactly one of `agent` or `human`. If a label is missing from the repo, stop and tell the user rather than creating it or publishing unlabelled issues.
 
 ## Order of creation
 
