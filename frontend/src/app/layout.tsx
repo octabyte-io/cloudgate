@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { connection } from "next/server";
 
 import { DOCK_INIT_SCRIPT } from "@/components/shell/dock-state";
 import { RAIL_INIT_SCRIPT } from "@/components/shell/rail-state";
+import { apiOriginScript } from "@/lib/config";
 
 import { Providers } from "./providers";
 import "./globals.css";
@@ -38,11 +40,16 @@ export const metadata: Metadata = {
   icons: { icon: "/favicon.ico" },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // The API's address is this process's environment, not the build's
+  // (ADR-0082), so no page can be prerendered with whatever the build machine
+  // had: `connection()` keeps every render at request time.
+  await connection();
+  const apiOrigin = apiOriginScript(process.env);
   return (
     // suppressHydrationWarning: next-themes writes the theme class onto <html>
     // before paint, so the server's markup and the client's first render
@@ -60,6 +67,10 @@ export default function RootLayout({
           hydration fallback mounted the console layout afresh. On a door it
           sets an attribute nothing reads. */}
       <head>
+        {/* The address the live screens dial, ahead of every script that
+            could dial one (`lib/config.ts`). A restart with a new
+            CLOUDGATE_API_URL changes it; a rebuild is not needed. */}
+        <script dangerouslySetInnerHTML={{ __html: apiOrigin }} />
         <script dangerouslySetInnerHTML={{ __html: RAIL_INIT_SCRIPT }} />
         {/* The docked terminal's height and minimised/maximised view, the
             same way and for the same reason (`dock-state.ts`). */}

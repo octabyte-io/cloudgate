@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { ThemeToggle } from "@/components/console/theme-toggle";
-import { BACKEND_ORIGIN, WS_ORIGIN } from "@/lib/config";
+import { backendOrigin, wsOrigin } from "@/lib/config";
 
 import { Label, Mono } from "../tokens/_components/section";
 import { OrganizationPanel } from "./_components/org-panel";
@@ -42,12 +42,12 @@ export default function DataLayerPage() {
         </div>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-3">
           <Label>Backend</Label>
-          <Mono>{BACKEND_ORIGIN}</Mono>
+          <Mono>{backendOrigin()}</Mono>
           <span className="text-tx-4" aria-hidden="true">
             ·
           </span>
           <Label>Sockets</Label>
-          <Mono>{WS_ORIGIN}</Mono>
+          <Mono>{wsOrigin()}</Mono>
         </div>
       </header>
 

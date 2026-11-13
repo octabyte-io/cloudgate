@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 
 import next from "next";
 
+import { apiOriginFrom } from "./server/api-origin.mjs";
 import {
   stampForwardedFor,
   trustedProxyFrom,
@@ -20,7 +21,7 @@ import {
  *
  * No `hostname` is passed: `next start` binds every interface and `listen(port)`
  * matches it. No `upgrade` handling either — the console proxies no WebSockets;
- * the six gateways are dialled straight at `BACKEND_ORIGIN` (`src/lib/config.ts`).
+ * the six gateways are dialled straight at `backendOrigin()` (`src/lib/config.ts`).
  */
 /**
  * Refused rather than coerced. `Number('')` is `0` and `Number('http://…')` is
@@ -35,6 +36,10 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
     `PORT must be a whole number from 1 to 65535, not ${JSON.stringify(process.env.PORT)}`,
   );
 }
+// The API's public address, which every page is handed for its live screens
+// (ADR-0082). Read at start, not at build, so changing it is a restart; and a
+// console with none, or one that is not http(s), does not start at all.
+apiOriginFrom(process.env.CLOUDGATE_API_URL);
 // The Hosted instance's Traefik hop; unset Self-hosted. Read once and
 // refused at boot if malformed, like PORT above.
 const trustedProxy = trustedProxyFrom(process.env.CONSOLE_TRUSTED_PROXY);

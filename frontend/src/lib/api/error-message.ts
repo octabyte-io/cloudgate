@@ -1,5 +1,5 @@
 import { authSentence } from "@/lib/auth/auth-error";
-import { BACKEND_ORIGIN } from "@/lib/config";
+import { backendOrigin } from "@/lib/config";
 
 import { ApiError, isApiError } from "./api-error";
 import { SERVER_IN_MAINTENANCE_CODE } from "./endpoints/servers";
@@ -42,7 +42,7 @@ export function errorMessage(error: unknown): string {
   // fetch rejects with a TypeError when the request never landed — the backend
   // is down, or the browser is offline.
   if (error instanceof TypeError) {
-    return `Could not reach the backend. Check your connection, and that the backend is running on ${BACKEND_ORIGIN}.`;
+    return `Could not reach the backend. Check your connection, and that the backend is running on ${backendOrigin()}.`;
   }
 
   if (error instanceof DOMException && error.name === "AbortError") {

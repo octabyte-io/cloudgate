@@ -29,6 +29,7 @@ export default defineConfig({
           name: "console",
           environment: "jsdom",
           include: ["src/**/*.test.{ts,tsx}"],
+          setupFiles: ["./vitest.console-setup.ts"],
         },
       },
       {

@@ -61,7 +61,7 @@ export function ConnectionCard({
   //
   // Building it from the console's own origin was the other option the issue
   // offered and it is not available: nothing plumbs `CLOUDGATE_PUBLIC_HOST` to
-  // the console, `NEXT_PUBLIC_API_URL` is the API's origin rather than this
+  // the console, `CLOUDGATE_API_URL` is the API's origin rather than this
   // Server's address, and guessing is how a copy button lies a second time.
   const externalHost = database.server?.ipAddress ?? null;
   const externalPort = database.externalPort;

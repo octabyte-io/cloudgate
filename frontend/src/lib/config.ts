@@ -32,25 +32,90 @@
  * The REST routes have no such constraint (nothing generates a URL from them),
  * so they sit under `API_PREFIX`, out of the way of the app's own route tree.
  *
- * WebSockets do go straight to `BACKEND_ORIGIN` — an upgrade handshake is not a
- * fetch, so CORS never enters into it, and `localhost:3000` and `localhost:4000`
- * are the same site, so the browser attaches the session cookie for free.
+ * WebSockets do go straight to {@link backendOrigin} — an upgrade handshake is
+ * not a fetch, so CORS never enters into it, and `localhost:3000` and
+ * `localhost:4000` are the same site, so the browser attaches the session
+ * cookie for free.
  */
 
-/** Nest's origin. Reached from the browser only over a socket. */
-export const BACKEND_ORIGIN =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+import { apiOriginFrom } from "../../server/api-origin.mjs";
+
+/**
+ * Where the root layout leaves the API's origin for the page's own scripts.
+ * A global rather than a prop, because the readers are module functions
+ * (`gatewayUrl`, `errorMessage`) that no React tree reaches.
+ */
+const PAGE_GLOBAL = "__CLOUDGATE_API_URL__";
+
+declare global {
+  interface Window {
+    [PAGE_GLOBAL]?: string;
+  }
+}
+
+/**
+ * The API's origin as this console process was started with it: the
+ * `CLOUDGATE_API_URL` in its environment (ADR-0082), checked by the same rule
+ * `server.mjs` refuses a bad value with at boot.
+ *
+ * Under `next dev` only, an unset value is `http://localhost:4000`, where
+ * `pnpm dev:backend` listens, so a default local setup still needs no frontend
+ * env file. A built console has no such default: `server.mjs` stops instead.
+ */
+function startedApiOrigin(env: {
+  CLOUDGATE_API_URL?: string;
+  NODE_ENV?: string;
+}): string {
+  const value =
+    env.CLOUDGATE_API_URL ??
+    (env.NODE_ENV === "development" ? "http://localhost:4000" : undefined);
+  return apiOriginFrom(value);
+}
+
+/**
+ * The script the root layout puts ahead of every other one on a page: it hands
+ * the browser the address the server was started with. Read per request, so a
+ * restart with a new `CLOUDGATE_API_URL` is all that changing it takes; nothing
+ * about it is in the client bundle.
+ */
+export function apiOriginScript(env: {
+  CLOUDGATE_API_URL?: string;
+  NODE_ENV?: string;
+}): string {
+  const origin = JSON.stringify(startedApiOrigin(env)).replace(/</g, "\\u003c");
+  return `window.${PAGE_GLOBAL}=${origin};`;
+}
+
+/**
+ * Nest's public origin. Reached from the browser only over a socket.
+ *
+ * In the browser, what the root layout handed the page; on the server, this
+ * process's own environment. A page with nothing handed to it is a bug in the
+ * layout, not a setting, so it throws rather than guessing an address.
+ */
+export function backendOrigin(): string {
+  if (typeof window === "undefined") return startedApiOrigin(process.env);
+  const handed = window[PAGE_GLOBAL];
+  if (typeof handed !== "string") {
+    throw new Error(
+      "This page was not handed the API's address. The root layout writes CLOUDGATE_API_URL into every page; reload it.",
+    );
+  }
+  return handed;
+}
 
 /**
  * Where `next.config.ts`'s rewrites reach Nest — **server-side only**, so it
  * may be an address the browser cannot resolve, and on the shipped install it
- * is loopback. Separate from `BACKEND_ORIGIN`, which is baked into the
- * client bundle and has to be an origin the operator's browser can dial for the
- * six gateways. Defaults to `BACKEND_ORIGIN`, which is what every install that
- * sets nothing has always done.
+ * is loopback. Separate from {@link backendOrigin}, which has to be an origin
+ * the operator's browser can dial for the six gateways.
+ *
+ * It stays build-time, unlike that one (ADR-0082): rewrite destinations are
+ * written into the routes manifest by `next build`, and on an install it is
+ * always loopback. Unset, it is where `pnpm dev:backend` listens.
  */
 export const BACKEND_INTERNAL_ORIGIN =
-  process.env.BACKEND_INTERNAL_ORIGIN ?? BACKEND_ORIGIN;
+  process.env.BACKEND_INTERNAL_ORIGIN ?? "http://localhost:4000";
 
 /** The same-origin prefix `next.config.ts` forwards to Nest's REST routes. */
 export const API_PREFIX = "/backend";
@@ -79,15 +144,11 @@ export const GATEWAY_PATH = "/ai";
 
 /**
  * Origin the six gateways are dialled on. `http:` → `ws:`, `https:` → `wss:`;
- * anything else is a misconfiguration worth failing loudly on rather than
- * silently connecting somewhere unintended.
+ * {@link backendOrigin} is already one of the two, because `apiOriginFrom`
+ * refuses anything else when the console starts.
  */
-export const WS_ORIGIN = toWebSocketOrigin(BACKEND_ORIGIN);
-
-function toWebSocketOrigin(origin: string): string {
+export function wsOrigin(): string {
+  const origin = backendOrigin();
   if (origin.startsWith("https:")) return `wss:${origin.slice("https:".length)}`;
-  if (origin.startsWith("http:")) return `ws:${origin.slice("http:".length)}`;
-  throw new Error(
-    `NEXT_PUBLIC_API_URL must start with http:// or https://, got "${origin}"`,
-  );
+  return `ws:${origin.slice("http:".length)}`;
 }

@@ -1,4 +1,4 @@
-import { WS_ORIGIN } from "@/lib/config";
+import { wsOrigin } from "@/lib/config";
 
 import { LineBuffer } from "./line-buffer";
 import { reconnectedLine, type HeldLines } from "./log-resume";
@@ -109,7 +109,7 @@ export const LEASE_CLOSE_CODE = 4010;
 /**
  * What every card says first about a `blocked` stream, before its own clause
  * about what is unaffected. The cause named is the one that has been seen: an
- * https console whose `NEXT_PUBLIC_API_URL` is http, which the browser refuses
+ * https console whose `CLOUDGATE_API_URL` is http, which the browser refuses
  * to dial from a secure page.
  */
 export const BLOCKED_SENTENCE =
@@ -285,7 +285,7 @@ export class SocketStreamStore {
 
     // **The constructor can throw, and nothing above this would catch it**
     // A console
-    // served over `https://` with a `ws://` `NEXT_PUBLIC_API_URL` gets a
+    // served over `https://` with an `http://` `CLOUDGATE_API_URL` gets a
     // synchronous `SecurityError` here — not a failed connection, so there is no
     // `close` event and none of the handling below runs. `open()` is called from
     // an effect, so the throw reached the error boundary and took every other
@@ -293,7 +293,7 @@ export class SocketStreamStore {
     //
     // It becomes `blocked`, a state of its own that every card has words for,
     // and not the backoff: the same URL is refused the same way every time (the
-    // origin is baked into the bundle), so a retry would only be the throw
+    // origin is fixed until the console restarts), so a retry would only be the throw
     // again. `reconnect()` still dials, and lands back here.
     let socket: WebSocket;
     try {
@@ -463,5 +463,5 @@ export function gatewayUrl(path: string, params?: DialParams): string {
     search.set(key, String(value));
   }
   const query = search.toString();
-  return `${WS_ORIGIN}${path}${query ? `?${query}` : ""}`;
+  return `${wsOrigin()}${path}${query ? `?${query}` : ""}`;
 }

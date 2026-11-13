@@ -1,4 +1,4 @@
-import { API_PREFIX, BACKEND_ORIGIN } from "@/lib/config";
+import { API_PREFIX, backendOrigin } from "@/lib/config";
 
 import { ApiError, pointerOf, retryAfterSeconds } from "./api-error";
 import type { ApiErrorBody } from "./api-error";
@@ -97,7 +97,7 @@ async function request<T>(path: string, init: FullRequest): Promise<T> {
  * less obvious error than a wrong host would.
  */
 function url(path: string, query?: QueryParams): string {
-  const base = typeof window === "undefined" ? BACKEND_ORIGIN : API_PREFIX;
+  const base = typeof window === "undefined" ? backendOrigin() : API_PREFIX;
   const search = toSearchParams(query);
   return `${base}${path}${search ? `?${search}` : ""}`;
 }

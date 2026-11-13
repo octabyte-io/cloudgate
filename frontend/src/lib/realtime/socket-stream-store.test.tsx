@@ -38,7 +38,7 @@ const { DeploymentLog } = await import(
 /**
  * A socket the browser will not even construct.
  *
- * A console served over `https://` with a `ws://` `NEXT_PUBLIC_API_URL` makes
+ * A console served over `https://` with an `http://` `CLOUDGATE_API_URL` makes
  * `new WebSocket(url)` throw `SecurityError` synchronously — there is no socket,
  * so no `close` event, and the throw left `open()` from inside an effect and
  * took the whole screen to the error boundary. The stub below is that throw.
