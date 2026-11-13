@@ -287,6 +287,10 @@ _Avoid_: Cloud mode, IS_CLOUD
 An Instance a customer installs and runs on their own machine, unlocking paid features with an **Enterprise license**.
 _Avoid_: On-prem, community edition
 
+**Cloudgate version**:
+One tested version of Cloudgate itself, `vX.Y.Z`, published as a prebuilt tarball on the GitHub Release for its tag once its E2E run is green. It is the only thing the install puts on a platform host: a Self-hosted instance and the Hosted instance both install and upgrade to a Cloudgate version, never a branch (ADR-0082).
+_Avoid_: Release on its own (that word is avoided for a Deployment), build, image, checkout
+
 **Hosted plan**:
 One of the two plans a self-serve Organization buys on the Hosted instance, **Starter** or **Business**, paid monthly: 3 Servers and 3 **Cloud Environments**, raised together by **Add-ons**. Members, Projects, Environments on Servers and Cloud accounts are never counted. An Organization buys one, or starts its **Free trial**, before adding its first Server or its first Cloud Environment. When a count is full, adding one more is refused and nothing already running is stopped. Moving up to Business takes effect at once and is charged today, prorated; moving down to Starter takes effect at the end of the paid month and can be taken back until then. A person owns at most one Organization that pays for itself; on Business or Enterprise it can also pay for **Attached Organizations**, which share its counts (ADR-0048, ADR-0054, ADR-0059).
 _Avoid_: Tier, Pro, Professional, hobby, startup, legacy (the plans it replaced), subscription (Stripe's record of paying for it)
