@@ -199,10 +199,12 @@ describe("ConsoleRouterCard's sign-in warning", () => {
     expect(text()).not.toContain("restart the backend");
   });
 
-  it("says the live screens still need NEXT_PUBLIC_API_URL rebuilt", async () => {
+  it("says the live screens still need CLOUDGATE_API_URL changed and a restart, not a rebuild", async () => {
     await mount(status({}), untrusted);
 
-    await shown("NEXT_PUBLIC_API_URL");
+    await shown("CLOUDGATE_API_URL");
+    await shown("then restart the console");
+    expect(text()).not.toContain("rebuild");
   });
 
   it("says nothing about sign-in when the origin is trusted", async () => {

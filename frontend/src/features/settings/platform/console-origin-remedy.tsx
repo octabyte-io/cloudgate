@@ -70,28 +70,30 @@ export function ConsoleOriginRemedy({
 }
 
 /**
- * The second half of the constraint, and the one no allowlist cures:
- * `NEXT_PUBLIC_API_URL` is baked into the console at build time, and the live
- * screens dial it directly, carrying the session by cookie alone — so they need
- * the API on the same hostname as the console (`docs/deploy.md` §3). The
- * routers the Console domain card writes send that hostname to the console and
- * nothing else, which is why this says the live screens stay blank there on a
- * stock install rather than implying a rebuild alone fixes it. The installer's
- * own comment is the reason Cloudgate never trusts the console domain by
- * itself: doing so signs an operator in on an address whose live screens are
- * dead, with nothing on screen saying why.
+ * The second half of the constraint, and the one no allowlist cures: the live
+ * screens dial `CLOUDGATE_API_URL` directly, carrying the session by cookie
+ * alone, so they need the API on the same hostname as the console
+ * (`docs/deploy.md` §3). The console reads that address when it starts
+ * (ADR-0082), so the move is the env file and a restart; it used to be
+ * baked in at build time, and this said "rebuild". The routers the Console
+ * domain card writes send that hostname to the console and nothing else,
+ * which is why this says the live screens stay blank there on a stock install
+ * rather than implying the restart alone fixes it. The installer's own comment
+ * is the reason Cloudgate never trusts the console domain by itself: doing so
+ * signs an operator in on an address whose live screens are dead, with nothing
+ * on screen saying why.
  */
 export function LiveScreensCaveat() {
   return (
     <>
       Trusting it makes sign-in and the ordinary screens work there. The live
       ones — Deployment logs, container logs, terminals, stats — dial{" "}
-      <span className="font-mono">NEXT_PUBLIC_API_URL</span>, which is baked in
-      when the console is built, so they also need a rebuild naming an API
-      address on this same hostname; a restart does not change it. The routers
-      saved here send the hostname to the console only, so on a stock install
-      those screens stay blank there (
-      <span className="font-mono">docs/deploy.md</span> §3 and §7).
+      <span className="font-mono">CLOUDGATE_API_URL</span>, so set it to an API
+      address on this same hostname in{" "}
+      <span className="font-mono wrap-anywhere">/etc/default/cloudgate-console</span>,
+      then restart the console. The routers saved here send the hostname to
+      the console only, so on a stock install those screens stay blank there (
+      <span className="font-mono">docs/deploy.md</span> §3).
     </>
   );
 }

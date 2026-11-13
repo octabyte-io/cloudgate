@@ -143,7 +143,8 @@ describe("AssignDomainCard", () => {
  * refused `403 INVALID_ORIGIN`, and this card said nothing about origins, the
  * API or sign-in. The notice has two halves because there are two constraints
  * and only one of them is an allowlist: the backend must trust the origin, and
- * the live screens need `NEXT_PUBLIC_API_URL` rebuilt to match.
+ * the live screens need `CLOUDGATE_API_URL` changed to match, which is a
+ * restart of the console and not a rebuild (ADR-0082).
  */
 describe("AssignDomainCard's origin notice", () => {
   const text = () => document.body.textContent ?? "";
@@ -157,11 +158,12 @@ describe("AssignDomainCard's origin notice", () => {
     expect(text()).toContain("saving does not add it");
   });
 
-  it("says the live screens need NEXT_PUBLIC_API_URL rebuilt, which no allowlist cures", () => {
+  it("says the live screens need CLOUDGATE_API_URL changed and the console restarted, which no allowlist cures", () => {
     mount();
 
-    expect(text()).toContain("NEXT_PUBLIC_API_URL");
-    expect(text()).toContain("baked in when the console is built");
+    expect(text()).toContain("CLOUDGATE_API_URL");
+    expect(text()).toContain("then restart the console");
+    expect(text()).not.toContain("rebuild");
   });
 
   it("names the Trusted origins card, and no restart, on a licensed Organization", async () => {

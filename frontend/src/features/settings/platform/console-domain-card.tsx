@@ -23,11 +23,11 @@ import { useInstanceGate, usePlatformMutations } from "./use-platform";
  * on the new name over HTTPS — and every sign-in there is refused
  * `403 INVALID_ORIGIN` until the backend trusts that origin, which a stock
  * install deliberately does not. Trusting it on save was rejected for the
- * installer's reason: a trusted origin whose `NEXT_PUBLIC_API_URL` was never
- * rebuilt signs the operator in to a console whose live screens are dead, and
- * this form cannot see whether the rebuild happened. So the card says both
- * halves before the save, and the Console routing card below reports whether
- * the saved domain's origin is trusted yet.
+ * installer's reason: a trusted origin whose `CLOUDGATE_API_URL` was never
+ * changed signs the operator in to a console whose live screens are dead, and
+ * this form cannot see whether that change and its restart happened. So the
+ * card says both halves before the save, and the Console routing card below
+ * reports whether the saved domain's origin is trusted yet.
  */
 export function AssignDomainCard({
   host,
