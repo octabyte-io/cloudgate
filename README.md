@@ -94,6 +94,7 @@ frontend/                  Next 16 App Router, Tailwind v4, shadcn base-nova
   docs/design-system.md    the component index; read it before writing a component
 cli/                       the Cloudgate CLI (`@octabyte-io/cloudgate` on npm)
 deploy/                    install.sh and the systemd units for a native install
+install.sh                 the one-command install: clones to /opt/cloudgate, runs deploy/install.sh
 CONTEXT.md                 the glossary
 CODING_STANDARDS.md        the conventions a review checks
 CHANGELOG.md               what changed for an operator, release by release
@@ -116,10 +117,17 @@ were rejected, and why. Read the ones that touch the area you are changing befor
 
 ## Status
 
-Cloudgate is feature-complete for its first release. `deploy/install.sh` installs it natively on a
-bare Ubuntu 24.04 host — Node under systemd, Postgres on the box, a Swarm of one, and a Traefik
-container it owns — and `docs/deploy.md` is the operating guide: the origin model, the security
-posture, upgrades, instance backup and the known traps. There is no Dockerfile or compose file for
+Cloudgate is feature-complete for its first release. One command installs it natively on a bare
+Ubuntu 24.04 host:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo sh
+```
+
+That clones the repository to `/opt/cloudgate` and runs `deploy/install.sh`: Node under systemd,
+Postgres on the box, a Swarm of one, and a Traefik container it owns. `docs/deploy.md` is the
+operating guide: the origin model, the security posture, upgrades, instance backup and the known
+traps. There is no Dockerfile or compose file for
 Cloudgate itself; it deploys containers, it does not ship as one.
 
 CI runs typecheck, lint and the unit lanes on every push and pull request, and the e2e suite and

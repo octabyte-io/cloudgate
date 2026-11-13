@@ -24,18 +24,33 @@ python3 -m http.server 3000 &   # then curl http://<host>:3000/ from your laptop
 
 ## 2. Install
 
-**`octabyte-io/cloudgate` is private, so arrange repository access before you start.** An anonymous
-HTTPS clone cannot succeed — it prompts for credentials and fails non-interactively — which is why
-this step is the SSH form and needs a deploy key on the box:
+One command, as root, on the host:
 
 ```bash
-git clone git@github.com:octabyte-io/cloudgate.git /opt/cloudgate
-CLOUDGATE_PUBLIC_HOST=<public ip or hostname> bash /opt/cloudgate/deploy/install.sh
+curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo sh
 ```
 
-If you cannot add a key, deliver the tree some other way — `git bundle` over `scp` is what both
-verification runs used — and be aware that `origin` is then unfetchable, so the `git pull` in
-[Upgrades](#7-upgrades) will not work until you fix the remote.
+That is the repository's root `install.sh`. It checks the host is Ubuntu 24.04 on amd64, clones
+the public repository over HTTPS into `/opt/cloudgate` (or fast-forwards the checkout already
+there), finds the public host and hands over to `deploy/install.sh`, which does the install. The
+public host is, in order: `CLOUDGATE_PUBLIC_HOST` if you set it, the one the last install on this
+host was given, and on a first install the host's public IPv4 address as `api.ipify.org` sees it.
+To name it, pass it through `sudo`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh \
+  | sudo CLOUDGATE_PUBLIC_HOST=<public ip or hostname> sh
+```
+
+`CLOUDGATE_REF` installs another branch (the default is `main`), and every other variable in the
+environment, `HOSTED_MODE` and its inputs included, reaches `deploy/install.sh` as it was.
+
+The same install by hand, which is all the one command does:
+
+```bash
+git clone https://github.com/octabyte-io/cloudgate.git /opt/cloudgate
+CLOUDGATE_PUBLIC_HOST=<public ip or hostname> bash /opt/cloudgate/deploy/install.sh
+```
 
 The checkout **must** be at `/opt/cloudgate` — the unit files in `deploy/systemd/` hardcode it, and the script refuses to run from anywhere else.
 
@@ -250,17 +265,32 @@ docker logs cloudgate-traefik | head    # non-empty from here on
 **Not the console's update button** — it cannot work here.
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo sh
+```
+
+The one-command install is the upgrade too: it fast-forwards `/opt/cloudgate` and re-runs
+`deploy/install.sh` with the public host the last install was given. It stops, changing nothing,
+if the checkout has commits or changes of its own. An install made while the repository was
+private may have an SSH `origin` the host has no key for; point it at HTTPS first with
+`git -C /opt/cloudgate remote set-url origin https://github.com/octabyte-io/cloudgate.git`.
+
+By hand, the same thing:
+
+```bash
 cd /opt/cloudgate
-git pull
+git -c safe.directory=/opt/cloudgate pull --ff-only
 CLOUDGATE_PUBLIC_HOST=<same value as the install> bash deploy/install.sh
 ```
+
+`safe.directory` is there because the checkout belongs to the `cloudgate` user, and git run as
+root refuses a repository someone else owns.
 
 Re-running the install script *is* the upgrade, and **it has now been verified twice on a host** — every clause of this paragraph was re-checked on a second install: it re-runs `pnpm install --frozen-lockfile`, `db:migrate`, both builds, and ends with `systemctl restart` on both units. The second install took **149 s** against the first's 200 s, printed **zero** `Installed:` lines and two `Required packages are installed ✅`, left the package set byte-identical, and **never opened the apt window at all** — `/var/lib/apt/lists` was untouched, which is the strongest available form of the apt guard's claim. Every other step is guarded and no-ops — the Packages and Postgres steps included: they now hand apt only the packages actually missing, print `Required packages are installed ✅` when none are, and so cannot upgrade `curl`, `git` or `openssl` on the way past. Secrets are read back from `/etc/default/cloudgate-secrets` rather than regenerated, which is exactly right for an upgrade: a new `APP_ENCRYPTION_SECRET` would make every encrypted column permanently unreadable, and a new `PGPW` would leave `DATABASE_URL` disagreeing with a Postgres role the script will not touch. An older install kept them in `/root/cloudgate-live-test/env`, a verification run's scratch directory; the first run after that fix migrates the three keys to `/etc/default/cloudgate-secrets`, renames the old file `.migrated`, and prints that it did. **The rule this establishes is worth stating on its own: the instance's identity is `/etc/default/cloudgate-*`.** Keep those files and a reinstall is the same instance, with the same signing secrets and the same session cookies still valid. To reinstall as a genuinely *new* instance, remove `/etc/default/cloudgate-backend`, `/etc/default/cloudgate-console` and `/etc/default/cloudgate-secrets` **and** drop the `cloudgate` database — the secrets and the rows they key have to go together, and keeping either one alone gets you a half-migrated instance rather than a fresh one.
 
 Do it by hand if you prefer, in this order — the order matters, because a built console that talks to an unmigrated database is worse than a moment of downtime:
 
 ```bash
-cd /opt/cloudgate && git pull
+cd /opt/cloudgate && git -c safe.directory=/opt/cloudgate pull --ff-only
 runuser -u cloudgate -- pnpm install --frozen-lockfile
 set -a; . /etc/default/cloudgate-backend; set +a
 runuser -u cloudgate -- env DATABASE_URL="$DATABASE_URL" pnpm --filter backend db:migrate
