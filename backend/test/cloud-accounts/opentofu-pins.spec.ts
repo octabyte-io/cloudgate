@@ -286,7 +286,7 @@ describe('deploy/opentofu/state-login.sql', () => {
 
   it('install.sh grants it from the file the migration test runs, after the migrations, on every run', () => {
     const script = installer();
-    const migrate = script.indexOf('pnpm --filter backend db:migrate');
+    const migrate = script.indexOf('node_modules/.bin/drizzle-kit migrate');
     const grant = script.indexOf('deploy/opentofu/state-login.sql');
     expect(migrate).toBeGreaterThan(-1);
     expect(grant).toBeGreaterThan(migrate);

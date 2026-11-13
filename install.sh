@@ -4,42 +4,52 @@
 #
 #     curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo sh
 #
-# On a bare Ubuntu 24.04 host it puts the checkout at /opt/cloudgate (cloning
-# it over HTTPS, or fast-forwarding the one already there) and hands over to
-# deploy/install.sh, which does the install itself. Running it again is the
-# upgrade, as re-running deploy/install.sh is (docs/deploy.md §7).
+# On a bare Ubuntu 24.04 host it downloads a Cloudgate version (ADR-0082): the
+# tarball on the GitHub Release for its tag, checked against the sha256
+# published beside it and unpacked into /opt/cloudgate.next. Then it hands over
+# to that version's deploy/install.sh, which does the install itself and puts
+# the version in place at /opt/cloudgate. Nothing is cloned or built. Running it
+# again is the upgrade (docs/deploy.md §7); a run on the version already
+# installed downloads nothing and re-runs that version's own install.
 #
 # Inputs, all optional, read from the environment (`| sudo VAR=value sh`):
 #
-#   CLOUDGATE_PUBLIC_HOST  the public IP or hostname browsers will use. It is
-#                          built into the console, so changing it is a rebuild.
-#                          Default: the value the last install on this host was
-#                          given, and on a first install this host's public
-#                          IPv4 address, as api.ipify.org sees it.
-#   CLOUDGATE_REF          the branch to install. Default: main.
-#   CLOUDGATE_REPOSITORY   where to clone from. Default: the public repository.
+#   CLOUDGATE_VERSION      the Cloudgate version to install, vX.Y.Z (or X.Y.Z).
+#                          Default: the latest one published.
+#   CLOUDGATE_PUBLIC_HOST  the public IP or hostname browsers will use. The
+#                          console reads it when it starts, so changing it is a
+#                          restart. Default: the value the last install on this
+#                          host was given, and on a first install this host's
+#                          public IPv4 address, as api.ipify.org sees it.
 #
 # Everything else in the environment (HOSTED_MODE and its inputs, CONSOLE_PORT,
-# SWAP_SIZE, ...) reaches deploy/install.sh unchanged.
+# ...) reaches deploy/install.sh unchanged.
+#
+# INSTALL_ROOT is for backend/test/deploy/one-command-install.spec.ts only: a
+# directory the run treats as /, so the test can drive it off a real box.
 #
 # POSIX sh, not bash: `curl | sh` runs it under dash on Ubuntu. The body is one
 # function called on the last line, so a download cut short runs nothing.
 
 set -eu
 
-CHECKOUT=/opt/cloudgate
-CONSOLE_ENV_FILE=/etc/default/cloudgate-console
+INSTALL_DIR="${INSTALL_ROOT:-}/opt/cloudgate"
+# Beside the install, not in /tmp: on one filesystem, deploy/install.sh moves
+# it into place with a rename, and a small VPS's /tmp may be memory.
+STAGING_DIR="$INSTALL_DIR.next"
+CONSOLE_ENV_FILE="${INSTALL_ROOT:-}/etc/default/cloudgate-console"
+OS_RELEASE="${INSTALL_ROOT:-}/etc/os-release"
+
+# A Cloudgate version's release is tagged vX.Y.Z. The same repository also
+# publishes the CLI as cli-vX.Y.Z, which is never one.
+RELEASES_API=https://api.github.com/repos/octabyte-io/cloudgate/releases?per_page=100
+RELEASES_DOWNLOAD=https://github.com/octabyte-io/cloudgate/releases/download
+RELEASES_PAGE=https://github.com/octabyte-io/cloudgate/releases
 
 say() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 fail() {
   printf '%s\n' "$@" >&2
   exit 1
-}
-
-# git as root on a checkout deploy/install.sh gave to the cloudgate user:
-# without safe.directory, git refuses it as "dubious ownership".
-checkout_git() {
-  git -c safe.directory="$CHECKOUT" -C "$CHECKOUT" "$@"
 }
 
 # The host the previous install gave the console, read back from the console's
@@ -67,6 +77,70 @@ detect_public_ipv4() {
   return 1
 }
 
+# X.Y.Z when $1 is vX.Y.Z or X.Y.Z, and nothing (status 1) otherwise.
+plain_version() {
+  version="${1#v}"
+  case "$version" in
+    '' | *[!0-9.]* | .* | *. | *..*) return 1 ;;
+  esac
+  [ "$(printf '%s' "$version" | tr -cd . | wc -c)" -eq 2 ] || return 1
+  printf '%s\n' "$version"
+}
+
+# The highest vX.Y.Z among the repository's releases, as X.Y.Z, compared as
+# numbers (0.10.0 is after 0.9.0). One page of 100, newest first, as the
+# console's update notice reads it. Empty when there is none.
+latest_version() {
+  releases="$(curl -fsSL "$RELEASES_API")" || fail \
+    "Could not ask GitHub for Cloudgate's releases ($RELEASES_API)." \
+    "Name the version to install and run this again:" \
+    "    curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo CLOUDGATE_VERSION=v<X.Y.Z> sh"
+  printf '%s\n' "$releases" |
+    grep -o '"tag_name": *"v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*"' |
+    sed 's/.*"v\(.*\)"$/\1/' |
+    sort -t . -k 1,1n -k 2,2n -k 3,3n |
+    tail -n 1
+}
+
+# download_version <X.Y.Z>: the version's tarball, checked against its
+# published sha256 before anything is unpacked, unpacked into $STAGING_DIR.
+# Nothing outside a download directory beside the install is written until the
+# checksum matches, and that directory is removed whatever happens.
+download_version() {
+  version="$1"
+  name="cloudgate-$version-linux-amd64.tar.gz"
+  url="$RELEASES_DOWNLOAD/v$version/$name"
+
+  download="$(mktemp -d "$INSTALL_DIR.download.XXXXXX")"
+  trap 'rm -rf "$download"' EXIT
+
+  say "Downloading Cloudgate $version"
+  curl -fsSL -o "$download/$name.sha256" "$url.sha256" || fail \
+    "Cloudgate v$version has no published release to install ($url.sha256)." \
+    "The versions are listed at $RELEASES_PAGE. Nothing was changed."
+  curl -fsSL -o "$download/$name" "$url" || fail \
+    "Could not download $url. Nothing was changed."
+
+  # Compared here rather than with `sha256sum -c`, which checks whichever file
+  # the .sha256 names: this one checks the file that is about to be unpacked.
+  expected="$(cut -d ' ' -f 1 < "$download/$name.sha256")"
+  actual="$(sha256sum "$download/$name" | cut -d ' ' -f 1)"
+  [ -n "$expected" ] && [ "$actual" = "$expected" ] || fail \
+    "$name does not match its published sha256, so it was not unpacked." \
+    "  published: ${expected:-(empty)}" \
+    "  download:  $actual" \
+    "Nothing was changed. Run this again; if it happens again, report it."
+
+  # An interrupted run may have left one; it is never the installed version.
+  rm -rf "$STAGING_DIR"
+  mkdir -p "$STAGING_DIR"
+  tar -xzf "$download/$name" -C "$STAGING_DIR" --no-same-owner
+  rm -rf "$download"
+  trap - EXIT
+  [ "$(cat "$STAGING_DIR/VERSION" 2>/dev/null)" = "$version" ] || fail \
+    "$name unpacked to a VERSION other than $version; it was left at $STAGING_DIR."
+}
+
 main() {
   [ "$(id -u)" -eq 0 ] || fail \
     "Run it as root:" \
@@ -75,9 +149,9 @@ main() {
   # The two things deploy/install.sh needs and would only find out later.
   os_id=''
   os_version=''
-  if [ -r /etc/os-release ]; then
-    os_id="$(. /etc/os-release && printf '%s' "${ID:-}")"
-    os_version="$(. /etc/os-release && printf '%s' "${VERSION_ID:-}")"
+  if [ -r "$OS_RELEASE" ]; then
+    os_id="$(. "$OS_RELEASE" && printf '%s' "${ID:-}")"
+    os_version="$(. "$OS_RELEASE" && printf '%s' "${VERSION_ID:-}")"
   fi
   [ "$os_id" = ubuntu ] && [ "$os_version" = 24.04 ] || fail \
     "Cloudgate installs on Ubuntu 24.04; this host is ${os_id:-unknown} ${os_version:-unknown}." \
@@ -85,33 +159,40 @@ main() {
   [ "$(uname -m)" = x86_64 ] || fail \
     "Cloudgate installs on amd64 (x86_64); this host is $(uname -m)."
 
-  ref="${CLOUDGATE_REF:-main}"
-  repository="${CLOUDGATE_REPOSITORY:-https://github.com/octabyte-io/cloudgate.git}"
+  # A branch was what the install built before it installed versions. Refused
+  # rather than ignored: a run asked for one thing must not install another.
+  [ -z "${CLOUDGATE_REF:-}" ] || fail \
+    "CLOUDGATE_REF is no longer read: the install installs a Cloudgate version, never a branch." \
+    "Name one with CLOUDGATE_VERSION, or leave it unset for the latest:" \
+    "    curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo CLOUDGATE_VERSION=v0.3.0 sh" \
+    "Building from source is by hand: docs/deploy.md §2."
 
-  for tool in git curl; do
-    if ! command -v "$tool" >/dev/null 2>&1; then
-      say "Installing $tool"
-      apt-get update -qq
-      DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git curl ca-certificates
-      break
-    fi
-  done
+  requested=''
+  if [ -n "${CLOUDGATE_VERSION:-}" ]; then
+    requested="$(plain_version "$CLOUDGATE_VERSION")" || fail \
+      "CLOUDGATE_VERSION names a Cloudgate version such as v0.3.0, not \"$CLOUDGATE_VERSION\"." \
+      "The versions are listed at $RELEASES_PAGE."
+  fi
 
-  if [ -d "$CHECKOUT/.git" ]; then
-    say "Updating $CHECKOUT to $ref"
-    checkout_git fetch origin "$ref" || fail \
-      "Could not fetch $ref from this checkout's origin ($(checkout_git remote get-url origin))." \
-      "An install made before the repository was public may still name the SSH address;" \
-      "point it at HTTPS and run this again:" \
-      "    git -C $CHECKOUT remote set-url origin https://github.com/octabyte-io/cloudgate.git"
-    checkout_git merge --ff-only FETCH_HEAD || fail \
-      "$CHECKOUT has commits or changes of its own, so it cannot be fast-forwarded to $ref." \
-      "Nothing was changed. Look at it with: git -C $CHECKOUT status"
-  elif [ -e "$CHECKOUT" ]; then
-    fail "$CHECKOUT exists but is not a git checkout. Move it aside and run this again."
-  else
-    say "Cloning Cloudgate ($ref) into $CHECKOUT"
-    git clone --branch "$ref" "$repository" "$CHECKOUT"
+  # A box installed from a git checkout, before the install installed
+  # versions. Switching one over is not this run's yet, so it stops before
+  # downloading anything.
+  if [ -d "$INSTALL_DIR/.git" ]; then
+    fail \
+      "$INSTALL_DIR is a git checkout, which this install no longer builds or updates." \
+      "Switching a checkout over to a Cloudgate version is not supported yet. Nothing was changed."
+  fi
+  installed=''
+  if [ -e "$INSTALL_DIR" ]; then
+    installed="$(cat "$INSTALL_DIR/VERSION" 2>/dev/null)" || fail \
+      "$INSTALL_DIR exists but holds no Cloudgate version (it has no VERSION file)." \
+      "Move it aside and run this again. Nothing was changed."
+  fi
+
+  if ! command -v curl >/dev/null 2>&1; then
+    say "Installing curl"
+    apt-get update -qq
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl ca-certificates
   fi
 
   public_host="${CLOUDGATE_PUBLIC_HOST:-}"
@@ -126,9 +207,26 @@ main() {
     echo "Public host: $public_host (detected; set CLOUDGATE_PUBLIC_HOST to choose another)"
   fi
 
+  version="$requested"
+  if [ -z "$version" ]; then
+    version="$(latest_version)"
+    [ -n "$version" ] || fail \
+      "No Cloudgate version has been published yet ($RELEASES_PAGE)." \
+      "Nothing was changed."
+  fi
+
+  if [ "$version" = "$installed" ]; then
+    echo "Cloudgate $version is already installed at $INSTALL_DIR; re-running its install."
+    rm -rf "$STAGING_DIR"
+    dir="$INSTALL_DIR"
+  else
+    download_version "$version"
+    dir="$STAGING_DIR"
+  fi
+
   CLOUDGATE_PUBLIC_HOST="$public_host"
   export CLOUDGATE_PUBLIC_HOST
-  exec bash "$CHECKOUT/deploy/install.sh"
+  exec bash "$dir/deploy/install.sh"
 }
 
 main "$@"

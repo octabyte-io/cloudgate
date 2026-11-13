@@ -651,15 +651,20 @@ describe('deploy/install.sh', () => {
      * so exporting the internal origin into the runtime env file alone leaves the
      * built console proxying to the public origin — a console that works, and
      * records the wrong address on every session.
+     *
+     * The build is the Cloudgate version's now (ADR-0082), made once by
+     * `deploy/version-tarball.sh` for port 4000, so the installer writes the
+     * same origin into the runtime file and refuses any other API_PORT.
      */
-    it('gives the console its internal origin at build time as well as at runtime', () => {
+    it('gives the console the internal origin its version was built with, at runtime too', () => {
       const script = installer();
 
       expect(script).toContain(
         'BACKEND_INTERNAL_ORIGIN=http://127.0.0.1:${API_PORT}',
       );
-      expect(script).toContain(
-        'BACKEND_INTERNAL_ORIGIN="$BACKEND_INTERNAL_ORIGIN"',
+      expect(script).toContain('if [ "$API_PORT" != 4000 ]; then');
+      expect(read('deploy/version-tarball.sh')).toContain(
+        '\nBACKEND_INTERNAL_ORIGIN=http://127.0.0.1:4000\n',
       );
     });
 
@@ -802,7 +807,7 @@ describe('deploy/install.sh', () => {
     });
 
     // dpkg-query and not the command_exists shape the generator used: ca-certificates ships
-    // no binary and build-essential is a metapackage.
+    // no binary.
     it('asks dpkg which packages are installed, exactly', () => {
       expect(guard()).toContain("dpkg-query -W -f='${db:Status-Status}\\n'");
       expect(guard()).toContain('grep -qx installed');
@@ -820,7 +825,7 @@ describe('deploy/install.sh', () => {
       const script = installer();
 
       expect(script).toContain(
-        'ensure_packages \\\n  ca-certificates curl wget git jq openssl unzip \\\n  build-essential python3 rclone',
+        'ensure_packages \\\n  ca-certificates curl wget git jq openssl unzip rclone',
       );
       expect(script).toContain('ensure_packages postgresql');
     });

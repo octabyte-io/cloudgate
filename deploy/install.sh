@@ -7,11 +7,18 @@
 # in git history at c8e9bdfb). Every
 # step below ran; nothing here is aspirational.
 #
-# Run it *from the checkout*, as root. The repository's root install.sh does
-# both steps in one command (docs/deploy.md §2):
+# It installs the Cloudgate version it is part of (ADR-0082). Run it, as root,
+# from that version unpacked into an empty directory, and it puts the version
+# in place at /opt/cloudgate; run from /opt/cloudgate it re-installs the
+# version already there. The repository's root install.sh downloads, checks and
+# unpacks the version and runs this, in one command (docs/deploy.md §2):
 #
-#     git clone https://github.com/octabyte-io/cloudgate.git /opt/cloudgate
-#     CLOUDGATE_PUBLIC_HOST=203.0.113.10 bash /opt/cloudgate/deploy/install.sh
+#     mkdir /opt/cloudgate.next
+#     tar -xzf cloudgate-0.3.0-linux-amd64.tar.gz -C /opt/cloudgate.next --no-same-owner
+#     CLOUDGATE_PUBLIC_HOST=203.0.113.10 bash /opt/cloudgate.next/deploy/install.sh
+#
+# Nothing is built here: the version holds the built backend and console and
+# production node_modules with node-pty already compiled.
 #
 # The Hosted instance is the same script with HOSTED_MODE=true
 # and its inputs, listed with what each is in deploy/hosted.sh:
@@ -25,7 +32,7 @@
 #       INSTANCE_OWNER_EMAIL=… INSTANCE_OWNER_FIRST_NAME=… INSTANCE_ORGANIZATION_NAME=Octabyte \
 #       BACKUP_B2_KEY_ID=… BACKUP_B2_APPLICATION_KEY=… BACKUP_B2_BUCKET=… BACKUP_B2_FOLDER=live \
 #       BACKUP_AGE_RECIPIENT=age1… BACKUP_ALERT_EMAIL=ops@… \
-#       bash /opt/cloudgate/deploy/install.sh
+#       bash /opt/cloudgate.next/deploy/install.sh
 #
 # It refuses to start while any is missing, naming them all. It serves the one
 # hostname on HTTPS through Traefik with a Let's Encrypt certificate, closes
@@ -36,9 +43,6 @@
 # first run was given. Without HOSTED_MODE everything below is the
 # Self-hosted install, unchanged.
 #
-# It reads the repo it lives in, so the pnpm version comes from that tree's
-# `packageManager` field rather than being hardcoded a second time.
-#
 # Idempotent: every step is guarded and re-running is a no-op. Secrets are
 # generated once and kept in $SECRETS_FILE; a re-run reuses them, and an older
 # install has them migrated out of /root/cloudgate-live-test on first run.
@@ -47,21 +51,34 @@ set -euo pipefail
 
 ### ---------------------------------------------------------------- inputs ---
 
-# The address operators and browsers will use. There is no sensible default:
-# it is inlined into the console's client bundle at build time, and changing it
-# later is a *rebuild*, not a restart.
+# The address operators and browsers will use. There is no sensible default.
+# Both env files below carry it as CLOUDGATE_API_URL, which the console reads
+# when it starts, so changing it later is a restart (docs/deploy.md §3).
 : "${CLOUDGATE_PUBLIC_HOST:?set it to the public IP or hostname of this host}"
 
 CONSOLE_PORT="${CONSOLE_PORT:-3000}"
 API_PORT="${API_PORT:-4000}"
+# The Node the version was built and its node-pty compiled with
+# (.github/workflows/publish-version.yml). Another major cannot load pty.node.
 NODE_VERSION="${NODE_VERSION:-v24.19.0}"
 TRAEFIK_VERSION="${TRAEFIK_VERSION:-3.6.7}"
-SWAP_SIZE="${SWAP_SIZE:-4G}"
+
+# The version's console was built to reach its API at 127.0.0.1:4000
+# (deploy/version-tarball.sh), and Next keeps that in the rewrites it builds,
+# so a console under any other API_PORT would send every /backend/ and
+# /api/auth/ request to a port nothing listens on. Refused before anything is
+# touched, rather than installed broken. Another port is a by-hand build
+# (docs/deploy.md §2, building from source).
+if [ "$API_PORT" != 4000 ]; then
+  echo "API_PORT=$API_PORT: a Cloudgate version's console reaches its API on port 4000," >&2
+  echo "which its build fixed. Leave API_PORT unset, or build from source (docs/deploy.md §2)." >&2
+  exit 1
+fi
 
 # OpenTofu, which makes a Cloud account's resources (ADR-0030), and the
 # providers Cloud runs use: hashicorp/aws for AWS, and hashicorp/google for
-# Google Cloud. Each checkout pins exactly one version of each, with checksums,
-# and only a Cloudgate change moves them — forward only, because a state
+# Google Cloud. Each Cloudgate version pins exactly one version of each, with
+# checksums, and only a Cloudgate change moves them — forward only, because a state
 # written by a newer OpenTofu or provider is refused by an older one.
 # OPENTOFU_SHA256 is the release's linux_amd64 tarball checksum, from its
 # tofu_<version>_SHA256SUMS; move the two together. 1.10 is the floor.
@@ -156,7 +173,12 @@ CONTAINER_LOG_MAX_FILE="${CONTAINER_LOG_MAX_FILE:-3}"
 # by deleting this note.
 CLOUDGATE_DIR=/etc/cloudgate
 
+# The version this script is part of, which may still be staged beside the
+# install (root install.sh unpacks into /opt/cloudgate.next); place_version
+# moves it to INSTALL_DIR and points REPO_ROOT there.
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# The committed unit files hardcode /opt/cloudgate so they need no templating.
+INSTALL_DIR=/opt/cloudgate
 # The generated secrets. NOT under CLOUDGATE_DIRECTORY, for the reason
 # docs/deploy.md §4 gives for /etc/default/cloudgate-backend: this file holds the
 # database password and both signing secrets, and the platform directory is where
@@ -216,9 +238,8 @@ fi
 # ever handed to apt, so a present curl can never be upgraded here.
 #
 # dpkg-query, not the command_exists shape that script used: ca-certificates ships no
-# binary and build-essential is a metapackage, so a binary check cannot express
-# this list. `${db:Status-Status}` matched with `grep -qx installed` is exact —
-# it rejects the deinstall and config-files states a bare `dpkg -l | grep`
+# binary, so a binary check cannot express this list. `${db:Status-Status}`
+# matched with `grep -qx installed` is exact — it rejects the deinstall and config-files states a bare `dpkg -l | grep`
 # accepts, and a package half-removed is a package apt still has to install.
 #
 # No CLOUDGATE_APT_UPGRADE escape hatch: §7 already documents a by-hand upgrade
@@ -244,10 +265,24 @@ ensure_packages() {
 
 [ "$(id -u)" -eq 0 ] || { echo "must run as root" >&2; exit 1; }
 
-# The committed unit files hardcode /opt/cloudgate so they need no templating.
-if [ "$REPO_ROOT" != /opt/cloudgate ]; then
-  echo "checkout must be at /opt/cloudgate (found $REPO_ROOT) — the unit files" >&2
-  echo "in deploy/systemd/ hardcode that path." >&2
+# A Cloudgate version carries VERSION at its top level; a git checkout or a
+# copy of the repository does not, and has nothing built to run.
+if [ ! -f "$REPO_ROOT/VERSION" ]; then
+  echo "$REPO_ROOT holds no Cloudgate version (it has no VERSION file). This script" >&2
+  echo "installs the version it was unpacked with; root install.sh downloads one." >&2
+  exit 1
+fi
+VERSION="$(cat "$REPO_ROOT/VERSION")"
+# A box installed from a git checkout, before the install installed versions.
+# Switching one over is not this script's yet, so it stops here, unchanged.
+if [ -d "$INSTALL_DIR/.git" ]; then
+  echo "$INSTALL_DIR is a git checkout, which this install no longer builds or updates." >&2
+  echo "Switching a checkout over to a Cloudgate version is not supported yet. Nothing was changed." >&2
+  exit 1
+fi
+if [ "$REPO_ROOT" != "$INSTALL_DIR" ] && [ -e "$INSTALL_DIR" ] && [ ! -f "$INSTALL_DIR/VERSION" ]; then
+  echo "$INSTALL_DIR exists but holds no Cloudgate version (it has no VERSION file)." >&2
+  echo "Move it aside and run this again. Nothing was changed." >&2
   exit 1
 fi
 
@@ -256,38 +291,23 @@ if [ -n "$HOSTED_MODE" ]; then
   hosted_save_inputs
 fi
 
-### ------------------------------------------------------------------ swap ---
-# 3.7 GB with no swap does not reliably survive `next build`, and with no swap
-# the OOM killer is as likely to take Postgres or dockerd as the build.
-
-log "Swap"
-if ! swapon --show | grep -q '^/swapfile'; then
-  fallocate -l "$SWAP_SIZE" /swapfile
-  chmod 600 /swapfile
-  mkswap /swapfile
-  swapon /swapfile
-fi
-grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
-printf 'vm.swappiness=10\nvm.vfs_cache_pressure=50\n' > /etc/sysctl.d/99-cloudgate.conf
-sysctl --system >/dev/null
-
 ### -------------------------------------------------------------- packages ---
-# build-essential and python3 are mandatory, not optional: node-pty@1.1.0 ships
-# no Linux prebuild (only darwin-* and win32-*), so its install falls through to
-# compiling with node-gyp. pnpm bundles its own node-gyp — no global install.
+# No build tools: the version's node-pty was compiled when it was built.
+# A host installed before that keeps the build-essential, python3 and swap
+# file the install used to need; nothing here removes them.
 
 log "Packages"
 ensure_packages \
-  ca-certificates curl wget git jq openssl unzip \
-  build-essential python3 rclone
+  ca-certificates curl wget git jq openssl unzip rclone
 # The Hosted instance's backups encrypt with age; rclone, above, uploads.
 if [ -n "$HOSTED_MODE" ]; then
   ensure_packages age
 fi
 
-### --------------------------------------------------------- node and pnpm ---
+### ------------------------------------------------------------------ node ---
 # Installed to /usr/local so /usr/local/bin/node is a stable path the committed
-# unit files can hardcode.
+# unit files can hardcode. No pnpm: nothing is installed or built with it here,
+# and the migrations run the version's own drizzle-kit.
 
 log "Node ${NODE_VERSION}"
 if [ "$(/usr/local/bin/node --version 2>/dev/null || true)" != "$NODE_VERSION" ]; then
@@ -302,11 +322,6 @@ if [ "$(/usr/local/bin/node --version 2>/dev/null || true)" != "$NODE_VERSION" ]
   )
   rm -rf "$tmp"
 fi
-
-log "pnpm"
-corepack enable
-# The one place the version lives is the repo's packageManager field.
-corepack prepare "$(jq -r .packageManager "$REPO_ROOT/package.json")" --activate
 
 ### ------------------------------------------------- docker, swarm, network ---
 # Not optional, and not the product's job: nothing on the box provisions the
@@ -588,8 +603,9 @@ install -d -m 700 -o root -g root "$CLOUDGATE_DIR/ssh"
 # under this tree is readable by any authenticated user via /listen-deployment.
 chown -R root:root "$CLOUDGATE_DIR"
 
-# Everything under the checkout is owned by the service user — root-owned
-# node_modules or .next break the next build and the console's runtime cache.
+# Everything in the version is owned by the service user: the console runs as
+# it and writes its runtime cache under frontend/.next. Before place_version,
+# so the version arrives at /opt/cloudgate already owned.
 chown -R "$SERVICE_USER:$SERVICE_USER" "$REPO_ROOT"
 
 ### ------------------------------------------------------------- env files ---
@@ -688,7 +704,7 @@ chmod 0640 /etc/default/cloudgate-console
 chown "root:$SERVICE_USER" /etc/default/cloudgate-console
 umask 022
 
-### ---------------------------------------------------- install and build ---
+### ------------------------------------------------------ cloudgate version ---
 
 as_service_user() {
   runuser -u "$SERVICE_USER" -- env \
@@ -697,58 +713,45 @@ as_service_user() {
     "$@"
 }
 
-log "pnpm install"
-cd "$REPO_ROOT"
-# NEVER --prod (it omits drizzle-kit, @nestjs/cli and next, all devDependencies:
-# the install "succeeds" and then db:migrate cannot find its binary), and NEVER
-# --ignore-scripts (node-pty would not compile).
-as_service_user pnpm install --frozen-lockfile
+# Puts the version this script was run from at $INSTALL_DIR, in place of the
+# one there, and points REPO_ROOT at it. Here, after every step that can stop
+# the run and just before the migrations, rather than in root install.sh: the
+# units keep running the old version until the restart below, and a run that
+# stops earlier leaves the installed version whole beside an unused staging
+# directory. Two renames on one filesystem, then the old one goes: rolling
+# back is not offered, because its migrations only go forward. Run from
+# $INSTALL_DIR itself, a re-run of the installed version, it moves nothing.
+place_version() {
+  if [ "$REPO_ROOT" = "$INSTALL_DIR" ]; then
+    echo "Cloudgate $(cat "$INSTALL_DIR/VERSION") is in place at $INSTALL_DIR"
+    return
+  fi
+  rm -rf "$INSTALL_DIR.previous"
+  if [ -e "$INSTALL_DIR" ]; then
+    mv "$INSTALL_DIR" "$INSTALL_DIR.previous"
+  fi
+  mv "$REPO_ROOT" "$INSTALL_DIR"
+  REPO_ROOT="$INSTALL_DIR"
+  rm -rf "$INSTALL_DIR.previous"
+  echo "Cloudgate $(cat "$INSTALL_DIR/VERSION") is in place at $INSTALL_DIR"
+}
 
-# Assert the native module actually built. On Linux node-pty compiles pty.node
-# and produces NO spawn-helper — binding.gyp only defines that target under
-# `OS=="mac"`, and src/unix/pty.cc only references it inside
-# `#if defined(__APPLE__)`. Checking for spawn-helper here would pass on the
-# bundled darwin prebuilds even if this build had failed entirely.
-if ! find "$REPO_ROOT/node_modules/.pnpm" \
-     -path '*/node-pty/build/Release/pty.node' | grep -q .; then
-  echo "node-pty did not build: /terminal, /docker-container-logs and" >&2
-  echo "/docker-container-terminal will not work." >&2
-  exit 1
-fi
+log "Cloudgate ${VERSION}"
+place_version
 
 log "Database migrations"
 set -a; . /etc/default/cloudgate-backend; set +a
-# NEVER db:push — it writes columns with no journal row, and the next
-# db:migrate then hits an already-applied ALTER TABLE and exits 1 with nothing
-# on stdout or stderr.
-as_service_user DATABASE_URL="$DATABASE_URL" pnpm --filter backend db:migrate
+# The version's own drizzle-kit, which it carries in production node_modules,
+# as `db:migrate` runs it. NEVER `drizzle-kit push` — it writes columns with no
+# journal row, and the next migrate then hits an already-applied ALTER TABLE
+# and exits 1 with nothing on stdout or stderr. On the version already
+# installed it applies nothing.
+cd "$REPO_ROOT/backend"
+as_service_user DATABASE_URL="$DATABASE_URL" node_modules/.bin/drizzle-kit migrate
+cd "$REPO_ROOT"
 # Every run, so an upgrade that adds to the state schema grants it too. Read by
-# postgres from stdin: the checkout is not postgres's to open.
+# postgres from stdin: the version's files are not postgres's to open.
 su - postgres -c "psql -q -v ON_ERROR_STOP=1 -d cloudgate" < "$REPO_ROOT/deploy/opentofu/state-login.sql"
-
-log "Backend build"
-# `nest build` type-checks the whole backend, and V8's default heap on a 4 GB
-# box (about 1.9 GB) is no longer enough: it died "JavaScript heap out of
-# memory" after 130 s on the 2 vCPU / 3.8 GB staging box. Bounded the same way
-# as the console build below, with the swap making up the rest.
-as_service_user \
-  NODE_ENV=production \
-  NODE_OPTIONS=--max-old-space-size=3072 \
-  pnpm --filter backend build
-
-log "Console build"
-set -a; . /etc/default/cloudgate-console; set +a
-# The API's public address is not part of this build: the console reads
-# CLOUDGATE_API_URL from the file above when it starts (ADR-0082).
-#
-# If this OOMs: stop both units first to reclaim ~600 MB, then retry with
-# `next build --webpack`. --max-old-space-size bounds the V8 heap and *not*
-# Turbopack's Rust allocations, so it helps but is not the fix.
-as_service_user \
-  NODE_ENV=production \
-  BACKEND_INTERNAL_ORIGIN="$BACKEND_INTERNAL_ORIGIN" \
-  NODE_OPTIONS=--max-old-space-size=3072 \
-  pnpm --filter frontend build
 
 ### ---------------------------------------------------------------- traefik ---
 # Write the config FIRST. Starting the container first makes Docker create a
@@ -882,7 +885,7 @@ fi
 # Let's Encrypt certificate, the six WebSocket gateways (and the Gateway's
 # /ai/) to the API, everything else to the console, plain HTTP redirected.
 # Generated by the backend's hosted-traefik-config command, whose output
-# backend/test/traefik/hosted.spec.ts tests, so it needs the build above. Its
+# backend/test/traefik/hosted.spec.ts tests, from the version's built backend. Its
 # own file, not dynamic/cloudgate.yml, which Settings > Web server owns.
 # Rewritten every run, unguarded, because it is this script's alone and the
 # hostname may have changed; through a .tmp name the file provider ignores, so
@@ -931,8 +934,8 @@ install -m 0644 "$REPO_ROOT/deploy/systemd/cloudgate-backend.service" /etc/syste
 install -m 0644 "$REPO_ROOT/deploy/systemd/cloudgate-console.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable cloudgate-backend cloudgate-console
-# restart, not `enable --now`: on a re-run the units are already active, and the
-# builds above have just replaced dist/ and .next/ underneath them.
+# restart, not `enable --now`: on a re-run the units are already active, and
+# place_version has just put another version where they run from.
 systemctl restart cloudgate-backend
 systemctl restart cloudgate-console
 
@@ -948,8 +951,8 @@ if [ -n "$HOSTED_MODE" ]; then
   systemctl daemon-reload
   systemctl enable --now cloudgate-backup.timer cloudgate-backup-check.timer
   # The updater deploy-hosted.yml runs over SSH (deploy/hosted-update.sh),
-  # refreshed on every run so it is always this release's. A root-owned copy:
-  # sudo lets cloudgate-deploy run this path, and the checkout is the
+  # refreshed on every run so it is always this version's. A root-owned copy:
+  # sudo lets cloudgate-deploy run this path, and /opt/cloudgate is the
   # cloudgate user's. Who may run it is deploy/hosted-update-access.sh's, once.
   install -m 0755 -o root -g root "$REPO_ROOT/deploy/hosted-update.sh" /usr/local/sbin/cloudgate-update
 fi
