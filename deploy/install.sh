@@ -969,6 +969,11 @@ if [ -n "$HOSTED_MODE" ]; then
   done
   systemctl daemon-reload
   systemctl enable --now cloudgate-backup.timer cloudgate-backup-check.timer
+  # The updater deploy-hosted.yml runs over SSH (deploy/hosted-update.sh),
+  # refreshed on every run so it is always this release's. A root-owned copy:
+  # sudo lets cloudgate-deploy run this path, and the checkout is the
+  # cloudgate user's. Who may run it is deploy/hosted-update-access.sh's, once.
+  install -m 0755 -o root -g root "$REPO_ROOT/deploy/hosted-update.sh" /usr/local/sbin/cloudgate-update
 fi
 
 ### --------------------------------------------------------------- firewall ---

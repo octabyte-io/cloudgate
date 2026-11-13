@@ -508,6 +508,57 @@ Stripe tells the Hosted instance about payments only through one webhook endpoin
 
 On every start the Hosted instance reads its endpoints from Stripe and logs a warning from `StripeWebhookEndpointCheck` naming each event an endpoint pointing at `/billing/webhook` is missing or has extra, a disabled endpoint, or no such endpoint at all. A key that cannot read webhook endpoints is a warning too, never a refusal to start.
 
+### The firewall in front
+
+`install.sh` closes 3000/4000 with ufw, but nothing it does stops a provider-level port being open. Put the provider's own firewall (a Hetzner Cloud Firewall, for one) in front of the box and admit **22, 80 and 443** only. With [automatic updates](#automatic-updates) port 22 must accept GitHub's hosted runners, so keep SSH to keys only.
+
+### Upgrading by hand
+
+Take a backup first, then run the one command with `HOSTED_MODE=true`; every other input is read back from `/etc/default/cloudgate-hosted`. A run without `HOSTED_MODE=true` stops, because that file exists. `CLOUDGATE_REF` names the version tag:
+
+```bash
+systemctl start cloudgate-backup.service
+curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh \
+  | sudo HOSTED_MODE=true CLOUDGATE_REF=v0.3.0 sh
+```
+
+Read the version's "What to do on upgrade" lines in `CHANGELOG.md` before you do: a version that handles a new Stripe event says to subscribe the webhook to it.
+
+### Automatic updates
+
+Each server version reaches the Hosted instance by itself once it is green ([ADR-0081](adr/0081-the-hosted-instance-is-upgraded-by-a-green-version-tag-over-a-key-that-can-run-only-the-updater.md)):
+
+1. `git tag v0.3.0 && git push origin v0.3.0` starts `E2E (release)`.
+2. When that run ends green, `.github/workflows/deploy-hosted.yml` checks the version with `deploy/hosted-release-gate.sh`: the tag must be `backend/package.json`'s version, and every "What to do on upgrade" line in its `CHANGELOG.md` section must read "nothing.". Anything else stops the run and names the lines.
+3. It SSHes to the box as `cloudgate-deploy`, whose key runs only `/usr/local/sbin/cloudgate-update` (`deploy/hosted-update.sh`). That takes a B2 backup, then re-runs the install at the tag in its own unit, `cloudgate-update.service`, so a dropped connection cannot cut it off.
+4. It waits until `https://<hostname>/backend/settings/about` reports the new version in hosted mode.
+
+A version that stopped at step 2: do what its lines ask, then run **Deploy the Hosted instance** by hand (Actions > Run workflow) with the tag and `manual_steps_done` ticked. Running it by hand also deploys a version again, or without waiting for E2E.
+
+**Setting it up, once.** On your laptop make a key used for nothing else:
+
+```bash
+ssh-keygen -t ed25519 -f cloudgate-deploy -N '' -C cloudgate-deploy
+```
+
+On the box, as root, give its public half to the access script. It makes the `cloudgate-deploy` user, its forced-command key and its one sudoers line, and prints the two values below. Running it again with another key rotates the key.
+
+```bash
+bash /opt/cloudgate/deploy/hosted-update-access.sh "$(cat cloudgate-deploy.pub)"   # the .pub copied to the box
+```
+
+In GitHub, Settings > Environments > New environment `hosted`. Under deployment branches and tags allow **`main` only**: a `workflow_run` job runs on the default branch, never on the tag. Then add:
+
+| Name | Kind | Value |
+|---|---|---|
+| `HOSTED_SSH_HOST` | secret | the box's address, as the access script printed it |
+| `HOSTED_SSH_PRIVATE_KEY` | secret | the whole `cloudgate-deploy` private key file |
+| `HOSTED_SSH_KNOWN_HOSTS` | secret | the `HOSTED_SSH_KNOWN_HOSTS` line the access script printed; with sshd on another port, write the host as `[address]:port` |
+| `HOSTED_URL` | variable | `https://<CLOUDGATE_HOSTNAME>` |
+| `HOSTED_SSH_PORT` | variable | only when sshd is not on 22 |
+
+The Stripe, Resend, Turnstile and B2 inputs never go to GitHub. A failed upgrade leaves the box on the version the failure reached; `journalctl -u cloudgate-update.service` on the box says why, and the backup the run took first is in B2.
+
 ## What has not been verified
 
 - **A second Server.** Everything here is one host deploying to itself. The remote-Server path is exercised only as far as registering this host and running its setup script over SSH.
