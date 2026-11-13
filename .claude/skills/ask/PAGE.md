@@ -1,6 +1,6 @@
 # An answer as an HTML page
 
-A page is for answers with a shape: a flow, layers, a state machine, many parts. It shows that shape so it can be understood at a glance, and lets the reader open each part for the detail.
+A page is for answers with a shape: a flow, layers, a state machine, many parts. Its layout *is* that shape, so the answer can be read at a glance. There is no fixed page template: design each page for the one answer it carries.
 
 ## Where it goes
 
@@ -13,12 +13,29 @@ Then show it:
 
 Publish it as a claude.ai artifact (a private link) only when the person asks to share or keep it.
 
+## Design it for the answer
+
+Before writing any HTML, name the answer's shape in one word, then build the layout that draws it. Pick from these, or combine two when the answer truly has both:
+
+| The answer's shape | Draw it as |
+|---|---|
+| A flow, a request's path, "step by step" | A numbered vertical sequence of steps joined by arrows; a fork (refused / allowed) splits into two columns |
+| Several actors handing off (console → API → queue → Server) | Swim lanes: one column per actor, each step placed in its actor's lane |
+| Layers or "what sits on what" | Stacked bands, top to bottom, each naming what it owns |
+| A state machine, a lifecycle | State boxes with labelled transitions between them; the terminal states marked with status colour |
+| Parts of a whole, "what is in X" | A grid of cards, grouped under short headings |
+| A comparison or options | A matrix: options as columns, criteria as rows, the deciding cell highlighted |
+| A history or ordering in time | A timeline with dated points |
+| A verdict with a few reasons | One verdict card (yes / no / partly, in status colour) and its reasons beneath |
+
+Size the page to the answer. A four-step flow is four steps and nothing else; do not add sections the answer has no content for (no empty "Background", "Summary" or "Notes" headings, no repeated intro). If a part of the page restates another, remove it.
+
 ## What it contains
 
 - **The answer first**, at the top, in the same one or two sentences as the chat.
-- **The picture**: the flow or structure drawn with HTML and CSS (boxes and arrows, a stepped list, columns for layers). No image files and no charting library.
-- **Each part opens for its detail**, with `<details>`/`<summary>` or a click that shows a panel: what it does in plain words, the file and line (`backend/src/servers/server-maintenance.ts:31`), and the ADR or glossary term behind it.
-- **Facts and opinion apart**, as in the chat: a recommendation sits in its own labelled box.
+- **The picture**, drawn with HTML and CSS (or inline SVG for arrows between boxes that do not sit in a line). No image files and no charting library. Labels on the picture are a few words, not sentences.
+- **Detail stays folded.** Each part opens, with `<details>`/`<summary>` or a click that shows a panel, for a sentence or two in plain words, the file (`backend/src/servers/server-maintenance.ts:31`), and the ADR or glossary term behind it. Closed, the page shows only the shape and the labels.
+- **Facts and opinion apart**: a recommendation sits in its own labelled box, short.
 - **What was not checked**, if anything, in one line at the bottom.
 
 ## How it is built
@@ -52,4 +69,4 @@ body { background: var(--ground); color: var(--tx); font: 15px/1.55 var(--sans);
 code { font-family: var(--mono); }
 ```
 
-Keep it restrained, as the console is: one accent (`--brand`), status colours only for status (`--ok`, `--warn`, `--bad`), sentence case, no decoration, and motion only where it helps follow a step.
+The tokens stay fixed; the layout changes with the answer. Keep it restrained, as the console is: one accent (`--brand`), status colours only for status (`--ok`, `--warn`, `--bad`), sentence case, no decoration, and motion only where it helps follow a step.

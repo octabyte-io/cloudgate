@@ -1,6 +1,6 @@
 ---
 name: ask
-description: Answer a question about the Cloudgate codebase in plain words, from the code itself — how something works, whether it was built, or whether it should be built and its pros and cons. Read-only. Picks the clearest form for the answer — a sentence, a table, or a self-contained HTML page for anything with a flow or many parts.
+description: Answer a question about the Cloudgate codebase briefly and precisely, from the code itself — how something works, whether it was built, or whether it should be built and its pros and cons. Read-only. Picks the clearest form for the answer — a sentence, a table, or a self-contained HTML page laid out for that answer's shape (steps, layers, states, a comparison) when it has a flow or many parts. Detail only when asked.
 disable-model-invocation: true
 ---
 
@@ -18,13 +18,20 @@ Each kind of question has its own method:
 
 Done when every sentence you are about to write is either backed by something you read, or marked as your opinion. If the code cannot settle it (it depends on production data, or on an intent nobody wrote down), say so rather than guess.
 
-## 2. Answer in plain words
+## 2. Answer short
 
-Start with the answer itself in one or two sentences, before any detail. Someone who reads only that line should know the answer.
+The reader wants the answer, not the research. Give the least that answers the question exactly, and stop. More detail comes only when they ask for it ("more", "why", "show me the code").
 
-Then the detail, in plain words: short sentences, everyday language, a Cloudgate term (Server, Service, Deployment, Frozen Organization) explained the first time it appears, and the glossary's words, never its _Avoid_ ones. A real example helps more than an abstract one: "a git push to `shop` on Server `prod-eu-1`", not "a push event on a target".
+- **First line is the answer.** One or two sentences; someone who reads only that line knows it. No preamble, no restating the question, no "I looked at…".
+- **Then only what makes it true or usable:** at most three short bullets or lines, each with its evidence (`path/to/file.ts:42`, `ADR-0052`, `CONTEXT.md` **Maintenance**). If a line would not change what the reader does or believes, cut it.
+- **A "no" names where you looked**, in one line, not a paragraph.
+- **Leave out** background, history, how you searched, caveats that do not change the answer, and anything the question did not ask. One line at the end may say what you left out ("Ask for the retry path if you need it.").
+- **Plain words:** short sentences, the glossary's terms and never its _Avoid_ ones. Explain a Cloudgate term (Server, Service, Deployment, Frozen Organization) in a few words only when the answer would be unclear without it.
+- **Opinion is labelled** ("**My view:**", "**Recommend:**") and kept to one or two sentences.
 
-Point at the evidence as you go: `path/to/file.ts:42`, `ADR-0052`, `CONTEXT.md` **Maintenance**. Keep facts and opinion visibly apart; opinion carries a label ("**My view:**", "**Recommend:**").
+As a budget: a fact or yes/no fits in about 60 words; a comparison is one sentence plus a table of only the rows that matter; a flow is the two-sentence answer in the chat and the rest on the page. If you are over, cut detail, not the answer.
+
+When they ask for more, answer that follow-up the same way: the new detail they asked for, not the whole answer again.
 
 ## 3. Pick the form that explains best
 
@@ -36,7 +43,7 @@ Choose by the shape of the answer, not by its importance:
 | A comparison, pros and cons, options, or "which of these exist" | A table, with a short sentence above it |
 | A flow (request → service → queue → container), layers, a state machine, or more than about five moving parts | An HTML page, plus the one-or-two-sentence answer in the chat |
 
-For a page, read [`PAGE.md`](PAGE.md) and follow it. The chat still carries the answer; the page carries the picture.
+For a page, read [`PAGE.md`](PAGE.md) and follow it. The page is designed for this answer's shape, not filled into a fixed template. The chat still carries the answer; the page carries the picture.
 
 ## 4. Point to what comes next
 
