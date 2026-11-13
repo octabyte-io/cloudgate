@@ -7,7 +7,10 @@
  * prepares a Template as an Instance does (spec #5).
  *
  * The specifier is an alias, not a package: `build.mjs` and
- * `vitest.config.ts` both point it at that file. It is declared here by
+ * `vitest.config.ts` both point it at that file. It is the second
+ * backend-source alias ADR-0046 allows, recorded in its 2026-11-13 amendment:
+ * `try` must prepare a stack with an Instance's own code, and the file reaches
+ * a `*.dto.ts` (`hostSchema`, through `setupDomains`). It is declared here by
  * hand, and only as far as the CLI uses it, for the reason
  * `template-check.d.ts` gives. What keeps this declaration honest is
  * `test/template-setup.test.ts`, which runs the real code through it.
