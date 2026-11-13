@@ -388,6 +388,13 @@ export const application = pgTable(
     dockerBuildStage: text('docker_build_stage'),
     // Drop (uploaded archive)
     dropBuildPath: text('drop_build_path'),
+    /**
+     * Whether an upload has landed on the build host: written only by the
+     * two upload routes, beside `dropBuildPath`. A plan writes the build path
+     * of a folder source (ADR-0080) before any upload, so the path alone no
+     * longer says the build host holds files to build.
+     */
+    dropUploaded: boolean('drop_uploaded').notNull().default(false),
     // Docker swarm service-spec overrides
     healthCheckSwarm: json('health_check_swarm').$type<HealthCheckSwarm>(),
     restartPolicySwarm: json(

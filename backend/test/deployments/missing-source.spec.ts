@@ -16,6 +16,7 @@ const empty: SourceColumns = {
   customGitUrl: null,
   dockerImage: null,
   dropBuildPath: null,
+  dropUploaded: false,
 };
 
 describe('missingSource', () => {
@@ -39,9 +40,21 @@ describe('missingSource', () => {
     ['bitbucket', { bitbucketRepository: 'shop' }],
     ['git', { customGitUrl: 'git@example.com:acme/shop.git' }],
     ['docker', { dockerImage: 'nginx:1.27' }],
-    ['drop', { dropBuildPath: '/' }],
+    ['drop', { dropBuildPath: '/', dropUploaded: true }],
   ] as const)('passes a %s row whose source is set', (sourceType, set) => {
     expect(missingSource({ ...empty, sourceType, ...set })).toBeNull();
+  });
+
+  it('holds a drop row whose build path a plan wrote, before any upload, as having no files', () => {
+    // A folder source (ADR-0080): the plan names the subfolder; only an
+    // upload puts files on the build host.
+    expect(
+      missingSource({
+        ...empty,
+        sourceType: 'drop',
+        dropBuildPath: 'apps/web',
+      }),
+    ).toBe('no files have been uploaded');
   });
 
   it('reads a blank column as unset, the way the console clears one', () => {

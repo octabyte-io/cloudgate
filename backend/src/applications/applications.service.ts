@@ -1256,6 +1256,8 @@ export class ApplicationsService {
         sourceType: 'drop',
         // Default: the archive root.
         dropBuildPath: data.dropBuildPath ?? '/',
+        // What a Deployment of a `drop` row waits for (`missingSource`).
+        dropUploaded: true,
       },
       keep,
     );

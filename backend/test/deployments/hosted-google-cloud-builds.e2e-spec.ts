@@ -691,7 +691,7 @@ describe('Hosted cloud builds in Cloud Build (e2e)', () => {
       },
       {
         type: 'drop',
-        set: { sourceType: 'drop', dropBuildPath: '/' },
+        set: { sourceType: 'drop', dropBuildPath: '/', dropUploaded: true },
         from: 'an upload',
       },
     ] as const;

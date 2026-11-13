@@ -4,6 +4,7 @@ import { App } from 'supertest/types';
 
 import {
   application,
+  deployment,
   projectConfigLocation,
   webServerSettings,
 } from '../../src/db/schema';
@@ -211,6 +212,38 @@ services:
       dropBuildPath: 'apps/site',
     });
     expect(((await askForPlan()).body as PlanBody).steps).toEqual([]);
+  });
+
+  it('queues no Deployment for a folder-source app no upload has reached, at its create or at a change', async () => {
+    await storeConfig(folderWeb('apps/web'));
+    const created = await askForPlan();
+
+    const applied = await apply((created.body as PlanBody).planId);
+
+    expect(applied.status).toBe(200);
+    expect((applied.body as PlanBody).status).toBe('applied');
+    expect(queue.jobs).toEqual([]);
+    expect(
+      await ctx.db
+        .select({ id: deployment.deploymentId })
+        .from(deployment)
+        .where(eq(deployment.applicationId, (await savedWeb()).applicationId)),
+    ).toEqual([]);
+
+    // A change before any upload: still nothing on the build host to build.
+    await storeConfig(folderWeb('apps/site'));
+    const changed = await askForPlan();
+    expect((await apply((changed.body as PlanBody).planId)).status).toBe(200);
+
+    expect(queue.jobs).toEqual([]);
+    const deploy = await request(server)
+      .post(`/applications/${(await savedWeb()).applicationId}/deployments`)
+      .set('Cookie', cookie)
+      .send({ title: 'by hand' });
+    expect(deploy.status).toBe(409);
+    expect((deploy.body as { message: string }).message).toContain(
+      'no files have been uploaded',
+    );
   });
 
   it('refuses a folder combined with a repository, naming the entry', async () => {

@@ -13,10 +13,21 @@ export interface SourceColumns {
   customGitUrl?: string | null;
   dockerImage?: string | null;
   dropBuildPath?: string | null;
+  dropUploaded?: boolean;
 }
 
 const GIT_PROVIDER: Partial<
-  Record<SourceType, { label: string; column: keyof SourceColumns }>
+  Record<
+    SourceType,
+    {
+      label: string;
+      column:
+        | 'repository'
+        | 'gitlabRepository'
+        | 'giteaRepository'
+        | 'bitbucketRepository';
+    }
+  >
 > = {
   github: { label: 'GitHub', column: 'repository' },
   gitlab: { label: 'GitLab', column: 'gitlabRepository' },
@@ -39,9 +50,11 @@ const GIT_PROVIDER: Partial<
  * GitHub provider linked" — sent the operator to Settings instead of to the
  * source they had not chosen.
  *
- * A `drop` row counts as set once an upload has written `dropBuildPath`: the
- * upload route is the only writer of that column. `raw` is a stack whose
- * source is its own compose file, which has its own gate.
+ * A `drop` row counts as set once an upload has landed (`dropUploaded`, which
+ * only the upload routes write). Its build path is no proof: a plan writes a
+ * folder source's (ADR-0080) before any upload, and a build of that row would
+ * find nothing on the build host. `raw` is a stack whose source is its own
+ * compose file, which has its own gate.
  */
 export function missingSource(row: SourceColumns): string | null {
   const provider = GIT_PROVIDER[row.sourceType];
@@ -60,7 +73,7 @@ export function missingSource(row: SourceColumns): string | null {
     case 'docker':
       return blank(row.dockerImage) ? 'no Docker image is set' : null;
     case 'drop':
-      return blank(row.dropBuildPath) ? 'no files have been uploaded' : null;
+      return row.dropUploaded === true ? null : 'no files have been uploaded';
     default:
       return null;
   }

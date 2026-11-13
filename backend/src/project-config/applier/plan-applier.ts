@@ -1136,7 +1136,13 @@ export class PlanApplier {
         );
         return {
           domain: host,
-          deploy: await this.deployApplication(ctx, created.applicationId),
+          // A folder source (ADR-0080) has nothing on its build host until
+          // `cloudgate deploy` in the Project folder uploads it, and that
+          // deploy starts its first build.
+          deploy:
+            entry.source?.sourceType === 'drop'
+              ? null
+              : await this.deployApplication(ctx, created.applicationId),
         };
       }
       case 'postgres': {

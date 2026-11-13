@@ -2726,7 +2726,7 @@ export class DeploymentsService
         bitbucketRepository: application.bitbucketRepository,
         customGitUrl: application.customGitUrl,
         dockerImage: application.dockerImage,
-        dropBuildPath: application.dropBuildPath,
+        dropUploaded: application.dropUploaded,
       })
       .from(application)
       .innerJoin(
