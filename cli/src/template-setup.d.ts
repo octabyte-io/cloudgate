@@ -159,15 +159,25 @@ declare module 'cloudgate-template-setup' {
     readonly port: number;
   }
 
+  /** Where the ports are published, as a refusal names it. */
+  export interface PublishedOn {
+    /** What publishes a port once: "a Stack VM" unless given. */
+    readonly publisher: string;
+    /** Where a service publishes a port: "its Stack VM" unless given. */
+    readonly place: string;
+  }
+
   /**
    * The compose file with each Domain's container port published on the
    * host side `hostSide` gives it, the same number on every address unless
    * given; refuses a Domain on a service the file does not declare, and
-   * leaves a mapping the file already has as it is.
+   * leaves a mapping the file already has as it is. A refusal names where
+   * the ports are published by `on`, a Stack VM unless given.
    */
   export function publishStackVmPorts(
     content: string,
     routes: readonly StackVmRoute[],
     hostSide?: (route: StackVmRoute) => HostSide,
+    on?: PublishedOn,
   ): string;
 }

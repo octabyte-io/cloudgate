@@ -194,3 +194,41 @@ describe('publishStackVmPorts', () => {
     ).toThrow(/service "api" which does not exist/);
   });
 });
+
+describe('publishStackVmPorts, publishing on the local Docker', () => {
+  const LOCAL_DOCKER = {
+    publisher: 'the local Docker',
+    place: 'the local Docker',
+  };
+
+  it('names the local Docker, not a Stack VM, when two services would reach one host port', () => {
+    const refused = () =>
+      publishStackVmPorts(
+        'services:\n  web:\n    image: nginx\n  admin:\n    image: nginx\n',
+        [
+          { host: 'localhost', serviceName: 'web', port: 80 },
+          { host: 'localhost', serviceName: 'admin', port: 8080 },
+        ],
+        () => ({ ip: '127.0.0.1', port: 49152 }),
+        LOCAL_DOCKER,
+      );
+
+    expect(refused).toThrow(/which the local Docker publishes once/);
+    expect(refused).not.toThrow(/Stack VM/);
+  });
+
+  it('names the local Docker, not a Stack VM, when the file publishes the host port to another container port', () => {
+    const refused = () =>
+      publishStackVmPorts(
+        'services:\n  web:\n    image: nginx\n    ports: ["49152:8080"]\n',
+        [{ host: 'localhost', serviceName: 'web', port: 80 }],
+        () => ({ ip: '127.0.0.1', port: 49152 }),
+        LOCAL_DOCKER,
+      );
+
+    expect(refused).toThrow(
+      /publishes 49152 on the local Docker to container port 8080/,
+    );
+    expect(refused).not.toThrow(/Stack VM/);
+  });
+});

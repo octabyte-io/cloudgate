@@ -103,6 +103,7 @@ export async function prepareStack(
         ip: '127.0.0.1',
         port: hostPorts.get(`${route.serviceName}:${route.port}`) as number,
       }),
+      { publisher: 'the local Docker', place: 'the local Docker' },
     );
   } catch (error) {
     throw new CliError(

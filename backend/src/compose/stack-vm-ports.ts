@@ -20,6 +20,19 @@ export interface HostSide {
 /** A Stack VM's host side: the container port's own number, every address. */
 const SAME_NUMBER = (route: StackVmRoute): HostSide => ({ port: route.port });
 
+/** Where the ports are published, as a refusal names it. */
+export interface PublishedOn {
+  /** What publishes a port once: "a Stack VM". */
+  readonly publisher: string;
+  /** Where a service publishes a port: "its Stack VM". */
+  readonly place: string;
+}
+
+const ON_A_STACK_VM: PublishedOn = {
+  publisher: 'a Stack VM',
+  place: 'its Stack VM',
+};
+
 /**
  * **How a Domain's port reaches a Stack VM** (#1371). A Domain's `port` is
  * the container port its service listens on, as on Traefik. On a Stack VM
@@ -40,13 +53,15 @@ const SAME_NUMBER = (route: StackVmRoute): HostSide => ({ port: route.port });
  *
  * `hostSide` is the one thing `cloudgate template try` changes (spec #5):
  * it publishes each Domain on a free loopback port it picked
- * (`127.0.0.1:<port>:<container port>`) by the same rules. A Stack VM's
- * deploy leaves it out.
+ * (`127.0.0.1:<port>:<container port>`) by the same rules, and names the
+ * local Docker in a refusal (`on`) where a Stack VM's would. A Stack VM's
+ * deploy leaves both out.
  */
 export function publishStackVmPorts(
   content: string,
   routes: readonly StackVmRoute[],
   hostSide: (route: StackVmRoute) => HostSide = SAME_NUMBER,
+  on: PublishedOn = ON_A_STACK_VM,
 ): string {
   if (routes.length === 0) return content;
   const spec = parseComposeFile(content) as {
@@ -63,7 +78,7 @@ export function publishStackVmPorts(
     const owner = ownerOf.get(host.port);
     if (owner && owner.serviceName !== route.serviceName) {
       throw new Error(
-        `port: the Domains of services ${owner.serviceName} and ${route.serviceName} both reach port ${host.port}, which a Stack VM publishes once. Give one of them another port`,
+        `port: the Domains of services ${owner.serviceName} and ${route.serviceName} both reach port ${host.port}, which ${on.publisher} publishes once. Give one of them another port`,
       );
     }
     ownerOf.set(host.port, {
@@ -83,7 +98,7 @@ export function publishStackVmPorts(
     const already = published.find((one) => one.published === port);
     if (already && already.target !== target) {
       throw new Error(
-        `ports: service ${already.service} publishes ${port} on its Stack VM to container port ${already.target}, but its Domain reaches container port ${target} on that port. Remove that line from the compose file, or give the Domain port ${already.target}`,
+        `ports: service ${already.service} publishes ${port} on ${on.place} to container port ${already.target}, but its Domain reaches container port ${target} on that port. Remove that line from the compose file, or give the Domain port ${already.target}`,
       );
     }
     if (already) continue;

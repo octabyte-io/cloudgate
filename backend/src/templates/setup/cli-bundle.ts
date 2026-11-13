@@ -30,4 +30,8 @@ export {
   composeEnvHeader,
 } from '../../compose/compose-file';
 export { publishStackVmPorts } from '../../compose/stack-vm-ports';
-export type { HostSide, StackVmRoute } from '../../compose/stack-vm-ports';
+export type {
+  HostSide,
+  PublishedOn,
+  StackVmRoute,
+} from '../../compose/stack-vm-ports';
