@@ -16,11 +16,11 @@ import type { DropArchiveEntry } from './drop-archive';
  * compared with the folder's file list, and the new tree is built beside the
  * current one and swapped in only once every file's fingerprint matches.
  *
- * **Compared against the files on the build host, never a saved list.** After
- * a build the code directory can differ from what was uploaded: a Patch
- * overwrites files, the dockerfile builder can write a `.env`, and a git source
- * clones into the same directory. So each comparison hashes what is really
- * there, and a file that differs is simply asked for again.
+ * **Compared against the files on the build host, never a saved list**
+ * (ADR-0079). After a build the code directory can differ from what was
+ * uploaded: a Patch overwrites files, the dockerfile build can write a `.env`,
+ * and a git source clones into the same directory. So each comparison hashes
+ * what is really there, and a file that differs is simply asked for again.
  *
  * **Both halves run on the build host, as the full upload does**
  * (`materializeDrop`, ADR-0018's `buildHostServerId`): the comparison reads the
