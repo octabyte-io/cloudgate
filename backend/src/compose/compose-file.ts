@@ -62,9 +62,9 @@ export function parseComposeFile(content: string): ComposeSpecification | null {
   return parsed ?? null;
 }
 
-/** One fixed TCP port a compose file publishes on its machine's address. */
+/** One fixed TCP port a compose file publishes on its Server's (or Stack VM's) address. */
 export interface ComposePublishedPort {
-  /** The port on the machine. */
+  /** The port on the Server or Stack VM. */
   published: number;
   /** The container port it forwards to. */
   target: number;
@@ -92,15 +92,15 @@ function portNumbers(raw: unknown): number[] {
 
 /**
  * Every fixed TCP port a compose file's services publish — what a
- * Compose TCP Uptime check may dial, on the machine's address rather than an
+ * Compose TCP Uptime check may dial, on the Server's address rather than an
  * inner service. Both of compose's spellings are read: the short
  * `"[host:]published:target[/protocol]"` and the long `{ published, target,
  * protocol, host_ip }`.
  *
- * Left out, because no dial of the machine's address could reach them: a
+ * Left out, because no dial of the Server's address could reach them: a
  * container port with no published side (compose picks one at random), a UDP
  * port, a port bound to loopback, and a value compose interpolates (`${PORT}`)
- * on the build server after anything here has read it. A file that does not
+ * on the Build host after anything here has read it. A file that does not
  * parse publishes nothing.
  */
 export function listComposePublishedPorts(
@@ -182,8 +182,8 @@ export const DEFAULT_COMPOSE_RESTART = 'unless-stopped';
  * `driver: json-file` with no options, or `driver: none`, gets what they asked
  * for — merging our two options into their block would half-override a
  * deliberate choice, and a half-overridden block is worse than either outcome.
- * The accepted residual is that a tenant who writes an unbounded
- * `logging:` block can still fill the platform host's disk; a quota or an
+ * The accepted residual is that an Organization whose compose file writes an
+ * unbounded `logging:` block can still fill the platform host's disk; a quota or an
  * admission-time refusal would be a different decision, not a merge.
  *
  * The type gates differ and are not an oversight. `restart:` is
@@ -191,7 +191,7 @@ export const DEFAULT_COMPOSE_RESTART = 'unless-stopped';
  * "Ignoring unsupported options: restart" on every deploy, while a Swarm
  * service already comes back from `deploy.restart_policy`'s default
  * `condition: any` — which is the asymmetry the restart default was written for: on a rebooted
- * host every Swarm service reconverged and every compose container stayed
+ * Server every Swarm service reconverged and every compose container stayed
  * `exited` with `RestartPolicy=no`. `logging:` applies to **both**, because
  * `docker stack deploy` maps it onto the same `TaskTemplate.LogDriver` that
  * `mechanize.ts` sets for an Application. Do not make the two symmetrical.

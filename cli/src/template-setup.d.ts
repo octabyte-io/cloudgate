@@ -152,7 +152,7 @@ declare module 'cloudgate-template-setup' {
     readonly port: number;
   }
 
-  /** Where a Domain's container port is published on the machine. */
+  /** Where a Domain's container port is published: on the local Docker, for `try`. */
   export interface HostSide {
     /** The address it is bound to; every address when absent. */
     readonly ip?: string;

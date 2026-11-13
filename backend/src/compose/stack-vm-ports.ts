@@ -10,7 +10,7 @@ export interface StackVmRoute {
   readonly port: number;
 }
 
-/** Where a Domain's container port is published on the machine. */
+/** Where a Domain's container port is published on the Stack VM, or the local Docker for `template try`. */
 export interface HostSide {
   /** The address it is bound to; every address when absent. */
   readonly ip?: string;
