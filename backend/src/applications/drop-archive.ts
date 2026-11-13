@@ -3,6 +3,8 @@ import zlib from 'node:zlib';
 import { BadRequestException } from '@nestjs/common';
 import { quote } from 'shell-quote';
 import { ownerOnlyDirectoryCommand } from '../common/files/owner-only';
+import { buildHostServerId } from '../deployment-engine/build-host';
+import { applicationsDirectoryOn } from '../deployment-engine/deployment-engine.paths';
 import { execOnServer } from '../remote/exec-dispatch';
 import type {
   ExecResult,
@@ -90,7 +92,7 @@ export function readDropArchive(zip: Buffer): DropArchiveEntry[] {
       throw new BadRequestException('Zip64 archives are not supported');
     }
 
-    const entryPath = safeEntryPath(name);
+    const entryPath = safeEntryPath(name, 'Zip entry');
     entries.push(
       name.endsWith('/')
         ? { path: entryPath, content: null }
@@ -115,11 +117,24 @@ export function dropArchiveCommand(
   destination: string,
   entries: DropArchiveEntry[],
 ): string {
-  const lines = [
+  return [
     `rm -rf ${quote([destination])};`,
     `mkdir -p ${quote([destination])};`,
-  ];
+    ...entryWriteLines(destination, entries),
+  ].join('\n');
+}
 
+/**
+ * The lines that create `entries` under `destination`, an existing directory:
+ * the directories first, then each file's bytes, base64 the way file mounts
+ * are written. Shared by the full upload and the upload of only the changed
+ * files, which writes into a copy of the current tree instead of an empty one.
+ */
+export function entryWriteLines(
+  destination: string,
+  entries: DropArchiveEntry[],
+): string[] {
+  const lines: string[] = [];
   const directories = new Set<string>();
   for (const entry of entries) {
     const full = path.posix.join(destination, entry.path);
@@ -137,8 +152,30 @@ export function dropArchiveCommand(
       `echo "${entry.content.toString('base64')}" | base64 -d > ${quote([full])};`,
     );
   }
+  return lines;
+}
 
-  return lines.join('\n');
+/**
+ * Where an upload lands: `{applicationsDirectoryOn(buildHostServerId)}/{appName}/code`,
+ * byte for byte what `DeploymentEngineService` clones into and the build reads.
+ *
+ * The build host's own root, not this process's. `applicationsDirectory()`
+ * resolved `CLOUDGATE_DIRECTORY` for every machine alike, so on an install
+ * that sets it the upload unpacked the archive under a root the builder had
+ * never heard of — and `codeDirectory` in `DeploymentEngineService`, which is
+ * the other writer of this very path, had the same defect, which is why the
+ * two moved together.
+ */
+export function dropCodeDirectory(application: {
+  appName: string;
+  serverId?: string | null;
+  buildServerId?: string | null;
+}): string {
+  return path.posix.join(
+    applicationsDirectoryOn(buildHostServerId(application)),
+    application.appName,
+    'code',
+  );
 }
 
 /**
@@ -240,11 +277,15 @@ function inflateEntry(
  * The entry name as a path that cannot leave the code directory. Every form of
  * zip slip is refused outright rather than sanitized away: silently rewriting
  * an escaping name would extract an archive that is not the one uploaded.
+ *
+ * `what` names the name in the refusal: a zip entry, or a path in the file
+ * list an upload of only the changed files is compared and applied by, which
+ * is held to the same rules.
  */
-function safeEntryPath(name: string): string {
+export function safeEntryPath(name: string, what: string): string {
   const rejected = (reason: string): never => {
     throw new BadRequestException(
-      `Zip entry "${name}" ${reason} and would escape the application directory`,
+      `${what} "${name}" ${reason} and would escape the application directory`,
     );
   };
 

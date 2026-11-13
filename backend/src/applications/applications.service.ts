@@ -1,4 +1,3 @@
-import path from 'node:path';
 import {
   BadRequestException,
   ConflictException,
@@ -8,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import type { VariableList } from 'api-schemas';
+import type { DropComparison, VariableList } from 'api-schemas';
 import { and, eq, ne, not, or } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import {
@@ -72,7 +71,6 @@ import { refuseWhileCloudDelete } from './cloud-delete-refusal';
 import type { CloudDeleteTarget } from './cloud-delete';
 import { CloudServiceLifecycle } from './cloud-lifecycle';
 import type { CloudLifecycleTarget } from './cloud-lifecycle';
-import { applicationsDirectoryOn } from '../deployment-engine/deployment-engine.paths';
 import { runServerFor } from '../environments/deploy-target';
 import { InstanceMode } from '../instance-mode/instance-mode.service';
 import { keepDomainRecordsOnNetwork } from '../environments/network-dns-records';
@@ -152,7 +150,17 @@ import {
 } from './application-ops';
 import type { ScaleOptions } from './application-ops';
 import { refuseWhileBuilding } from './build-in-progress';
-import { materializeDrop, readDropArchive } from './drop-archive';
+import {
+  dropCodeDirectory,
+  materializeDrop,
+  readDropArchive,
+} from './drop-archive';
+import {
+  applyDropChanges,
+  compareDropFiles,
+  readBuildHostTree,
+  readDropFileList,
+} from './drop-changes';
 import type {
   ChangeVariablesDto,
   CopyRangeDto,
@@ -1141,6 +1149,82 @@ export class ApplicationsService {
     data: UploadApplicationDropDto,
     keep: KeepConfig,
   ) {
+    const current = await this.findDropTarget(ctx, applicationId);
+    const entries = readDropArchive(zip);
+    await materializeDrop(
+      this.remoteExec,
+      buildHostServerId(current),
+      dropCodeDirectory(current),
+      entries,
+    );
+    return this.switchToDrop(current.applicationId, data, keep);
+  }
+
+  /**
+   * The first half of uploading only the changed files (spec #10): which
+   * of the folder's `files` the build host is missing or holds different, and
+   * how many it holds already and beyond the list. Refused as
+   * {@link uploadDrop} is, since it is the first step of one: changes nothing.
+   */
+  async compareDrop(
+    ctx: PermissionCtx,
+    applicationId: string,
+    files: Buffer,
+  ): Promise<DropComparison> {
+    const current = await this.findDropTarget(ctx, applicationId);
+    const list = readDropFileList(files);
+    const tree = await readBuildHostTree(
+      this.remoteExec,
+      buildHostServerId(current),
+      dropCodeDirectory(current),
+    );
+    return compareDropFiles(list, tree);
+  }
+
+  /**
+   * The second half: the whole folder's `files` and a `zip` of only the ones
+   * {@link compareDrop} asked for, applied on the build host as one swap
+   * (`drop-changes.ts`), then the source switched exactly as
+   * {@link uploadDrop} switches it. A tree that does not match the list is a
+   * 409 and switches nothing.
+   */
+  async applyDrop(
+    ctx: PermissionCtx,
+    applicationId: string,
+    files: Buffer,
+    zip: Buffer,
+    data: UploadApplicationDropDto,
+  ) {
+    return this.saved(ctx, applicationId, async (keep) => {
+      const current = await this.findDropTarget(ctx, applicationId);
+      const list = readDropFileList(files);
+      const entries = readDropArchive(zip);
+      const listed = new Set(list.map((file) => file.path));
+      const stray = entries.find(
+        (entry) => entry.content !== null && !listed.has(entry.path),
+      );
+      if (stray) {
+        throw new BadRequestException(
+          `Zip entry "${stray.path}" is not in the file list`,
+        );
+      }
+      await applyDropChanges(
+        this.remoteExec,
+        buildHostServerId(current),
+        dropCodeDirectory(current),
+        list,
+        entries,
+      );
+      return this.switchToDrop(current.applicationId, data, keep);
+    });
+  }
+
+  /**
+   * The Application an upload lands in, refused where any upload is: one
+   * whose source an AI model holds, one a build is reading, and one whose run
+   * or build Server is in maintenance.
+   */
+  private async findDropTarget(ctx: PermissionCtx, applicationId: string) {
     const current = await this.findOwnedForUpdate(ctx, applicationId);
     // A drop switches the source, which an AI model's is not.
     await assertAiModelLocksHeld(this.db, current.applicationId, {
@@ -1154,28 +1238,17 @@ export class ApplicationsService {
       current.serverId,
       current.buildServerId,
     ]);
-    const entries = readDropArchive(zip);
+    return current;
+  }
 
-    // The build host's own root, not this process's. `applicationsDirectory()`
-    // resolved `CLOUDGATE_DIRECTORY` for every machine alike, so on an install
-    // that sets it this unpacked the archive under a root the builder had never
-    // heard of — and `codeDirectory` in `DeploymentEngineService`, which is the
-    // other writer of this very path, had the same defect, which is why the two
-    // moved together.
-    const codeDirectory = path.posix.join(
-      applicationsDirectoryOn(buildHostServerId(current)),
-      current.appName,
-      'code',
-    );
-    await materializeDrop(
-      this.remoteExec,
-      buildHostServerId(current),
-      codeDirectory,
-      entries,
-    );
-
+  /** The row's source switched to uploaded files, through the console Save. */
+  private switchToDrop(
+    applicationId: string,
+    data: UploadApplicationDropDto,
+    keep: KeepConfig,
+  ) {
     return this.writeRow(
-      current.applicationId,
+      applicationId,
       {
         sourceType: 'drop',
         // Default: the archive root.

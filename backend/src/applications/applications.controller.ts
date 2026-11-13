@@ -12,9 +12,13 @@ import {
   Put,
   Query,
   UploadedFile,
+  UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import { ApiOkResponse } from '@nestjs/swagger';
 import type { AuthSession } from '../auth/auth.config';
 import type { ValidatedRequest } from '../auth/auth.service';
@@ -49,6 +53,16 @@ function toCtx(user: AuthSession['user'], session: Session): PermissionCtx {
     session: { activeOrganizationId: session.activeOrganizationId },
   };
 }
+
+/**
+ * The parts of an apply: the file list and the zip of the changed files.
+ * Named here so the route's decorators each stay on one line, which is how
+ * `route-permissions.spec.ts` reads a handler's decorator block.
+ */
+const APPLY_DROP_PARTS = FileFieldsInterceptor([
+  { name: 'files', maxCount: 1 },
+  { name: 'zip', maxCount: 1 },
+]);
 
 @Controller('applications')
 export class ApplicationsController {
@@ -174,6 +188,65 @@ export class ApplicationsController {
     return this.applicationsService.uploadDrop(
       toCtx(user, session),
       id,
+      zip.buffer,
+      body,
+    );
+  }
+
+  /**
+   * The first half of uploading only the changed files: the multipart
+   * `files` part is the folder's file list as JSON, and the answer says which
+   * of them the build host is missing (`api-schemas`' `drops.ts`).
+   */
+  @Post(':id/drop/compare')
+  @HttpCode(200)
+  @RequirePermission('service', 'update')
+  @UseInterceptors(FileInterceptor('files'))
+  compareDrop(
+    @CurrentUser() user: AuthSession['user'],
+    @CurrentSession() session: Session,
+    @Param('id') id: string,
+    @UploadedFile() files: Express.Multer.File | undefined,
+  ) {
+    if (!files) {
+      throw new BadRequestException('No file list provided');
+    }
+    return this.applicationsService.compareDrop(
+      toCtx(user, session),
+      id,
+      files.buffer,
+    );
+  }
+
+  /**
+   * The second half: the multipart `files` part is the whole folder's file
+   * list, the `zip` part only the files compare asked for, and the fields are
+   * `/drop`'s. Answers what `/drop` answers.
+   */
+  @Post(':id/drop/apply')
+  @HttpCode(200)
+  @RequirePermission('service', 'update')
+  @UseInterceptors(APPLY_DROP_PARTS)
+  applyDrop(
+    @CurrentUser() user: AuthSession['user'],
+    @CurrentSession() session: Session,
+    @Param('id') id: string,
+    @Body() body: UploadApplicationDropDto,
+    @UploadedFiles()
+    parts: { files?: Express.Multer.File[]; zip?: Express.Multer.File[] },
+  ) {
+    const [files] = parts?.files ?? [];
+    const [zip] = parts?.zip ?? [];
+    if (!files) {
+      throw new BadRequestException('No file list provided');
+    }
+    if (!zip) {
+      throw new BadRequestException('No zip file provided');
+    }
+    return this.applicationsService.applyDrop(
+      toCtx(user, session),
+      id,
+      files.buffer,
       zip.buffer,
       body,
     );

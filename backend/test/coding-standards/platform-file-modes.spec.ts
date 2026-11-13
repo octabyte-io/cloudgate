@@ -221,6 +221,12 @@ const DECLARED: readonly Declared[] = [
     closedBy: ['src/applications/drop-archive.ts'],
     why: "An uploaded archive's entries, into `code`: `materializeDrop` closes the Service directory before it writes them, because an upload lands before any deploy has and an uploaded tree can carry a `.env`.",
   },
+  {
+    file: 'src/applications/drop-changes.ts',
+    verdict: 'owner-only-directory',
+    closedBy: ['src/applications/drop-changes.ts'],
+    why: "An upload of only the changed files: `applyDropChangesCommand` closes the Service directory before it builds the new tree and its file lists in a working directory inside it, for `materializeDrop`'s reason.",
+  },
   // ── Logs, under a log directory `initLogFile` closes ────────────────────
   {
     file: 'src/scheduling/schedules/schedule-commands.ts',

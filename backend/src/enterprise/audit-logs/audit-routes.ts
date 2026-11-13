@@ -288,6 +288,10 @@ export const NOT_RECORDED_ROUTES: Readonly<Record<string, NotRecorded>> = {
   'POST /ai/test-connection': UNSAVED_CREDENTIALS,
   'POST /ai/:id/test-connection': SAVED_CREDENTIALS,
   'POST /applications/:id/test-registry-login': SAVED_CREDENTIALS,
+  // The apply that follows it is recorded, as `/drop` is.
+  'POST /applications/:id/drop/compare': {
+    probe: 'compares a file list with the build host',
+  },
   'POST /billing/checkout': { probe: 'opens a payment page' },
   'POST /billing/portal': { probe: 'opens the billing portal' },
   'POST /cloud-accounts/setup': {

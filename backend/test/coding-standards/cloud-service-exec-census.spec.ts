@@ -152,6 +152,14 @@ const CENSUS: Readonly<Record<string, Verdict>> = {
     verdict: STAGING,
     why: "An uploaded source tree, written to the Service's code directory on its build host.",
   },
+  'applications/drop-changes.ts#readBuildHostTree': {
+    verdict: STAGING,
+    why: "Hashes the Service's code directory on its build host, for an upload of only the changed files to compare against.",
+  },
+  'applications/drop-changes.ts#applyDropChanges': {
+    verdict: STAGING,
+    why: "An upload of only the changed files, applied to the Service's code directory on its build host.",
+  },
   'applications/build-leftovers.ts#reclaimBuildLeftovers': {
     verdict: STAGING,
     why: "A Delete's sweep of the build host's own leftovers (the code tree and build cache).",
