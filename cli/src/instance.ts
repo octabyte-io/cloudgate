@@ -177,7 +177,7 @@ export interface InstanceEndpoints {
  *
  * **WebSockets go to the API's own origin**, which that answer advertises as
  * `apiUrl`: the console proxies none (`frontend/server.mjs`), and the
- * browser dials them at the same origin (`NEXT_PUBLIC_API_URL`). A streaming
+ * browser dials them at the same origin (`CLOUDGATE_API_URL`). A streaming
  * command passes the answer `checkInstance` returned; no caller assembles a
  * URL of its own.
  *

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### The console reads its API address when it starts
+
+The console takes the API's public address from `CLOUDGATE_API_URL` in `/etc/default/cloudgate-console` when it starts, and the root layout hands it to every page, so the live screens dial whatever the running console was given. One console build now serves any address, and changing it is `systemctl restart cloudgate-console`, not a rebuild. A missing value, or one that does not start with `http://` or `https://`, stops the console at boot with a sentence naming the variable. `NEXT_PUBLIC_API_URL` is no longer read, and `deploy/install.sh` no longer checks the built bundle for `localhost:4000`. The Console domain and Console routing cards, and `docs/deploy.md` §3, say "restart" (ADR-0082).
+
+**What to do on upgrade**: nothing. Re-running the install writes `CLOUDGATE_API_URL` into `/etc/default/cloudgate-console` with the address the old `NEXT_PUBLIC_API_URL` line held. A console updated by hand without the install needs that line renamed before it will start.
+
 ## 0.2.0 (2026-11-13)
 
 ### The Hosted instance upgrades itself to each green version

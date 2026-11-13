@@ -42,12 +42,18 @@ checkout_git() {
   git -c safe.directory="$CHECKOUT" -C "$CHECKOUT" "$@"
 }
 
-# The host the previous install built the console for, read back from the
-# console's environment file, so a re-run with no input is an upgrade of the
-# same instance rather than a rebuild for a newly guessed address.
+# The host the previous install gave the console, read back from the console's
+# environment file, so a re-run with no input is an upgrade of the same
+# instance rather than an install for a newly guessed address. A file written
+# before the console read its address at start (ADR-0082) names it
+# NEXT_PUBLIC_API_URL; that line is read only here, so such a box keeps its
+# address when this run rewrites the file with CLOUDGATE_API_URL.
 previous_public_host() {
   [ -r "$CONSOLE_ENV_FILE" ] || return 0
-  sed -n 's|^NEXT_PUBLIC_API_URL=http://\(.*\):[0-9][0-9]*$|\1|p' "$CONSOLE_ENV_FILE" | tail -n 1
+  sed -n \
+    -e 's|^CLOUDGATE_API_URL=http://\(.*\):[0-9][0-9]*$|\1|p' \
+    -e 's|^NEXT_PUBLIC_API_URL=http://\(.*\):[0-9][0-9]*$|\1|p' \
+    "$CONSOLE_ENV_FILE" | tail -n 1
 }
 
 detect_public_ipv4() {

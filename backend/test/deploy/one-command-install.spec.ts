@@ -94,4 +94,41 @@ describe('install.sh (the one-command install)', () => {
     expect(source).toContain('https://github.com/octabyte-io/cloudgate.git');
     expect(source).not.toContain('git@github.com:');
   });
+
+  /**
+   * A re-run reuses the host the last install gave the console. The console
+   * env file names it CLOUDGATE_API_URL now (ADR-0082), and a box installed
+   * before that still has NEXT_PUBLIC_API_URL until this run rewrites it.
+   */
+  describe('the host a re-run reuses', () => {
+    function previousHost(consoleEnv: string): string {
+      const source = fs.readFileSync(installer, 'utf8');
+      const fn = source.match(/^previous_public_host\(\) \{\n[\s\S]*?\n\}\n/m);
+      if (!fn) throw new Error('no previous_public_host in install.sh');
+      const envFile = path.join(scratch, 'cloudgate-console');
+      fs.writeFileSync(envFile, consoleEnv);
+      const script = path.join(scratch, 'previous-host.sh');
+      fs.writeFileSync(
+        script,
+        `CONSOLE_ENV_FILE='${envFile}'\n${fn[0]}previous_public_host\n`,
+      );
+      return spawnSync('sh', [script], { encoding: 'utf8' }).stdout.trim();
+    }
+
+    it('reads it from CLOUDGATE_API_URL', () => {
+      expect(
+        previousHost(
+          'NODE_ENV=production\nPORT=3000\nCLOUDGATE_API_URL=http://203.0.113.10:4000\n',
+        ),
+      ).toBe('203.0.113.10');
+    });
+
+    it('reads it from the NEXT_PUBLIC_API_URL a console env file written before held', () => {
+      expect(
+        previousHost(
+          'NODE_ENV=production\nPORT=3000\nNEXT_PUBLIC_API_URL=http://198.51.100.7:4000\n',
+        ),
+      ).toBe('198.51.100.7');
+    });
+  });
 });

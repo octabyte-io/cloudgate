@@ -114,7 +114,7 @@ export const envSchema = z.object({
   CLOUDGATE_PUBLIC_HOST: z.string().optional(),
   CONSOLE_PORT: z.coerce.number().int().positive().optional(),
   CLOUDGATE_CONSOLE_URL: z.url().optional(),
-  // This API's own public origin — the console's NEXT_PUBLIC_API_URL, where a
+  // This API's own public origin — the console's CLOUDGATE_API_URL, where a
   // browser dials the WebSockets the console does not proxy. Only advertised,
   // never dialled by this process: `GET /settings/about` hands it to
   // the Cloudgate CLI, which reaches REST through the console's /backend

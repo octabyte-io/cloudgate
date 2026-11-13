@@ -43,10 +43,10 @@ export function consoleOriginOf(host: string, https: boolean): string {
  * **Why the save warns rather than trusting the origin itself.** Adding the
  * console domain to the allowlist on save would make sign-in work there — and
  * `deploy/install.sh` leaves `TRUSTED_ORIGINS` empty for exactly that reason:
- * a second trusted origin signs an operator in on an address whose
- * build-time `NEXT_PUBLIC_API_URL` points elsewhere, so every live screen is
- * dead and nothing says why (`docs/deploy.md` §3). Whether the operator has
- * rebuilt the console for the new hostname is not something this process can
+ * a second trusted origin signs an operator in on an address whose console
+ * `CLOUDGATE_API_URL` points elsewhere, so every live screen is dead and
+ * nothing says why (`docs/deploy.md` §3). Whether the operator has pointed the
+ * console at an API on the new hostname is not something this process can
  * see, so the decision stays theirs and this is what lets the console say it.
  *
  * Its own injectable rather than a `SettingsService` method because it is the

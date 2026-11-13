@@ -31,8 +31,8 @@ BETTER_AUTH_URL=http://<public-host>:3000
 # Both empty on purpose.
 #
 # TRUSTED_ORIGINS: adding the bare address as a second trusted origin would let
-# sign-in succeed at an address whose build-time-inlined NEXT_PUBLIC_API_URL
-# points somewhere else — a console that signs you in and then shows no logs.
+# sign-in succeed at an address whose console CLOUDGATE_API_URL points
+# somewhere else — a console that signs you in and then shows no logs.
 # Each entry must be a bare browser origin (scheme + host [+ port], no path, no
 # trailing slash) or boot fails.
 #

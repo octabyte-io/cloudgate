@@ -54,7 +54,7 @@ CLOUDGATE_PUBLIC_HOST=<public ip or hostname> bash /opt/cloudgate/deploy/install
 
 The checkout **must** be at `/opt/cloudgate` — the unit files in `deploy/systemd/` hardcode it, and the script refuses to run from anywhere else.
 
-`CLOUDGATE_PUBLIC_HOST` is the only required input. It is not a preference: it is inlined into the console's client bundle at build time, so changing it later is a rebuild.
+`CLOUDGATE_PUBLIC_HOST` is the only required input. It becomes the API address both env files carry (`CLOUDGATE_API_URL`), which the console reads when it starts; changing it later is an edit to those files and a restart ([§3](#3-why-the-console-and-the-api-share-one-hostname)).
 
 The script is one file, `deploy/install.sh`, and it does the whole thing: swap, base packages including `build-essential`, Node from `nodejs.org` (checksum-verified), pnpm through corepack, Docker, `swarm init`, the `cloudgate-network` overlay, Postgres with a generated role, nixpacks, the `cloudgate` service user, `/etc/cloudgate`, `pnpm install`, migrations, both builds, `traefik.yml`, the Traefik container, two systemd units, and ufw.
 
@@ -108,15 +108,15 @@ So:
 - `http://<host>:3000` (console) and `http://<host>:4000` (API) — **one host, two ports.** The cookie set by the API is sent on the WebSocket dialled at `ws://<host>:4000`. All six gateways carry frames. Verified: all six, in a real browser, cross-origin, cookie-only.
 - `console.example.com` and `api.example.com` — **two hosts.** Once the backend trusts the console's origin (a stock install does not — see [below](#a-console-domain-is-a-second-hostname-and-a-stock-install-refuses-sign-in-on-it)), sign-in works and REST works. Every live feed opens and closes silently, and nothing on screen tells you why.
 
-`NEXT_PUBLIC_API_URL` in `/etc/default/cloudgate-console` is what sets this, and it is **baked into the client bundle at build time**. The install script asserts it afterwards:
+`CLOUDGATE_API_URL` in `/etc/default/cloudgate-console` is what sets this. The console reads it **when it starts**, not when it is built, and hands it to every page (ADR-0082): one build serves any address, and changing it is a restart:
 
 ```bash
-grep -r 'localhost:4000' /opt/cloudgate/frontend/.next/static   # must be empty
+systemctl restart cloudgate-console
 ```
 
-If that grep finds anything, the console was built without `NEXT_PUBLIC_API_URL` and every operator's browser will dial its own machine. Rebuild; do not restart.
+A console with no `CLOUDGATE_API_URL`, or one that does not start with `http://` or `https://`, does not start at all: `journalctl -u cloudgate-console` shows a sentence naming the variable. It used to fall back to `http://localhost:4000`, which made every operator's browser dial its own machine.
 
-The Cloudgate CLI needs the same origin for its log streams, and cannot read the console's bundle, so the backend advertises it too: `CLOUDGATE_API_URL` in `/etc/default/cloudgate-backend`, which the install script writes with the same value, is what the public `GET /settings/about` answers as `apiUrl`. Move the API and you change both; the backend's needs only a restart.
+The Cloudgate CLI needs the same origin for its log streams, so the backend advertises it too: `CLOUDGATE_API_URL` in `/etc/default/cloudgate-backend`, which the install script writes with the same value, is what the public `GET /settings/about` answers as `apiUrl`. Move the API and you change both files and restart both units.
 
 ### A console domain is a second hostname, and a stock install refuses sign-in on it
 
@@ -125,7 +125,7 @@ Settings → Instance → **Console domain** writes the console's routers into `
 Two separate things stand between that hostname and a working console:
 
 1. **Trust its origin** — scheme and host, as the browser sends it (`https://console.example.com`). Either under Settings → Single sign-on → **Trusted origins**, from the address the console already works on, which takes effect at once and needs an enterprise licence; or, without one, in `TRUSTED_ORIGINS` in `/etc/default/cloudgate-backend`, followed by `systemctl restart cloudgate-backend`. Sign-in and every ordinary screen then work there.
-2. **The live screens need the API on the same hostname**, for the cookie reason above — and `NEXT_PUBLIC_API_URL` is baked in at build time, so that is a rebuild ([§7](#7-upgrades)'s by-hand build), not a restart. The routers the Console domain card writes send the hostname to the console only; nothing routes the API there, so on a stock install the live screens stay blank on the console domain even once sign-in works.
+2. **The live screens need the API on the same hostname**, for the cookie reason above: set `CLOUDGATE_API_URL` in `/etc/default/cloudgate-console` to an API address on it and `systemctl restart cloudgate-console`; no rebuild is needed. The routers the Console domain card writes send the hostname to the console only; nothing routes the API there, so on a stock install the live screens stay blank on the console domain even once sign-in works.
 
 Cloudgate does not trust the console domain on save, and that is the installer's reasoning rather than an omission: doing the first without the second is exactly "a console that signs you in and then shows no logs", and the backend cannot see whether you have done the second.
 
@@ -296,7 +296,7 @@ set -a; . /etc/default/cloudgate-backend; set +a
 runuser -u cloudgate -- env DATABASE_URL="$DATABASE_URL" pnpm --filter backend db:migrate
 runuser -u cloudgate -- env NODE_ENV=production pnpm --filter backend build
 set -a; . /etc/default/cloudgate-console; set +a
-runuser -u cloudgate -- env NODE_ENV=production NEXT_PUBLIC_API_URL="$NEXT_PUBLIC_API_URL" \
+runuser -u cloudgate -- env NODE_ENV=production BACKEND_INTERNAL_ORIGIN="$BACKEND_INTERNAL_ORIGIN" \
   NODE_OPTIONS=--max-old-space-size=3072 pnpm --filter frontend build
 systemctl restart cloudgate-backend cloudgate-console
 ```
@@ -351,7 +351,7 @@ To restore onto a fresh host: run `install.sh` first, then stop both units, rest
 
 ## 9. Traps that cost real time
 
-**`NEXT_PUBLIC_API_URL` is baked at build time.** Changing the origin is a rebuild, not a restart. The symptom of getting it wrong is not an error — it is a console that works until you look at anything live.
+**`CLOUDGATE_API_URL` names the API on the browser's hostname.** It is read when the console starts, so changing it is a restart. The symptom of a wrong one is not an error — it is a console that works until you look at anything live.
 
 **`db:migrate`, never `db:push`.** See above. The failure is silent and the recovery is manual.
 

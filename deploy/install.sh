@@ -617,14 +617,14 @@ APP_ENCRYPTION_SECRET=${APP_ENCRYPTION_SECRET}
 BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
 # The CONSOLE's origin, not this service's.
 BETTER_AUTH_URL=${CONSOLE_ORIGIN}
-# This service's own public origin, the console's NEXT_PUBLIC_API_URL. Never
-# dialled by the backend: GET /settings/about advertises it so the Cloudgate
-# CLI can reach the WebSockets the console does not proxy.
+# This service's own public origin, the same CLOUDGATE_API_URL the console is
+# given. Never dialled by the backend: GET /settings/about advertises it so the
+# Cloudgate CLI can reach the WebSockets the console does not proxy.
 CLOUDGATE_API_URL=${API_ORIGIN}
 # Both origin lists stay empty on purpose. BETTER_AUTH_URL's own origin is
 # trusted for free; adding a second one would let sign-in succeed at an address
-# whose build-time-inlined NEXT_PUBLIC_API_URL points elsewhere, producing a
-# console that signs you in and then shows no logs.
+# whose console CLOUDGATE_API_URL points elsewhere, producing a console that
+# signs you in and then shows no logs.
 TRUSTED_ORIGINS=
 CORS_ALLOWED_ORIGINS=
 CLOUDGATE_DIRECTORY=${CLOUDGATE_DIR}
@@ -670,11 +670,13 @@ chown root:root /etc/default/cloudgate-backend
 cat > /etc/default/cloudgate-console <<EOF
 NODE_ENV=production
 PORT=${CONSOLE_PORT}
-NEXT_PUBLIC_API_URL=${API_ORIGIN}
+# The API's public origin, which every page is handed for the six gateways.
+# Read when the console starts (ADR-0082): changing it is a restart, and a
+# missing or non-http(s) value stops the console at boot.
+CLOUDGATE_API_URL=${API_ORIGIN}
 # Where the console's own rewrites reach the API. Server-side only, so it is
 # loopback rather than the public origin: nothing a browser dials comes from
 # this value, and it keeps console-to-API auth traffic off the public interface.
-# NEXT_PUBLIC_API_URL stays the browser's origin, for the six gateways.
 BACKEND_INTERNAL_ORIGIN=http://127.0.0.1:${API_PORT}
 EOF
 # Hosted only: Traefik is the one hop in front of the console, so its
@@ -736,26 +738,17 @@ as_service_user \
 
 log "Console build"
 set -a; . /etc/default/cloudgate-console; set +a
-# NEXT_PUBLIC_API_URL is inlined into the client bundle here. Build without it
-# and the console loads, sign-in works and REST works via the runtime rewrite —
-# while every live feed dials ws://localhost:4000 from the operator's browser.
+# The API's public address is not part of this build: the console reads
+# CLOUDGATE_API_URL from the file above when it starts (ADR-0082).
 #
 # If this OOMs: stop both units first to reclaim ~600 MB, then retry with
 # `next build --webpack`. --max-old-space-size bounds the V8 heap and *not*
 # Turbopack's Rust allocations, so it helps but is not the fix.
 as_service_user \
   NODE_ENV=production \
-  NEXT_PUBLIC_API_URL="$NEXT_PUBLIC_API_URL" \
   BACKEND_INTERNAL_ORIGIN="$BACKEND_INTERNAL_ORIGIN" \
   NODE_OPTIONS=--max-old-space-size=3072 \
   pnpm --filter frontend build
-
-if grep -rq 'localhost:4000' "$REPO_ROOT/frontend/.next/static"; then
-  echo "localhost:4000 is inlined in the client bundle — NEXT_PUBLIC_API_URL" >&2
-  echo "was not exported for the build. Every live feed would dial the" >&2
-  echo "operator's own machine." >&2
-  exit 1
-fi
 
 ### ---------------------------------------------------------------- traefik ---
 # Write the config FIRST. Starting the container first makes Docker create a

@@ -2,17 +2,17 @@
 #
 # `deploy/install.sh` generates this file.
 #
-# NEXT_PUBLIC_API_URL is the only variable the frontend reads, and it is read
-# twice: inlined into the client bundle at BUILD time, and read at runtime by
-# next.config.ts for the /api/auth/* and /backend/* rewrites.
+# CLOUDGATE_API_URL is the API's public origin, the one the browser dials the
+# six websocket gateways on. The console reads it when it STARTS, not when it
+# is built, and hands it to every page (ADR-0082): one build serves any
+# address, and changing it is a restart:
 #
-# That means changing it is a REBUILD, not a restart. Build the console without
-# it and everything appears to work — the page loads, sign-in succeeds, REST
-# works through the runtime rewrite — while every websocket feed dials
-# ws://localhost:4000 from the operator's own browser, forever.
+#   systemctl restart cloudgate-console
 #
-# It must start with http:// or https:// or the build throws at module load
-# (frontend/src/lib/config.ts).
+# It must be set, and start with http:// or https://, or the console stops at
+# boot with a sentence naming it (frontend/server/api-origin.mjs). The backend
+# advertises the same value under the same name in
+# /etc/default/cloudgate-backend; move the API and change both.
 #
 # Console and API deliberately share one hostname. The session cookie is
 # host-only (useSecureCookies: false, no domain) and a browser cannot set
@@ -21,12 +21,10 @@
 # while every live feed closes silently.
 
 # BACKEND_INTERNAL_ORIGIN is where the console's own rewrites reach the API.
-# Server-side only — no browser dials it — so it is loopback, and unlike
-# NEXT_PUBLIC_API_URL it is not inlined into the client bundle. It is read at
-# BUILD time as well as at runtime, because rewrite destinations are baked into
-# the routes manifest: export it for `next build` too, or the built console goes
-# on proxying to NEXT_PUBLIC_API_URL. Unset, it falls back to
-# NEXT_PUBLIC_API_URL, which is what every install did before.
+# Server-side only — no browser dials it — so it is loopback. Unlike
+# CLOUDGATE_API_URL it is read at BUILD time as well as at runtime, because
+# rewrite destinations are baked into the routes manifest: export it for
+# `next build` too. Unset, it is http://localhost:4000.
 
 # CONSOLE_TRUSTED_PROXY — Hosted instance only: one address or CIDR
 # range, the docker_gwbridge subnet Traefik reaches the console from. A request
@@ -37,5 +35,5 @@
 
 NODE_ENV=production
 PORT=3000
-NEXT_PUBLIC_API_URL=http://<public-host>:4000
+CLOUDGATE_API_URL=http://<public-host>:4000
 BACKEND_INTERNAL_ORIGIN=http://127.0.0.1:4000

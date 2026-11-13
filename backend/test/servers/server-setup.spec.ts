@@ -664,6 +664,32 @@ describe('deploy/install.sh', () => {
     });
 
     /**
+     * The console reads the API's public address when it starts (ADR-0082):
+     * one build serves any address, so the env file carries it under the
+     * name the backend already advertises, and nothing greps a built bundle
+     * for an address that is no longer in it.
+     */
+    it('gives the console its API address at runtime as CLOUDGATE_API_URL, and checks no bundle for it', () => {
+      const script = installer();
+      const consoleEnv = script.match(
+        /cat > \/etc\/default\/cloudgate-console <<EOF\n([\s\S]*?)\nEOF\n/,
+      )?.[1];
+
+      expect(consoleEnv).toContain('\nCLOUDGATE_API_URL=${API_ORIGIN}\n');
+      expect(script).not.toContain('NEXT_PUBLIC_API_URL');
+      expect(script).not.toContain("grep -rq 'localhost:4000'");
+    });
+
+    it('documents the same console env file in deploy/env/cloudgate-console.example', () => {
+      const example = read('deploy/env/cloudgate-console.example');
+
+      expect(example).toContain(
+        '\nCLOUDGATE_API_URL=http://<public-host>:4000\n',
+      );
+      expect(example).not.toContain('NEXT_PUBLIC_API_URL');
+    });
+
+    /**
      * `next start` cannot forward the browser's address on a rewrite, so the unit
      * has to run the custom server that can. Pinned because reverting the
      * ExecStart is a one-word edit that leaves everything else looking right.
