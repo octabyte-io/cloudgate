@@ -1,0 +1,23 @@
+# Tells octabyte-io/cg-website that install.sh changed on main, so the
+# website rebuilds the copy it serves at /install.sh. Sends a repository_dispatch
+# event of type install-script-updated; cg-website's own workflow does the rest.
+# The token lives in the CG_WEBSITE_DISPATCH_TOKEN secret. Runs on a change to
+# the script, or by hand.
+name: Notify website of install.sh changes
+
+on:
+  push:
+    branches: [main]
+    paths: [install.sh]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask cg-website to rebuild /install.sh
+        env:
+          GH_TOKEN: ${{ secrets.CG_WEBSITE_DISPATCH_TOKEN }}
+        run: gh api repos/octabyte-io/cg-website/dispatches -f event_type=install-script-updated
