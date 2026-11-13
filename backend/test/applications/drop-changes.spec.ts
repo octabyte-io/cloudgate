@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import * as fs from 'node:fs';
@@ -34,7 +34,10 @@ jest.mock('ssh2', () => {
       stream.stderr = new EventEmitter();
       let child: ReturnType<typeof spawn>;
       try {
-        child = spawn('/bin/sh', ['-c', command]);
+        // The test's own environment, which Jest keeps apart from the one
+        // `spawn` would otherwise hand the child: a test puts a `mv` first
+        // on its PATH.
+        child = spawn('/bin/sh', ['-c', command], { env: process.env });
       } catch (error) {
         callback(undefined, stream);
         process.nextTick(() => {
@@ -220,5 +223,55 @@ describe('applyDropChanges', () => {
 
     expect(treeAt(code)).toEqual(before);
     expect(fs.readdirSync(nodePath.dirname(code))).toEqual(['code']);
+  });
+
+  describe('a swap that fails half-way', () => {
+    let originalPath: string | undefined;
+    let shims: string;
+
+    beforeEach(() => {
+      // A `mv` that refuses to move the new tree into place, and moves
+      // anything else as the real one does: the Server's first move (the
+      // previous tree out of the way) succeeds, the second fails.
+      shims = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'cloudgate-mv-'));
+      const realMv = execFileSync('/bin/sh', ['-c', 'command -v mv'])
+        .toString()
+        .trim();
+      fs.writeFileSync(
+        nodePath.join(shims, 'mv'),
+        `#!/bin/sh\ncase "$1" in */tree) echo "mv: refused" >&2; exit 1;; esac\nexec ${realMv} "$@"\n`,
+        { mode: 0o755 },
+      );
+      originalPath = process.env.PATH;
+      process.env.PATH = `${shims}:${originalPath}`;
+    });
+
+    afterEach(() => {
+      process.env.PATH = originalPath;
+      fs.rmSync(shims, { recursive: true, force: true });
+    });
+
+    it('puts the previous tree back on a Server and answers a conflict', async () => {
+      const previous = projectTree();
+      plant(code, previous);
+      const before = treeAt(code);
+      const changed: DropArchiveEntry[] = [
+        { path: 'src/added/new.js', content: Buffer.from('export {};\n') },
+      ];
+
+      await expect(
+        applyDropChanges(
+          onServer,
+          'server-1',
+          code,
+          listOf([...previous, ...changed]),
+          changed,
+        ),
+      ).rejects.toThrow(ConflictException);
+
+      expect(treeAt(code)).toEqual(before);
+      // The working directory went once the previous tree was back.
+      expect(fs.readdirSync(nodePath.dirname(code))).toEqual(['code']);
+    });
   });
 });

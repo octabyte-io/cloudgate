@@ -164,6 +164,17 @@ const nulRecords = (records: string[]) =>
  * `trap` takes the working directory away with the half-built tree in it, so
  * the code directory is never a half-updated mix.
  *
+ * **The swap is two moves, and the trap guards the gap between them.** The
+ * previous tree moves into the working directory, then the new one into its
+ * place. A second move that fails, or a shell stopped by a signal between the
+ * two, would otherwise leave no code directory and the trap's `rm -rf` taking
+ * the previous tree with it. So the trap first moves the previous tree back
+ * whenever the code directory is missing, and removes the working directory
+ * only once the code directory is there again: if even that move back fails,
+ * the previous tree stays in the working directory rather than being deleted.
+ * Rejected: `mv --exchange` (one atomic `renameat2`), which needs coreutils
+ * 9.5, newer than the distributions a Server runs.
+ *
  * `set -e` makes every step a gate. A pipeline's earlier command can fail
  * unseen, and whatever it then left undone is a tree that does not match the
  * listing, which the comparison refuses. The working directory's name is
@@ -179,11 +190,19 @@ export function applyDropChangesCommand(
   const work = path.posix.join(serviceDirectory, `.upload-${token}`);
   const tree = `${work}/tree`;
   const [q, w, t] = [quote([codeDirectory]), quote([work]), quote([tree])];
+  const previous = `${work}/previous`;
+  const p = quote([previous]);
   const plainPaths = files.map((file) => `./${file.path}`);
+  const cleanUp = [
+    `if [ -d ${p} ] && [ ! -e ${q} ]; then mv ${p} ${q}; fi`,
+    `if [ -e ${q} ] || [ ! -d ${p} ]; then rm -rf ${w}; fi`,
+  ].join('; ');
   return [
     'set -e',
     ownerOnlyDirectoryCommand(serviceDirectory),
-    `trap ${quote([`rm -rf ${w}`])} EXIT`,
+    `trap ${quote([cleanUp])} EXIT`,
+    // A signal leaves through `exit`, so the EXIT trap runs for it too.
+    `trap 'exit 1' HUP INT TERM`,
     `mkdir ${w} ${t}`,
     `if [ -d ${q} ]; then cp -a ${q}/. ${t}/; fi`,
     `cd ${t}`,
@@ -199,7 +218,7 @@ export function applyDropChangesCommand(
     `{ ${TREE_LISTING}; } | LC_ALL=C sort -z > ${w}/actual`,
     `cmp -s ${w}/expected ${w}/actual || exit ${MISMATCH_EXIT}`,
     'cd /',
-    `if [ -d ${q} ]; then mv ${q} ${w}/previous; fi`,
+    `if [ -d ${q} ]; then mv ${q} ${p}; fi`,
     `mv ${t} ${q}`,
   ].join('\n');
 }
