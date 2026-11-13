@@ -164,11 +164,15 @@ export interface TargetCatalog {
   ): Promise<ServiceCandidate[]>;
 }
 
-/** What a run acts on, every level resolved. */
-export interface Target {
+/** Where a Project folder link points: every level but the Service. */
+export interface ProjectTarget {
   organization: { id: string; name: string };
   project: { id: string; name: string };
   environment: { id: string; name: string };
+}
+
+/** What a run acts on, every level resolved. */
+export interface Target extends ProjectTarget {
   service: { id: string; configName: string; name: string; kind: string };
 }
 
@@ -195,6 +199,40 @@ export async function resolveTarget(
   catalog: TargetCatalog,
   options: ResolveOptions = {},
 ): Promise<Target> {
+  const { organization, project, environment } = await resolveProjectTarget(
+    inputs,
+    catalog,
+    options,
+  );
+  const service = await pick(
+    'service',
+    inputs,
+    await catalog.services(organization.id, environment.id),
+    `in Environment ${environment.name} of Project ${project.name}`,
+    options,
+  );
+  return {
+    organization,
+    project,
+    environment,
+    service: {
+      id: service.id,
+      configName: service.name,
+      name: service.displayName,
+      kind: service.kind,
+    },
+  };
+}
+
+/**
+ * {@link resolveTarget} down to the Environment, for `link --whole-project`:
+ * a Project folder names no Service.
+ */
+export async function resolveProjectTarget(
+  inputs: TargetInputs,
+  catalog: TargetCatalog,
+  options: ResolveOptions = {},
+): Promise<ProjectTarget> {
   const organization = await pick(
     'organization',
     inputs,
@@ -216,23 +254,10 @@ export async function resolveTarget(
     `in Project ${project.name}`,
     options,
   );
-  const service = await pick(
-    'service',
-    inputs,
-    await catalog.services(organization.id, environment.id),
-    `in Environment ${environment.name} of Project ${project.name}`,
-    options,
-  );
   return {
     organization: { id: organization.id, name: organization.name },
     project: { id: project.id, name: project.name },
     environment: { id: environment.id, name: environment.name },
-    service: {
-      id: service.id,
-      configName: service.name,
-      name: service.displayName,
-      kind: service.kind,
-    },
   };
 }
 

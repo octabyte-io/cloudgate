@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import {
   appendFileSync,
@@ -1071,6 +1071,307 @@ describe('Cloudgate CLI (e2e)', () => {
         expect(result.stderr).toContain(
           'Error: no Project. Pass --project or set CLOUDGATE_PROJECT.',
         );
+        expect(filesUnder(repo)).toEqual([]);
+      } finally {
+        removeFolder(repo);
+      }
+    });
+  });
+
+  describe('a Project folder with CLOUDGATE_KEY', () => {
+    /**
+     * The owner, a key, and Project shop in the owner's default
+     * Organization: Environment staging holding one Application, whose
+     * Config name the walk reads back. The Project's config is the empty
+     * one every new Project gets, kept in Cloudgate.
+     */
+    async function seededProject() {
+      const { cookie, key } = await ownerWithKey();
+      const me = await request(server).get('/users/me').set('x-api-key', key);
+      const userId = (me.body as { id: string }).id;
+      const organizations = await request(server)
+        .get('/organizations')
+        .set('Cookie', cookie);
+      const [organization] = organizations.body as {
+        id: string;
+        name: string;
+      }[];
+      const ownerCtx = {
+        user: { id: userId },
+        session: { activeOrganizationId: organization.id },
+      };
+      const project = await ctx.app
+        .get(ProjectsService)
+        .create(ownerCtx, { name: 'shop' });
+      const staging = await ctx.app.get(EnvironmentsService).create(ownerCtx, {
+        name: 'staging',
+        projectId: project.projectId,
+      });
+      const application = await ctx.app
+        .get(ApplicationsService)
+        .create(ownerCtx, {
+          name: 'Shop API',
+          appName: 'shop-api',
+          environmentId: staging.environmentId,
+        });
+      const [row] = await ctx.db
+        .select({ configName: schema.application.configName })
+        .from(schema.application)
+        .where(eq(schema.application.applicationId, application.applicationId));
+      return {
+        key,
+        organization,
+        projectId: project.projectId,
+        environmentId: staging.environmentId,
+        configName: row.configName,
+        env: { CLOUDGATE_KEY: key, CLOUDGATE_INSTANCE: instance },
+      };
+    }
+
+    /** The Project's config as `GET /projects/:id/config` answers it. */
+    async function configOf(seeded: {
+      key: string;
+      organization: { id: string };
+      projectId: string;
+    }) {
+      const answered = await request(server)
+        .get(`/projects/${seeded.projectId}/config`)
+        .set('x-api-key', seeded.key)
+        .set('x-organization-id', seeded.organization.id);
+      expect(answered.status).toBe(200);
+      return (answered.body as { location: { text: string; version: number } })
+        .location;
+    }
+
+    const sha256 = (text: string) =>
+      createHash('sha256').update(text).digest('hex');
+
+    const wholeProject = [
+      'link',
+      '--whole-project',
+      '--project',
+      'shop',
+      '--env',
+      'staging',
+    ];
+
+    it('links a folder as the whole Project: cloudgate.yaml is the config, the link holds no Service and the version, and git ignores both', async () => {
+      const seeded = await seededProject();
+      const config = await configOf(seeded);
+      const repo = emptyFolder('monorepo');
+      try {
+        writeFileSync(join(repo, '.gitignore'), 'node_modules\n');
+
+        const linked = await runCli(wholeProject, {
+          home,
+          cwd: repo,
+          env: seeded.env,
+        });
+
+        expect(linked.stderr).not.toContain('Error');
+        expect(linked.code).toBe(0);
+        expect(linked.stderr).toContain(
+          `✓ Linked ./ to the whole Project shop, staging by default, on ${instance.replace('http://', '')}`,
+        );
+        // The config as Cloudgate keeps it: Shop API's entry, written when
+        // the Application was made.
+        expect(config.text).toContain(
+          `  ${seeded.configName}:\n    kind: web\n`,
+        );
+        expect(readFileSync(join(repo, 'cloudgate.yaml'), 'utf8')).toBe(
+          config.text,
+        );
+        expect(
+          JSON.parse(
+            readFileSync(join(repo, '.cloudgate', 'link.json'), 'utf8'),
+          ),
+        ).toEqual({
+          instance,
+          organizationId: seeded.organization.id,
+          projectId: seeded.projectId,
+          environmentId: seeded.environmentId,
+          workingCopy: {
+            version: config.version,
+            sha256: sha256(config.text),
+          },
+          names: {
+            organization: seeded.organization.name,
+            project: 'shop',
+            environment: 'staging',
+          },
+        });
+        expect(readFileSync(join(repo, '.gitignore'), 'utf8')).toBe(
+          'node_modules\n.cloudgate/\n/cloudgate.yaml\n',
+        );
+      } finally {
+        removeFolder(repo);
+      }
+    });
+
+    it("with no terminal, status, logs and vars in a Project folder refuse without --service, exit 2, and act on the one --service names; an app folder's own link still wins", async () => {
+      const seeded = await seededProject();
+      const repo = emptyFolder('monorepo');
+      try {
+        expect(
+          (await runCli(wholeProject, { home, cwd: repo, env: seeded.env }))
+            .code,
+        ).toBe(0);
+        const app = join(repo, 'apps', 'api');
+        mkdirSync(app, { recursive: true });
+
+        for (const command of [['status'], ['logs'], ['vars', 'list']]) {
+          const refused = await runCli(command, {
+            home,
+            cwd: app,
+            env: { CLOUDGATE_KEY: seeded.key },
+          });
+          expect(refused.code).toBe(2);
+          expect(refused.stderr).toContain(
+            'Error: no Service. Pass --service or set CLOUDGATE_SERVICE.',
+          );
+        }
+
+        const named = await runCli(
+          ['status', '--service', seeded.configName, '--json'],
+          { home, cwd: app, env: { CLOUDGATE_KEY: seeded.key } },
+        );
+        expect(named.stderr).not.toContain('Error');
+        expect(named.code).toBe(0);
+        expect(
+          (JSON.parse(named.stdout) as { service: { configName: string } })
+            .service.configName,
+        ).toBe(seeded.configName);
+
+        // The app folder linked to its Service: the nearest link wins.
+        expect(
+          (
+            await runCli(
+              [
+                'link',
+                '--project',
+                'shop',
+                '--env',
+                'staging',
+                '--service',
+                seeded.configName,
+              ],
+              { home, cwd: app, env: seeded.env },
+            )
+          ).code,
+        ).toBe(0);
+        const fromApp = await runCli(['status', '--json'], {
+          home,
+          cwd: app,
+          env: { CLOUDGATE_KEY: seeded.key },
+        });
+        expect(fromApp.code).toBe(0);
+        expect(
+          (JSON.parse(fromApp.stdout) as { service: { configName: string } })
+            .service.configName,
+        ).toBe(seeded.configName);
+      } finally {
+        removeFolder(repo);
+      }
+    });
+
+    it('config pull replaces the copy and the recorded version; with no terminal an edited copy is refused, exit 2, unless --yes', async () => {
+      const seeded = await seededProject();
+      const repo = emptyFolder('monorepo');
+      try {
+        expect(
+          (await runCli(wholeProject, { home, cwd: repo, env: seeded.env }))
+            .code,
+        ).toBe(0);
+        const downloaded = await configOf(seeded);
+        // A teammate's change in the console moves the config on.
+        const changed = `version: 1\nservices:\n  ${seeded.configName}:\n    kind: web\n`;
+        await ctx.db
+          .update(schema.projectConfigLocation)
+          .set({ text: changed, version: downloaded.version + 1 })
+          .where(eq(schema.projectConfigLocation.projectId, seeded.projectId));
+        const linkFile = join(repo, '.cloudgate', 'link.json');
+        const recorded = () =>
+          (
+            JSON.parse(readFileSync(linkFile, 'utf8')) as {
+              workingCopy: { version: number };
+            }
+          ).workingCopy.version;
+
+        const pulled = await runCli(['config', 'pull'], {
+          home,
+          cwd: repo,
+          env: { CLOUDGATE_KEY: seeded.key },
+        });
+        expect(pulled.stderr).not.toContain('Error');
+        expect(pulled.code).toBe(0);
+        expect(readFileSync(join(repo, 'cloudgate.yaml'), 'utf8')).toBe(
+          changed,
+        );
+        expect(recorded()).toBe(downloaded.version + 1);
+
+        appendFileSync(join(repo, 'cloudgate.yaml'), '# my edit\n');
+        await ctx.db
+          .update(schema.projectConfigLocation)
+          .set({
+            text: 'version: 1\nservices: {}\n',
+            version: downloaded.version + 2,
+          })
+          .where(eq(schema.projectConfigLocation.projectId, seeded.projectId));
+
+        const refused = await runCli(['config', 'pull'], {
+          home,
+          cwd: repo,
+          env: { CLOUDGATE_KEY: seeded.key },
+        });
+        expect(refused.code).toBe(2);
+        expect(refused.stderr).toContain(
+          'Error: cloudgate.yaml has edits not sent to Cloudgate',
+        );
+        expect(refused.stderr).toContain('Pass --yes');
+        expect(readFileSync(join(repo, 'cloudgate.yaml'), 'utf8')).toBe(
+          `${changed}# my edit\n`,
+        );
+        expect(recorded()).toBe(downloaded.version + 1);
+
+        const forced = await runCli(['config', 'pull', '--yes'], {
+          home,
+          cwd: repo,
+          env: { CLOUDGATE_KEY: seeded.key },
+        });
+        expect(forced.code).toBe(0);
+        expect(readFileSync(join(repo, 'cloudgate.yaml'), 'utf8')).toBe(
+          'version: 1\nservices: {}\n',
+        );
+        expect(recorded()).toBe(downloaded.version + 2);
+      } finally {
+        removeFolder(repo);
+      }
+    });
+
+    it('refuses a Project whose config is kept in a repository, naming it, and writes nothing', async () => {
+      const seeded = await seededProject();
+      await ctx.db
+        .update(schema.projectConfigLocation)
+        .set({
+          kind: 'repository',
+          text: null,
+          repository: 'octabyte-io/shop-config',
+          path: 'deploy/cloudgate.yaml',
+        })
+        .where(eq(schema.projectConfigLocation.projectId, seeded.projectId));
+      const repo = emptyFolder('monorepo');
+      try {
+        const refused = await runCli(wholeProject, {
+          home,
+          cwd: repo,
+          env: seeded.env,
+        });
+
+        expect(refused.code).toBe(1);
+        expect(refused.stderr).toContain(
+          "Error: Project shop's config is kept in the repository octabyte-io/shop-config at deploy/cloudgate.yaml",
+        );
+        expect(refused.stderr).toContain('Move into Cloudgate');
         expect(filesUnder(repo)).toEqual([]);
       } finally {
         removeFolder(repo);

@@ -29,6 +29,20 @@ const shopApi: FolderLink = {
   },
 };
 
+/** The monorepo root linked as a Project folder: no Service, and the version downloaded. */
+const shopRoot: FolderLink = {
+  instance: 'https://cloudgate.octabyte.app',
+  organizationId: 'org_1',
+  projectId: 'prj_1',
+  environmentId: 'env_staging',
+  workingCopy: { version: 4, sha256: 'a'.repeat(64) },
+  names: {
+    organization: 'Shop Inc',
+    project: 'shop',
+    environment: 'staging',
+  },
+};
+
 const shopWeb: FolderLink = {
   ...shopApi,
   serviceConfigName: 'web',
@@ -95,6 +109,57 @@ describe('writeLink', () => {
     }
   });
 
+  it('saves a Project folder link holding no Service and the version it downloaded', () => {
+    writeLink(root, shopRoot);
+
+    const saved = JSON.parse(
+      readFileSync(join(root, '.cloudgate', 'link.json'), 'utf8'),
+    ) as Record<string, unknown>;
+    expect(saved).not.toHaveProperty('serviceConfigName');
+    expect(saved.workingCopy).toEqual({ version: 4, sha256: 'a'.repeat(64) });
+    expect(findNearestLink(root)?.link).toEqual(shopRoot);
+  });
+
+  it('adds cloudgate.yaml beside .cloudgate/ to the .gitignore of a Project folder, keeping its lines', () => {
+    writeFileSync(join(root, '.gitignore'), 'node_modules\ndist');
+
+    writeLink(root, shopRoot);
+
+    expect(readFileSync(join(root, '.gitignore'), 'utf8')).toBe(
+      'node_modules\ndist\n.cloudgate/\n/cloudgate.yaml\n',
+    );
+  });
+
+  it('leaves a .gitignore that already ignores both alone', () => {
+    for (const line of ['cloudgate.yaml', '/cloudgate.yaml']) {
+      writeFileSync(join(root, '.gitignore'), `.cloudgate\n${line}\n`);
+
+      writeLink(root, shopRoot);
+
+      expect(readFileSync(join(root, '.gitignore'), 'utf8')).toBe(
+        `.cloudgate\n${line}\n`,
+      );
+    }
+  });
+
+  it('ignores no cloudgate.yaml for a link naming a Service', () => {
+    writeLink(root, shopApi);
+
+    expect(readFileSync(join(root, '.gitignore'), 'utf8')).toBe(
+      '.cloudgate/\n',
+    );
+  });
+
+  it('refuses a link naming both a Service and a downloaded version', () => {
+    mkdirSync(join(root, '.cloudgate'));
+    writeFileSync(
+      join(root, '.cloudgate', 'link.json'),
+      JSON.stringify({ ...shopRoot, serviceConfigName: 'api' }),
+    );
+
+    expect(() => findNearestLink(root)).toThrow(CliError);
+  });
+
   it('replaces the link a folder already holds', () => {
     writeLink(root, shopApi);
     writeLink(root, shopWeb);
@@ -133,6 +198,16 @@ describe('findNearestLink', () => {
     expect(findNearestLink(join(root, 'apps'))?.link.serviceConfigName).toBe(
       'root',
     );
+  });
+
+  it("lets an app folder's Service link win inside a Project folder", () => {
+    const web = join(root, 'apps', 'web');
+    mkdirSync(join(web, 'src'), { recursive: true });
+    writeLink(root, shopRoot);
+    writeLink(web, shopWeb);
+
+    expect(findNearestLink(join(web, 'src'))?.link).toEqual(shopWeb);
+    expect(findNearestLink(join(root, 'apps'))?.link).toEqual(shopRoot);
   });
 
   it('skips a .cloudgate folder that holds no link', () => {

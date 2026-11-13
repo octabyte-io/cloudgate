@@ -52,8 +52,9 @@ Every CLI ticket adds its walk to that suite (`backend/test/cli/cli.e2e-spec.ts`
 | `src/stopping.ts` | Waiting and Ctrl-C: `POLL_MILLISECONDS`, `abortOf`, `withInterrupts` (a signal Ctrl-C aborts while some work runs). |
 | `src/credentials.ts` | Where the key comes from: `credentialFor` (`CLOUDGATE_KEY`, else the saved login for the chosen Instance) and `endedLogin`, the refusal for a saved key an Instance no longer accepts. |
 | `src/logins.ts` | `loginStore`: the saved logins and the current Instance (`instances.json`), their keys in the OS keychain (`osKeychain`) or a 0600 `credentials.json`. |
-| `src/folder-link.ts` | The Folder link: `findNearestLink`, `writeLink` (with the `.gitignore` line), `removeLink`. |
-| `src/target.ts` | The shared target lookup: `targetInputs` (flag → variable → link), `resolveTarget` (id, then name; asks or refuses), `TARGET_OPTIONS`. |
+| `src/folder-link.ts` | The Folder link: `findNearestLink`, `writeLink` (with the `.gitignore` lines), `removeLink`, `isProjectFolder` (a link naming no Service, recording its `workingCopy`). |
+| `src/working-copy.ts` | A Project folder's `cloudgate.yaml` (ADR-0080): `downloadProjectConfig` (refusing a repository-kept config), `mayReplaceWorkingCopy` (asks, or refuses without `--yes`), `saveWorkingCopy` (writes it and records its version and SHA-256 in the link), `readWorkingCopy`, `workingCopyEdited`, `hashText`. |
+| `src/target.ts` | The shared target lookup: `targetInputs` (flag → variable → link), `resolveTarget` (id, then name; asks or refuses), `resolveProjectTarget` (the same, down to the Environment), `TARGET_OPTIONS`. |
 | `src/target-session.ts` | `connectToInstance` (the first steps every command takes), `lookUpTarget` (those plus the target), `instanceCatalog`, `chooserFor`, `describeTarget`. |
 | `src/service-status.ts` | `readServiceStatus`: a Service's state, source, Domains and latest Deployment from its own kind's routes (`/applications`, `/compose`, `/postgres`, …), for `status`; `kindRefusal`, the one "Applications only" refusal `deploy`, `vars` and `logs` share. |
 | `src/prompt.ts` | The terminal's questions (`Prompter`): a numbered pick, a yes/no and a hidden answer (`secret`, for `vars set KEY`), on `node:readline`. |

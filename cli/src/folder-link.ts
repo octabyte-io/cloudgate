@@ -16,7 +16,8 @@ import { EXIT } from './exit-codes.js';
 
 /**
  * A **Folder link** (CONTEXT.md, CLI spec): what ties a folder to one
- * Service, so `deploy`, `status`, `logs` and `vars` need no flags in it.
+ * Service, so `deploy`, `status`, `logs` and `vars` need no flags in it, or
+ * to a whole Project, making it a **Project folder** (ADR-0080).
  *
  * Saved at `.cloudgate/link.json` in the linked folder, never in the user's
  * config and never in the Project config. It holds ids, and the Service's
@@ -24,25 +25,60 @@ import { EXIT } from './exit-codes.js';
  * Service in another Environment. The `names` are for printing only: the
  * lookup never matches by them, so a renamed Project still resolves.
  */
-const folderLinkSchema = z.object({
+const linkBase = {
   /** The Instance address the link was made against. */
   instance: z.string().min(1),
   organizationId: z.string().min(1),
   projectId: z.string().min(1),
   /** The default Environment; `--env` picks another. */
   environmentId: z.string().min(1),
+};
+
+const linkNames = {
+  organization: z.string(),
+  project: z.string(),
+  environment: z.string(),
+};
+
+/** A link naming one Service, by its Config name. */
+const serviceLinkSchema = z.object({
+  ...linkBase,
   serviceConfigName: z.string().min(1),
-  names: z.object({
-    organization: z.string(),
-    project: z.string(),
-    environment: z.string(),
-    service: z.string(),
-  }),
+  workingCopy: z.never().optional(),
+  names: z.object({ ...linkNames, service: z.string() }),
 });
 
-export type FolderLink = z.infer<typeof folderLinkSchema>;
+/**
+ * A link naming no Service: a Project folder. `workingCopy` is the
+ * `cloudgate.yaml` beside `.cloudgate/` as it was downloaded: the Project
+ * config's version then, which a whole-YAML edit names so Cloudgate refuses
+ * it once the config has moved on, and the SHA-256 of the text written, so
+ * `config pull` can tell the copy was edited since.
+ */
+const projectFolderLinkSchema = z.object({
+  ...linkBase,
+  serviceConfigName: z.never().optional(),
+  workingCopy: z.object({
+    version: z.number().int(),
+    sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  }),
+  names: z.object(linkNames),
+});
+
+const folderLinkSchema = z.union([serviceLinkSchema, projectFolderLinkSchema]);
+
+export type ServiceLink = z.infer<typeof serviceLinkSchema>;
+export type ProjectFolderLink = z.infer<typeof projectFolderLinkSchema>;
+export type FolderLink = ServiceLink | ProjectFolderLink;
+
+/** Whether `link` makes its folder a Project folder: it names no Service. */
+export function isProjectFolder(link: FolderLink): link is ProjectFolderLink {
+  return link.workingCopy !== undefined;
+}
 
 export const LINK_FOLDER = '.cloudgate';
+/** A Project folder's working copy of the Project config, beside `.cloudgate/`. */
+export const WORKING_COPY_FILE = 'cloudgate.yaml';
 const LINK_FILE = 'link.json';
 
 /** A link, and where it was found. */
@@ -121,30 +157,47 @@ function readLink(file: string): FolderLink {
 
 /**
  * Saves `link` in `folder`, replacing any link there, and makes sure the
- * folder's `.gitignore` ignores `.cloudgate/`: a link is the person's own and
- * is never committed. A `.gitignore` already naming it is left as it is.
+ * folder's `.gitignore` ignores `.cloudgate/`, and in a Project folder its
+ * `cloudgate.yaml` too: a link and a working copy are the person's own and
+ * are never committed (ADR-0080). A line already there is left as it is.
  */
 export function writeLink(folder: string, link: FolderLink): void {
   mkdirSync(join(folder, LINK_FOLDER), { recursive: true });
   writeFileSync(linkFileIn(folder), `${JSON.stringify(link, null, 2)}\n`);
-  ignoreLinkFolder(folder);
+  ignoreInGit(folder, IGNORES_LINK);
+  if (isProjectFolder(link)) ignoreInGit(folder, IGNORES_WORKING_COPY);
 }
 
-const IGNORES_LINK = new Set([
-  '.cloudgate',
-  '.cloudgate/',
-  '/.cloudgate',
-  '/.cloudgate/',
-]);
+/** A `.gitignore` line to add, and the spellings that already say it. */
+interface Ignore {
+  line: string;
+  spellings: ReadonlySet<string>;
+}
 
-function ignoreLinkFolder(folder: string): void {
+const IGNORES_LINK: Ignore = {
+  line: `${LINK_FOLDER}/`,
+  spellings: new Set([
+    '.cloudgate',
+    '.cloudgate/',
+    '/.cloudgate',
+    '/.cloudgate/',
+  ]),
+};
+
+/** Only the copy at the Project folder's root: an app folder's file is not it. */
+const IGNORES_WORKING_COPY: Ignore = {
+  line: `/${WORKING_COPY_FILE}`,
+  spellings: new Set([WORKING_COPY_FILE, `/${WORKING_COPY_FILE}`]),
+};
+
+function ignoreInGit(folder: string, ignore: Ignore): void {
   const gitignore = join(folder, '.gitignore');
   const held = existsSync(gitignore) ? readFileSync(gitignore, 'utf8') : '';
-  if (held.split(/\r?\n/).some((line) => IGNORES_LINK.has(line.trim()))) {
+  if (held.split(/\r?\n/).some((line) => ignore.spellings.has(line.trim()))) {
     return;
   }
   const separator = held === '' || held.endsWith('\n') ? '' : '\n';
-  writeFileSync(gitignore, `${held}${separator}${LINK_FOLDER}/\n`);
+  writeFileSync(gitignore, `${held}${separator}${ignore.line}\n`);
 }
 
 /**
