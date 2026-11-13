@@ -273,18 +273,21 @@ if [ ! -f "$REPO_ROOT/VERSION" ]; then
   exit 1
 fi
 VERSION="$(cat "$REPO_ROOT/VERSION")"
-# A box installed from a git checkout, before the install installed versions.
-# Switching one over is not this script's yet, so it stops here, unchanged.
-if [ -d "$INSTALL_DIR/.git" ]; then
-  echo "$INSTALL_DIR is a git checkout, which this install no longer builds or updates." >&2
-  echo "Switching a checkout over to a Cloudgate version is not supported yet. Nothing was changed." >&2
-  exit 1
-fi
-if [ "$REPO_ROOT" != "$INSTALL_DIR" ] && [ -e "$INSTALL_DIR" ] && [ ! -f "$INSTALL_DIR/VERSION" ]; then
+
+# What is at $INSTALL_DIR must be something place_version knows how to replace:
+# nothing, an installed version, or a git checkout from an install made before
+# versions, which it moves aside and keeps (ADR-0082). Anything else is
+# someone's, and the run stops here, unchanged.
+check_install_dir() {
+  if [ "$REPO_ROOT" = "$INSTALL_DIR" ] || [ ! -e "$INSTALL_DIR" ] \
+    || [ -f "$INSTALL_DIR/VERSION" ] || [ -d "$INSTALL_DIR/.git" ]; then
+    return 0
+  fi
   echo "$INSTALL_DIR exists but holds no Cloudgate version (it has no VERSION file)." >&2
   echo "Move it aside and run this again. Nothing was changed." >&2
-  exit 1
-fi
+  return 1
+}
+check_install_dir || exit 1
 
 # Kept only once every check above has passed and the run is root's.
 if [ -n "$HOSTED_MODE" ]; then
@@ -721,19 +724,41 @@ as_service_user() {
 # directory. Two renames on one filesystem, then the old one goes: rolling
 # back is not offered, because its migrations only go forward. Run from
 # $INSTALL_DIR itself, a re-run of the installed version, it moves nothing.
+#
+# A git checkout there, from an install made before versions (ADR-0082), is
+# moved to $INSTALL_DIR.checkout-<date> and kept rather than deleted: it is
+# the operator's, and may hold changes nobody pushed. Nothing in it is read
+# again; the instance is /etc/default/cloudgate-* and the database, which this
+# leaves alone.
 place_version() {
   if [ "$REPO_ROOT" = "$INSTALL_DIR" ]; then
     echo "Cloudgate $(cat "$INSTALL_DIR/VERSION") is in place at $INSTALL_DIR"
     return
   fi
+  local checkout=''
   rm -rf "$INSTALL_DIR.previous"
-  if [ -e "$INSTALL_DIR" ]; then
+  if [ -d "$INSTALL_DIR/.git" ]; then
+    # One already moved aside today is kept too: the next is .2, .3, ...
+    local base n=1
+    base="$INSTALL_DIR.checkout-$(date +%F)"
+    checkout="$base"
+    while [ -e "$checkout" ]; do
+      n=$((n + 1))
+      checkout="$base.$n"
+    done
+    mv -T "$INSTALL_DIR" "$checkout"
+  elif [ -e "$INSTALL_DIR" ]; then
     mv "$INSTALL_DIR" "$INSTALL_DIR.previous"
   fi
   mv "$REPO_ROOT" "$INSTALL_DIR"
   REPO_ROOT="$INSTALL_DIR"
   rm -rf "$INSTALL_DIR.previous"
   echo "Cloudgate $(cat "$INSTALL_DIR/VERSION") is in place at $INSTALL_DIR"
+  if [ -n "$checkout" ]; then
+    echo "Moved the git checkout that was at $INSTALL_DIR to $checkout."
+    echo "Nothing runs from it now. Once you have kept anything of yours from it, delete it:"
+    echo "    rm -rf $checkout"
+  fi
 }
 
 log "Cloudgate ${VERSION}"

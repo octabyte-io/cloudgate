@@ -499,10 +499,17 @@ describe('deploy/install.sh', () => {
       .join('\n');
 
   describe('place_version', () => {
-    /** Runs place_version run from `from` for an install at `into`; prints REPO_ROOT after. */
+    /**
+     * Runs place_version run from `from` for an install at `into`; prints
+     * REPO_ROOT after. The clock is the one boundary: `date` says 2026-11-13.
+     */
     function place(from: string, into: string) {
       const fn = source().match(/^place_version\(\) \{\n[\s\S]*?\n\}\n/m);
       if (!fn) throw new Error('no place_version in deploy/install.sh');
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(path.join(bin, 'date'), '#!/bin/sh\necho 2026-11-13\n', {
+        mode: 0o755,
+      });
       return spawnSync(
         'bash',
         [
@@ -512,9 +519,78 @@ describe('deploy/install.sh', () => {
           from,
           into,
         ],
-        { encoding: 'utf8' },
+        {
+          encoding: 'utf8',
+          env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+        },
       );
     }
+
+    /** A git checkout at `at`, as an install from before versions left it. */
+    function checkoutAt(at: string) {
+      fs.mkdirSync(path.join(at, '.git'), { recursive: true });
+      fs.writeFileSync(path.join(at, '.git/HEAD'), 'ref: refs/heads/main\n');
+      fs.mkdirSync(path.join(at, 'backend/node_modules'), { recursive: true });
+      fs.mkdirSync(path.join(at, 'frontend/.next'), { recursive: true });
+      fs.writeFileSync(
+        path.join(at, 'frontend/.next/BUILD_ID'),
+        'built here\n',
+      );
+    }
+
+    it('moves a git checkout to /opt/cloudgate.checkout-<date>, keeps it, and says it can be deleted', () => {
+      const into = path.join(root, 'opt/cloudgate');
+      checkoutAt(into);
+      versionTree('0.10.0', `${into}.next`);
+
+      const placed = place(`${into}.next`, into);
+
+      expect(placed.stderr).toBe('');
+      expect(placed.status).toBe(0);
+      expect(placed.stdout).toContain(`REPO_ROOT=${into}\n`);
+      expect(fs.readFileSync(path.join(into, 'VERSION'), 'utf8')).toBe(
+        '0.10.0\n',
+      );
+      expect(fs.existsSync(path.join(into, '.git'))).toBe(false);
+      const aside = `${into}.checkout-2026-11-13`;
+      expect(fs.readFileSync(path.join(aside, '.git/HEAD'), 'utf8')).toBe(
+        'ref: refs/heads/main\n',
+      );
+      expect(
+        fs.readFileSync(path.join(aside, 'frontend/.next/BUILD_ID'), 'utf8'),
+      ).toBe('built here\n');
+      expect(fs.readdirSync(path.join(root, 'opt')).sort()).toEqual([
+        'cloudgate',
+        'cloudgate.checkout-2026-11-13',
+      ]);
+      expect(placed.stdout).toContain(
+        `Moved the git checkout that was at ${into} to ${aside}`,
+      );
+      expect(placed.stdout).toContain(`rm -rf ${aside}`);
+    });
+
+    it('keeps a checkout moved aside earlier the same day, moving the next one beside it', () => {
+      const into = path.join(root, 'opt/cloudgate');
+      const earlier = `${into}.checkout-2026-11-13`;
+      checkoutAt(earlier);
+      fs.writeFileSync(path.join(earlier, 'earlier'), '');
+      checkoutAt(into);
+      versionTree('0.10.0', `${into}.next`);
+
+      const placed = place(`${into}.next`, into);
+
+      expect(placed.status).toBe(0);
+      expect(fs.existsSync(path.join(earlier, 'earlier'))).toBe(true);
+      const aside = `${into}.checkout-2026-11-13.2`;
+      expect(fs.existsSync(path.join(aside, '.git/HEAD'))).toBe(true);
+      expect(fs.existsSync(path.join(aside, 'earlier'))).toBe(false);
+      expect(fs.readdirSync(path.join(root, 'opt')).sort()).toEqual([
+        'cloudgate',
+        'cloudgate.checkout-2026-11-13',
+        'cloudgate.checkout-2026-11-13.2',
+      ]);
+      expect(placed.stdout).toContain(`rm -rf ${aside}\n`);
+    });
 
     it('puts the staged version in place of the installed one, keeping neither the old one nor the staging directory', () => {
       const into = path.join(root, 'opt/cloudgate');
@@ -564,6 +640,73 @@ describe('deploy/install.sh', () => {
         'cloudgate/deploy',
         'cloudgate/deploy/install.sh',
       ]);
+    });
+  });
+
+  /** What /opt/cloudgate holds that the run can replace, checked before anything changes. */
+  describe('check_install_dir', () => {
+    /** Runs check_install_dir run from `from` for an install at `into`. */
+    function check(from: string, into: string) {
+      const fn = source().match(/^check_install_dir\(\) \{\n[\s\S]*?\n\}\n/m);
+      if (!fn) throw new Error('no check_install_dir in deploy/install.sh');
+      return spawnSync(
+        'bash',
+        [
+          '-c',
+          `set -euo pipefail; REPO_ROOT="$1"; INSTALL_DIR="$2"; ${fn[0]} check_install_dir`,
+          'bash',
+          from,
+          into,
+        ],
+        { encoding: 'utf8' },
+      );
+    }
+
+    it('accepts a git checkout at /opt/cloudgate, which place_version moves aside', () => {
+      const into = path.join(root, 'opt/cloudgate');
+      fs.mkdirSync(path.join(into, '.git'), { recursive: true });
+      versionTree('0.10.0', `${into}.next`);
+
+      const checked = check(`${into}.next`, into);
+
+      expect(checked.stderr).toBe('');
+      expect(checked.status).toBe(0);
+    });
+
+    it('accepts an installed version and a first install', () => {
+      const into = path.join(root, 'opt/cloudgate');
+      versionTree('0.10.0', `${into}.next`);
+      expect(check(`${into}.next`, into).status).toBe(0);
+
+      versionTree('0.9.0', into);
+      expect(check(`${into}.next`, into).status).toBe(0);
+    });
+
+    it('refuses an /opt/cloudgate that is neither a checkout nor a version, changing nothing', () => {
+      const into = path.join(root, 'opt/cloudgate');
+      fs.mkdirSync(into);
+      fs.writeFileSync(path.join(into, 'notes'), '');
+      versionTree('0.10.0', `${into}.next`);
+      const before = opt();
+
+      const refused = check(`${into}.next`, into);
+
+      expect(refused.status).toBe(1);
+      expect(refused.stderr).toContain(
+        `${into} exists but holds no Cloudgate version`,
+      );
+      expect(refused.stderr).toContain('Nothing was changed.');
+      expect(opt()).toEqual(before);
+    });
+
+    it('runs before anything changes the box', () => {
+      const lines = code();
+      const checked = lines.indexOf('\ncheck_install_dir || exit 1\n');
+
+      expect(checked).toBeGreaterThan(-1);
+      for (const change of ['  hosted_save_inputs\n', '\nensure_packages ']) {
+        expect(lines.indexOf(change)).toBeGreaterThan(checked);
+      }
     });
   });
 
