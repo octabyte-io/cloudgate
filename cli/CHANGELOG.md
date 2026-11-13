@@ -30,7 +30,7 @@ A template folder may hold `test-values.yaml`, a map of an `ask` input's name to
 
 - **`--full`** sends every file through the full upload, as before.
 - **An Instance older than 0.2.0** gets the full upload, with no error and no question. 0.1.0 is still the lowest Instance version this CLI works with.
-- **If the build host's files change during the upload**, `deploy` compares once more; a second change fails with exit 1 and changes nothing.
+- **If the apply is refused** because the build host's files changed during the upload, or the apply failed there, `deploy` prints the Instance's reason and compares once more; a second refusal fails with exit 1.
 - `--detach --json` is unchanged.
 
 ## 0.0.2-beta.2

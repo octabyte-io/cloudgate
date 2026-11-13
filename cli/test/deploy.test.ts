@@ -622,16 +622,14 @@ describe('cloudgate deploy', () => {
       old: 'cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4', // 'old'
       big: '653db61125cf65c74d6128fd78cbeb257ce2bb86dbdb7eedb141e8e164bf97c5', // 101,000,000 zero bytes
     };
-    const conflict = () =>
-      json(
-        {
-          statusCode: 409,
-          message:
-            'The files on the build host changed since they were compared',
-          code: 'UPLOAD_CONFLICT',
-        },
-        409,
-      );
+    const conflictSaying = (message: string) => () =>
+      json({ statusCode: 409, message, code: 'UPLOAD_CONFLICT' }, 409);
+    const conflict = conflictSaying(
+      'The files on the build host changed since they were compared, so the upload was not applied',
+    );
+    const failedApply = conflictSaying(
+      'The upload could not be applied on the build host: it could not be reached, or the apply stopped part-way',
+    );
 
     it('uploads only the one changed file, saying how many were unchanged', async () => {
       const result = await deploy([...TARGET, '--detach'], {
@@ -714,26 +712,30 @@ describe('cloudgate deploy', () => {
       });
 
       expect(result.code).toBe(0);
+      // The Instance's own sentence, since it alone knows the cause.
       expect(result.stderr).toContain(
-        "The build host's files changed meanwhile; comparing again.\n",
+        'The files on the build host changed since they were compared, so the upload was not applied; comparing again.\n',
       );
       expect(result.compares).toHaveLength(2);
       expect(result.applies).toHaveLength(2);
       expect(result.stderr).toContain('Deployment dpl_7Hq2Xc queued\n');
     });
 
-    it('fails with exit 1, starting no Deployment, when the apply answers a conflict a second time', async () => {
+    it('fails with exit 1, starting no Deployment, when the apply answers a conflict a second time, saying why', async () => {
       const result = await deploy([...TARGET, '--detach'], {
-        applyAnswers: [conflict],
+        applyAnswers: [conflict, failedApply],
       });
 
       expect(result.code).toBe(1);
       expect(result.compares).toHaveLength(2);
       expect(result.applies).toHaveLength(2);
       expect(result.stderr).toContain(
-        "Error: the build host's files changed while they were being uploaded, twice; nothing was changed\n" +
-          'Run cloudgate deploy again, or cloudgate deploy --full to send every file.\n',
+        'Error: The upload could not be applied on the build host: it could not be reached, or the apply stopped part-way\n' +
+          'It was compared and refused twice. Run cloudgate deploy again, or cloudgate deploy --full to send every file.\n',
       );
+      // Nothing says the build host's files were left as they were: a
+      // connection lost after the swap answers the same.
+      expect(result.stderr).not.toContain('nothing was changed');
       expect(result.stderr).not.toContain('queued');
     });
 

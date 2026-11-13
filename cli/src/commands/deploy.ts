@@ -261,9 +261,9 @@ async function uploadWhole(
 /**
  * The upload of only what changed (spec #10): the file list is compared with
  * the build host's files, and the apply sends the list with a zip of only the
- * files the build host is missing. An apply that finds the build host's
- * files changed since the comparison (409 `UPLOAD_CONFLICT`, nothing
- * changed) is compared and applied once more, then fails.
+ * files the build host is missing. An apply refused with a 409
+ * `UPLOAD_CONFLICT` (the build host's files changed since the comparison, or
+ * the apply failed) is compared and applied once more, then fails.
  */
 async function uploadChanges(
   context: CommandContext,
@@ -306,14 +306,18 @@ async function uploadChanges(
       if (!(error instanceof CliError) || error.code !== UPLOAD_CONFLICT_CODE) {
         throw error;
       }
+      // The Instance's message says which of its causes it was (the build
+      // host's files changed, or the apply failed or never reached it), so
+      // it is printed rather than guessed at. Nothing is claimed about the
+      // build host's files: a connection lost after the swap answers the same.
       if (attempt >= COMPARE_ATTEMPTS) {
         throw new CliError(
-          "the build host's files changed while they were being uploaded, twice; nothing was changed",
+          error.message,
           EXIT.failed,
-          'Run cloudgate deploy again, or cloudgate deploy --full to send every file.',
+          'It was compared and refused twice. Run cloudgate deploy again, or cloudgate deploy --full to send every file.',
         );
       }
-      out.note("The build host's files changed meanwhile; comparing again.");
+      out.note(`${error.message}; comparing again.`);
     }
   }
 }
