@@ -1482,15 +1482,32 @@ describe('cloudgate deploy in a Project folder', () => {
       expect(result.applies).toEqual([]);
     });
 
-    it('with --yes, applies it, then builds', async () => {
+    it('with --yes, applies it saying the folder-source apps are built next, then builds', async () => {
       const result = await deployProject(['--yes'], { steps: [change] });
+
+      expect(result.code).toBe(0);
+      // So the Apply does not first rebuild each one's previous upload.
+      expect(result.appliedPlans).toEqual([
+        {
+          planId: 'pln_1',
+          confirmDestroy: [],
+          confirmUpgrade: [],
+          folderSourcesDeployedNext: true,
+        },
+      ]);
+      expect(result.stderr).toContain('✓ Applied the plan in staging');
+      expect(result.started).toEqual(['app_web', 'app_wrk']);
+    });
+
+    it('with --service, leaves the other folder-source apps to the Apply to deploy', async () => {
+      const result = await deployProject(['--yes', '--service', 'web'], {
+        steps: [change],
+      });
 
       expect(result.code).toBe(0);
       expect(result.appliedPlans).toEqual([
         { planId: 'pln_1', confirmDestroy: [], confirmUpgrade: [] },
       ]);
-      expect(result.stderr).toContain('✓ Applied the plan in staging');
-      expect(result.started).toEqual(['app_web', 'app_wrk']);
     });
 
     it('with --yes, refuses a plan that destroys a Service, exit 2, dismisses it and uploads nothing', async () => {

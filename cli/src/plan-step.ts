@@ -57,7 +57,15 @@ export async function runPlanStep(
   context: Pick<CommandContext, 'out' | 'prompter'>,
   client: ApiClient,
   project: FoundProjectFolder,
-  options: { readonly yes: boolean },
+  options: {
+    readonly yes: boolean;
+    /**
+     * The Environment whose folder-source apps the caller uploads and builds
+     * straight after (a root deploy), so its Apply queues no Deployment of
+     * their previous uploads (#28).
+     */
+    readonly folderSourcesDeployedNextIn?: string;
+  },
 ): Promise<PlanStepOutcome> {
   const { out, prompter } = context;
   const { folder, link } = project;
@@ -161,6 +169,9 @@ export async function runPlanStep(
               planId: one.plan.planId,
               confirmDestroy: one.destroy,
               confirmUpgrade: one.upgrade.map(({ name }) => name),
+              ...(one.plan.environmentId === options.folderSourcesDeployedNextIn
+                ? { folderSourcesDeployedNext: true }
+                : {}),
             },
             planViewSchema,
           ),

@@ -177,6 +177,20 @@ const DATABASE_ROWS = {
   redis: { table: redis, idColumn: redis.redisId },
 } as const;
 
+/**
+ * Whether the Apply's caller uploads and builds `configName` straight after:
+ * it asked so (`folderSourcesDeployedNext`), and the entry is a folder source.
+ */
+function deployedNext(input: ApplyInput, configName: string): boolean {
+  if (input.folderSourcesDeployedNext !== true) return false;
+  const entry = input.config.services[configName];
+  return (
+    entry !== undefined &&
+    'source' in entry &&
+    entry.source?.sourceType === 'drop'
+  );
+}
+
 /** The refusal code for a plan whose Application no connection reaches. */
 export const PLAN_REFUSED_CODE = 'PLAN_REFUSED';
 
@@ -218,6 +232,13 @@ export interface ApplyInput {
    * delete its data (no final snapshot)" on; every other keeps one.
    */
   readonly deleteDataOf: ReadonlySet<string>;
+  /**
+   * The caller uploads and builds every folder-source app straight after
+   * the Apply (a root `cloudgate deploy`), so a changed or redeployed one on
+   * a Server queues no Deployment of its previous upload (#28). Absent is
+   * false.
+   */
+  readonly folderSourcesDeployedNext?: boolean;
   /**
    * The values each Template part this plan creates takes from its Pending
    * setup, by Config name and then variable (ADR-0064). Read as the Apply
@@ -585,11 +606,9 @@ export class PlanApplier {
     return {
       ...base,
       status: 'applied',
-      deploy: await this.deployApplication(
-        ctx,
-        step.serviceId,
-        input.heldBuilds,
-      ),
+      deploy: deployedNext(input, step.configName)
+        ? null
+        : await this.deployApplication(ctx, step.serviceId, input.heldBuilds),
     };
   }
 
@@ -2650,6 +2669,12 @@ export class PlanApplier {
         if (savedCloud) {
           await this.saveNativeAws(id, cloudOrLegacy(savedCloud.cloud), entry);
           await this.saveNativeGcp(id, cloudOrLegacy(savedCloud.cloud), entry);
+        }
+        // A folder source the caller uploads and builds next, on a Server:
+        // its settings are saved, and that build is its Deployment. A cloud
+        // Service still deploys here, since its run carries this approval.
+        if (!savedCloud && deployedNext(input, step.configName)) {
+          return { domain: null, deploy: null, domainPortMove };
         }
         const deploy = await this.deployApplication(ctx, id, input.heldBuilds);
         // A cloud Service's deploy runs under what this Apply approved, as a

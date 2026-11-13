@@ -600,6 +600,7 @@ export class ProjectConfigService {
     } = {},
     deleteFilesOf: readonly string[] = [],
     deleteDataOf: readonly string[] = [],
+    options: { readonly folderSourcesDeployedNext?: boolean } = {},
   ): Promise<PlanView> {
     const env = await this.locations.findEnvironment(
       ctx,
@@ -733,6 +734,7 @@ export class ProjectConfigService {
       heldBuilds: await this.plans.heldBuildsOf(planId),
       deleteFilesOf: new Set(deleteFilesOf),
       deleteDataOf: new Set(deleteDataOf),
+      folderSourcesDeployedNext: options.folderSourcesDeployedNext === true,
       templateValues,
       templateWrites: await pendingWritesOf(
         this.db,

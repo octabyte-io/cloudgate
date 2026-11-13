@@ -276,6 +276,7 @@ export class PlansController {
       { destroy: body.confirmDestroy, upgrade: body.confirmUpgrade },
       body.deleteFilesOf,
       body.deleteDataOf,
+      { folderSourcesDeployedNext: body.folderSourcesDeployedNext },
     );
   }
 }
