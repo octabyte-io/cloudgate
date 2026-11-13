@@ -1049,4 +1049,67 @@ describe('Console saves on a Cloudgate-kept config (e2e)', () => {
       );
     });
   });
+
+  /** Every applied plan moves the version a whole-YAML edit names (ADR-0080). */
+  describe('the config version', () => {
+    async function version() {
+      const config = await request(server)
+        .get(`/projects/${projectId}/config`)
+        .set('Cookie', cookie);
+      expect(config.status).toBe(200);
+      return (config.body as { location: { version: number } }).location
+        .version;
+    }
+
+    it('moves on a console Save', async () => {
+      const before = await version();
+
+      await createApplication('Web Shop');
+
+      expect(await version()).not.toBe(before);
+    });
+
+    it('moves when a whole-YAML edit is applied', async () => {
+      const saved = await request(server)
+        .post(`/projects/${projectId}/config/plans`)
+        .set('Cookie', cookie)
+        .send({
+          text: 'version: 1\nservices:\n  cache:\n    kind: redis\n',
+          version: await version(),
+        });
+      expect(saved.status).toBe(201);
+      const [open] = (saved.body as { plans: PlanBody[] }).plans;
+      const planned = await version();
+
+      const applied = await request(server)
+        .post(`/environments/${environmentId}/plan/apply`)
+        .set('Cookie', cookie)
+        .send({ planId: open.planId });
+
+      expect(applied.status).toBe(200);
+      expect(await version()).not.toBe(planned);
+    });
+
+    it('moves when a plan that leaves the text as it is is applied', async () => {
+      const app = await createApplication('Web Shop');
+      // The saved port drifts from the config's; the plan puts it back.
+      await ctx.db
+        .update(application)
+        .set({ port: 8080 })
+        .where(eq(application.applicationId, app.applicationId));
+      const open = await checkForChanges();
+      expect(open.status).toBe('open');
+      const before = await version();
+      const text = await storedText();
+
+      const applied = await request(server)
+        .post(`/environments/${environmentId}/plan/apply`)
+        .set('Cookie', cookie)
+        .send({ planId: open.planId });
+
+      expect(applied.status).toBe(200);
+      expect(await storedText()).toBe(text);
+      expect(await version()).not.toBe(before);
+    });
+  });
 });

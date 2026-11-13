@@ -8,13 +8,15 @@ import {
   gitProvider,
   project,
   projectConfigLocation,
+  user,
 } from '../db/schema';
 import type { Environment, ProjectConfigLocation } from '../db/schema';
 import type { DrizzleTx } from '../environments/config-name';
 import type { PermissionCtx } from '../rbac/permission.service';
 import { PermissionService } from '../rbac/permission.service';
 import { pointedAt, repositoryKept } from './console-saves/repository-kept';
-import { configMissing } from './plan-errors';
+import { moveVersion } from './config-version';
+import { configMissing, staleVersion } from './plan-errors';
 import type { ConfigLocationView } from './project-config.views';
 import { CONFIG_READER } from './reader/config-reader.port';
 import type {
@@ -71,6 +73,7 @@ export class ConfigLocations {
             kind: 'cloudgate',
             text: location.text,
             textHash: textHash(location.text),
+            version: location.version,
             updatedAt: location.updatedAt,
             movedOutOf: location.movedOutOf,
           };
@@ -82,6 +85,7 @@ export class ConfigLocations {
       connectionName: found.connectionName,
       repository: location.repository ?? '',
       path: location.path ?? '',
+      version: location.version,
       updatedAt: location.updatedAt,
     };
   }
@@ -131,11 +135,51 @@ export class ConfigLocations {
     return location.text;
   }
 
-  async writeText(tx: DrizzleTx, projectId: string, text: string) {
-    await tx
-      .update(projectConfigLocation)
-      .set({ text, updatedAt: new Date().toISOString() })
-      .where(eq(projectConfigLocation.projectId, projectId));
+  /**
+   * Refuses an edit that started from `version` once the config has moved
+   * on (ADR-0080); `undefined` refuses nothing. The row is locked either
+   * way, so inside a transaction no write lands between the check and the
+   * edit's own.
+   */
+  async refuseStaleVersion(
+    db: DrizzleDB | DrizzleTx,
+    projectId: string,
+    version: number | undefined,
+  ): Promise<void> {
+    const [found] = await db
+      .select({
+        version: projectConfigLocation.version,
+        changedAt: projectConfigLocation.updatedAt,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+      })
+      .from(projectConfigLocation)
+      .leftJoin(user, eq(projectConfigLocation.changedBy, user.id))
+      .where(eq(projectConfigLocation.projectId, projectId))
+      .limit(1)
+      .for('update', { of: projectConfigLocation });
+    if (!found || version === undefined || found.version === version) return;
+    throw staleVersion(version, {
+      changedAt: found.changedAt,
+      // A person is named as the console names them; Cloudgate itself, or
+      // a write from before versions were recorded, by no one.
+      changedBy:
+        found.email === null
+          ? null
+          : `${found.firstName ?? ''} ${found.lastName ?? ''}`.trim() ||
+            found.email,
+    });
+  }
+
+  /** Stores the Cloudgate-kept text, which moves the version. */
+  async writeText(
+    tx: DrizzleTx,
+    projectId: string,
+    text: string,
+    changedBy: string | null,
+  ) {
+    await moveVersion(tx, projectId, changedBy, { text });
   }
 
   /** The Project's Environments, oldest first. */

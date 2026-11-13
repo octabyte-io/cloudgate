@@ -72,6 +72,10 @@ export class ProjectConfigSchemaController {
 export class ProjectConfigsController {
   constructor(private readonly projectConfig: ProjectConfigService) {}
 
+  /**
+   * The config's location, its version and, kept in Cloudgate, its text: what
+   * a working copy is downloaded from (ADR-0080).
+   */
   @Get(':projectId/config')
   findOne(
     @CurrentUser() user: AuthSession['user'],
@@ -84,7 +88,9 @@ export class ProjectConfigsController {
   /**
    * The whole-YAML edit (US16): stores a plan per Environment and
    * applies nothing; the text is stored when one of them is applied. A read
-   * of each Environment, as asking for each plan is.
+   * of each Environment, as asking for each plan is. A `version` names the
+   * config version the edit started from, and is refused with
+   * `CONFIG_VERSION_STALE` once the config has moved on (ADR-0080).
    */
   @Post(':projectId/config/plans')
   @RequirePermission('environment', 'read')
@@ -98,6 +104,7 @@ export class ProjectConfigsController {
       toCtx(user, session),
       projectId,
       body.text,
+      body.version,
     );
   }
 

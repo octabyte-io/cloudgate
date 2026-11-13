@@ -16,6 +16,12 @@ export interface CloudgateLocationView {
   readonly kind: 'cloudgate';
   readonly text: string;
   readonly textHash: string;
+  /**
+   * The config's version (ADR-0080): a whole-YAML edit naming an older one
+   * is refused. Compared only for equality.
+   */
+  readonly version: number;
+  /** When the version last moved. */
   readonly updatedAt: string;
   /**
    * The repository file it was moved out of (US65), which Cloudgate no
@@ -37,6 +43,8 @@ export interface RepositoryLocationView {
   readonly connectionName: string | null;
   readonly repository: string;
   readonly path: string;
+  /** The config's version, moved by every Apply (ADR-0080). */
+  readonly version: number;
   readonly updatedAt: string;
 }
 

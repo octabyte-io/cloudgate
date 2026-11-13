@@ -483,6 +483,113 @@ services:
     });
   });
 
+  /**
+   * A whole-YAML edit names the version it started from, and is refused
+   * when Cloudgate's config has moved on since (ADR-0080), so a working copy
+   * never undoes someone else's change.
+   */
+  describe('the config version', () => {
+    interface LocationBody {
+      kind: string;
+      text: string;
+      version: number;
+      updatedAt: string;
+    }
+
+    async function readConfig(id = projectId) {
+      const res = await request(server)
+        .get(`/projects/${id}/config`)
+        .set('Cookie', cookie);
+      expect(res.status).toBe(200);
+      return (res.body as { location: LocationBody }).location;
+    }
+
+    const editWhole = (body: { text: string; version?: number }) =>
+      request(server)
+        .post(`/projects/${projectId}/config/plans`)
+        .set('Cookie', cookie)
+        .send(body);
+
+    it("answers a new Project's config as version 1, with its text", async () => {
+      const created = await request(server)
+        .post('/projects')
+        .set('Cookie', cookie)
+        .send({ name: 'blog' });
+      expect(created.status).toBe(201);
+
+      const location = await readConfig(
+        (created.body as { projectId: string }).projectId,
+      );
+
+      expect(location).toMatchObject({ kind: 'cloudgate', version: 1 });
+      expect(parseProjectConfig(location.text)).toEqual({
+        ok: true,
+        config: { version: 1, services: {} },
+      });
+    });
+
+    it('refuses an edit that started from an older version, saying when the config last changed and who changed it', async () => {
+      const started = await readConfig();
+      // A teammate adds a Service in the console after the download.
+      const teammate = await signUpMember(server, cookie, {
+        name: 'Ida Rhodes',
+        role: 'admin',
+      });
+      const added = await request(server)
+        .post('/applications')
+        .set('Cookie', teammate.cookie)
+        .send({ name: 'Admin', environmentId });
+      expect(added.status).toBe(201);
+      const moved = await readConfig();
+      expect(moved.version).not.toBe(started.version);
+
+      const res = await editWhole({ text: CHANGES, version: started.version });
+
+      expect(res.status).toBe(409);
+      expect((res.body as { code: string }).code).toBe('CONFIG_VERSION_STALE');
+      const message = (res.body as { message: string }).message;
+      expect(message).toContain(`changed at ${moved.updatedAt} by Ida Rhodes`);
+      expect(await openPlans()).toEqual([]);
+      expect((await readConfig()).text).toBe(moved.text);
+    });
+
+    it('plans an edit that names the version it started from', async () => {
+      const started = await readConfig();
+
+      const res = await editWhole({ text: CHANGES, version: started.version });
+
+      expect(res.status).toBe(201);
+      expect(await openPlans()).toHaveLength(1);
+    });
+
+    it('plans an edit that names no version, whatever the config is at', async () => {
+      await request(server)
+        .post('/applications')
+        .set('Cookie', cookie)
+        .send({ name: 'Admin', environmentId });
+
+      const res = await editWhole({ text: CHANGES });
+
+      expect(res.status).toBe(201);
+      expect(await openPlans()).toHaveLength(1);
+    });
+
+    it('moves the version when an edit with nothing to change stores its text', async () => {
+      const started = await readConfig();
+
+      const res = await editWhole({
+        text: `# kept by hand\n${started.text}`,
+        version: started.version,
+      });
+
+      expect(res.status).toBe(201);
+      expect((res.body as { stored: boolean }).stored).toBe(true);
+      const now = await readConfig();
+      expect(now.version).not.toBe(started.version);
+      expect(now.text).toBe(`# kept by hand\n${started.text}`);
+    });
+  });
+
   describe('dismissing a plan', () => {
     it('dismisses the open plan, recording who and when', async () => {
       await storeConfig(CHANGES);

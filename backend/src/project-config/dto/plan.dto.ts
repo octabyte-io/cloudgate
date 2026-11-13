@@ -53,12 +53,18 @@ export class ApplyPlanDto extends createZodDto(applyPlanSchema) {}
 /**
  * The Project config page's whole-YAML edit: the full text, planned
  * against every Environment and stored only when a plan of it is applied.
+ *
+ * `version` is the config version the edit started from, as `GET
+ * /projects/:projectId/config` answered it: the edit is refused when the
+ * config has moved on since (ADR-0080). Absent, the edit is planned whatever
+ * the version, as the console's is.
  */
 export const saveConfigTextSchema = z.object({
   text: z
     .string()
     .min(1, 'text cannot be empty')
     .max(256 * 1024, 'text must be at most 256 KiB'),
+  version: z.number().int().positive().optional(),
 });
 
 export class SaveConfigTextDto extends createZodDto(saveConfigTextSchema) {}

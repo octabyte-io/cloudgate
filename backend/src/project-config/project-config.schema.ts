@@ -2,6 +2,7 @@ import { relations, sql } from 'drizzle-orm';
 import {
   check,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -80,7 +81,18 @@ export const projectConfigLocation = pgTable(
      * the config moves into a repository again, and for one never moved out.
      */
     movedOutOf: jsonb('moved_out_of').$type<MovedOutOf>(),
+    /**
+     * The config's version (ADR-0080): moved by every write of the text and
+     * every Apply, so a whole-YAML edit naming the version it started from
+     * is refused once the config has moved on. Compared only for equality.
+     */
+    version: integer('version').notNull().default(1),
+    /** Who last moved the version; `null` for Cloudgate itself, or before. */
+    changedBy: text('changed_by').references(() => user.id, {
+      onDelete: 'set null',
+    }),
     createdAt: isoTimestamp('created_at'),
+    /** When the version last moved, or the location changed. */
     updatedAt: isoTimestamp('updated_at'),
   },
   (table) => [

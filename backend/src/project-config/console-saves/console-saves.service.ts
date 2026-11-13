@@ -28,6 +28,7 @@ import type { DrizzleTx } from '../../environments/config-name';
 import { SERVICE_SOURCES } from '../../environments/environment-services';
 import type { PermissionCtx } from '../../rbac/permission.service';
 import { leftoversOf } from '../applier/leftovers';
+import { moveVersion } from '../config-version';
 import type { PlanStepResult } from '../applier/apply.types';
 import { parseProjectConfig } from '../format/parse-config';
 import { isNetworkStep, movesConsoleStackVm } from '../planner/cloud-steps';
@@ -617,10 +618,8 @@ export class ConsoleSaves {
     }
     if (rewritten === null) return false;
     const { stored, text, configName, edited } = rewritten;
-    await tx
-      .update(projectConfigLocation)
-      .set({ text, updatedAt: new Date().toISOString() })
-      .where(eq(projectConfigLocation.projectId, target.projectId));
+    // A console Save is an applied plan, so it moves the version (ADR-0080).
+    await moveVersion(tx, target.projectId, ctx?.user.id ?? null, { text });
 
     const steps = savedSteps(
       stored,

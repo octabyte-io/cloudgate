@@ -524,6 +524,29 @@ describe('Push plans and held builds (e2e)', () => {
       ]);
     });
 
+    it("applying the plan moves the config's version", async () => {
+      await pushPortChange();
+      const production = (await planOf(productionId)) as PlanBody;
+      const version = async () => {
+        const config = await request(server)
+          .get(`/projects/${projectId}/config`)
+          .set('Cookie', cookie);
+        expect(config.status).toBe(200);
+        return (config.body as { location: { kind: string; version: number } })
+          .location;
+      };
+      const before = await version();
+      expect(before.kind).toBe('repository');
+
+      const applied = await request(server)
+        .post(`/environments/${productionId}/plan/apply`)
+        .set('Cookie', cookie)
+        .send({ planId: production.planId });
+
+      expect(applied.status).toBe(200);
+      expect((await version()).version).not.toBe(before.version);
+    });
+
     it('dismissing the plan queues the held build with the old settings', async () => {
       await pushPortChange();
       const production = (await planOf(productionId)) as PlanBody;

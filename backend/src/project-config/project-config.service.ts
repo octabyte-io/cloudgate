@@ -33,6 +33,7 @@ import {
 } from './applier/plan-applier';
 import type { ApplyInput, Connections } from './applier/plan-applier';
 import { ConfigLocations } from './config-locations.service';
+import { moveVersion } from './config-version';
 import { ConfigMoves } from './config-moves.service';
 import { whilePlanApplies } from './console-saves';
 import {
@@ -415,9 +416,15 @@ export class ProjectConfigService {
     ctx: PermissionCtx,
     projectId: string,
     text: string,
+    startedFrom?: number,
   ): Promise<SavedConfigPlans> {
     await this.findProject(ctx, projectId);
     const stored = await this.locations.storedText(projectId);
+    // An edit naming the version it started from is refused once the
+    // config has moved on (ADR-0080); one naming none plans as it always has.
+    if (startedFrom !== undefined) {
+      await this.locations.refuseStaleVersion(this.db, projectId, startedFrom);
+    }
     const parsed = parseProjectConfig(text);
     if (!parsed.ok) throw refusedPlan([parsed.refusal]);
 
@@ -453,6 +460,9 @@ export class ProjectConfigService {
 
     const storeNow = planned.every((one) => one.planned.steps.length === 0);
     const plans = await this.db.transaction(async (tx) => {
+      // Again, holding the config row: a write may have landed while
+      // planning. First, the order an Apply and a console Save lock in.
+      await this.locations.refuseStaleVersion(tx, projectId, startedFrom);
       const made: Plan[] = [];
       for (const one of planned) {
         made.push(
@@ -464,7 +474,9 @@ export class ProjectConfigService {
           ),
         );
       }
-      if (storeNow) await this.locations.writeText(tx, projectId, text);
+      if (storeNow) {
+        await this.locations.writeText(tx, projectId, text, ctx.user.id);
+      }
       return made;
     });
     await this.plans.releaseHeld(
@@ -676,12 +688,19 @@ export class ProjectConfigService {
     if (networkStep) await this.networks.refuseBusy(environmentId, networkStep);
 
     const now = new Date().toISOString();
-    const [claimed] = await this.db
-      .update(plan)
-      .set({ status: 'applied', appliedBy: ctx.user.id, appliedAt: now })
-      .where(and(eq(plan.planId, planId), eq(plan.status, 'open')))
-      .returning();
-    if (!claimed) throw notOpen('applied');
+    const claimed = await this.db.transaction(async (tx) => {
+      // Every Apply moves the config's version, whatever its text does
+      // (ADR-0080): a push's, a whole-YAML edit's or a check's. The config
+      // row first, the order a console Save and a whole-YAML edit lock in.
+      await moveVersion(tx, env.projectId, ctx.user.id);
+      const [made] = await tx
+        .update(plan)
+        .set({ status: 'applied', appliedBy: ctx.user.id, appliedAt: now })
+        .where(and(eq(plan.planId, planId), eq(plan.status, 'open')))
+        .returning();
+      if (!made) throw notOpen('applied');
+      return made;
+    });
 
     // A made network's Drift is put back by its own run, queued first.
     const putBacks: PlanStepResult[] = [];
@@ -737,7 +756,8 @@ export class ProjectConfigService {
           found.steps.filter((step) => step.action !== 'network-create'),
         );
       },
-      keepText: (tx) => this.keepText(tx, env.projectId, text, stored),
+      keepText: (tx) =>
+        this.keepText(tx, env.projectId, text, stored, ctx.user.id),
     });
     return this.plans.view(running);
   }
@@ -748,9 +768,10 @@ export class ProjectConfigService {
     projectId: string,
     text: string,
     stored: string | null,
+    changedBy: string,
   ): Promise<void> {
     if (stored !== null && text !== stored) {
-      await this.locations.writeText(tx, projectId, text);
+      await this.locations.writeText(tx, projectId, text, changedBy);
     }
   }
 
@@ -780,7 +801,13 @@ export class ProjectConfigService {
       )),
     ];
     const [applied] = await this.db.transaction(async (tx) => {
-      await this.keepText(tx, projectId, settle.text, settle.stored);
+      await this.keepText(
+        tx,
+        projectId,
+        settle.text,
+        settle.stored,
+        ctx.user.id,
+      );
       return tx
         .update(plan)
         .set({

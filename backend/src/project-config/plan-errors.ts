@@ -25,6 +25,11 @@ export const PLAN_DESTROY_NOT_CONFIRMED_CODE = 'PLAN_DESTROY_NOT_CONFIRMED';
  * offline while it runs and never undone.
  */
 export const PLAN_UPGRADE_NOT_CONFIRMED_CODE = 'PLAN_UPGRADE_NOT_CONFIRMED';
+/**
+ * A whole-YAML edit that started from an older config version than
+ * Cloudgate's (ADR-0080): someone changed the config since it was read.
+ */
+export const CONFIG_VERSION_STALE_CODE = 'CONFIG_VERSION_STALE';
 /** A move's confirm whose preview's reads no longer hold. */
 export const MOVE_STALE_CODE = 'MOVE_STALE';
 /**
@@ -82,6 +87,27 @@ export function deployTargetMoved(
     ? describe(now).replace(/^a /, 'another ')
     : describe(now);
   return `the Environment's Deploy target changed since it was made, from ${describe(planned)} to ${after}`;
+}
+
+/**
+ * A whole-YAML edit from `startedFrom` refused, saying when the config last
+ * changed and who changed it (`null` for Cloudgate itself), so the person
+ * reads it again rather than undoing that change. Both are in the message
+ * only: the error body publishes `code`, and a client reads the version
+ * again from `GET /projects/:projectId/config`.
+ */
+export function staleVersion(
+  startedFrom: number,
+  now: {
+    readonly changedAt: string;
+    readonly changedBy: string | null;
+  },
+): ConflictException {
+  const by = now.changedBy === null ? '' : ` by ${now.changedBy}`;
+  return new ConflictException({
+    message: `The Project config changed at ${now.changedAt}${by}, after the version ${startedFrom} this edit started from. Read it again, then make the edit on what it is now`,
+    code: CONFIG_VERSION_STALE_CODE,
+  });
 }
 
 export function configMissing(): ConflictException {

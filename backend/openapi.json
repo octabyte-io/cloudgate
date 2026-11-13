@@ -20050,6 +20050,12 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 262144
+          },
+          "version": {
+            "type": "integer",
+            "exclusiveMinimum": true,
+            "maximum": 9007199254740991,
+            "minimum": 0
           }
         },
         "required": [
