@@ -70,7 +70,7 @@ out, and the *Avoid* column is the half that gets cited in review:
 column, a cloud provider has machine types. Renaming those to fit the glossary is a different error.
 
 If the concept you need is not in the glossary, that is a signal — either the language is invented
-(reconsider) or there is a real gap (note it; `/plan` adds terms as decisions settle them).
+(reconsider) or there is a real gap (note it; `/planning` adds terms as decisions settle them).
 
 **This binds what you write now, not the tree behind you.** A banned synonym already sitting in a
 comment is corrected when you are in that file anyway; a repo-wide grep for one is not a finding

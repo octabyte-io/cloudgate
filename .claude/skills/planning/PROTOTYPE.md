@@ -1,4 +1,4 @@
-# Prototypes inside `/plan`
+# Prototypes inside `/planning`
 
 A prototype answers one open question by giving the user something to react to. It is a question in the SKILL.md sense: you build it, show it, recommend a reading, and wait for the user's answer.
 

@@ -21,7 +21,7 @@ palette, font or aesthetic. The console is an *Operate* surface: precision and r
 | The work | Use |
 | --- | --- |
 | Building or changing a page or component | `frontend-design` (plugin), then the design-system index |
-| Exploring several UI directions | `/plan` (its `PROTOTYPE.md`: variants on `/dev/prototype/<feature>`) |
+| Exploring several UI directions | `/planning` (its `PROTOTYPE.md`: variants on `/dev/prototype/<feature>`) |
 
 ## Running tests
 
@@ -40,7 +40,7 @@ Details, lanes and commands: `docs/testing.md`.
 
 Four skills in `.claude/skills/`:
 
-- **`/plan`**: a rough idea → an approved `spec` issue and its tickets, asking you every decision.
+- **`/planning`**: a rough idea → an approved `spec` issue and its tickets, asking you every decision.
 - **`/build`**: a spec's tickets → tested commits on `main`, then the issues closed.
 - **`/fix`**: a bug → a failing test, the fix, and the issue closed.
 - **`/ask`**: a question about the code, answered plainly; it only reads.

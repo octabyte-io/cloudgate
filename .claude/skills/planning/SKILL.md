@@ -1,15 +1,15 @@
 ---
-name: plan
-description: "Cloudgate's starting point for anything new. Load it before writing code or giving design advice. Use it whenever the user wants the product to do something it doesn't do yet: \"I want people to be able to…\", \"thinking about letting…\", \"what would we need to decide?\", \"let's plan…\". Use it for both large and small features, including a small, fully specified UI addition the user wants written up as a spec or ticket. Also use it when they ask to prototype or compare options for how a new screen or interaction should look, or when they point to a plan map, a question issue or `/plan --all` by number. The skill researches the code, asks the user each open decision, then publishes an approved spec issue with tickets on GitHub. Don't use it for broken behaviour, errors or slowness (`/fix`), for adjusting existing polish, for building approved tickets (`/build`), or for code review, pure research or explaining past decisions."
+name: planning
+description: "Cloudgate's starting point for anything new. Load it before writing code or giving design advice. Use it whenever the user wants the product to do something it doesn't do yet: \"I want people to be able to…\", \"thinking about letting…\", \"what would we need to decide?\", \"let's plan…\". Use it for both large and small features, including a small, fully specified UI addition the user wants written up as a spec or ticket. Also use it when they ask to prototype or compare options for how a new screen or interaction should look, or when they point to a plan map, a question issue or `/planning --all` by number. The skill researches the code, asks the user each open decision, then publishes an approved spec issue with tickets on GitHub. Don't use it for broken behaviour, errors or slowness (`/fix`), for adjusting existing polish, for building approved tickets (`/build`), or for code review, pure research or explaining past decisions."
 ---
 
-`/plan` takes a rough idea to a `spec` issue and its tickets, approved together. The user owns every **decision**; you own every **fact**. Look facts up yourself, put decisions to the user, and wait for each answer.
+`/planning` takes a rough idea to a `spec` issue and its tickets, approved together. The user owns every **decision**; you own every **fact**. Look facts up yourself, put decisions to the user, and wait for each answer.
 
 Three ways in:
 
 - **A rough idea** (most runs): steps 1 to 6 below.
 - **A `plan` map or `question` issue** (a number or link): read [`LARGE.md`](LARGE.md), section "Work one question".
-- **`/plan --all`**: read [`LARGE.md`](LARGE.md), section "Run every ready question".
+- **`/planning --all`**: read [`LARGE.md`](LARGE.md), section "Run every ready question".
 
 ## 1. Research first
 

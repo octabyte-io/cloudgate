@@ -4,4 +4,4 @@ focus: trace
 weight: 1
 ---
 
-It ends by pointing to /plan
+It ends by pointing to /planning

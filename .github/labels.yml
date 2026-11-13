@@ -1,5 +1,5 @@
 # The repository's issue labels. CONTRIBUTING.md ("Labels") explains each one,
-# and the issue forms and the /plan, /build and /fix skills rely on these exact
+# and the issue forms and the /planning, /build and /fix skills rely on these exact
 # names. .github/workflows/labels.yml makes GitHub match this file on every
 # push to main: it creates and updates these labels and deletes any other.
 # Keep every colour quoted: unquoted, yq reads 5319e7 as the number 5.319e10

@@ -55,9 +55,9 @@ Never settle more than one question per session; the user may be working another
 
 ## Run every ready question
 
-`/plan --all` (optionally with a map number): find every open, unassigned `question` whose blockers are all closed, show the list, then start one background agent per question, each in its own worktree. Prompt each with:
+`/planning --all` (optionally with a map number): find every open, unassigned `question` whose blockers are all closed, show the list, then start one background agent per question, each in its own worktree. Prompt each with:
 
-> Run the `plan` skill on question #<n> ("Work one question" in `LARGE.md`). You cannot talk to the user. Whenever the skill would ask the user anything, end your turn with the full question in the skill's question shape. The main session will reply with the user's answer; continue from there. Never answer your own question. When the question is closed, end with `QUESTION DONE` and the decision in one line.
+> Run the `planning` skill on question #<n> ("Work one question" in `LARGE.md`). You cannot talk to the user. Whenever the skill would ask the user anything, end your turn with the full question in the skill's question shape. The main session will reply with the user's answer; continue from there. Never answer your own question. When the question is closed, end with `QUESTION DONE` and the decision in one line.
 
 When an agent's turn ends with a question, show it to the user exactly as written and send their reply back to that agent. You relay; you never answer for them, and you never reply "as recommended" unless the user said those words to that question. When an agent finishes, check for questions it unblocked and start them the same way.
 
