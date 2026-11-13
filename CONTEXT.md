@@ -359,6 +359,10 @@ _Avoid_: Project link (a Project is not what it names), binding, context, linked
 A folder linked to a whole Project rather than one Service, usually a monorepo's root. It holds a working copy of the Project's **Project config**, downloaded by `cloudgate link` and sent back as a plan by `cloudgate deploy`, which is refused when the config changed in Cloudgate since the download (ADR-0080). The config stays kept in Cloudgate; the working copy is never a place it is kept and Cloudgate never works from it. A deploy there uploads the whole folder to every app whose config entry names a subfolder of it as its source, and each builds from that subfolder; apps from a repository or an image are left alone. Only a Project whose config is kept in Cloudgate can have one, and the working copy is never committed.
 _Avoid_: Monorepo link, workspace, local config (for the record, which is Cloudgate's)
 
+**Config version**:
+A counter on a Project's **Project config** that every Apply (a console Save is one) and every stored change of its text moves; storing the text it already holds moves nothing. A whole-YAML edit may name the version it started from, and is refused when the config has moved on since, so a **Project folder**'s working copy never undoes a teammate's change (ADR-0080). It counts changes to one Project's config, never the config format's own `version:` line.
+_Avoid_: Revision, etag, config format version (that is the `version:` line)
+
 **Deployment log**:
 The append-only file one deployment writes on whichever server ran it. It is addressed by its deployment, never by a path a caller supplies. It is Cloudgate's account of the attempt, never the app's own output: a cloud deploy whose new copy fails to start adds the cloud's reason and that copy's last lines before it ends as an error, and a deploy that works quotes nothing from the app.
 _Avoid_: Build log, log file

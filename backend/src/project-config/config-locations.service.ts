@@ -139,7 +139,8 @@ export class ConfigLocations {
    * Refuses an edit that started from `version` once the config has moved
    * on (ADR-0080); `undefined` refuses nothing. The row is locked either
    * way, so inside a transaction no write lands between the check and the
-   * edit's own.
+   * edit's own. Not scoped here: the caller has already found the Project
+   * inside its organization.
    */
   async refuseStaleVersion(
     db: DrizzleDB | DrizzleTx,

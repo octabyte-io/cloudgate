@@ -2,10 +2,17 @@
 
 ## Unreleased
 
+### The Project config has a version, and a whole-YAML edit naming an older one is refused
+
+- **`GET /projects/:projectId/config`** answers the config's `version` beside where it is kept, wherever it is kept, and its `updatedAt` is when the version last moved. Every Apply, a console Save included, and every stored change of the text moves the version; storing the text it already holds moves nothing, so a `cloudgate config plan` or root `cloudgate deploy` with no edits leaves every teammate's working copy current (ADR-0080).
+- **`POST /projects/:projectId/config/plans`** (the whole-YAML edit) takes an optional `version`, the one the edit started from. When the config has moved on since, it is refused with 409 **`CONFIG_VERSION_STALE`**, saying when the config last changed and who changed it, and stores nothing. An edit naming no version plans as before.
+
+**What to do on upgrade**: nothing. Migration `0226_project-config-version` adds `project_config_location.version` (1 for every existing config) and `changed_by`.
+
 ### A root `cloudgate deploy` reads which apps a Project folder builds, and an app built from a folder is never built before its first upload
 
 - **`GET /environments/:environmentId/config/sources`** lists every entry of the Project config, as that Environment reads it, with where its code comes from (`folder` and its subfolder, `repository`, `image`, `console` or `none`). `cloudgate deploy` in a Project folder builds the `folder` ones (ADR-0080). It needs `environment: ['read']` and never returns the text.
-- **No build without uploaded files.** Applying a plan that creates an app with `source: { folder }` queues no Deployment, and a Deployment of an uploaded-files app is refused with 409 ("no files have been uploaded") until an upload has reached it. A plan writes such an app's build path before any upload, so the build path alone no longer counts as an upload; before, that first Deployment ran with no files and failed.
+- **No build without uploaded files.** Applying a plan that creates an app with `source: { folder }` queues no Deployment, and a Deployment of an uploaded-files app is refused with 409 ("no files have been uploaded") until an upload has reached it. A plan writes such an app's build path before any upload, so the build path alone no longer counts as an upload; before, that first Deployment ran with no files and failed. An app whose source moves to a repository or an image forgets its upload, so going back to a folder source waits for the next one instead of building the old files.
 
 **What to do on upgrade**: nothing. Migration `0227_drop-uploaded` adds `application.drop_uploaded` and marks every row that already has an upload's build path as uploaded.
 
