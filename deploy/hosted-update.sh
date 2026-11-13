@@ -12,41 +12,43 @@
 #
 #     cloudgate-update v0.3.0
 #
-# The tag must be vX.Y.Z and its commit must be on origin/main. A run takes a
-# backup to B2 first and then re-runs the one-command install at the tag with
-# HOSTED_MODE=true, which is the upgrade (docs/deploy.md §7); every other input
-# is read back from /etc/default/cloudgate-hosted, so nothing secret travels
-# over SSH or lives in GitHub.
+# The tag must be vX.Y.Z and a published Cloudgate version: its tarball's
+# .sha256 is on the tag's GitHub Release, which publish-version.yml puts there
+# only after the tag's E2E (release) run is green (ADR-0082). A run takes a
+# backup to B2 first and then runs the tag's own one-command install with
+# CLOUDGATE_VERSION=<tag> and HOSTED_MODE=true, which is the upgrade
+# (docs/deploy.md §7), and checks /opt/cloudgate/VERSION is the tag after it;
+# every other input is read back from /etc/default/cloudgate-hosted, so
+# nothing secret travels over SSH or lives in GitHub.
 #
 # The upgrade runs in its own transient systemd unit, cloudgate-update.service,
 # not under the SSH session: a dropped connection must never cut an install off
-# half-way through its migrations and builds. The caller follows the unit's
+# half-way through its migrations. The caller follows the unit's
 # journal and gets its exit status. A second update while one is running is
 # refused, because the unit already exists.
 #
 # backend/test/deploy/hosted-update.spec.ts runs this with sudo, systemd-run,
-# journalctl, systemctl, git and the checkout stubbed; the UPDATE_* overrides
-# below are for it.
+# journalctl, systemctl and curl (GitHub) stubbed; the UPDATE_* overrides below
+# are for it.
 
 set -euo pipefail
 
-CHECKOUT="${UPDATE_CHECKOUT:-/opt/cloudgate}"
+INSTALL_DIR="${UPDATE_INSTALL_DIR:-/opt/cloudgate}"
 HOSTED_INPUTS_FILE="${UPDATE_HOSTED_INPUTS_FILE:-/etc/default/cloudgate-hosted}"
 BACKEND_ENV_FILE="${UPDATE_BACKEND_ENV_FILE:-/etc/default/cloudgate-backend}"
-# The root-owned copy sudo is allowed to run, never the checkout's: the
-# checkout belongs to the cloudgate user.
+# The root-owned copy sudo is allowed to run, never the one in $INSTALL_DIR:
+# that belongs to the cloudgate user.
 SELF="${UPDATE_SELF:-/usr/local/sbin/cloudgate-update}"
 UNIT=cloudgate-update
 
 TAG_PATTERN='^v[0-9]+\.[0-9]+\.[0-9]+$'
 
+RELEASES_DOWNLOAD=https://github.com/octabyte-io/cloudgate/releases/download
+RAW_FILES=https://raw.githubusercontent.com/octabyte-io/cloudgate
+
 fail() {
   printf '%s\n' "$@" >&2
   exit 1
-}
-
-checkout_git() {
-  git -c safe.directory="$CHECKOUT" -C "$CHECKOUT" "$@"
 }
 
 valid_tag() {
@@ -62,20 +64,47 @@ previous_public_host() {
   sed -n "s/^CLOUDGATE_PUBLIC_HOST='\(.*\)'\$/\1/p" "$BACKEND_ENV_FILE" | tail -n 1
 }
 
+# A tag is a Cloudgate version once publish-version.yml has put its tarball's
+# .sha256 on the tag's GitHub Release, which it does only after the tag's
+# E2E (release) run is green (ADR-0082). Asked before the backup, so a tag
+# that was never published costs nothing.
+published_version() {
+  local tag="$1" url status=0
+  url="$RELEASES_DOWNLOAD/$tag/cloudgate-${tag#v}-linux-amd64.tar.gz.sha256"
+  curl -fsSL --max-time 30 -o /dev/null "$url" || status=$?
+  case "$status" in
+    0) ;;
+    22) fail "$tag has no published release ($url), so nothing was backed up or upgraded." \
+      "A version is published by the Publish Cloudgate version workflow once its E2E (release) run is green." ;;
+    *) fail "Could not ask GitHub whether $tag is published (curl exit $status), so nothing was backed up or upgraded." ;;
+  esac
+}
+
+# The tag's own install.sh: the one-command install that installs the version
+# it was published with. Never $INSTALL_DIR/install.sh, which is the version
+# being replaced's, or on a box still holding a git checkout the checkout's,
+# which builds a branch rather than installing a version. Fetched before the
+# backup, so a GitHub that cannot serve it costs nothing.
+fetch_install() {
+  local tag="$1" into="$2" url
+  url="$RAW_FILES/$tag/install.sh"
+  curl -fsSL --max-time 60 -o "$into" "$url" ||
+    fail "Could not download $url, so nothing was backed up or upgraded."
+}
+
 # The work itself, as root inside cloudgate-update.service.
 apply() {
-  local tag="$1" main commit public_host
+  local tag="$1" public_host work installed
   valid_tag "$tag"
   [ -f "$HOSTED_INPUTS_FILE" ] ||
     fail "$HOSTED_INPUTS_FILE is missing: this is not a Hosted instance, so cloudgate-update does nothing here."
 
-  echo "==> Checking $tag is a release on main"
-  checkout_git fetch --quiet origin main || fail "Could not fetch main from $(checkout_git remote get-url origin)."
-  main="$(checkout_git rev-parse FETCH_HEAD)"
-  checkout_git fetch --quiet origin "refs/tags/$tag" || fail "The tag $tag does not exist on origin."
-  commit="$(checkout_git rev-parse "FETCH_HEAD^{commit}")"
-  checkout_git merge-base --is-ancestor "$commit" "$main" ||
-    fail "$tag ($commit) is not on main; only a tag on main is deployed."
+  echo "==> Checking $tag is a published Cloudgate version"
+  published_version "$tag"
+  work="$(mktemp -d)"
+  # shellcheck disable=SC2064 # $work is fixed from here on.
+  trap "rm -rf '$work'" EXIT
+  fetch_install "$tag" "$work/install.sh"
 
   echo "==> Backup to B2 before the upgrade"
   systemctl start cloudgate-backup.service ||
@@ -87,11 +116,12 @@ apply() {
   if [ -n "$public_host" ]; then
     export CLOUDGATE_PUBLIC_HOST="$public_host"
   fi
-  HOSTED_MODE=true CLOUDGATE_REF="$tag" sh "$CHECKOUT/install.sh"
+  HOSTED_MODE=true CLOUDGATE_VERSION="$tag" sh "$work/install.sh"
 
-  [ "$(checkout_git rev-parse HEAD)" = "$commit" ] ||
-    fail "The install finished but $CHECKOUT is not at $tag ($commit)." \
-      "It was probably already ahead of $tag; git -C $CHECKOUT log -1 shows where it is."
+  installed="$(cat "$INSTALL_DIR/VERSION" 2>/dev/null || true)"
+  [ "$installed" = "${tag#v}" ] ||
+    fail "The install finished but $INSTALL_DIR/VERSION says ${installed:-nothing}, not ${tag#v}." \
+      "journalctl -u $UNIT.service shows what the install did."
   echo "==> Upgraded to $tag ✅"
 }
 

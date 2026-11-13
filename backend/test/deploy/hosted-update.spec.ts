@@ -5,23 +5,26 @@ import * as path from 'node:path';
 
 /**
  * The Hosted instance's updater, `deploy/hosted-update.sh`, as
- * deploy-hosted.yml reaches it over SSH. git is real: an "origin" repository
- * with `main` and release tags, and a clone of it as the box's checkout, whose
- * `install.sh` is a stand-in that records what it was run with and
- * fast-forwards to CLOUDGATE_REF as the real one does. `id`, `sudo`,
- * `systemd-run`, `journalctl` and `systemctl` are stubbed on PATH; the
- * systemd-run stub runs the unit's command in place.
+ * deploy-hosted.yml reaches it over SSH. The network is `curl`, stubbed on
+ * PATH: the tag's published `.sha256` answers unless CURL_SHA256_EXIT says
+ * otherwise, and the tag's raw `install.sh` is a stand-in that records what it
+ * was run with and writes the install directory's VERSION as the real one
+ * does. `id`, `sudo`, `systemd-run`, `journalctl` and `systemctl` are stubbed
+ * too; the systemd-run stub runs the unit's command in place.
  */
 const repoRoot = path.resolve(__dirname, '../../..');
 const updater = path.join(repoRoot, 'deploy/hosted-update.sh');
 
+const RELEASES = 'https://github.com/octabyte-io/cloudgate/releases/download';
+const RAW = 'https://raw.githubusercontent.com/octabyte-io/cloudgate';
+
+// INSTALLS_VERSION stands for an install that ends on another version.
 const STAND_IN_INSTALL = `#!/bin/sh
 set -eu
-env | grep -E '^(HOSTED_MODE|CLOUDGATE_REF|CLOUDGATE_PUBLIC_HOST)=' | sort > "$STUB_LOG/install-env"
+env | grep -E '^(HOSTED_MODE|CLOUDGATE_REF|CLOUDGATE_VERSION|CLOUDGATE_PUBLIC_HOST)=' | sort > "$STUB_LOG/install-env"
 echo install >> "$STUB_LOG/order"
-cd "$(dirname "$0")"
-git fetch -q origin "$CLOUDGATE_REF"
-git merge -q --ff-only FETCH_HEAD
+installs="\${INSTALLS_VERSION:-\${CLOUDGATE_VERSION#v}}"
+printf '%s\\n' "$installs" > "$UPDATE_INSTALL_DIR/VERSION"
 `;
 
 const STUBS: Record<string, string> = {
@@ -49,31 +52,38 @@ echo "systemctl $*" >> "$STUB_LOG/order"
   sleep: `#!/usr/bin/env bash
 true
 `,
+  // GitHub. A missing release is curl -f's exit 22, no network is 6.
+  curl: `#!/usr/bin/env bash
+out=/dev/stdout
+url=''
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -o) out="$2"; shift 2 ;;
+    --max-time) shift 2 ;;
+    -*) shift ;;
+    *) url="$1"; shift ;;
+  esac
+done
+echo "curl $url" >> "$STUB_LOG/calls"
+case "$url" in
+  *.sha256)
+    [ "\${CURL_SHA256_EXIT:-0}" -eq 0 ] || exit "$CURL_SHA256_EXIT"
+    echo "0123abcd  \${url##*/}" > "$out" ;;
+  */install.sh)
+    [ "\${CURL_INSTALL_EXIT:-0}" -eq 0 ] || exit "$CURL_INSTALL_EXIT"
+    cp "$STAND_IN" "$out" ;;
+  *) exit 22 ;;
+esac
+`,
 };
 
 let scratch: string;
 let bin: string;
 let stubLog: string;
-let origin: string;
-let checkout: string;
+let installDir: string;
+let standIn: string;
 let inputsFile: string;
 let backendEnv: string;
-
-function git(cwd: string, ...args: string[]): string {
-  const result = spawnSync(
-    'git',
-    ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args],
-    { cwd, encoding: 'utf8' },
-  );
-  if (result.status !== 0)
-    throw new Error(`git ${args.join(' ')}: ${result.stderr}`);
-  return result.stdout.trim();
-}
-
-function commit(message: string) {
-  git(origin, 'commit', '-q', '--allow-empty', '-m', message);
-  return git(origin, 'rev-parse', 'HEAD');
-}
 
 beforeEach(() => {
   scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'hosted-update-'));
@@ -84,17 +94,19 @@ beforeEach(() => {
   for (const [name, body] of Object.entries(STUBS)) {
     fs.writeFileSync(path.join(bin, name), body, { mode: 0o755 });
   }
+  standIn = path.join(scratch, 'stand-in-install.sh');
+  fs.writeFileSync(standIn, STAND_IN_INSTALL, { mode: 0o755 });
 
-  origin = path.join(scratch, 'origin');
-  fs.mkdirSync(origin);
-  git(origin, 'init', '-q', '-b', 'main');
-  fs.writeFileSync(path.join(origin, 'install.sh'), STAND_IN_INSTALL, {
-    mode: 0o755,
-  });
-  git(origin, 'add', 'install.sh');
-  git(origin, 'commit', '-q', '-m', 'first');
-  checkout = path.join(scratch, 'checkout');
-  git(scratch, 'clone', '-q', origin, checkout);
+  // The version installed now. Its own install.sh is the previous version's
+  // (or, on a box still holding a checkout, a checkout's), never the one run.
+  installDir = path.join(scratch, 'opt-cloudgate');
+  fs.mkdirSync(installDir);
+  fs.writeFileSync(path.join(installDir, 'VERSION'), '0.2.0\n');
+  fs.writeFileSync(
+    path.join(installDir, 'install.sh'),
+    '#!/bin/sh\necho installed-install.sh >> "$STUB_LOG/order"\nexit 1\n',
+    { mode: 0o755 },
+  );
 
   inputsFile = path.join(scratch, 'cloudgate-hosted');
   fs.writeFileSync(inputsFile, 'CLOUDGATE_HOSTNAME=cloudgate.octabyte.app\n');
@@ -115,7 +127,8 @@ function run(args: string[], env: Record<string, string> = {}) {
       PATH: `${bin}:${process.env.PATH}`,
       HOME: scratch,
       STUB_LOG: stubLog,
-      UPDATE_CHECKOUT: checkout,
+      STAND_IN: standIn,
+      UPDATE_INSTALL_DIR: installDir,
       UPDATE_HOSTED_INPUTS_FILE: inputsFile,
       UPDATE_BACKEND_ENV_FILE: backendEnv,
       UPDATE_SELF: updater,
@@ -162,12 +175,18 @@ describe('deploy/hosted-update.sh (cloudgate-update)', () => {
     expect(log('calls')).toBe('');
   });
 
-  it('backs up, then installs the tag in hosted mode inside its own unit', () => {
-    commit('second');
-    const tagged = commit('the tagged commit');
-    git(origin, 'tag', '-a', 'v0.3.0', '-m', 'v0.3.0');
-    commit('after the tag');
+  it('refuses a tag with no published release, before the backup', () => {
+    const refused = run(['v0.3.0'], { CURL_SHA256_EXIT: '22' });
 
+    expect(refused.status).not.toBe(0);
+    expect(refused.stderr).toContain('v0.3.0 has no published release');
+    expect(log('calls')).toContain(
+      `curl ${RELEASES}/v0.3.0/cloudgate-0.3.0-linux-amd64.tar.gz.sha256\n`,
+    );
+    expect(log('order')).toBe('');
+  });
+
+  it('backs up, then installs the published version with the tag’s own install.sh in hosted mode inside its own unit', () => {
     const upgraded = run(['v0.3.0']);
 
     expect(upgraded.stderr).toBe('');
@@ -177,46 +196,55 @@ describe('deploy/hosted-update.sh (cloudgate-update)', () => {
       `systemd-run --unit=cloudgate-update --description=Cloudgate upgrade to v0.3.0 --collect --wait`,
     );
     expect(log('calls')).toContain(`${updater} --apply v0.3.0`);
+    expect(log('calls')).toContain(`curl ${RAW}/v0.3.0/install.sh\n`);
     expect(log('order')).toBe(
       'systemctl start cloudgate-backup.service\ninstall\n',
     );
     expect(log('install-env')).toBe(
-      'CLOUDGATE_PUBLIC_HOST=203.0.113.10\nCLOUDGATE_REF=v0.3.0\nHOSTED_MODE=true\n',
+      'CLOUDGATE_PUBLIC_HOST=203.0.113.10\nCLOUDGATE_VERSION=v0.3.0\nHOSTED_MODE=true\n',
     );
-    // At the tag, not at main's newer commit.
-    expect(git(checkout, 'rev-parse', 'HEAD')).toBe(tagged);
+    expect(fs.readFileSync(path.join(installDir, 'VERSION'), 'utf8')).toBe(
+      '0.3.0\n',
+    );
   });
 
-  it('refuses a tag that is not on main, before the backup', () => {
-    git(origin, 'checkout', '-q', '-b', 'side');
-    commit('only on a branch');
-    git(origin, 'tag', 'v0.3.0');
-    git(origin, 'checkout', '-q', 'main');
-
-    const refused = run(['v0.3.0']);
+  it('says GitHub could not be asked, rather than that the tag is unpublished, before the backup', () => {
+    const refused = run(['v0.3.0'], { CURL_SHA256_EXIT: '6' });
 
     expect(refused.status).not.toBe(0);
-    expect(refused.stderr).toContain('is not on main');
+    expect(refused.stderr).toContain(
+      'Could not ask GitHub whether v0.3.0 is published (curl exit 6)',
+    );
+    expect(refused.stderr).not.toContain('has no published release');
     expect(log('order')).toBe('');
   });
 
-  it('refuses a tag that does not exist', () => {
-    const refused = run(['v9.9.9']);
+  it('backs nothing up when the tag’s install.sh cannot be downloaded', () => {
+    const refused = run(['v0.3.0'], { CURL_INSTALL_EXIT: '22' });
 
     expect(refused.status).not.toBe(0);
-    expect(refused.stderr).toContain('The tag v9.9.9 does not exist on origin');
+    expect(refused.stderr).toContain(
+      `Could not download ${RAW}/v0.3.0/install.sh`,
+    );
     expect(log('order')).toBe('');
   });
 
   it('installs nothing when the backup before it fails', () => {
-    commit('the tagged commit');
-    git(origin, 'tag', 'v0.3.0');
-
     const failed = run(['v0.3.0'], { BACKUP_FAILS: '1' });
 
     expect(failed.status).not.toBe(0);
     expect(failed.stderr).toContain('The backup before the upgrade failed');
     expect(log('order')).toBe('systemctl start cloudgate-backup.service\n');
+  });
+
+  it('fails when the install ends with another version installed', () => {
+    const failed = run(['v0.3.0'], { INSTALLS_VERSION: '0.2.0' });
+
+    expect(failed.status).not.toBe(0);
+    expect(failed.stderr).toContain(
+      `The install finished but ${installDir}/VERSION says 0.2.0, not 0.3.0.`,
+    );
+    expect(failed.stdout).not.toContain('Upgraded to v0.3.0');
   });
 
   it('refuses --apply from anyone but root', () => {
