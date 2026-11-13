@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Self-hosting is one command
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo sh
+```
+
+The repository's new root `install.sh` checks the host is Ubuntu 24.04 on amd64, clones the public repository over HTTPS into `/opt/cloudgate` (or fast-forwards the checkout already there), and runs `deploy/install.sh`. `CLOUDGATE_PUBLIC_HOST` is optional now: a re-run reuses the one the last install was given, and a first install uses the host's public IPv4 address. `docs/deploy.md` no longer says the repository is private or that the install needs a deploy key.
+
+**What to do on upgrade**: nothing. To upgrade with the one command, an install whose `origin` is the SSH address and has no key for it points `origin` at `https://github.com/octabyte-io/cloudgate.git` first.
+
 ### The Project config has a version, and a whole-YAML edit naming an older one is refused
 
 - **`GET /projects/:projectId/config`** answers the config's `version` beside where it is kept, wherever it is kept, and its `updatedAt` is when the version last moved. Every Apply, a console Save included, and every stored change of the text moves the version; storing the text it already holds moves nothing, so a `cloudgate config plan` or root `cloudgate deploy` with no edits leaves every teammate's working copy current (ADR-0080).

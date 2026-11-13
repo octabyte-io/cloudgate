@@ -7,9 +7,10 @@
 # in git history at c8e9bdfb). Every
 # step below ran; nothing here is aspirational.
 #
-# Run it *from the checkout*, as root:
+# Run it *from the checkout*, as root. The repository's root install.sh does
+# both steps in one command (docs/deploy.md §2):
 #
-#     git clone git@github.com:octabyte-io/cloudgate.git /opt/cloudgate
+#     git clone https://github.com/octabyte-io/cloudgate.git /opt/cloudgate
 #     CLOUDGATE_PUBLIC_HOST=203.0.113.10 bash /opt/cloudgate/deploy/install.sh
 #
 # The Hosted instance is the same script with HOSTED_MODE=true
