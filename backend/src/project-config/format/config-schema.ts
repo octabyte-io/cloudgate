@@ -11,6 +11,7 @@ import {
   timeoutSeconds,
 } from '../../cron-services/cron-fields';
 import { buildPathSchema } from '../../common/build-path';
+import { repositoryPathRefusal } from '../../common/repository-path';
 import { gitCloneUrlSchema } from '../../git-providers/git-clone-url';
 import { insideDirectorySchema } from '../../mounts/dto/mount.dto';
 import { nativeWireSchema } from '../../native/native-wire';
@@ -199,7 +200,38 @@ const gitSource = z.strictObject({
 
 const imageSource = z.strictObject({ image: imageReferenceSchema() });
 
-const repositorySource = z.union([...providerSources, gitSource]);
+/**
+ * Why a folder source's subfolder cannot be used, or `null`. It is a
+ * subfolder of the **Project folder** (ADR-0080), so it is written relative
+ * to it: a leading `/` would read as the host's root, and a `..` segment
+ * leaves the folder. Beyond those, a build path's rule
+ * ({@link repositoryPathRefusal}), since it becomes one.
+ */
+function folderRefusal(value: string): string | null {
+  if (value.startsWith('/')) {
+    return 'must be a subfolder of the Project folder, written relative to it, not an absolute path';
+  }
+  if (value.split('/').includes('..')) {
+    return 'must stay inside the Project folder: it cannot have a `..` segment';
+  }
+  return repositoryPathRefusal(value);
+}
+
+/**
+ * An app built from a subfolder of the **Project folder** (ADR-0080): the
+ * whole folder is uploaded to it and it builds from this subfolder. One key
+ * only: a folder source names no repository, image or `path`.
+ */
+const folderSource = z.strictObject({
+  folder: nonEmpty.superRefine((value, context) => {
+    const refusal = folderRefusal(value);
+    if (refusal !== null)
+      context.addIssue({ code: 'custom', message: refusal });
+  }),
+});
+
+/** The keys a source names its repository, URL, image or path by. */
+export const SOURCE_KEYS = [...SOURCE_PROVIDERS, 'git', 'image', 'path'];
 
 /**
  * `publish` names a directory inside the built image, so it stays inside the
@@ -264,7 +296,9 @@ const buildable = {
 const webEntry = z.strictObject({
   kind: z.literal('web'),
   ...buildable,
-  source: z.union([repositorySource, imageSource]).optional(),
+  source: z
+    .union([...providerSources, gitSource, imageSource, folderSource])
+    .optional(),
   build: webBuild.optional(),
   port: z.number().int().min(1).max(65535).optional(),
 });
@@ -292,7 +326,7 @@ const workerEntry = webEntry
 const staticEntry = z.strictObject({
   kind: z.literal('static'),
   ...buildable,
-  source: repositorySource.optional(),
+  source: z.union([...providerSources, gitSource, folderSource]).optional(),
   build: staticBuild.optional(),
 });
 

@@ -215,6 +215,10 @@ function sourceFromWire(source: SourceWire): Source {
   if (source.image !== undefined) {
     return { sourceType: 'docker', dockerImage: source.image };
   }
+  if (source.folder !== undefined) {
+    // `apps/web/` is the folder `apps/web` is.
+    return { sourceType: 'drop', buildPath: source.folder.replace(/\/+$/, '') };
+  }
   if (source.git !== undefined) {
     return defined({
       sourceType: 'git',
@@ -235,9 +239,9 @@ function sourceFromWire(source: SourceWire): Source {
 /** A `compose` entry's source: a provider key or a git URL, never a path. */
 function composeSourceFromWire(source: SourceWire): ComposeSource {
   const found = sourceFromWire(source);
-  if (found.sourceType === 'docker') {
-    // The schema admits no `image` on a compose source.
-    throw new Error('a compose source names an image');
+  if (found.sourceType === 'docker' || found.sourceType === 'drop') {
+    // The schema admits no `image` or `folder` on a compose source.
+    throw new Error(`a compose source names ${found.sourceType}`);
   }
   return found.sourceType === 'git'
     ? { sourceType: 'git', customGitUrl: found.customGitUrl }

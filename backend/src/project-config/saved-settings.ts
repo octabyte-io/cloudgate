@@ -105,6 +105,7 @@ export async function readSavedServices(
           customGitUrl: application.customGitUrl,
           customGitBuildPath: application.customGitBuildPath,
           dockerImage: application.dockerImage,
+          dropBuildPath: application.dropBuildPath,
           buildType: application.buildType,
           railpackVersion: application.railpackVersion,
           herokuVersion: application.herokuVersion,
@@ -402,6 +403,7 @@ export async function readSavedServices(
     nativeAws,
     nativeGcp,
     hasDomain,
+    dropBuildPath,
     ...settings
   } of applications) {
     const cloud: SavedCloudPlace | null =
@@ -457,7 +459,12 @@ export async function readSavedServices(
             gcp: { hasDomain },
           })
         : {}),
-      settings,
+      // An upload's build path only on an upload, so every other
+      // Application fingerprints as before.
+      settings:
+        settings.sourceType === 'drop'
+          ? { ...settings, dropBuildPath }
+          : settings,
       variables: {
         env: keysOf(env),
         buildArgs: keysOf(buildArgs),

@@ -240,7 +240,14 @@ export class ProjectConfigService {
       ([configName, entry]) => {
         const source =
           entry.managed === false && 'source' in entry ? entry.source : null;
-        if (!source || source.sourceType === 'docker') return [];
+        // An image and uploaded files name no repository.
+        if (
+          !source ||
+          source.sourceType === 'docker' ||
+          source.sourceType === 'drop'
+        ) {
+          return [];
+        }
         return [
           {
             configName,

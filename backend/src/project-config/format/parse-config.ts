@@ -5,6 +5,7 @@ import {
   EXPRESSIBLE_KINDS,
   MYSQL_USER_MAX_LENGTH,
   projectConfigWireSchema,
+  SOURCE_KEYS,
   SOURCE_PROVIDERS,
 } from './config-schema';
 import { SIZE_NAMES } from './config-size';
@@ -319,6 +320,15 @@ function describeUnion(
     return describeIssue(first, path, document);
   }
 
+  const combined = folderCombinedWith(path, value, document);
+  if (combined !== null) {
+    return {
+      reason: 'invalid',
+      at: field,
+      message: `${field} names a subfolder of the Project folder, so folder cannot be combined with ${combined}; the whole folder is uploaded and built from that subfolder`,
+    };
+  }
+
   const branches: readonly Issue[][] = issue.errors;
   const candidates = branches.filter(
     (branch) =>
@@ -339,6 +349,24 @@ function describeUnion(
   };
 }
 
+/**
+ * The other source key an application's `source` names beside `folder`, or
+ * `null`. Both branches fail on one unknown key each, so the generic rule
+ * would name neither; the operator meant one source, and this says which
+ * two they wrote (ADR-0080).
+ */
+function folderCombinedWith(
+  path: Path,
+  value: unknown,
+  document: unknown,
+): string | null {
+  if (path[path.length - 1] !== 'source' || !isMap(value)) return null;
+  if (!('folder' in value) || entryOf(path, document)?.kind === 'compose') {
+    return null;
+  }
+  return SOURCE_KEYS.find((key) => key in value) ?? null;
+}
+
 function unionForms(path: Path, document: unknown): string {
   switch (path[path.length - 1]) {
     case 'source':
@@ -346,7 +374,7 @@ function unionForms(path: Path, document: unknown): string {
       if (entryOf(path, document)?.kind === 'compose') {
         return `must name the repository its compose file is in: ${SOURCE_PROVIDERS.join(', ')} (owner/repo) or git (a URL); the file's path in it is file:`;
       }
-      return `must name one source: ${SOURCE_PROVIDERS.join(', ')} (owner/repo), git (a URL), or image (not a static Service)`;
+      return `must name one source: ${SOURCE_PROVIDERS.join(', ')} (owner/repo), git (a URL), image (not a static Service), or folder (a subfolder of the Project folder)`;
     case 'size':
       return `must be one of ${SIZE_NAMES.join(', ')}, or { cpu, memory } with both, e.g. { cpu: 1, memory: 2 GB }`;
     default:

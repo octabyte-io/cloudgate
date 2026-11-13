@@ -140,6 +140,10 @@ export function sourceSettings(
   if (source.sourceType === 'docker') {
     return { sourceType: 'docker', dockerImage: source.dockerImage };
   }
+  if (source.sourceType === 'drop') {
+    // A folder source (ADR-0080): uploaded files, built from the folder.
+    return { sourceType: 'drop', dropBuildPath: source.buildPath };
+  }
   return {
     ...repositorySettings(source, connection, isNewRepository),
     ...buildPathSettings(source),
@@ -160,7 +164,7 @@ const BUILD_PATH_COLUMN = {
 
 /** An Application's build path, in its source's column; `/` by default. */
 function buildPathSettings(
-  source: Exclude<Source, { sourceType: 'docker' }>,
+  source: Exclude<Source, { sourceType: 'docker' | 'drop' }>,
 ): UpdateApplicationDto {
   return { [BUILD_PATH_COLUMN[source.sourceType]]: source.buildPath ?? '/' };
 }
@@ -286,6 +290,9 @@ export function isNewRepository(
       return settings.customGitUrl !== source.customGitUrl;
     case 'docker':
       return true;
+    case 'drop':
+      // Uploaded files name no repository: only the folder changed.
+      return false;
   }
 }
 

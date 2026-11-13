@@ -2831,6 +2831,8 @@ function sourceValue(source: Source): Record<string, string> {
   switch (source.sourceType) {
     case 'docker':
       return { image: source.dockerImage };
+    case 'drop':
+      return { folder: source.buildPath };
     case 'git':
       return { git: source.customGitUrl, path: source.buildPath ?? '/' };
     default:
@@ -2859,6 +2861,7 @@ type SavedSourceColumns = Omit<
       | 'bitbucketBuildPath'
       | 'customGitBuildPath'
       | 'dockerImage'
+      | 'dropBuildPath'
     >
   >;
 
@@ -2913,11 +2916,30 @@ function savedSourceValue(
         : null;
     case 'docker':
       return settings.dockerImage ? { image: settings.dockerImage } : null;
+    case 'drop': {
+      // Uploaded files built from a subfolder are a folder source
+      // (ADR-0080), however the upload spelled it (`/apps/web/`). Built
+      // from the upload's root, no config source names them.
+      const folder = folderOfBuildPath(settings.dropBuildPath);
+      return folder !== null ? { folder } : { drop: 'set in the console' };
+    }
     default:
       // An uploaded archive or raw Compose text: no config source names it,
       // so any source the config states is a difference.
       return { [settings.sourceType]: 'set in the console' };
   }
+}
+
+/**
+ * An upload's build path as a folder source's subfolder: relative to the
+ * uploaded folder, with no leading or trailing `/`. `null` for its root,
+ * which a folder source does not name.
+ */
+export function folderOfBuildPath(
+  buildPath: string | null | undefined,
+): string | null {
+  const folder = (buildPath ?? '').replace(/^\/+|\/+$/g, '');
+  return folder === '' ? null : folder;
 }
 
 /** A `compose` entry's source as the config writes it: no path. */

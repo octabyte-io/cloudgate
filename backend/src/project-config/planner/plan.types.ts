@@ -89,6 +89,11 @@ export interface SavedApplicationSettings {
   readonly customGitUrl: string | null;
   readonly customGitBuildPath: string | null;
   readonly dockerImage: string | null;
+  /**
+   * The subfolder uploaded files build from, on a `drop` source: a folder
+   * source's (ADR-0080). Left out where a reader has no upload to say.
+   */
+  readonly dropBuildPath?: string | null;
   readonly buildType: BuildType;
   readonly railpackVersion: string | null;
   readonly herokuVersion: string | null;

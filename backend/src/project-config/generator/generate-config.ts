@@ -410,6 +410,8 @@ function sourceWire(source: View | null): Wire | null | string {
     return withPath({ git: source.git }, source.path);
   }
   if (typeof source.image === 'string') return { image: source.image };
+  // Uploaded files built from a subfolder (ADR-0080).
+  if (typeof source.folder === 'string') return { folder: source.folder };
   const provider = SOURCE_PROVIDERS.find((p) => typeof source[p] === 'string');
   if (!provider) {
     return 'Its source is set in the console (an upload or raw text), which version 1 cannot name, so the console keeps it';

@@ -53,7 +53,16 @@ export type Source =
       readonly customGitUrl: string;
       readonly buildPath?: string;
     }
-  | { readonly sourceType: 'docker'; readonly dockerImage: string };
+  | { readonly sourceType: 'docker'; readonly dockerImage: string }
+  | {
+      /**
+       * Uploaded files: a config's `folder` source (ADR-0080), the whole
+       * **Project folder** uploaded and built from this subfolder of it,
+       * written relative to it with no trailing `/`.
+       */
+      readonly sourceType: 'drop';
+      readonly buildPath: string;
+    };
 
 interface SharedBuild {
   readonly publishDirectory?: string;
