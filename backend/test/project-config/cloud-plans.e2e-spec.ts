@@ -446,6 +446,40 @@ describe('Plans that read AWS for a cloud web (e2e)', () => {
     });
   });
 
+  describe('a cloud web built from a Project folder', () => {
+    it('is created with no Deployment, since no upload has reached it yet', async () => {
+      await ctx.db.insert(environmentNetwork).values(readyNetwork());
+      const { planId } = await savedPlan(
+        WEB.replace('{ image: nginx }', '{ folder: apps/web }'),
+      );
+      const read = await readPlan();
+      expect(read.steps.map((step) => step.action)).toEqual(['create']);
+      queue.add.mockClear();
+
+      const applied = await apply(planId);
+
+      expect(applied.status).toBe(200);
+      expect(applied.body).toMatchObject({
+        status: 'applied',
+        results: [
+          {
+            configName: 'web',
+            action: 'create',
+            status: 'applied',
+            deploy: null,
+          },
+        ],
+      });
+      const [created] = await ctx.db.select().from(application);
+      expect(created).toMatchObject({
+        sourceType: 'drop',
+        dropBuildPath: 'apps/web',
+        dropUploaded: false,
+      });
+      expect(queue.add).not.toHaveBeenCalled();
+    });
+  });
+
   describe('a second cloud web', () => {
     it('has no network step once the Environment has its network there', async () => {
       await ctx.db.insert(environmentNetwork).values(readyNetwork());

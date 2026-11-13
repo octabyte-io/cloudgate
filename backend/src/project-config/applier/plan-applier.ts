@@ -1966,6 +1966,11 @@ export class PlanApplier {
     );
     await this.saveNativeAws(created.applicationId, cloud, entry);
     await this.saveNativeGcp(created.applicationId, cloud, entry);
+    // A folder source (ADR-0080): nothing to build until `cloudgate deploy`
+    // in the Project folder uploads it, as on a Server.
+    if (entry.source?.sourceType === 'drop') {
+      return { domain: null, deploy: null };
+    }
     const deploy = await this.deployApplication(ctx, created.applicationId);
     if (deploy.status === 'queued') {
       this.cloudDeploys.approve(deploy.deploymentId, aws);
