@@ -63,7 +63,7 @@ const REMOVE_WAIT_MS = 5 * 60_000;
  *
  * The Template check runs first, and a Template it would hide is refused
  * with its reason. Only the compose part runs; a Template without one has
- * nothing to try. Once anything has started, {@link TryRun.tearDown} is the
+ * nothing to try. Once anything has started, {@link TryRun.remove} is the
  * one way out, after a pass and after a fail alike.
  */
 export const templateTry: Command = {
@@ -131,13 +131,13 @@ FLAGS
       minutes,
     });
     // Ctrl-C stops the run rather than the process, so the stack is still
-    // torn down; a second Ctrl-C ends the process at once (`main.ts`).
+    // removed; a second Ctrl-C ends the process at once (`main.ts`).
     const unlisten = context.interrupts.listen(() => tryRun.interrupt());
     try {
       return await tryRun.start(stack);
     } finally {
       try {
-        await tryRun.tearDown();
+        await tryRun.remove();
       } finally {
         unlisten();
       }
@@ -254,8 +254,8 @@ function writeStack(stack: TryStack): string {
 }
 
 /**
- * One run of a Template's stack, and the one place it is torn down: whatever
- * ends the run (a pass, a fail, the time limit, Ctrl-C), {@link tearDown}
+ * One run of a Template's stack, and the one place it is removed: whatever
+ * ends the run (a pass, a fail, the time limit, Ctrl-C), {@link remove}
  * removes the project with its volumes and deletes the folder, once.
  *
  * The time limit and Ctrl-C stop the run through one signal, which ends a
@@ -266,7 +266,7 @@ function writeStack(stack: TryStack): string {
  * it, the failure output and the removal, has a bounded time of its own.
  */
 class TryRun {
-  private tornDown = false;
+  private removed = false;
   private readonly stop = new AbortController();
   /** Why the run was stopped; the first reason wins. */
   private stopped: 'timeout' | 'interrupt' | undefined;
@@ -284,7 +284,7 @@ class TryRun {
     private readonly limit: { deadline: number; minutes: number },
   ) {}
 
-  /** Ctrl-C: the run stops where it is, and is torn down. */
+  /** Ctrl-C: the run stops where it is, and is removed. */
   interrupt(): void {
     this.halt('interrupt');
   }
@@ -362,7 +362,7 @@ class TryRun {
   /**
    * Waits for `work`, holding it against the time limit meanwhile: past the
    * deadline the run is stopped, which ends `work`, and `work` is still
-   * waited for, so nothing is torn down under a `docker` still running.
+   * waited for, so nothing is removed under a `docker` still running.
    */
   private async untilStopped<T>(work: Promise<T>): Promise<T> {
     let settled = false;
@@ -431,9 +431,9 @@ class TryRun {
    * `down` that has not finished within {@link REMOVE_WAIT_MS} is stopped,
    * and the command that removes the stack is printed instead.
    */
-  async tearDown(): Promise<void> {
-    if (this.tornDown) return;
-    this.tornDown = true;
+  async remove(): Promise<void> {
+    if (this.removed) return;
+    this.removed = true;
     const down = ['down', '--volumes', '--remove-orphans'];
     try {
       const { late } = await this.bounded(down, REMOVE_WAIT_MS);

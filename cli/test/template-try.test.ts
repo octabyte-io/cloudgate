@@ -22,7 +22,7 @@ import { run } from '../src/run.js';
  * each Domain's probe. Which values, compose file and config files an
  * Instance would make is the backend's code, tested where it lives; this
  * proves `try` hands them to Docker in an Instance's layout, judges each
- * Domain, and always tears down.
+ * Domain, and always removes the stack.
  */
 
 /** What the stack folder held when `docker compose up` ran. */
@@ -294,7 +294,7 @@ describe('template try', () => {
     expect(docker.calls).toEqual([]);
   });
 
-  it('prints ✓ for each Domain that answers, exits 0, and tears the stack down with its volumes', async () => {
+  it('prints ✓ for each Domain that answers, exits 0, and removes the stack with its volumes', async () => {
     const { docker, runner } = fakeDocker();
     const { probed, fetch } = answering(302);
 
@@ -437,7 +437,7 @@ files:
     });
   });
 
-  it('prints ✗ with the last status for a Domain answering 5xx, exits 1, and tears the stack down', async () => {
+  it('prints ✗ with the last status for a Domain answering 5xx, exits 1, and removes the stack', async () => {
     const { docker, runner } = fakeDocker();
 
     const result = await tryTemplate(ghost(), {
@@ -481,7 +481,7 @@ files:
     expect(statuses).toEqual([]);
   });
 
-  it('exits 1 when docker compose up fails, printing what it said, and still tears down', async () => {
+  it('exits 1 when docker compose up fails, printing what it said, and still removes the stack', async () => {
     const { docker, runner } = fakeDocker((args) =>
       args.includes('up')
         ? {
@@ -720,7 +720,7 @@ files:
     },
   );
 
-  it('stops an up still pulling once --timeout minutes have passed, prints the compose status and logs, tears down and exits 1', async () => {
+  it('stops an up still pulling once --timeout minutes have passed, prints the compose status and logs, removes the stack and exits 1', async () => {
     const { docker, runner } = fakeDocker((args, signal) =>
       args.includes('up')
         ? pullingUntilStopped(signal)
@@ -748,7 +748,7 @@ files:
     expect(existsSync(dirname(docker.upFolder ?? ''))).toBe(false);
   });
 
-  it('gives up on a Domain still answering 5xx once --timeout minutes have passed, prints ✗, the compose status and logs, and tears down', async () => {
+  it('gives up on a Domain still answering 5xx once --timeout minutes have passed, prints ✗, the compose status and logs, and removes the stack', async () => {
     const { docker, runner } = fakeDocker(
       (args) => composeState(args) ?? { code: 0, stdout: '', stderr: '' },
     );
@@ -883,7 +883,7 @@ files:
     expect(result.elapsed).toBe(10 * 60_000);
   });
 
-  it('prints the compose status and logs when docker compose up fails, before tearing down', async () => {
+  it('prints the compose status and logs when docker compose up fails, before removing the stack', async () => {
     const { docker, runner } = fakeDocker((args) =>
       args.includes('up')
         ? {
@@ -911,7 +911,7 @@ files:
     ]);
   });
 
-  it('stops an up still pulling on Ctrl-C, tears down with its volumes and exits 130', async () => {
+  it('stops an up still pulling on Ctrl-C, removes the stack with its volumes and exits 130', async () => {
     const ctrl = ctrlC();
     const { docker, runner } = fakeDocker((args, signal) => {
       if (!args.includes('up')) return { code: 0, stdout: '', stderr: '' };
@@ -934,7 +934,7 @@ files:
     expect(existsSync(dirname(docker.upFolder ?? ''))).toBe(false);
   });
 
-  it('stops asking a Domain on Ctrl-C, tears down with its volumes and exits 130', async () => {
+  it('stops asking a Domain on Ctrl-C, removes the stack with its volumes and exits 130', async () => {
     const ctrl = ctrlC();
     const { docker, runner } = fakeDocker();
     let probes = 0;
