@@ -12,8 +12,8 @@ import { describe, expect, it } from "vitest";
  * output is not kept — nothing streams a setup run", "there is no
  * endpoint to upload them", "not readable here …", "no way to list
  * those schedules". Every one of those tickets had closed, so every
- * sentence was false, and every link was dead to the person reading it: the
- * repository is private, and a self-hosting operator cannot open it. Nothing
+ * sentence was false, and every link sent the person reading it to a closed
+ * ticket that no longer described their console. Nothing
  * tied a sentence to its ticket's state, and nothing can, so the rule is that
  * operator-facing copy does not cite the tracker at all.
  *

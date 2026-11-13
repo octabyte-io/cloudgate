@@ -8,9 +8,9 @@ import * as ts from 'typescript';
  * > no string in `src/` names this project's repository
  *
  * **What broke.** The ntfy channel's "Send a test" delivered an action button,
- * "visit Cloudgate on Github", pointing at `github.com/octabyte-io/cloudgate`.
- * That repository is private, so on every operator's phone the button was a
- * 404. The console half of the same ticket is four sentences that each stated
+ * "visit Cloudgate on Github", pointing at `github.com/octabyte-io/cloudgate`:
+ * an advert in an operator's own alert, which is not where it belongs. The
+ * console half of the same ticket is four sentences that each stated
  * a gap and linked the issue that tracked it — every one closed, so every
  * sentence was false and every link dead to a self-hosting operator. That half
  * is `frontend/src/features/no-tracker-links.test.ts`; this one covers what
