@@ -896,6 +896,26 @@ describe('DeploymentEngineService.deploy', () => {
     expect(command).toContain(`cd ${platformHostCode('/api/docker/')} ||`);
   });
 
+  it('resolves a relative dockerContextPath against the build path, not the shell it runs in', async () => {
+    const deps = makeDeps();
+    const engine = makeEngine(deps);
+
+    await engine.deploy(
+      makeApp({
+        buildType: 'dockerfile',
+        buildPath: '/apps/web',
+        dockerContextPath: '../..',
+      }),
+    );
+
+    const command = deps.remoteExec.execAsync.mock.calls[0][0];
+    expect(command).toContain(
+      `docker build -t shop-api-x1 -f ${platformHostCode('/apps/web/Dockerfile')} .`,
+    );
+    // The monorepo's root, two folders up from `apps/web`.
+    expect(command).toContain(`cd ${platformHostCode()} ||`);
+  });
+
   it('lets dockerContextPath override the build context without moving the Dockerfile', async () => {
     const deps = makeDeps();
     const engine = makeEngine(deps);

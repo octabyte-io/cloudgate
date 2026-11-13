@@ -52,7 +52,7 @@ const DOCKERFILE: BuilderSetting[] = [
   {
     key: "dockerContextPath",
     label: "Context",
-    hint: "The directory sent to the daemon as the build context. Empty means the build path.",
+    hint: "The directory sent to the daemon as the build context, counted from the build path. Empty means the build path.",
     mono: true,
     absent: "The build path",
     placeholder: ".",
