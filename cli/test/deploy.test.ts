@@ -27,6 +27,7 @@ const neverAsked: Prompter = {
   choose: () => Promise.reject(new Error('asked a question')),
   confirm: () => Promise.reject(new Error('asked a question')),
   secret: () => Promise.reject(new Error('asked a question')),
+  text: () => Promise.reject(new Error('asked a question')),
 };
 
 function json(body: unknown, status = 200): Response {
@@ -572,6 +573,7 @@ describe('cloudgate deploy', () => {
           return Promise.resolve(confirmed);
         },
         secret: () => Promise.reject(new Error('asked a secret')),
+        text: () => Promise.reject(new Error('asked a question')),
       };
       return { prompter, questions };
     };

@@ -1,16 +1,12 @@
 import { relative } from 'node:path';
 
 import type { Command } from '../command.js';
-import { usageError } from '../errors.js';
 import { EXIT } from '../exit-codes.js';
-import {
-  findNearestLink,
-  isProjectFolder,
-  WORKING_COPY_FILE,
-} from '../folder-link.js';
+import { WORKING_COPY_FILE } from '../folder-link.js';
 import { connectToInstance } from '../target-session.js';
 import {
   downloadProjectConfig,
+  findProjectFolder,
   mayReplaceWorkingCopy,
   saveWorkingCopy,
 } from '../working-copy.js';
@@ -42,21 +38,8 @@ FLAGS
   maxPositionals: 0,
   async run(context) {
     const { cwd, out, values } = context;
-    const found = findNearestLink(cwd);
-    if (found === undefined) {
-      throw usageError(
-        'this folder is not in a Project folder',
-        'Run cloudgate link --whole-project at the root of the Project first.',
-      );
-    }
+    const found = findProjectFolder(cwd, 'config pull');
     const { folder, link } = found;
-    if (!isProjectFolder(link)) {
-      throw usageError(
-        `this folder is linked to the Service ${link.names.service} of Project ${link.names.project}, not to a whole Project`,
-        'Run cloudgate config pull in the Project folder, or cloudgate link --whole-project to make one.',
-      );
-    }
-
     const { client } = await connectToInstance(context, found);
     const downloaded = await out.withSpinner(
       'Downloading the Project config…',

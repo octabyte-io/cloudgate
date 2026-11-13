@@ -133,6 +133,7 @@ async function inTerminal(
           : Promise.resolve(answer);
       },
       secret: () => Promise.reject(new Error('asked a secret')),
+      text: () => Promise.reject(new Error('asked a question')),
     },
     stdinIsTTY: true,
     stdoutIsTTY: true,

@@ -8,8 +8,13 @@ import type { ApiClient } from './api-client.js';
 import type { CommandContext } from './command.js';
 import { CliError, usageError } from './errors.js';
 import { EXIT } from './exit-codes.js';
-import { WORKING_COPY_FILE, writeLink } from './folder-link.js';
-import type { ProjectFolderLink } from './folder-link.js';
+import {
+  findNearestLink,
+  isProjectFolder,
+  WORKING_COPY_FILE,
+  writeLink,
+} from './folder-link.js';
+import type { FoundLink, ProjectFolderLink } from './folder-link.js';
 
 /**
  * A **Project folder**'s working copy of the Project config (ADR-0080):
@@ -18,6 +23,37 @@ import type { ProjectFolderLink } from './folder-link.js';
  * version downloaded and the hash of the text written. Cloudgate keeps the
  * config; this file is never a place it is kept, and is never committed.
  */
+
+/** The nearest link, found to make a Project folder. */
+export interface FoundProjectFolder extends FoundLink {
+  link: ProjectFolderLink;
+}
+
+/**
+ * The Project folder `cwd` is in, for `cloudgate <command>`: its nearest
+ * link must name no Service. Refuses (exit 2) a folder with no link, or one
+ * whose nearest link is to one Service, saying how to make one.
+ */
+export function findProjectFolder(
+  cwd: string,
+  command: string,
+): FoundProjectFolder {
+  const found = findNearestLink(cwd);
+  if (found === undefined) {
+    throw usageError(
+      'this folder is not in a Project folder',
+      'Run cloudgate link --whole-project at the root of the Project first.',
+    );
+  }
+  const { link } = found;
+  if (!isProjectFolder(link)) {
+    throw usageError(
+      `this folder is linked to the Service ${link.names.service} of Project ${link.names.project}, not to a whole Project`,
+      `Run cloudgate ${command} in the Project folder, or cloudgate link --whole-project to make one.`,
+    );
+  }
+  return { ...found, link };
+}
 
 /** The SHA-256 of `text` as written, hex: what a link records of its copy. */
 export function hashText(text: string): string {
