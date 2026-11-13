@@ -1,5 +1,7 @@
 import { Card } from "@/components/console/card";
 import { Chip } from "@/components/console/chip";
+import { CodeWell } from "@/components/console/code-well";
+import { CopyButton } from "@/components/console/copy-button";
 import { Dash } from "@/components/console/dash";
 import { KVList, KVRow } from "@/components/console/kv-list";
 import { Button } from "@/components/ui/button";
@@ -12,8 +14,14 @@ import {
 } from "./use-platform";
 
 /**
- * Version, release tag, whether a newer image has been published, and the
- * instance mode: Hosted or Self-hosted, off `GET /settings/about`.
+ * Version, release tag, whether a newer Cloudgate version is on GitHub
+ * Releases with the command that installs it, and the instance mode: Hosted or
+ * Self-hosted, off `GET /settings/about`.
+ *
+ * The check is GitHub's, by way of `POST /settings/update-data`. An unreachable
+ * or failing API comes back as `error` and is shown as a check that did not
+ * complete, never as "up to date": the Docker Hub check this replaced made
+ * those one answer, and every native install was told it was current.
  */
 export function IdentityCard({
   checked,
@@ -26,6 +34,10 @@ export function IdentityCard({
   const releaseTag = useInstanceReleaseTag();
   const update = useUpdateData(checked);
   const mode = useInstanceMode();
+  const upgrade =
+    checked && !update.isFetching && update.data?.updateAvailable
+      ? update.data
+      : null;
 
   return (
     <Card>
@@ -77,9 +89,9 @@ export function IdentityCard({
               !checked ? (
                 <span className="text-tx-2">Not checked yet</span>
               ) : update.isFetching ? (
-                <span className="text-tx-2">Asking Docker Hub…</span>
+                <span className="text-tx-2">Asking GitHub…</span>
               ) : update.error ? (
-                <span className="text-tx-2">Docker Hub did not answer</span>
+                <span className="text-tx-2">GitHub did not answer</span>
               ) : update.data?.error ? (
                 <span className="flex flex-col gap-0.5">
                   <span className="text-warn">The check did not complete</span>
@@ -102,12 +114,26 @@ export function IdentityCard({
             }
           />
         </KVList>
+        {upgrade?.upgradeCommand ? (
+          <div className="mt-3.5 animate-rise">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <p className="min-w-0 flex-1 text-ui text-tx-2">
+                Run this on this host, as root, to upgrade.
+              </p>
+              <CopyButton
+                value={upgrade.upgradeCommand}
+                label="upgrade command"
+              />
+            </div>
+            <CodeWell
+              content={upgrade.upgradeCommand}
+              label={`Command that upgrades to ${upgrade.latestVersion}`}
+            />
+          </div>
+        ) : null}
       </Card.Body>
       <Card.Footer>
-        The check reaches hub.docker.com. An unreachable hub, or a repository
-        that does not exist, is reported as a failure rather than as
-        &ldquo;nothing newer&rdquo; &mdash; which is why this card says who it
-        asked rather than asserting you are up to date.
+        The check asks GitHub Releases for the latest Cloudgate version.
       </Card.Footer>
     </Card>
   );

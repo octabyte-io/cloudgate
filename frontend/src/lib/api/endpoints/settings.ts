@@ -161,17 +161,23 @@ export interface ConsoleOriginTrust {
   trusted: boolean;
 }
 
-/** `POST /settings/update-data` — the Docker Hub comparison. */
+/**
+ * `POST /settings/update-data` — the running version against the latest
+ * Cloudgate version on GitHub Releases (`cli-v*` releases never count).
+ */
 export interface UpdateData {
+  /** The latest Cloudgate version's tag, `vX.Y.Z`. */
   latestVersion: string | null;
   updateAvailable: boolean;
+  /** The command that upgrades this instance to `latestVersion`, only when that is newer. */
+  upgradeCommand: string | null;
   /**
    * `null` when the check ran to completion, including when it completed and
    * found nothing newer. A sentence naming the failure when it did not — an
-   * unreachable hub.docker.com, or a repository that does not exist there.
+   * unreachable api.github.com, or an HTTP status from it.
    *
-   * This is the whole point: the two used to be the same answer, so an
-   * instance whose image is not published anywhere was told it was up to date.
+   * This is the whole point: the Docker Hub check this replaced made the two
+   * one answer, so an instance with nothing published was told it was up to date.
    */
   error: string | null;
 }
@@ -449,14 +455,14 @@ export const settingsApi = {
   // ── Version and lifecycle ──────────────────────────────────────────────────
 
   /**
-   * Ask Docker Hub what the newest published tag is.
+   * Ask GitHub Releases what the latest Cloudgate version is.
    *
    * A `POST` that writes nothing and reaches the network on every call — so it
    * is a query whose key is `keys.instanceUpdate()`, and it is never refetched
    * in the background.
    *
    * It answers 200 even when the check failed, and says so in `error`: an
-   * unreachable Docker Hub, or a repository that does not exist, is a sentence
+   * unreachable or failing GitHub API is a sentence
    * on `error` rather than the `{latestVersion: null, updateAvailable: false}`
    * that also means "checked, nothing newer". Read `error` before you
    * read the other two.

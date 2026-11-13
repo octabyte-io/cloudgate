@@ -17,7 +17,7 @@ import { useInstanceGate, useUpdateData } from "./use-platform";
  * re-reads `getUpdateData` and acts only `if (data.updateAvailable)`. A button
  * that means "restart onto a new version" on Tuesday and "nothing happens" on
  * Wednesday is not one control, so this one is gated on the check: it is
- * unavailable until somebody has asked Docker Hub and been told there is
+ * unavailable until somebody has asked GitHub and been told there is
  * something to move to.
  *
  * The gate distinguishes the two ways the check can come back empty. "I
@@ -59,7 +59,7 @@ export function InstanceDangerZone({ checked }: { checked: boolean }) {
             : !checked
               ? "Check for updates on the card above first — this control does nothing when there is nothing newer."
               : update.isFetching
-                ? "Still asking Docker Hub."
+                ? "Still asking GitHub."
                 : checkFailed
                   ? `The update check did not complete, so there is nothing to update to: ${update.data?.error}`
                   : available

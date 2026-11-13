@@ -37,7 +37,7 @@ export function InstanceSection() {
   // does the health read the gate is taken from.
   const gate = useInstanceGate();
   /**
-   * Whether anybody has asked Docker Hub yet.
+   * Whether anybody has asked GitHub for the latest Cloudgate version yet.
    *
    * It lives here rather than in either card because **both** need it and they
    * need it for opposite reasons: the identity card uses it to decide whether to

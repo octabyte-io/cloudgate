@@ -117,10 +117,11 @@ export function useInstanceGate(): Gate {
 }
 
 /**
- * Whether a newer image has been published.
+ * Whether a newer Cloudgate version has been published.
  *
- * Off by default: it is a `POST` that paginates every tag of a Docker Hub
- * repository, and nobody wants that on every visit to a settings page. The card
+ * Off by default: it is a `POST` that asks the GitHub API, whose
+ * unauthenticated rate limit is per host, and nobody wants that on every visit
+ * to a settings page. The card
  * asks for it when somebody presses Check.
  */
 export function useUpdateData(enabled: boolean) {

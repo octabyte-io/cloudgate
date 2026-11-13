@@ -1137,9 +1137,9 @@ export const keys = {
   instanceReleaseTag: () => [...instance, "release-tag"] as const,
   instanceIp: () => [...instance, "ip"] as const,
   /**
-   * The Docker Hub comparison. A `POST` used as a query — F14's precedent, and
-   * it never refetches on its own: it reaches hub.docker.com over the network
-   * and paginates every tag of the repository to answer.
+   * The GitHub Releases comparison. A `POST` used as a query — F14's precedent,
+   * and it never refetches on its own: it reaches api.github.com over the
+   * network to answer.
    */
   instanceUpdate: () => [...instance, "update-data"] as const,
   instanceGpu: (serverId: string | null) =>
