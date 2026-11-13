@@ -6,6 +6,7 @@ import {
   environmentWithServicesSchema,
 } from 'api-schemas';
 import type { ConfigSources, DeploymentView } from 'api-schemas';
+import { parse } from 'yaml';
 
 import type { CommandContext } from './command.js';
 import {
@@ -33,6 +34,7 @@ import {
 } from './target-session.js';
 import type { Connection, TargetSession } from './target-session.js';
 import { selectUploadFiles } from './upload-files.js';
+import { readWorkingCopy } from './working-copy.js';
 import type { FoundProjectFolder } from './working-copy.js';
 
 /**
@@ -111,6 +113,9 @@ export async function deployProjectFolder(
     where.organization.name,
   );
 
+  // Every subfolder is checked before the plan is sent, so a mistyped one
+  // creates nothing.
+  refuseMissingFolders(folder, inputs.service?.value);
   const plan = await runPlanStep(context, client, project, {
     yes: values.yes === true,
   });
@@ -138,17 +143,6 @@ export async function deployProjectFolder(
   );
   const skipped = entries.filter((entry) => entry.source !== 'folder');
 
-  // Every subfolder is checked before anything is uploaded.
-  for (const entry of builds) {
-    const path = join(folder, entry.folder);
-    if (!existsSync(path) || !statSync(path).isDirectory()) {
-      throw new CliError(
-        `${entry.configName} builds from ${entry.folder}, which is not a folder in this Project folder`,
-        EXIT.failed,
-        `Make ${entry.folder}, or change ${entry.configName}'s source in ${WORKING_COPY_FILE}.`,
-      );
-    }
-  }
   if (builds.length === 0) {
     out.note('No app in the Project config is built from this folder.');
     out.note(
@@ -266,6 +260,54 @@ export async function deployProjectFolder(
     out.note(`- ${entry.configName}: skipped, ${skipReason(entry)}`);
   }
   return allDone ? EXIT.ok : EXIT.failed;
+}
+
+/**
+ * Refuses an app whose source in the working copy is a subfolder that is not
+ * in the Project folder, naming it; with `--service`, only the one it names
+ * (`wanted`). A copy that is missing or does not parse refuses nothing here:
+ * the plan step refuses it, saying why.
+ */
+function refuseMissingFolders(folder: string, wanted: string | undefined) {
+  const text = readWorkingCopy(folder);
+  if (text === undefined) return;
+  for (const entry of folderEntries(text)) {
+    if (
+      wanted !== undefined &&
+      entry.configName.toLowerCase() !== wanted.toLowerCase()
+    ) {
+      continue;
+    }
+    const path = join(folder, entry.folder);
+    if (!existsSync(path) || !statSync(path).isDirectory()) {
+      throw new CliError(
+        `${entry.configName} builds from ${entry.folder}, which is not a folder in this Project folder`,
+        EXIT.failed,
+        `Make ${entry.folder}, or change ${entry.configName}'s source in ${WORKING_COPY_FILE}.`,
+      );
+    }
+  }
+}
+
+/** Each entry of `text` whose source is a folder (`source: { folder }`). */
+function folderEntries(text: string): { configName: string; folder: string }[] {
+  let parsed: unknown;
+  try {
+    parsed = parse(text, { logLevel: 'silent' });
+  } catch {
+    return [];
+  }
+  const services = isRecord(parsed) ? parsed.services : undefined;
+  if (!isRecord(services)) return [];
+  return Object.entries(services).flatMap(([configName, entry]) => {
+    const source = isRecord(entry) ? entry.source : undefined;
+    const folder = isRecord(source) ? source.folder : undefined;
+    return typeof folder === 'string' ? [{ configName, folder }] : [];
+  });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /**

@@ -1759,7 +1759,7 @@ describe('Cloudgate CLI (e2e)', () => {
         }
       });
 
-      it('refuses a subfolder that is not there, naming its app, and uploads nothing', async () => {
+      it('refuses a subfolder that is not there, naming its app, before the plan is sent, so nothing is created', async () => {
         const seeded = await seededProject();
         const repo = emptyFolder('monorepo');
         try {
@@ -1767,6 +1767,7 @@ describe('Cloudgate CLI (e2e)', () => {
             (await runCli(wholeProject, { home, cwd: repo, env: seeded.env }))
               .code,
           ).toBe(0);
+          const before = await configOf(seeded);
           const copy = join(repo, 'cloudgate.yaml');
           writeFileSync(
             copy,
@@ -1786,9 +1787,10 @@ describe('Cloudgate CLI (e2e)', () => {
           expect(refused.stderr).toContain(
             'Error: worker builds from apps/worker, which is not a folder in this Project folder',
           );
-          const worker = await appOf(seeded.environmentId, 'worker');
-          expect(worker.row.dropUploaded).toBe(false);
-          expect(worker.deployments).toEqual([]);
+          expect((await appOf(seeded.environmentId, 'worker')).row).toBe(
+            undefined,
+          );
+          expect(await configOf(seeded)).toEqual(before);
         } finally {
           removeFolder(repo);
         }

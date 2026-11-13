@@ -1049,6 +1049,7 @@ describe('cloudgate deploy in a Project folder', () => {
     const started: string[] = [];
     const appliedPlans: unknown[] = [];
     const dismissedPlans: unknown[] = [];
+    const sentPlans: unknown[] = [];
     const asked = new Map<string, number>();
     const listed = new Map<string, number>();
     let configText = TEXT;
@@ -1097,6 +1098,7 @@ describe('cloudgate deploy in a Project folder', () => {
       }
       if (path === '/projects/prj_1/config/plans' && method === 'POST') {
         const body = JSON.parse(init.body as string) as { text: string };
+        sentPlans.push(body);
         // Nothing to change stores the text at once; the same text again
         // keeps the version.
         if (steps.length === 0 && body.text !== configText) {
@@ -1193,6 +1195,7 @@ describe('cloudgate deploy in a Project folder', () => {
       ...out,
       applies,
       started,
+      sentPlans,
       appliedPlans,
       dismissedPlans,
       socket,
@@ -1232,12 +1235,29 @@ describe('cloudgate deploy in a Project folder', () => {
     ]);
   });
 
-  it('refuses a subfolder that is not in the Project folder, naming the app, before anything is uploaded', async () => {
-    const result = await deployProject([], {
-      sources: [
-        SOURCES[0],
-        { ...SOURCES[1], folder: 'apps/jobs' },
-        ...SOURCES.slice(2),
+  it('refuses a subfolder that is not in the Project folder, naming the app, before the plan is sent or anything uploaded', async () => {
+    // The working copy's worker now builds from a folder no one made.
+    writeFileSync(
+      join(root, 'cloudgate.yaml'),
+      TEXT.replace('folder: apps/worker', 'folder: apps/jobs'),
+    );
+    const result = await deployProject(['--yes'], {
+      steps: [
+        {
+          action: 'change',
+          configName: 'worker',
+          kind: 'worker',
+          serviceType: 'application',
+          serviceId: 'app_wrk',
+          name: 'worker',
+          fields: [
+            {
+              field: 'source',
+              from: { folder: 'apps/worker' },
+              to: { folder: 'apps/jobs' },
+            },
+          ],
+        },
       ],
     });
 
@@ -1245,6 +1265,8 @@ describe('cloudgate deploy in a Project folder', () => {
     expect(result.stderr).toContain(
       'Error: worker builds from apps/jobs, which is not a folder in this Project folder',
     );
+    expect(result.sentPlans).toEqual([]);
+    expect(result.appliedPlans).toEqual([]);
     expect(result.applies).toEqual([]);
     expect(result.started).toEqual([]);
   });
