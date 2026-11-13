@@ -10,7 +10,9 @@
 # to that version's deploy/install.sh, which does the install itself and puts
 # the version in place at /opt/cloudgate. Nothing is cloned or built. Running it
 # again is the upgrade (docs/deploy.md §7); a run on the version already
-# installed downloads nothing and re-runs that version's own install.
+# installed downloads nothing and re-runs that version's own install. A host
+# whose /opt/cloudgate is a git checkout, from an install made before versions,
+# is switched over: the version's install moves the checkout aside and keeps it.
 #
 # Inputs, all optional, read from the environment (`| sudo VAR=value sh`):
 #
