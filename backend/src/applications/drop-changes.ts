@@ -142,8 +142,20 @@ export function compareDropFiles(
     .filter((file) => tree.get(file.path) !== file.sha256)
     .map((file) => file.path);
   const listed = new Set(files.map((file) => file.path));
-  const deleted = [...tree.keys()].filter((p) => !listed.has(p)).length;
+  const deleted = [...tree.keys()].filter(
+    (p) => !listed.has(p) && !isBuildEnvFile(p),
+  ).length;
   return { missing, unchanged: files.length - missing.length, deleted };
+}
+
+/**
+ * A `.env` file, which the build writes into the tree (`createEnvFile`) and
+ * `cloudgate deploy` leaves out of an upload unless an ignore file brings it
+ * back: not counted as deleted, so a deploy with nothing deleted locally
+ * does not say `1 deleted` (#31). The apply still removes it.
+ */
+function isBuildEnvFile(filePath: string): boolean {
+  return path.posix.basename(filePath) === '.env';
 }
 
 /** NUL-ended records as one base64 word for an `echo … | base64 -d`. */

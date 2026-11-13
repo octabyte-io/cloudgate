@@ -229,7 +229,9 @@ function stepLine(step: PlanStepView): string {
   if (step.action === 'redeploy') {
     return `  ~ ${what} redeploy: ${(step.because ?? []).join(', ')} changed${blocked}`;
   }
-  const fields = (step.fields ?? []).map((one) => one.field).join(', ');
+  const fields = (step.fields ?? [])
+    .map((one) => (one.removed ? `${one.field} (removed)` : one.field))
+    .join(', ');
   const upgrade = step.majorUpgrade
     ? ` (major upgrade ${step.majorUpgrade.from} to ${step.majorUpgrade.to})`
     : '';

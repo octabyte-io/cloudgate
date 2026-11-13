@@ -196,7 +196,9 @@ export class ApplicationsController {
   /**
    * The first half of uploading only the changed files: the multipart
    * `files` part is the folder's file list as JSON, and the answer says which
-   * of them the build host is missing (`api-schemas`' `drops.ts`). Any member
+   * of them the build host is missing (`api-schemas`' `drops.ts`); its
+   * `dropBuildPath` field, the apply's, says whether the source is already
+   * up to date. Any member
    * who may update the Application may call it; the service scopes it to the
    * caller's organization.
    */
@@ -209,6 +211,7 @@ export class ApplicationsController {
     @CurrentSession() session: Session,
     @Param('id') id: string,
     @UploadedFile() files: Express.Multer.File | undefined,
+    @Body() body: UploadApplicationDropDto,
   ) {
     if (!files) {
       throw new BadRequestException('No file list provided');
@@ -217,6 +220,7 @@ export class ApplicationsController {
       toCtx(user, session),
       id,
       files.buffer,
+      body,
     );
   }
 

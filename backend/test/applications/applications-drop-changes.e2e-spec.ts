@@ -243,6 +243,7 @@ describe('Application upload of changed files (e2e)', () => {
         missing: ['README.md', 'src/new.js'],
         unchanged: 2,
         deleted: 1,
+        upToDate: false,
       });
     });
 
@@ -260,7 +261,50 @@ describe('Application upload of changed files (e2e)', () => {
         missing: ['index.js', 'src/app.js'],
         unchanged: 0,
         deleted: 0,
+        upToDate: false,
       });
+    });
+
+    it('does not count the .env a build writes as deleted', async () => {
+      const { cookie, created } = await setUpApplication();
+      plant(code(), {
+        'index.js': 'x\n',
+        '.env': 'S=1\n',
+        'apps/web/.env': 'S=1\n',
+      });
+
+      const res = await compare(
+        cookie,
+        created.applicationId,
+        listOf({ 'index.js': 'x\n' }),
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ missing: [], unchanged: 1, deleted: 0 });
+    });
+
+    it('says the upload is up to date only when the source is uploaded files at the same build path', async () => {
+      const { cookie, created } = await setUpApplication();
+      plant(code(), { 'index.js': 'x\n' });
+      const list = listOf({ 'index.js': 'x\n' });
+
+      // A git source: an apply would switch it.
+      const github = await compare(cookie, created.applicationId, list);
+      expect(github.body).toMatchObject({ upToDate: false });
+
+      await ctx.db
+        .update(applicationTable)
+        .set({ sourceType: 'drop', dropUploaded: true, dropBuildPath: '/web' })
+        .where(eq(applicationTable.applicationId, created.applicationId));
+      const same = await compare(cookie, created.applicationId, list).field(
+        'dropBuildPath',
+        '/web',
+      );
+      expect(same.status).toBe(200);
+      expect(same.body).toMatchObject({ upToDate: true });
+
+      const moved = await compare(cookie, created.applicationId, list);
+      expect(moved.body).toMatchObject({ upToDate: false });
     });
 
     it('reads the tree on the build host, not the platform host', async () => {
@@ -287,6 +331,7 @@ describe('Application upload of changed files (e2e)', () => {
         missing: ['new.js'],
         unchanged: 1,
         deleted: 1,
+        upToDate: false,
       });
       expect(execMock.execAsync).not.toHaveBeenCalled();
       expect(

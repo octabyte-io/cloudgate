@@ -157,20 +157,35 @@ async function uploadChanges(
   const list = fingerprintFiles(folder, files);
   for (let attempt = 1; ; attempt += 1) {
     const compareForm = new FormData();
+    compareForm.set('dropBuildPath', buildPath);
     compareForm.set('files', listBlob(list), 'files.json');
     const comparison = await out.withSpinner('Comparing…', () =>
       session.client.post(`${path}/compare`, compareForm, dropComparisonSchema),
     );
-    const missing = new Set(comparison.missing);
-    const changed = files.filter((file) => missing.has(file.path));
-    const zip = zipBlob(folder, changed);
-    const summary = announceUpload(out, changed, zip);
     const counts = [
       `${comparison.unchanged} unchanged`,
       ...(comparison.deleted > 0 ? [`${comparison.deleted} deleted`] : []),
     ].join(', ');
-    out.note(
-      `Uploading ${summary.count} changed ${summary.count === 1 ? 'file' : 'files'}, ${describeSize(summary.totalSize)} (${counts})…`,
+    if (comparison.missing.length === 0) {
+      // Nothing to send, and when nothing goes either and the source is
+      // already this upload, nothing to apply (#31).
+      if (comparison.deleted === 0 && comparison.upToDate === true) {
+        out.note(`Nothing changed since the last upload (${counts}).`);
+        return;
+      }
+      out.note(`No changed files to upload (${counts})…`);
+    } else {
+      const missing = new Set(comparison.missing);
+      const changed = files.filter((file) => missing.has(file.path));
+      const summary = announceUpload(out, changed, zipBlob(folder, changed));
+      out.note(
+        `Uploading ${summary.count} changed ${summary.count === 1 ? 'file' : 'files'}, ${describeSize(summary.totalSize)} (${counts})…`,
+      );
+    }
+    const missing = new Set(comparison.missing);
+    const zip = zipBlob(
+      folder,
+      files.filter((file) => missing.has(file.path)),
     );
     const applyForm = new FormData();
     applyForm.set('dropBuildPath', buildPath);

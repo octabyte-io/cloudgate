@@ -160,6 +160,8 @@ interface Options {
   configLocation?: Record<string, unknown>;
   /** Variables beside the key and the Instance. */
   env?: Record<string, string>;
+  /** The compare's `upToDate`; left out, as an older Instance leaves it. */
+  upToDate?: boolean;
 }
 
 /** One `POST /applications/app_1/drop/apply`, as the Instance received it. */
@@ -303,6 +305,9 @@ async function deploy(argv: string[], options: Options = {}) {
         ).length,
         deleted: [...buildHost.keys()].filter((path) => !listed.has(path))
           .length,
+        ...(options.upToDate === undefined
+          ? {}
+          : { upToDate: options.upToDate }),
       });
     }
     if (method === 'POST' && path === '/applications/app_1/drop/apply') {
@@ -799,13 +804,41 @@ describe('cloudgate deploy', () => {
 
       expect(result.code).toBe(0);
       expect(result.stderr).toContain(
-        `Uploading 0 changed files, ${result.sent[0]} B (2 unchanged, 1 deleted)…\n`,
+        'No changed files to upload (2 unchanged, 1 deleted)…\n',
       );
       expect(result.applies.map((apply) => apply.zipped)).toEqual([[]]);
       expect(result.buildHost).toEqual({
         'index.js': SHA.index,
         'package.json': SHA.packageJson,
       });
+    });
+
+    it('sends nothing and applies nothing when nothing changed and the source is already this upload', async () => {
+      const result = await deploy([...TARGET, '--detach'], {
+        buildHost: { 'index.js': SHA.index, 'package.json': SHA.packageJson },
+        upToDate: true,
+      });
+
+      expect(result.code).toBe(0);
+      expect(result.stderr).toContain(
+        'Nothing changed since the last upload (2 unchanged).\n',
+      );
+      expect(result.stderr).not.toContain('Uploading');
+      expect(result.compares).toHaveLength(1);
+      expect(result.applies).toEqual([]);
+    });
+
+    it('still applies an unchanged folder whose source is not yet this upload, sending no files', async () => {
+      const result = await deploy([...TARGET, '--detach'], {
+        buildHost: { 'index.js': SHA.index, 'package.json': SHA.packageJson },
+        upToDate: false,
+      });
+
+      expect(result.code).toBe(0);
+      expect(result.stderr).toContain(
+        'No changed files to upload (2 unchanged)…\n',
+      );
+      expect(result.applies.map((apply) => apply.zipped)).toEqual([[]]);
     });
 
     it('with --full, uploads every file through the full upload and compares nothing', async () => {

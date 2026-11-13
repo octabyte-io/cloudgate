@@ -72,8 +72,21 @@ export const dropComparisonSchema = z.object({
   missing: z.array(z.string()),
   /** How many listed files the build host already holds as they are. */
   unchanged: z.number().int(),
-  /** How many files on the build host are not in the list, so go on apply. */
+  /**
+   * How many files on the build host are not in the list, so go on apply.
+   * A `.env` the build host holds is not counted: the build writes one
+   * (`createEnvFile`) and `cloudgate deploy` never sends one by default, so
+   * counting it said `1 deleted` on every deploy with nothing deleted (#31).
+   * The apply still removes it, and the next build writes it again.
+   */
   deleted: z.number().int(),
+  /**
+   * The Application's source is already uploaded files landing at the
+   * `dropBuildPath` the comparison was sent with, so with nothing missing
+   * and nothing deleted an apply would change nothing, and the CLI skips it.
+   * Absent from an Instance that predates it, which reads as false.
+   */
+  upToDate: z.boolean().optional(),
 });
 
 export type DropComparison = z.infer<typeof dropComparisonSchema>;

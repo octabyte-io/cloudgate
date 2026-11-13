@@ -16,8 +16,21 @@ const planStepSchema = z.object({
   /** A Service's step's Config name; absent on an Environment network's. */
   configName: z.string().optional(),
   kind: z.string().optional(),
-  /** Each changed field, named as the config writes it. */
-  fields: z.array(z.object({ field: z.string() })).optional(),
+  /**
+   * Each changed field, named as the config writes it, and whether the
+   * change removes it (its new value is none). Only that fact is kept of the
+   * value, so no value reaches what the CLI prints.
+   */
+  fields: z
+    .array(
+      z
+        .object({ field: z.string(), to: z.unknown().optional() })
+        .transform(({ field, to }) => ({
+          field,
+          removed: to === null,
+        })),
+    )
+    .optional(),
   /** A major version upgrade, which an Apply confirms by Config name. */
   majorUpgrade: z.object({ from: z.string(), to: z.string() }).optional(),
   /** A `redeploy`'s (or a change's) changed links, as `<source>.<output>`. */

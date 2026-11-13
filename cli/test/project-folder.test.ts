@@ -433,6 +433,43 @@ describe('config plan', () => {
     expect(result.stderr).toContain('Nothing was applied.');
   });
 
+  it('says a field the edit removes is removed, not only changed', async () => {
+    const removing = {
+      ...open,
+      steps: [
+        {
+          action: 'change',
+          configName: 'web',
+          kind: 'web',
+          fields: [
+            { field: 'build.context', from: '../..', to: null },
+            { field: 'port', from: 3000, to: 4000 },
+          ],
+        },
+      ],
+    };
+    const result = await inTerminal(
+      ['config', 'plan'],
+      { confirm: [false] },
+      root,
+      {
+        ...answers,
+        'POST /projects/prj_1/config/plans': {
+          stored: false,
+          plans: [removing],
+        },
+      },
+    );
+
+    expect(result.stdout).toBe(
+      [
+        'staging: 0 to create, 1 to change, 0 to destroy',
+        '  ~ web (web) change build.context (removed), port',
+        '',
+      ].join('\n'),
+    );
+  });
+
   it('on no, says the plan is left open when the role cannot dismiss it, and exits 1 as a no does', async () => {
     const result = await inTerminal(
       ['config', 'plan'],
