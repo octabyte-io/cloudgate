@@ -149,7 +149,8 @@ together. The traps of building:
 
 - **`pnpm install`, never `--prod`, never `--ignore-scripts`, for the build.** `--prod` omits `@nestjs/cli` and `next`, and `--ignore-scripts` skips the node-pty compile. The script installs the production tree afresh after building, for exactly that reason.
 - **node-pty has no Linux prebuild** and compiles with node-gyp, so `build-essential` and `python3` are required where you build. The script refuses to pack without `pty.node`. (Do not check for `spawn-helper`: that target only exists on macOS.)
-- ## 3. Why the console and the API share one hostname
+
+## 3. Why the console and the API share one hostname
 
 **They must.** This is the single most important configuration fact on the page, and getting it wrong produces a console that signs you in, serves REST perfectly, and then shows a dead screen wherever anything is live.
 
