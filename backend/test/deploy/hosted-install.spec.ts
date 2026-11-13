@@ -308,4 +308,81 @@ describe('deploy/hosted.sh', () => {
       "BOUGHT_SERVER_REVERSE_DNS_DOMAIN='servers.octabyte.app'",
     );
   });
+
+  /**
+   * Docker makes docker_gwbridge only when a container first joins an overlay
+   * network, never at `swarm init`, so a fresh box has none when install.sh
+   * asks for Traefik's way to the console. The stub answers like that daemon:
+   * `inspect` fails until the bridge exists, and `create` makes it.
+   */
+  describe('hosted_docker_gwbridge', () => {
+    let docker: string;
+    let state: string;
+
+    beforeEach(() => {
+      docker = fs.mkdtempSync(path.join(scratch, 'docker-'));
+      state = path.join(docker, 'state');
+      fs.mkdirSync(state);
+      fs.writeFileSync(
+        path.join(docker, 'docker'),
+        `#!/usr/bin/env bash
+echo "docker $*" >> "${state}/calls"
+if [ "$1 $2" = "network inspect" ] && [ "$3" = docker_gwbridge ]; then
+  if [ ! -e "${state}/gwbridge" ]; then
+    echo "Error response from daemon: network docker_gwbridge not found" >&2
+    exit 1
+  fi
+  case "$5" in
+    *Gateway*) echo 172.18.0.1 ;;
+    *Subnet*) echo 172.18.0.0/16 ;;
+  esac
+  exit 0
+fi
+if [ "$1 $2" = "network create" ] && [ "\${@: -1}" = docker_gwbridge ]; then
+  touch "${state}/gwbridge"
+  exit 0
+fi
+echo "docker stub: $*" >&2
+exit 2
+`,
+        { mode: 0o755 },
+      );
+    });
+
+    function gwbridge() {
+      return spawnSync(
+        'bash',
+        [
+          '-c',
+          'set -euo pipefail; . "$1"; hosted_docker_gwbridge; echo "$DOCKER_HOST_GATEWAY $DOCKER_GWBRIDGE_SUBNET"',
+          'bash',
+          library,
+        ],
+        {
+          env: { PATH: `${docker}:${process.env.PATH}`, HOME: scratch },
+          encoding: 'utf8',
+        },
+      );
+    }
+
+    it("finds Traefik's way to the console on a fresh swarm, before any container joined an overlay", () => {
+      const found = gwbridge();
+
+      expect(found.stderr).toBe('');
+      expect(found.status).toBe(0);
+      expect(found.stdout.trim()).toBe('172.18.0.1 172.18.0.0/16');
+    });
+
+    it('leaves a docker_gwbridge that already exists as it is', () => {
+      fs.writeFileSync(path.join(state, 'gwbridge'), '');
+
+      const found = gwbridge();
+
+      expect(found.status).toBe(0);
+      expect(found.stdout.trim()).toBe('172.18.0.1 172.18.0.0/16');
+      expect(fs.readFileSync(path.join(state, 'calls'), 'utf8')).not.toContain(
+        'network create',
+      );
+    });
+  });
 });

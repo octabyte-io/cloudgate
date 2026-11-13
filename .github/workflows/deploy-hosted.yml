@@ -1,0 +1,156 @@
+# Upgrades the Hosted instance to a server release once that release is green
+# (docs/deploy.md §11, Automatic updates; ADR-0081):
+#
+#   1. `git tag v0.3.0 && git push origin v0.3.0` starts `E2E (release)`;
+#   2. when that run ends green, this one checks the release with
+#      deploy/hosted-release-gate.sh, SSHes to the box as cloudgate-deploy and
+#      runs deploy/hosted-update.sh there with the tag;
+#   3. then it waits for https://<hostname>/backend/settings/about to report
+#      the new version in hosted mode.
+#
+# A red E2E run deploys nothing. A release whose CHANGELOG.md section asks for
+# something on upgrade stops at the gate, naming it; do it, then run this
+# workflow by hand with the tag and `manual_steps_done` ticked. Running it by
+# hand is also how a release is deployed again, or deployed without waiting
+# for E2E.
+#
+# Everything it needs is on the GitHub environment `hosted`: the secrets
+# HOSTED_SSH_HOST, HOSTED_SSH_PRIVATE_KEY and HOSTED_SSH_KNOWN_HOSTS, and the
+# variables HOSTED_URL and, when sshd is not on 22, HOSTED_SSH_PORT. Limit that
+# environment's deployment branches to `main`: a workflow_run job runs on the
+# default branch, never on the tag. The Stripe, Resend and B2 secrets never
+# come here; the box keeps them in /etc/default/cloudgate-hosted.
+name: Deploy the Hosted instance
+
+on:
+  workflow_run:
+    workflows: ['E2E (release)']
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The server release tag to deploy, such as v0.3.0
+        required: true
+        type: string
+      manual_steps_done:
+        description: The release's "What to do on upgrade" steps are done; deploy anyway
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# One upgrade at a time, and never one cancelled half-way.
+concurrency:
+  group: deploy-hosted
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deploy:
+    name: Upgrade the Hosted instance
+    # From E2E: only a green run on a pushed tag.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       startsWith(github.event.workflow_run.head_branch, 'v'))
+    runs-on: ubuntu-latest
+    environment: hosted
+    timeout-minutes: 45
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.workflow_run.head_branch }}
+      TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
+      MANUAL_STEPS_DONE: ${{ github.event_name == 'workflow_dispatch' && inputs.manual_steps_done || false }}
+    steps:
+      # Before the tag is used anywhere.
+      - name: The tag is a server release
+        run: |
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::\"$TAG\" is not a server release tag (vX.Y.Z)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ env.TAG }}
+
+      # The commit E2E tested is the one deployed: a tag moved since then is
+      # refused rather than deployed untested.
+      - name: The tag still names the commit E2E tested
+        if: github.event_name == 'workflow_run'
+        run: |
+          if [ "$(git rev-parse HEAD)" != "$TESTED_SHA" ]; then
+            echo "::error::$TAG now names $(git rev-parse HEAD), but E2E tested $TESTED_SHA."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: The release asks for nothing on upgrade
+        run: |
+          status=0
+          bash deploy/hosted-release-gate.sh "$TAG" || status=$?
+          if [ "$status" -eq 3 ]; then
+            if [ "$MANUAL_STEPS_DONE" = true ]; then
+              echo "::notice::$TAG asks for steps on upgrade; manual_steps_done says they are done."
+              exit 0
+            fi
+            echo "::error::$TAG asks for something on upgrade (above). Do it, then run this workflow by hand with the tag and manual_steps_done."
+          fi
+          exit "$status"
+
+      - name: Upgrade the box over SSH
+        env:
+          SSH_HOST: ${{ secrets.HOSTED_SSH_HOST }}
+          SSH_PORT: ${{ vars.HOSTED_SSH_PORT || '22' }}
+          SSH_PRIVATE_KEY: ${{ secrets.HOSTED_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HOSTED_SSH_KNOWN_HOSTS }}
+        run: |
+          for name in SSH_HOST SSH_PRIVATE_KEY SSH_KNOWN_HOSTS; do
+            if [ -z "${!name}" ]; then
+              echo "::error::HOSTED_${name#SSH_} is not set on the hosted environment. docs/deploy.md §11 says what it is."
+              exit 1
+            fi
+          done
+          install -d -m 0700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/cloudgate-deploy
+          chmod 0600 ~/.ssh/cloudgate-deploy
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # The box's forced command reads the tag as the whole command line.
+          ssh -i ~/.ssh/cloudgate-deploy -p "$SSH_PORT" \
+            -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 -o ServerAliveCountMax=10 \
+            "cloudgate-deploy@$SSH_HOST" "$TAG"
+
+      - name: The instance reports the new version
+        env:
+          HOSTED_URL: ${{ vars.HOSTED_URL }}
+        run: |
+          if [ -z "$HOSTED_URL" ]; then
+            echo "::error::The HOSTED_URL variable is not set on the hosted environment."
+            exit 1
+          fi
+          want="${TAG#v}"
+          for _ in $(seq 1 30); do
+            about="$(curl -fsS --max-time 10 "$HOSTED_URL/backend/settings/about" || true)"
+            version="$(jq -r '.version // empty' <<< "$about" 2>/dev/null || true)"
+            mode="$(jq -r '.mode // empty' <<< "$about" 2>/dev/null || true)"
+            if [ "$version" = "$want" ] && [ "$mode" = hosted ]; then
+              curl -fsS --max-time 10 "$HOSTED_URL/backend/settings/health"; echo
+              echo "$HOSTED_URL runs $want in hosted mode ✅"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::$HOSTED_URL reports version \"$version\" in mode \"$mode\" after 5 minutes, not $want in hosted mode."
+          exit 1
+
+      - name: Remove the key
+        if: always()
+        run: rm -f ~/.ssh/cloudgate-deploy

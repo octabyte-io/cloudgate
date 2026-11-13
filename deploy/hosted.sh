@@ -213,3 +213,40 @@ hosted_backend_env() {
     printf "CLOUDGATE_PUBLIC_HOST='%s'\n" "$CLOUDGATE_PUBLIC_HOST"
   fi
 }
+
+# Where Traefik's container reaches the console and the API on the Hosted
+# instance, set as DOCKER_HOST_GATEWAY: this host's address on docker_gwbridge,
+# the bridge a container on cloudgate-network leaves the overlay by. And
+# DOCKER_GWBRIDGE_SUBNET, the range Traefik's requests arrive *from* there:
+# the one hop whose x-forwarded-for entry the console believes
+# (CONSOLE_TRUSTED_PROXY, frontend/server/forwarded-for.mjs). Without it every
+# Hosted sign-in would share Traefik's address for the rate limit and
+# session.ip_address.
+#
+# Docker makes docker_gwbridge only when the first container joins an overlay
+# network, not at `swarm init`, so on a fresh box it does not exist yet: the
+# first hosted install stopped here with "network docker_gwbridge not found".
+# So it is made here, as Docker documents making it by hand, with the options
+# Docker itself gives it and a subnet Docker picks; Traefik's container then
+# joins this one rather than Docker making another.
+hosted_docker_gwbridge() {
+  if ! docker network inspect docker_gwbridge >/dev/null 2>&1; then
+    docker network create \
+      --opt com.docker.network.bridge.name=docker_gwbridge \
+      --opt com.docker.network.bridge.enable_icc=false \
+      --opt com.docker.network.bridge.enable_ip_masquerade=true \
+      docker_gwbridge >/dev/null
+  fi
+  DOCKER_HOST_GATEWAY="$(docker network inspect docker_gwbridge \
+    --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}')"
+  if [ -z "$DOCKER_HOST_GATEWAY" ]; then
+    echo "docker_gwbridge has no gateway address; Traefik could not reach the console." >&2
+    return 1
+  fi
+  DOCKER_GWBRIDGE_SUBNET="$(docker network inspect docker_gwbridge \
+    --format '{{range .IPAM.Config}}{{.Subnet}}{{end}}')"
+  if [ -z "$DOCKER_GWBRIDGE_SUBNET" ]; then
+    echo "docker_gwbridge has no subnet; the console could not tell Traefik's requests apart." >&2
+    return 1
+  fi
+}

@@ -353,29 +353,14 @@ if ! docker network inspect cloudgate-network >/dev/null 2>&1; then
 fi
 
 # Where Traefik's container reaches the console and the API on the Hosted
-# instance: this host's address on docker_gwbridge, the bridge `swarm init`
-# made, which a container on cloudgate-network leaves the overlay by. Not the
+# instance: this host's address on docker_gwbridge, the bridge a container on
+# cloudgate-network leaves the overlay by (deploy/hosted.sh makes it). Not the
 # public address — 3000/4000 are closed there — and not 127.0.0.1, which inside
 # the container is Traefik itself. The Firewall step opens 3000/4000 on that
 # bridge alone.
 if [ -n "$HOSTED_MODE" ]; then
-  DOCKER_HOST_GATEWAY="$(docker network inspect docker_gwbridge \
-    --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}')"
-  if [ -z "$DOCKER_HOST_GATEWAY" ]; then
-    echo "docker_gwbridge has no gateway address; Traefik could not reach the console." >&2
-    exit 1
-  fi
+  hosted_docker_gwbridge
   echo "Traefik reaches this host at ${DOCKER_HOST_GATEWAY} (docker_gwbridge)"
-  # And the range Traefik's requests arrive *from* there: the one hop whose
-  # x-forwarded-for entry the console believes (CONSOLE_TRUSTED_PROXY below,
-  # frontend/server/forwarded-for.mjs). Without it every Hosted sign-in would
-  # share Traefik's address for the rate limit and session.ip_address.
-  DOCKER_GWBRIDGE_SUBNET="$(docker network inspect docker_gwbridge \
-    --format '{{range .IPAM.Config}}{{.Subnet}}{{end}}')"
-  if [ -z "$DOCKER_GWBRIDGE_SUBNET" ]; then
-    echo "docker_gwbridge has no subnet; the console could not tell Traefik's requests apart." >&2
-    exit 1
-  fi
 fi
 
 ### -------------------------------------------------------------- postgres ---
@@ -969,6 +954,11 @@ if [ -n "$HOSTED_MODE" ]; then
   done
   systemctl daemon-reload
   systemctl enable --now cloudgate-backup.timer cloudgate-backup-check.timer
+  # The updater deploy-hosted.yml runs over SSH (deploy/hosted-update.sh),
+  # refreshed on every run so it is always this release's. A root-owned copy:
+  # sudo lets cloudgate-deploy run this path, and the checkout is the
+  # cloudgate user's. Who may run it is deploy/hosted-update-access.sh's, once.
+  install -m 0755 -o root -g root "$REPO_ROOT/deploy/hosted-update.sh" /usr/local/sbin/cloudgate-update
 fi
 
 ### --------------------------------------------------------------- firewall ---
