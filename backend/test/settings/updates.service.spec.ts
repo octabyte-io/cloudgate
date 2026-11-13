@@ -1,5 +1,32 @@
-import { UpdatesService } from '../../src/settings/updates.service';
+import type { InstanceMode } from '../../src/instance-mode/instance-mode.service';
 import type { RemoteExecService } from '../../src/remote/remote-exec.service';
+import { DockerResourceService } from '../../src/settings/docker-resource.service';
+import { UpdatesService } from '../../src/settings/updates.service';
+
+const SELF_HOSTED = { isHosted: false } as InstanceMode;
+const HOSTED = { isHosted: true } as InstanceMode;
+
+/**
+ * The service, with GitHub stubbed at `FETCH_CLIENT` and the host's shell at
+ * `RemoteExecService`: `docker service inspect cloudgate` succeeds only on an
+ * instance that runs as that Docker service.
+ */
+function updatesService(
+  fetchClient: jest.Mock,
+  remoteExec: RemoteExecService,
+  instanceMode: InstanceMode = SELF_HOSTED,
+) {
+  return new UpdatesService(
+    fetchClient,
+    remoteExec,
+    instanceMode,
+    new DockerResourceService(remoteExec),
+  );
+}
+
+/** What the host's shell answers the resource probe with: a native install is neither. */
+const shellAnswering = (resource: 'service' | 'unknown') =>
+  jest.fn(() => Promise.resolve({ stdout: `${resource}\n`, stderr: '' }));
 
 /**
  * The update notice compares the running version with the latest Cloudgate
@@ -14,7 +41,7 @@ import type { RemoteExecService } from '../../src/remote/remote-exec.service';
  */
 describe('UpdatesService.getUpdateData', () => {
   const remoteExec = {
-    execAsync: jest.fn(),
+    execAsync: shellAnswering('unknown'),
     execFileAsync: jest.fn(),
   } as unknown as RemoteExecService;
 
@@ -25,19 +52,33 @@ describe('UpdatesService.getUpdateData', () => {
       json: () => Promise.resolve(body),
     } as unknown as Response);
 
-  /** A release as `GET /repos/{owner}/{repo}/releases` lists it. */
-  const release = (tag_name: string) => ({
+  /**
+   * A release as `GET /repos/{owner}/{repo}/releases` lists it, with the
+   * tarball and checksum publish-version.yml attaches to a Cloudgate version.
+   */
+  const release = (tag_name: string, assets = tarballOf(tag_name)) => ({
     tag_name,
     name: tag_name,
     draft: false,
     prerelease: false,
+    assets: assets.map((name) => ({ name })),
   });
 
+  function tarballOf(tag: string): string[] {
+    const tarball = `cloudgate-${tag.replace(/^v/, '')}-linux-amd64.tar.gz`;
+    return [tarball, `${tarball}.sha256`];
+  }
+
   const releases = (...tags: string[]) =>
-    jest.fn(() => githubResponse(200, tags.map(release)));
+    jest.fn(() =>
+      githubResponse(
+        200,
+        tags.map((tag) => release(tag)),
+      ),
+    );
 
   const service = (fetchClient: jest.Mock) =>
-    new UpdatesService(fetchClient, remoteExec);
+    updatesService(fetchClient, remoteExec);
 
   const UPGRADE_TO_040 =
     'curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo CLOUDGATE_VERSION=v0.4.0 sh';
@@ -64,8 +105,59 @@ describe('UpdatesService.getUpdateData', () => {
       latestVersion: 'v0.4.0',
       updateAvailable: true,
       upgradeCommand: UPGRADE_TO_040,
+      canUpdateInPlace: false,
       error: null,
     });
+  });
+
+  it('shows no upgrade command on the Hosted instance, which upgrades itself', async () => {
+    const fetchClient = releases('v0.4.0', 'v0.3.0');
+
+    const data = await updatesService(
+      fetchClient,
+      remoteExec,
+      HOSTED,
+    ).getUpdateData('0.3.0');
+
+    expect(data).toMatchObject({
+      latestVersion: 'v0.4.0',
+      updateAvailable: true,
+      upgradeCommand: null,
+      error: null,
+    });
+  });
+
+  it('never counts a tag whose tarball has not been attached as a Cloudgate version', async () => {
+    const fetchClient = jest.fn(() =>
+      githubResponse(200, [
+        // Made by hand, or still being published: no tarball yet.
+        release('v0.5.0', []),
+        // The checksum alone, or another version's tarball, is not this one's.
+        release('v0.4.1', ['cloudgate-0.4.1-linux-amd64.tar.gz.sha256']),
+        release('v0.4.0', ['cloudgate-0.3.0-linux-amd64.tar.gz']),
+        release('v0.3.1'),
+      ]),
+    );
+
+    const data = await service(fetchClient).getUpdateData('0.3.0');
+
+    expect(data.latestVersion).toBe('v0.3.1');
+  });
+
+  it('says whether this instance runs as the cloudgate Docker service that Update this instance moves', async () => {
+    const onSwarm = {
+      execAsync: shellAnswering('service'),
+      execFileAsync: jest.fn(),
+    } as unknown as RemoteExecService;
+
+    const native = await service(releases('v0.4.0')).getUpdateData('0.3.0');
+    const swarm = await updatesService(
+      releases('v0.4.0'),
+      onSwarm,
+    ).getUpdateData('0.3.0');
+
+    expect(native.canUpdateInPlace).toBe(false);
+    expect(swarm.canUpdateInPlace).toBe(true);
   });
 
   it('reports the running version as the latest, with no upgrade command', async () => {
@@ -77,6 +169,7 @@ describe('UpdatesService.getUpdateData', () => {
       latestVersion: 'v0.3.0',
       updateAvailable: false,
       upgradeCommand: null,
+      canUpdateInPlace: false,
       error: null,
     });
   });
@@ -90,6 +183,7 @@ describe('UpdatesService.getUpdateData', () => {
       latestVersion: null,
       updateAvailable: false,
       upgradeCommand: null,
+      canUpdateInPlace: false,
       error: null,
     });
   });
@@ -112,6 +206,7 @@ describe('UpdatesService.getUpdateData', () => {
       latestVersion: 'v0.3.0',
       updateAvailable: false,
       upgradeCommand: null,
+      canUpdateInPlace: false,
       error: null,
     });
   });
@@ -125,6 +220,7 @@ describe('UpdatesService.getUpdateData', () => {
       latestVersion: null,
       updateAvailable: false,
       upgradeCommand: null,
+      canUpdateInPlace: false,
       error: null,
     });
   });
@@ -181,11 +277,72 @@ describe('UpdatesService.getUpdateData', () => {
 describe('UpdatesService.updateServer', () => {
   const execFileAsync = jest.fn();
   const remoteExec = {
-    execAsync: jest.fn(),
+    execAsync: shellAnswering('service'),
     execFileAsync,
   } as unknown as RemoteExecService;
 
+  const newerVersion = () =>
+    jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve([
+            {
+              tag_name: 'v0.4.0',
+              assets: [{ name: 'cloudgate-0.4.0-linux-amd64.tar.gz' }],
+            },
+          ]),
+      } as unknown as Response),
+    );
+
   beforeEach(() => jest.clearAllMocks());
+
+  it('refuses with 409 on an instance that is not a Docker service, and runs nothing', async () => {
+    const native = {
+      execAsync: shellAnswering('unknown'),
+      execFileAsync,
+    } as unknown as RemoteExecService;
+
+    const refused = updatesService(newerVersion(), native).updateServer(
+      '0.3.0',
+    );
+
+    await expect(refused).rejects.toMatchObject({ status: 409 });
+    await expect(refused).rejects.toThrow(/CLOUDGATE_VERSION/);
+    expect(execFileAsync).not.toHaveBeenCalled();
+  });
+
+  it('moves the cloudgate Docker service onto the newer version', async () => {
+    execFileAsync.mockResolvedValue({ stdout: '', stderr: '' });
+
+    await updatesService(newerVersion(), remoteExec).updateServer('0.3.0');
+
+    expect(execFileAsync).toHaveBeenCalledWith('docker', [
+      'service',
+      'update',
+      '--force',
+      '--image',
+      'cloudgate/cloudgate:v0.4.0',
+      'cloudgate',
+    ]);
+  });
+
+  it('leaves no unhandled rejection when the docker service update it started fails', async () => {
+    const unhandled = jest.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      execFileAsync.mockRejectedValue(new Error('docker: no such service'));
+
+      await updatesService(newerVersion(), remoteExec).updateServer('0.3.0');
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(execFileAsync).toHaveBeenCalled();
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
 
   it('refuses to run when the check itself failed', async () => {
     const fetchClient = jest.fn(() =>
@@ -195,7 +352,7 @@ describe('UpdatesService.updateServer', () => {
         json: () => Promise.resolve({ message: 'unavailable' }),
       } as unknown as Response),
     );
-    const service = new UpdatesService(fetchClient, remoteExec);
+    const service = updatesService(fetchClient, remoteExec);
 
     await expect(service.updateServer('0.3.0')).rejects.toThrow(/503/);
     expect(execFileAsync).not.toHaveBeenCalled();

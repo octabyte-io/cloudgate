@@ -2355,21 +2355,35 @@ fi`;
       expect(tagRes.text).toBe('latest');
     });
 
-    it('checks Docker Hub for a newer stable release', async () => {
-      const session = await signUp(httpServer, owner);
-      fetchClient.mockResolvedValueOnce({
+    /** `GET /repos/octabyte-io/cloudgate/releases`, each with its tarball. */
+    const githubReleases = (...tags: string[]) =>
+      ({
         ok: true,
         status: 200,
         json: () =>
-          Promise.resolve({
-            next: null,
-            results: [
-              { digest: 'sha256:aaa', name: 'latest' },
-              { digest: 'sha256:aaa', name: 'v99.0.0' },
-              { digest: 'sha256:bbb', name: 'v0.0.1' },
-            ],
-          }),
-      } as unknown as Response);
+          Promise.resolve(
+            tags.map((tag) => ({
+              tag_name: tag,
+              assets: [
+                { name: `cloudgate-${tag.slice(1)}-linux-amd64.tar.gz` },
+              ],
+            })),
+          ),
+      }) as unknown as Response;
+
+    /** The resource probe's answer: this instance as the `cloudgate` Docker service. */
+    const runningAsDockerService = () =>
+      remoteExec.execAsync.mockImplementation((command: string) =>
+        Promise.resolve(
+          ok(command.includes('docker service inspect') ? 'service\n' : ''),
+        ),
+      );
+
+    it('checks GitHub Releases for a newer Cloudgate version', async () => {
+      const session = await signUp(httpServer, owner);
+      fetchClient.mockResolvedValueOnce(
+        githubReleases('cli-v99.0.0', 'v99.0.0', 'v0.0.1'),
+      );
 
       const res = await request(httpServer)
         .post('/settings/update-data')
@@ -2378,21 +2392,24 @@ fi`;
       expect(res.body).toEqual({
         latestVersion: 'v99.0.0',
         updateAvailable: true,
+        upgradeCommand:
+          'curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo CLOUDGATE_VERSION=v99.0.0 sh',
+        canUpdateInPlace: false,
         error: null,
       });
       expect(fetchClient).toHaveBeenCalledWith(
-        'https://hub.docker.com/v2/repositories/cloudgate/cloudgate/tags?page_size=100',
-        { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+        'https://api.github.com/repos/octabyte-io/cloudgate/releases?per_page=100',
+        expect.anything(),
       );
     });
 
     /**
-     * An unreachable Docker Hub used to answer exactly what "checked, you
-     * are current" answers. It now names the failure.
+     * An unreachable GitHub used to answer exactly what "checked, you are
+     * current" answers. It now names the failure.
      */
     it('reports a fetch failure instead of answering "nothing newer"', async () => {
       const session = await signUp(httpServer, owner);
-      fetchClient.mockRejectedValueOnce(new Error('hub down'));
+      fetchClient.mockRejectedValueOnce(new Error('github down'));
 
       const res = await request(httpServer)
         .post('/settings/update-data')
@@ -2403,38 +2420,16 @@ fi`;
         latestVersion: null,
         updateAvailable: false,
       });
-      expect(body.error).toContain('hub.docker.com');
-      expect(body.error).toContain('hub down');
-    });
-
-    it('reports a missing repository instead of answering "nothing newer"', async () => {
-      const session = await signUp(httpServer, owner);
-      fetchClient.mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        json: () =>
-          Promise.resolve({ message: 'object not found', errinfo: {} }),
-      } as unknown as Response);
-
-      const res = await request(httpServer)
-        .post('/settings/update-data')
-        .set('Cookie', session.cookie);
-      expect(res.status).toBe(200);
-      const body = res.body as { error: string };
-      expect(body).toMatchObject({
-        latestVersion: null,
-        updateAvailable: false,
-      });
-      expect(body.error).toContain('404');
-      expect(body.error).toContain('cloudgate/cloudgate');
+      expect(body.error).toContain('api.github.com');
+      expect(body.error).toContain('github down');
     });
 
     it('POST /settings/update-server refuses when the check did not complete', async () => {
       const session = await signUp(httpServer, owner);
       fetchClient.mockResolvedValueOnce({
         ok: false,
-        status: 404,
-        json: () => Promise.resolve({ message: 'object not found' }),
+        status: 403,
+        json: () => Promise.resolve({ message: 'API rate limit exceeded' }),
       } as unknown as Response);
 
       const res = await request(httpServer)
@@ -2447,24 +2442,27 @@ fi`;
       );
     });
 
-    // "a release" here is a newer Cloudgate image published on Docker Hub, not
-    // a Deployment — a different concept, so the glossary's Avoid row does not
-    // reach it.
-    // eslint-disable-next-line no-restricted-syntax
-    it('POST /settings/update-server updates the service when a release is out', async () => {
+    it('POST /settings/update-server refuses a native install with 409, saying how it upgrades', async () => {
       const session = await signUp(httpServer, owner);
-      fetchClient.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () =>
-          Promise.resolve({
-            next: null,
-            results: [
-              { digest: 'sha256:aaa', name: 'latest' },
-              { digest: 'sha256:aaa', name: 'v99.0.0' },
-            ],
-          }),
-      } as unknown as Response);
+      fetchClient.mockResolvedValueOnce(githubReleases('v99.0.0'));
+
+      const res = await request(httpServer)
+        .post('/settings/update-server')
+        .set('Cookie', session.cookie);
+      expect(res.status).toBe(409);
+      expect((res.body as { message: string }).message).toContain(
+        'CLOUDGATE_VERSION',
+      );
+      expect(remoteExec.execFileAsync).not.toHaveBeenCalledWith(
+        'docker',
+        expect.arrayContaining(['service', 'update']),
+      );
+    });
+
+    it('POST /settings/update-server moves the cloudgate Docker service onto a newer Cloudgate version', async () => {
+      const session = await signUp(httpServer, owner);
+      runningAsDockerService();
+      fetchClient.mockResolvedValueOnce(githubReleases('v99.0.0'));
 
       const res = await request(httpServer)
         .post('/settings/update-server')
