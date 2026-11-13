@@ -20,6 +20,15 @@ import { useInstanceGate, useUpdateData } from "./use-platform";
  * unavailable until somebody has asked GitHub and been told there is
  * something to move to.
  *
+ * **It is off on every native install**, which is every install
+ * `deploy/install.sh` makes, the Hosted instance's included: Cloudgate runs
+ * there as two systemd units, there is no Docker service to move, and the
+ * backend answers 409 (spec #39 leaves this control out of scope for them).
+ * The check says which shape this is (`canUpdateInPlace`, the same probe
+ * `reload-server` refuses a native install by), so the row says why it is off
+ * and where the upgrade is instead — the command on the card above, or, on the
+ * Hosted instance, which gets no command, that it upgrades itself.
+ *
  * The gate distinguishes the two ways the check can come back empty. "I
  * asked, and nothing newer is published" is a reason to leave the button alone;
  * "I could not ask" is a different sentence and gets a different one, because
@@ -42,6 +51,9 @@ export function InstanceDangerZone({ checked }: { checked: boolean }) {
   const available = update.data?.updateAvailable === true;
   /** The check ran but did not complete — see the module comment. */
   const checkFailed = checked && !update.isFetching && !!update.data?.error;
+  /** A native install: no Docker service to move — see the module comment. */
+  const notInPlace = update.data?.canUpdateInPlace === false;
+  const latest = update.data?.latestVersion;
 
   return (
     <DangerZone
@@ -51,8 +63,8 @@ export function InstanceDangerZone({ checked }: { checked: boolean }) {
           id: "update-server",
           title: "Update this instance",
           description: available
-            ? `Replaces the running image with cloudgate/cloudgate:${update.data?.latestVersion}.`
-            : "Replaces the running image with the newest published one.",
+            ? `Moves Cloudgate's Docker service onto Cloudgate version ${latest}.`
+            : "Moves Cloudgate's Docker service onto the newest published Cloudgate version.",
           button: "Update and restart",
           unavailable: refused
             ? refused
@@ -62,16 +74,23 @@ export function InstanceDangerZone({ checked }: { checked: boolean }) {
                 ? "Still asking GitHub."
                 : checkFailed
                   ? `The update check did not complete, so there is nothing to update to: ${update.data?.error}`
+                  : notInPlace
+                    ? update.data?.upgradeCommand
+                      ? "This instance is not a Docker service, so there is nothing here to update. Run the upgrade command on the card above instead."
+                      : available
+                        ? "This instance is not a Docker service, so there is nothing here to update. The Hosted instance upgrades itself."
+                        : "This instance is not a Docker service, so there is nothing here to update."
                   : available
                     ? undefined
                     : "Nothing newer than this version has been published.",
           consequences: (
             <>
               <p>
-                Cloudgate&rsquo;s own Swarm service is updated to{" "}
+                Cloudgate&rsquo;s own Swarm service is moved onto{" "}
                 <strong className="font-medium">
-                  cloudgate/cloudgate:
-                  {update.data?.latestVersion ?? "the newest tag"}
+                  {latest
+                    ? `Cloudgate version ${latest}`
+                    : "the newest Cloudgate version"}
                 </strong>{" "}
                 and the running task is replaced. This console stops answering
                 mid-request and comes back on the new version — including any

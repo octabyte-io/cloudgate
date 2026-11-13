@@ -169,8 +169,16 @@ export interface UpdateData {
   /** The latest Cloudgate version's tag, `vX.Y.Z`. */
   latestVersion: string | null;
   updateAvailable: boolean;
-  /** The command that upgrades this instance to `latestVersion`, only when that is newer. */
+  /**
+   * The command that upgrades this instance to `latestVersion`, only when that
+   * is newer, and never on the Hosted instance, which upgrades itself.
+   */
   upgradeCommand: string | null;
+  /**
+   * Whether this instance runs as the `cloudgate` Docker service, the only
+   * shape `updateServer` can move. False on every native install.
+   */
+  canUpdateInPlace: boolean;
   /**
    * `null` when the check ran to completion, including when it completed and
    * found nothing newer. A sentence naming the failure when it did not — an
@@ -470,12 +478,14 @@ export const settingsApi = {
   updateData: () => api.post<UpdateData>("/settings/update-data"),
 
   /**
-   * Replace the running Cloudgate image with the newest published one.
+   * Move the `cloudgate` Docker service onto the newest Cloudgate version.
    *
    * **This restarts the instance.** See note 1 at the top of this file. It also
    * does nothing at all when no update is available, so nothing should call it
    * without having read `updateData()` first — and it answers **503** when the
-   * check it re-runs did not complete, rather than silently doing nothing.
+   * check it re-runs did not complete, and **409** on an instance that is not
+   * that Docker service (`canUpdateInPlace: false`), rather than silently doing
+   * nothing.
    */
   updateServer: () => api.post<boolean>("/settings/update-server"),
 
