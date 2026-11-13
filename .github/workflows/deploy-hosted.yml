@@ -1,18 +1,23 @@
-# Upgrades the Hosted instance to a server release once that release is green
-# (docs/deploy.md §11, Automatic updates; ADR-0081):
+# Upgrades the Hosted instance to a Cloudgate version once it is published
+# (docs/deploy.md §11, Automatic updates; ADR-0081, ADR-0082):
 #
 #   1. `git tag v0.3.0 && git push origin v0.3.0` starts `E2E (release)`;
-#   2. when that run ends green, this one checks the release with
+#   2. when that run ends green, `Publish Cloudgate version`
+#      (publish-version.yml) builds the version's tarball and puts it on the
+#      tag's GitHub Release;
+#   3. when that run ends green, this one checks the version with
 #      deploy/hosted-release-gate.sh, SSHes to the box as cloudgate-deploy and
-#      runs deploy/hosted-update.sh there with the tag;
-#   3. then it waits for https://<hostname>/backend/settings/about to report
+#      runs deploy/hosted-update.sh there with the tag, which installs the
+#      published tarball;
+#   4. then it waits for https://<hostname>/backend/settings/about to report
 #      the new version in hosted mode.
 #
-# A red E2E run deploys nothing. A release whose CHANGELOG.md section asks for
-# something on upgrade stops at the gate, naming it; do it, then run this
-# workflow by hand with the tag and `manual_steps_done` ticked. Running it by
-# hand is also how a release is deployed again, or deployed without waiting
-# for E2E.
+# A red E2E or publish run deploys nothing. A version whose CHANGELOG.md
+# section asks for something on upgrade stops at the gate, naming it; do it,
+# then run this workflow by hand with the tag and `manual_steps_done` ticked.
+# Running it by hand is also how a version is deployed again. The box installs
+# only a published version, so a tag with no release is refused there, before
+# its backup, by hand or not.
 #
 # Everything it needs is on the GitHub environment `hosted`: the secrets
 # HOSTED_SSH_HOST, HOSTED_SSH_PRIVATE_KEY and HOSTED_SSH_KNOWN_HOSTS, and the
@@ -24,16 +29,16 @@ name: Deploy the Hosted instance
 
 on:
   workflow_run:
-    workflows: ['E2E (release)']
+    workflows: ['Publish Cloudgate version']
     types: [completed]
   workflow_dispatch:
     inputs:
       tag:
-        description: The server release tag to deploy, such as v0.3.0
+        description: The Cloudgate version to deploy, such as v0.3.0
         required: true
         type: string
       manual_steps_done:
-        description: The release's "What to do on upgrade" steps are done; deploy anyway
+        description: The version's "What to do on upgrade" steps are done; deploy anyway
         type: boolean
         default: false
 
@@ -52,11 +57,13 @@ defaults:
 jobs:
   deploy:
     name: Upgrade the Hosted instance
-    # From E2E: only a green run on a pushed tag.
+    # From the publish workflow: only a green run for a tag. Its own event is
+    # workflow_run, never push; it runs only for E2E's green run on a pushed
+    # tag, and a run started from E2E carries that run's head_branch (the tag)
+    # and head_sha (the commit E2E tested).
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.event == 'push' &&
        startsWith(github.event.workflow_run.head_branch, 'v'))
     runs-on: ubuntu-latest
     environment: hosted
@@ -67,24 +74,36 @@ jobs:
       MANUAL_STEPS_DONE: ${{ github.event_name == 'workflow_dispatch' && inputs.manual_steps_done || false }}
     steps:
       # Before the tag is used anywhere.
-      - name: The tag is a server release
+      - name: The tag is a Cloudgate version
         run: |
           if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::\"$TAG\" is not a server release tag (vX.Y.Z)."
+            echo "::error::\"$TAG\" is not a Cloudgate version tag (vX.Y.Z)."
             exit 1
           fi
 
       - uses: actions/checkout@v4
         with:
           ref: refs/tags/${{ env.TAG }}
+          # main's history too, for the check below.
+          fetch-depth: 0
 
-      # The commit E2E tested is the one deployed: a tag moved since then is
-      # refused rather than deployed untested.
+      # Only a tag on main is deployed (ADR-0081). The box used to check this
+      # with its own checkout; it installs a published version now and has no
+      # checkout to ask, so the check is made here, before the box is reached.
+      - name: The tag is on main
+        run: |
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::$TAG ($(git rev-parse HEAD)) is not on main; only a tag on main is deployed."
+            exit 1
+          fi
+
+      # The commit E2E tested and the version was published from is the one
+      # whose release gate is read: a tag moved since then is refused.
       - name: The tag still names the commit E2E tested
         if: github.event_name == 'workflow_run'
         run: |
           if [ "$(git rev-parse HEAD)" != "$TESTED_SHA" ]; then
-            echo "::error::$TAG now names $(git rev-parse HEAD), but E2E tested $TESTED_SHA."
+            echo "::error::$TAG now names $(git rev-parse HEAD), but E2E tested and the version was published from $TESTED_SHA."
             exit 1
           fi
 
@@ -92,7 +111,7 @@ jobs:
         with:
           node-version: 24
 
-      - name: The release asks for nothing on upgrade
+      - name: The version asks for nothing on upgrade
         run: |
           status=0
           bash deploy/hosted-release-gate.sh "$TAG" || status=$?
