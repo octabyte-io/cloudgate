@@ -10,7 +10,11 @@ import { dirname, join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { selectUploadFiles, summarizeUpload } from '../src/upload-files.js';
+import {
+  fingerprintFiles,
+  selectUploadFiles,
+  summarizeUpload,
+} from '../src/upload-files.js';
 
 let root: string;
 
@@ -34,29 +38,15 @@ function folder(files: Record<string, string>): void {
 const uploaded = () => selectUploadFiles(root).files.map((file) => file.path);
 
 describe('selectUploadFiles', () => {
-  it('takes every file, with its size and the SHA-256 of its contents, at any depth, in path order', () => {
+  it('takes every file, with its size, at any depth, in path order, reading no contents', () => {
     folder({ 'package.json': '{}', 'src/index.js': 'hello', 'b.txt': '' });
 
-    // The fingerprints are `sha256sum`'s for '', '{}' and 'hello'.
+    // No fingerprint: only an upload of the changed files needs one, so the
+    // full upload never reads a file twice (`fingerprintFiles`).
     expect(selectUploadFiles(root).files).toEqual([
-      {
-        path: 'b.txt',
-        size: 0,
-        sha256:
-          'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-      },
-      {
-        path: 'package.json',
-        size: 2,
-        sha256:
-          '44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a',
-      },
-      {
-        path: 'src/index.js',
-        size: 5,
-        sha256:
-          '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824',
-      },
+      { path: 'b.txt', size: 0 },
+      { path: 'package.json', size: 2 },
+      { path: 'src/index.js', size: 5 },
     ]);
   });
 
@@ -275,6 +265,31 @@ describe('selectUploadFiles', () => {
 
       expect(selectUploadFiles(root).symlinks).toEqual([]);
     });
+  });
+});
+
+describe('fingerprintFiles', () => {
+  it('gives each file its path and the SHA-256 of its contents, in the order given', () => {
+    folder({ 'package.json': '{}', 'src/index.js': 'hello', 'b.txt': '' });
+
+    // The fingerprints are `sha256sum`'s for '', '{}' and 'hello'.
+    expect(fingerprintFiles(root, selectUploadFiles(root).files)).toEqual([
+      {
+        path: 'b.txt',
+        sha256:
+          'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      },
+      {
+        path: 'package.json',
+        sha256:
+          '44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a',
+      },
+      {
+        path: 'src/index.js',
+        sha256:
+          '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824',
+      },
+    ]);
   });
 });
 

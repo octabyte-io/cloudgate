@@ -35,7 +35,11 @@ import {
 } from '../server-version.js';
 import { chooserFor, describeTarget, lookUpTarget } from '../target-session.js';
 import type { TargetSession } from '../target-session.js';
-import { selectUploadFiles, summarizeUpload } from '../upload-files.js';
+import {
+  fingerprintFiles,
+  selectUploadFiles,
+  summarizeUpload,
+} from '../upload-files.js';
 import type { UploadFile } from '../upload-files.js';
 import { packUpload } from '../zip.js';
 
@@ -273,10 +277,7 @@ async function uploadChanges(
 ): Promise<void> {
   const { out } = context;
   const path = `/applications/${encodeURIComponent(session.target.service.id)}/drop`;
-  const list: DropFile[] = files.map(({ path, sha256 }) => ({
-    path,
-    sha256,
-  }));
+  const list = fingerprintFiles(folder, files);
   for (let attempt = 1; ; attempt += 1) {
     const compareForm = new FormData();
     compareForm.set('files', listBlob(list), 'files.json');
