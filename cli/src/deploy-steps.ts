@@ -1,3 +1,5 @@
+import { relative, sep } from 'node:path';
+
 import {
   applicationBuildListSchema,
   DEPLOYMENT_IN_PROGRESS_CODE,
@@ -7,8 +9,6 @@ import {
   uploadedDropSchema,
 } from 'api-schemas';
 import type { DeploymentView, DropFile } from 'api-schemas';
-
-import { relative, sep } from 'node:path';
 
 import type { ApiClient } from './api-client.js';
 import type { CommandContext } from './command.js';
