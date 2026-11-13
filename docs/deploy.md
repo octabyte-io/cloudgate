@@ -564,16 +564,19 @@ curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.
 
 Read the version's "What to do on upgrade" lines in `CHANGELOG.md` before you do: a version that handles a new Stripe event says to subscribe the webhook to it.
 
+Once the box has `cloudgate-update` (a Hosted install writes it), `sudo cloudgate-update v0.3.0` does the same in one step: it refuses a tag with no published release before anything else, takes the backup, runs that tag's own `install.sh` with `HOSTED_MODE=true` and `CLOUDGATE_VERSION`, and checks `/opt/cloudgate/VERSION` reads `0.3.0` afterwards. It is what [automatic updates](#automatic-updates) run.
+
 ### Automatic updates
 
-Each server version reaches the Hosted instance by itself once it is green ([ADR-0081](adr/0081-the-hosted-instance-is-upgraded-by-a-green-version-tag-over-a-key-that-can-run-only-the-updater.md)):
+Each Cloudgate version reaches the Hosted instance by itself once it is published ([ADR-0081](adr/0081-the-hosted-instance-is-upgraded-by-a-green-version-tag-over-a-key-that-can-run-only-the-updater.md), [ADR-0082](adr/0082-the-install-downloads-a-prebuilt-release-tarball-published-only-after-a-green-e2e-run-and-runs-it-natively.md)):
 
 1. `git tag v0.3.0 && git push origin v0.3.0` starts `E2E (release)`.
-2. When that run ends green, `.github/workflows/deploy-hosted.yml` checks the version with `deploy/hosted-release-gate.sh`: the tag must be `backend/package.json`'s version, and every "What to do on upgrade" line in its `CHANGELOG.md` section must read "nothing.". Anything else stops the run and names the lines.
-3. It SSHes to the box as `cloudgate-deploy`, whose key runs only `/usr/local/sbin/cloudgate-update` (`deploy/hosted-update.sh`). That takes a B2 backup, then re-runs the install at the tag in its own unit, `cloudgate-update.service`, so a dropped connection cannot cut it off.
-4. It waits until `https://<hostname>/backend/settings/about` reports the new version in hosted mode.
+2. When that run ends green, **Publish Cloudgate version** (`.github/workflows/publish-version.yml`) builds the version's tarball, boots it, and puts it and its `.sha256` on the tag's GitHub Release.
+3. When that run ends green, `.github/workflows/deploy-hosted.yml` checks the tag is on `main` and still names the commit E2E tested, then checks the version with `deploy/hosted-release-gate.sh`: the tag must be `backend/package.json`'s version, and every "What to do on upgrade" line in its `CHANGELOG.md` section must read "nothing.". Anything else stops the run and names the lines.
+4. It SSHes to the box as `cloudgate-deploy`, whose key runs only `/usr/local/sbin/cloudgate-update` (`deploy/hosted-update.sh`). In its own unit, `cloudgate-update.service`, so a dropped connection cannot cut it off, that refuses a tag with no published release, takes a B2 backup, installs the published tarball with the tag's own `install.sh`, and checks `/opt/cloudgate/VERSION` is the tag.
+5. It waits until `https://<hostname>/backend/settings/about` reports the new version in hosted mode.
 
-A version that stopped at step 2: do what its lines ask, then run **Deploy the Hosted instance** by hand (Actions > Run workflow) with the tag and `manual_steps_done` ticked. Running it by hand also deploys a version again, or without waiting for E2E.
+A version that stopped at step 3: do what its lines ask, then run **Deploy the Hosted instance** by hand (Actions > Run workflow) with the tag and `manual_steps_done` ticked. Running it by hand also deploys a version again. Either way only a published version is installed: a tag whose E2E or publish run was red has no release, and the box refuses it before its backup.
 
 **Setting it up, once.** On your laptop make a key used for nothing else:
 
