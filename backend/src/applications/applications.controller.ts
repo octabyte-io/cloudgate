@@ -179,8 +179,8 @@ export class ApplicationsController {
     @CurrentUser() user: AuthSession['user'],
     @CurrentSession() session: Session,
     @Param('id') id: string,
-    @Body() body: UploadApplicationDropDto,
     @UploadedFile() zip: Express.Multer.File | undefined,
+    @Body() body: UploadApplicationDropDto,
   ) {
     if (!zip) {
       throw new BadRequestException('No zip file provided');
@@ -196,7 +196,9 @@ export class ApplicationsController {
   /**
    * The first half of uploading only the changed files: the multipart
    * `files` part is the folder's file list as JSON, and the answer says which
-   * of them the build host is missing (`api-schemas`' `drops.ts`).
+   * of them the build host is missing (`api-schemas`' `drops.ts`). Any member
+   * who may update the Application may call it; the service scopes it to the
+   * caller's organization.
    */
   @Post(':id/drop/compare')
   @HttpCode(200)
@@ -221,7 +223,9 @@ export class ApplicationsController {
   /**
    * The second half: the multipart `files` part is the whole folder's file
    * list, the `zip` part only the files compare asked for, and the fields are
-   * `/drop`'s. Answers what `/drop` answers.
+   * `/drop`'s. Answers what `/drop` answers. Any member who may update the
+   * Application may call it; the service scopes it to the caller's
+   * organization.
    */
   @Post(':id/drop/apply')
   @HttpCode(200)
@@ -231,9 +235,9 @@ export class ApplicationsController {
     @CurrentUser() user: AuthSession['user'],
     @CurrentSession() session: Session,
     @Param('id') id: string,
-    @Body() body: UploadApplicationDropDto,
     @UploadedFiles()
     parts: { files?: Express.Multer.File[]; zip?: Express.Multer.File[] },
+    @Body() body: UploadApplicationDropDto,
   ) {
     const [files] = parts?.files ?? [];
     const [zip] = parts?.zip ?? [];

@@ -1165,6 +1165,8 @@ export class ApplicationsService {
    * of the folder's `files` the build host is missing or holds different, and
    * how many it holds already and beyond the list. Refused as
    * {@link uploadDrop} is, since it is the first step of one: changes nothing.
+   * Org-scoped through {@link findOwnedForUpdate}, so a caller needs `update`
+   * on the Application, as for the upload it prepares.
    */
   async compareDrop(
     ctx: PermissionCtx,
@@ -1186,7 +1188,8 @@ export class ApplicationsService {
    * {@link compareDrop} asked for, applied on the build host as one swap
    * (`drop-changes.ts`), then the source switched exactly as
    * {@link uploadDrop} switches it. A tree that does not match the list is a
-   * 409 and switches nothing.
+   * 409 and switches nothing. Org-scoped through {@link findOwnedForUpdate},
+   * so a caller needs `update` on the Application.
    */
   async applyDrop(
     ctx: PermissionCtx,

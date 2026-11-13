@@ -43,8 +43,9 @@ import type { SourceProgram } from '../source-program';
  *
  * **The guard, because `sourceType` is a `PATCH` column.**
  * `updateApplicationSchema` admits `sourceType: 'drop'`, so a row can name this
- * source with no archive ever posted — and `uploadDrop` is the only writer of
- * `dropBuildPath`, so such a row also has no build path of its own. Without the
+ * source with no archive ever posted — and the two uploads, `uploadDrop` and
+ * `applyDrop`, are the only writers of `dropBuildPath` (through
+ * `switchToDrop`), so such a row also has no build path of its own. Without the
  * `-d` test the deploy would run a builder over an absent directory and fail
  * inside nixpacks or `docker build`, whose message names neither the drop lane
  * nor the upload route. The refusal is `exit 1` inside the composed program

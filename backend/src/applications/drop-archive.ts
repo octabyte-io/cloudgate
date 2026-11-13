@@ -3,6 +3,7 @@ import zlib from 'node:zlib';
 import { BadRequestException } from '@nestjs/common';
 import { quote } from 'shell-quote';
 import { ownerOnlyDirectoryCommand } from '../common/files/owner-only';
+import type { BuildHostArtifactOwner } from '../common/teardown-steps';
 import { buildHostServerId } from '../deployment-engine/build-host';
 import { applicationsDirectoryOn } from '../deployment-engine/deployment-engine.paths';
 import { execOnServer } from '../remote/exec-dispatch';
@@ -161,16 +162,15 @@ export function entryWriteLines(
  *
  * The build host's own root, not this process's. `applicationsDirectory()`
  * resolved `CLOUDGATE_DIRECTORY` for every machine alike, so on an install
- * that sets it the upload unpacked the archive under a root the builder had
- * never heard of — and `codeDirectory` in `DeploymentEngineService`, which is
- * the other writer of this very path, had the same defect, which is why the
+ * that sets it the upload unpacked the archive under a root the build host
+ * had never heard of — and `codeDirectory` in `DeploymentEngineService`, which
+ * is the other writer of this very path, had the same defect, which is why the
  * two moved together.
+ *
+ * Takes ADR-0018's {@link BuildHostArtifactOwner} rather than a shape of its
+ * own: the code directory is one of the build-host artifacts that type names.
  */
-export function dropCodeDirectory(application: {
-  appName: string;
-  serverId?: string | null;
-  buildServerId?: string | null;
-}): string {
+export function dropCodeDirectory(application: BuildHostArtifactOwner): string {
   return path.posix.join(
     applicationsDirectoryOn(buildHostServerId(application)),
     application.appName,
