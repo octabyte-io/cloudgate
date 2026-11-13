@@ -1,6 +1,6 @@
 {
   "name": "@octabyte-io/cloudgate",
-  "version": "0.0.2-beta.2",
+  "version": "0.0.2-beta.3",
   "description": "Deploy a folder to Cloudgate from your terminal.",
   "license": "Elastic-2.0",
   "type": "module",

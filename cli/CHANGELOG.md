@@ -2,7 +2,7 @@
 
 The Cloudgate CLI's own changes, published to npm as `@octabyte-io/cloudgate`. A server change a CLI feature needs gets its own entry in the root `CHANGELOG.md` as well.
 
-## Unreleased
+## 0.0.2-beta.3
 
 ### `cloudgate link --whole-project`, `cloudgate config pull` and `cloudgate config plan`: a Project folder
 
