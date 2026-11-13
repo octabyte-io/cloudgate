@@ -69,9 +69,10 @@ export function buildAppDirectoryIn(
  * the source type uses.
  *
  * **The `drop` arm is the drop lane being finished rather than a separate
- * fix.** `dropBuildPath` is the column `POST /applications/:id/drop` writes —
- * it is the *only* column that route sets besides `sourceType`, it defaults
- * to `'/'` there, and `PATCH /applications/:id` cannot set it at all — while
+ * fix.** `dropBuildPath` is the column `POST /applications/:id/drop` and
+ * `POST /applications/:id/drop/apply` write — it is the *only* column those
+ * routes set besides `sourceType`, it defaults to `'/'` there, and
+ * `PATCH /applications/:id` cannot set it at all — while
  * `buildPath` belongs to the github/gitlab/gitea/bitbucket sources and
  * `customGitBuildPath` to `git`. Falling through to `buildPath` meant an
  * operator who uploaded a zip and said *"build from `/frontend`"* got a build
