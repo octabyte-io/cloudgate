@@ -9,6 +9,7 @@ import { DRIZZLE } from '../db/drizzle.module';
 import type { DrizzleDB } from '../db/drizzle.module';
 import { AuditLogService } from '../enterprise/audit-logs/audit-log.service';
 import { member } from '../organizations/organizations.schema';
+import { callAuthApi } from './auth-api.util';
 import { CLI_CLIENT_ID } from './auth.config';
 import type { Auth } from './auth.config';
 import { AUTH } from './auth.constants';
@@ -162,9 +163,12 @@ export class DeviceLoginService {
     }
 
     const name = request.name ?? DEFAULT_KEY_NAME;
-    const created = await this.auth.api.createApiKey({
-      body: { userId, name, expiresIn: DEVICE_LOGIN_KEY_DAYS * 24 * 60 * 60 },
-    });
+    // A refusal from better-auth keeps its 4xx and code, not a bare 500.
+    const created = await callAuthApi(() =>
+      this.auth.api.createApiKey({
+        body: { userId, name, expiresIn: DEVICE_LOGIN_KEY_DAYS * 24 * 60 * 60 },
+      }),
+    );
     const organizationId = await this.defaultOrganizationOf(userId);
     await this.auditLogs.audit(
       { userId, organizationId, ip },

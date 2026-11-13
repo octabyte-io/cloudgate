@@ -1,6 +1,15 @@
 import { z } from 'zod';
 
 /**
+ * The longest name a Personal key may have, wherever it is made: the console's
+ * form, `POST /users/me/api-keys`, and the key `cloudgate login` mints.
+ * better-auth's api-key plugin is told the same ceiling (`maximumNameLength`
+ * in `auth.config.ts`): left to its default of 32, it refused every name the
+ * schemas let through between 33 and here.
+ */
+export const PERSONAL_KEY_NAME_MAX_LENGTH = 255;
+
+/**
  * `GET /users/me/whoami`: who a request is made as, where, and with what.
  *
  * The facts `cloudgate whoami` prints, in one read: the email, the Organization

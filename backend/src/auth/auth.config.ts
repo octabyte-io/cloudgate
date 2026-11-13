@@ -15,6 +15,7 @@ import {
   organization,
   twoFactor,
 } from 'better-auth/plugins';
+import { PERSONAL_KEY_NAME_MAX_LENGTH } from 'api-schemas';
 import { desc, eq, inArray } from 'drizzle-orm';
 import type { DrizzleDB } from '../db/drizzle.module';
 import * as schema from '../db/schema';
@@ -1574,6 +1575,10 @@ const createAuthWith = (
       }),
       apiKey({
         enableMetadata: true,
+        // The plugin's default is 32, under what the console's form and
+        // `cloudgate login` (`cloudgate on <hostname>`) send, so a longer name
+        // was refused (#25). One ceiling, stated once in `api-schemas`.
+        maximumNameLength: PERSONAL_KEY_NAME_MAX_LENGTH,
         // A Cloudgate key is a *service* credential — the documented way to
         // drive a headless instance — and better-auth's per-key rate limit is
         // not shaped for one.
