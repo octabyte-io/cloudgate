@@ -404,7 +404,7 @@ describe('config plan', () => {
     writeFileSync(join(root, 'cloudgate.yaml'), CURRENT);
   });
 
-  it("prints each step of each Environment's plan, and on no applies nothing and dismisses the plan it stored", async () => {
+  it("prints each step of each Environment's plan, and on no applies nothing, dismisses the plan it stored and exits 1 as a root deploy does", async () => {
     const result = await inTerminal(
       ['config', 'plan'],
       { confirm: [false] },
@@ -412,7 +412,7 @@ describe('config plan', () => {
       answers,
     );
 
-    expect(result.code).toBe(0);
+    expect(result.code).toBe(1);
     expect(result.stdout).toBe(
       [
         'staging: 1 to create, 1 to change, 1 to destroy',
@@ -433,7 +433,7 @@ describe('config plan', () => {
     expect(result.stderr).toContain('Nothing was applied.');
   });
 
-  it('on no, says the plan is left open when the role cannot dismiss it, and ends as a no does', async () => {
+  it('on no, says the plan is left open when the role cannot dismiss it, and exits 1 as a no does', async () => {
     const result = await inTerminal(
       ['config', 'plan'],
       { confirm: [false] },
@@ -450,7 +450,7 @@ describe('config plan', () => {
       },
     );
 
-    expect(result.code).toBe(0);
+    expect(result.code).toBe(1);
     expect(result.sent).toContainEqual(dismissed);
     expect(result.stderr).toContain('Nothing was applied.');
     expect(result.stderr).toContain(
@@ -486,7 +486,7 @@ describe('config plan', () => {
     expect(result.stderr).toContain('✓ Applied the plan in staging');
   });
 
-  it('applies nothing and dismisses the plan when a typed name is not the Config name', async () => {
+  it('applies nothing, dismisses the plan and exits 1 when a typed name is not the Config name', async () => {
     const result = await inTerminal(
       ['config', 'plan'],
       { confirm: [true], text: ['wroker'] },
@@ -494,7 +494,7 @@ describe('config plan', () => {
       answers,
     );
 
-    expect(result.code).toBe(0);
+    expect(result.code).toBe(1);
     expect(applies(result.sent)).toEqual([]);
     expect(result.sent).toContainEqual(dismissed);
     expect(result.stderr).toContain('That is not worker. Nothing was applied.');

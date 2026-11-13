@@ -26,7 +26,7 @@ USAGE
   Prints what each Environment's plan creates, changes and destroys, and
   asks before applying it. A Service it destroys, or upgrades to a new major
   version, is applied only once its Config name is typed. With no terminal
-  it needs --yes.
+  it needs --yes. A no, or a wrong name, applies nothing and exits 1.
 
 FLAGS
   --yes                  Apply without asking; a plan that destroys a Service
@@ -44,6 +44,9 @@ FLAGS
       found,
       { yes: context.values.yes === true },
     );
+    // A no, or a wrong Config name, applied nothing: exit 1, as a root
+    // `cloudgate deploy` does, so a script can tell it from an apply.
+    if (outcome.kind === 'declined') return EXIT.failed;
     return outcome.kind === 'applied' && outcome.failed > 0
       ? EXIT.failed
       : EXIT.ok;
