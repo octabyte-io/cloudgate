@@ -239,9 +239,12 @@ describe('TraefikFilesService.rotateAccessLogOn', () => {
   const SERVER = 'srv-1';
   let remoteCalls: string[];
   let execAsyncRemote: jest.Mock;
+  /** The PATH the Server's shell runs with; a test may put a stub in front. */
+  let serverPath: string | undefined;
 
   function serverFiles(): TraefikFilesService {
     remoteCalls = [];
+    serverPath = process.env.PATH;
     execAsyncRemote = jest.fn((_serverId: string, command: string) => {
       remoteCalls.push(command);
       if (command.includes('docker ps')) {
@@ -254,6 +257,7 @@ describe('TraefikFilesService.rotateAccessLogOn', () => {
         const stdout = execFileSync('/bin/sh', ['-c', command], {
           encoding: 'utf8',
           stdio: ['ignore', 'pipe', 'pipe'],
+          env: { ...process.env, PATH: serverPath },
         });
         return Promise.resolve({ stdout, stderr: '' });
       } catch (error) {
@@ -376,7 +380,17 @@ describe('TraefikFilesService.rotateAccessLogOn', () => {
     const service = serverFiles();
     writeConfig(true);
     writeLog(ACCESS_LOG_MAX_BYTES + 1);
-    fs.chmodSync(path.join(dir, 'traefik.yml'), 0o000);
+    // A `cat` that is refused, as a mode-000 file refuses it. Not `chmod`:
+    // root reads a mode-000 file anyway, so as root the read succeeded and
+    // the rotation ran. The stub fails the same way for every user.
+    const bin = path.join(dir, 'bin');
+    fs.mkdirSync(bin);
+    fs.writeFileSync(
+      path.join(bin, 'cat'),
+      '#!/bin/sh\necho "cat: $1: Permission denied" >&2\nexit 1\n',
+      { mode: 0o755 },
+    );
+    serverPath = `${bin}:${process.env.PATH}`;
 
     await expect(service.rotateAccessLogOn(SERVER)).rejects.toThrow();
     expect(remoteCalls.map(step)).toEqual(['read config']);

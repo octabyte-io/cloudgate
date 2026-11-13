@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import type { Server } from 'node:http';
-import { createServer as createTcpServer } from 'node:net';
+import net, { createServer as createTcpServer } from 'node:net';
 import type { AddressInfo } from 'node:net';
 import {
   classifyProbeError,
@@ -260,13 +260,26 @@ describe('probeTcp', () => {
     });
   });
 
-  it('reads a host that never answers as down', async () => {
-    // TEST-NET-1 (RFC 5737) is never routed: a timeout, or an unreachable
-    // network where the machine says so first.
-    const silent = await probeTcp('192.0.2.1', 9, { timeoutMs: 300 });
+  it('reads a host that never answers as down with timeout', async () => {
+    // A socket that is never connected neither connects nor errors: a host
+    // that drops the SYN. Not a real unrouted address (TEST-NET-1): behind a
+    // proxy or a sandboxed network something answers it with a reset, and the
+    // Probe rightly reads that as `refused`, so the test measured the network.
+    const connect = jest
+      .spyOn(net, 'connect')
+      .mockImplementation(() => new net.Socket());
+    try {
+      const silent = await probeTcp('192.0.2.1', 9, { timeoutMs: 100 });
 
-    expect(silent.verdict).toBe('down');
-    expect(['timeout', 'connection']).toContain(silent.errorClass);
+      expect(silent).toEqual({
+        verdict: 'down',
+        latencyMs: null,
+        errorClass: 'timeout',
+      });
+      expect(connect).toHaveBeenCalledWith({ host: '192.0.2.1', port: 9 });
+    } finally {
+      connect.mockRestore();
+    }
   });
 });
 
