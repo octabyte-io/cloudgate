@@ -89,6 +89,14 @@ describe('Cloudgate CLI (e2e)', () => {
   let certificateFolder: string;
   let certificate: TestCertificate;
   let home: string;
+  /**
+   * The platform host's root for this test, made fresh for each: an upload
+   * is compared with the build host's files (spec #10), so a tree another
+   * test or an earlier run left under a shared root would change what a
+   * deploy sends.
+   */
+  let platformRoot: string;
+  let originalPlatformRoot: string | undefined;
   /** What the harness's builder does with the next build: succeed, or fail. */
   let nextBuild: 'done' | 'fail' = 'done';
   /**
@@ -136,6 +144,9 @@ describe('Cloudgate CLI (e2e)', () => {
   beforeEach(async () => {
     await ctx.resetDb();
     home = emptyFolder('home');
+    platformRoot = emptyFolder('platform');
+    originalPlatformRoot = process.env.CLOUDGATE_DIRECTORY;
+    process.env.CLOUDGATE_DIRECTORY = platformRoot;
     nextBuild = 'done';
     swarmLogs = new Map();
   });
@@ -147,8 +158,9 @@ describe('Cloudgate CLI (e2e)', () => {
   /**
    * The machine a `deploy` walk builds on, as close to the real one as this
    * box allows. Every shell program runs for real on the platform host — the
-   * upload lands under the test platform root, through the same `/bin/sh`
-   * whose 128 KiB cap on one argument an earlier fix lifted, and the Deployment log is
+   * upload lands under {@link platformRoot}, made fresh for each test,
+   * through the same `/bin/sh` whose 128 KiB cap on one argument an earlier
+   * fix lifted, and the Deployment log is
    * a real file the real `tail -f` behind `/listen-deployment` follows — except
    * the builder's and Docker's, which this box has neither of: the build
    * program instead appends one line to the log (or fails, as {@link
@@ -286,6 +298,10 @@ describe('Cloudgate CLI (e2e)', () => {
 
   afterEach(() => {
     removeFolder(home);
+    if (originalPlatformRoot === undefined)
+      delete process.env.CLOUDGATE_DIRECTORY;
+    else process.env.CLOUDGATE_DIRECTORY = originalPlatformRoot;
+    removeFolder(platformRoot);
   });
 
   /** The instance owner, and a Personal key of theirs that ends in 90 days. */
