@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 /**
  * The upload half of a deploy from a folder: `POST
@@ -24,7 +24,7 @@ export const uploadApplicationDropSchema = z.object({
  */
 export const uploadedDropSchema = z.object({
   applicationId: z.string(),
-  sourceType: z.literal("drop"),
+  sourceType: z.literal('drop'),
 });
 
 export type UploadedDrop = z.infer<typeof uploadedDropSchema>;
@@ -58,7 +58,7 @@ export const dropFileSchema = z.object({
   path: z.string().min(1),
   sha256: z
     .string()
-    .regex(/^[0-9a-f]{64}$/, "sha256 must be 64 lowercase hex digits"),
+    .regex(/^[0-9a-f]{64}$/, 'sha256 must be 64 lowercase hex digits'),
 });
 
 export type DropFile = z.infer<typeof dropFileSchema>;
@@ -85,14 +85,14 @@ export type DropComparison = z.infer<typeof dropComparisonSchema>;
  * reached. The message says which; `cloudgate deploy` prints it and compares
  * again once.
  */
-export const UPLOAD_CONFLICT_CODE = "UPLOAD_CONFLICT";
+export const UPLOAD_CONFLICT_CODE = 'UPLOAD_CONFLICT';
 
 /**
  * The `code` of the 409 an upload earns while a build of the Application is
  * pending or running: an upload first deletes the tree that build
  * reads. `cloudgate deploy` waits for the build and uploads again.
  */
-export const DEPLOYMENT_IN_PROGRESS_CODE = "DEPLOYMENT_IN_PROGRESS";
+export const DEPLOYMENT_IN_PROGRESS_CODE = 'DEPLOYMENT_IN_PROGRESS';
 
 /**
  * A build pending or running for longer than this is taken as stuck (CLI
