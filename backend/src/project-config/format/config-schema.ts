@@ -203,8 +203,8 @@ const imageSource = z.strictObject({ image: imageReferenceSchema() });
 /**
  * Why a folder source's subfolder cannot be used, or `null`. It is a
  * subfolder of the **Project folder** (ADR-0080), so it is written relative
- * to it: a leading `/` would read as the host's root, and a `..` segment
- * leaves the folder. Beyond those, a build path's rule
+ * to it: a leading `/` would read as the filesystem's root, and a `..`
+ * segment leaves the folder. Beyond those, a build path's rule
  * ({@link repositoryPathRefusal}), since it becomes one.
  */
 function folderRefusal(value: string): string | null {

@@ -43,12 +43,13 @@ import type { SourceProgram } from '../source-program';
  *
  * **The guard, because `sourceType` is a `PATCH` column.**
  * `updateApplicationSchema` admits `sourceType: 'drop'`, so a row can name this
- * source with no archive ever posted — and the two uploads, `uploadDrop` and
- * `applyDrop`, are the only writers of `dropBuildPath` (through
- * `switchToDrop`), so such a row also has no build path of its own. Without the
- * `-d` test the deploy would run a builder over an absent directory and fail
- * inside nixpacks or `docker build`, whose message names neither the drop lane
- * nor the upload route. The refusal is `exit 1` inside the composed program
+ * source with no archive ever posted — and `dropBuildPath` is written only by
+ * the two uploads, `uploadDrop` and `applyDrop` (through `switchToDrop`), and
+ * by a plan for a folder source (ADR-0080), which writes it before any
+ * upload, so such a row may have no build path of its own, or one with
+ * nothing under it yet. Without the `-d` test the deploy would run a builder
+ * over an absent directory and fail inside nixpacks or `docker build`, whose
+ * message names neither the drop lane nor the upload route. The refusal is `exit 1` inside the composed program
  * rather than a `throw` in the engine, deliberately: it lands in the Deployment
  * *log*, next to the phase banners, which is where an operator reads a failed
  * deploy — and it costs no round trip, because it is composed into the same

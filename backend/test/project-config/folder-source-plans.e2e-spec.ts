@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import request from 'supertest';
-import { App } from 'supertest/types';
+import type { App } from 'supertest/types';
 
 import {
   application,
@@ -15,7 +15,8 @@ import type {
   QueuedJob,
   QueuePort,
 } from '../../src/deployment-queue/queue.port';
-import { createTestApp, TestAppContext } from '../utils/test-app';
+import { createTestApp } from '../utils/test-app';
+import type { TestAppContext } from '../utils/test-app';
 
 jest.setTimeout(120_000);
 
