@@ -592,7 +592,7 @@ describe('deploy/install.sh', () => {
       expect(placed.stdout).toContain(`rm -rf ${aside}\n`);
     });
 
-    it('puts the staged version in place of the installed one, keeping neither the old one nor the staging directory', () => {
+    it('puts the staged version in place of the installed one, keeping the old one at .previous for the units still running it', () => {
       const into = path.join(root, 'opt/cloudgate');
       versionTree('0.9.0', into);
       fs.writeFileSync(path.join(into, 'only-in-0.9.0'), '');
@@ -607,7 +607,32 @@ describe('deploy/install.sh', () => {
         '0.10.0\n',
       );
       expect(fs.existsSync(path.join(into, 'only-in-0.9.0'))).toBe(false);
-      expect(fs.readdirSync(path.join(root, 'opt'))).toEqual(['cloudgate']);
+      // The running backend and console were started from 0.9.0 and still
+      // read files from it until they restart, after the migrations.
+      expect(
+        fs.readFileSync(path.join(`${into}.previous`, 'VERSION'), 'utf8'),
+      ).toBe('0.9.0\n');
+      expect(
+        fs.existsSync(path.join(`${into}.previous`, 'only-in-0.9.0')),
+      ).toBe(true);
+      expect(fs.readdirSync(path.join(root, 'opt')).sort()).toEqual([
+        'cloudgate',
+        'cloudgate.previous',
+      ]);
+    });
+
+    it('replaces a .previous an earlier run left behind with the version it moves aside', () => {
+      const into = path.join(root, 'opt/cloudgate');
+      versionTree('0.8.0', `${into}.previous`);
+      versionTree('0.9.0', into);
+      versionTree('0.10.0', `${into}.next`);
+
+      const placed = place(`${into}.next`, into);
+
+      expect(placed.status).toBe(0);
+      expect(
+        fs.readFileSync(path.join(`${into}.previous`, 'VERSION'), 'utf8'),
+      ).toBe('0.9.0\n');
     });
 
     it('puts the staged version in place on a first install', () => {
@@ -641,6 +666,51 @@ describe('deploy/install.sh', () => {
         'cloudgate/deploy/install.sh',
       ]);
     });
+  });
+
+  describe('drop_previous_version', () => {
+    it('deletes the version place_version moved aside', () => {
+      const fn = source().match(
+        /^drop_previous_version\(\) \{\n[\s\S]*?\n\}\n/m,
+      );
+      if (!fn) throw new Error('no drop_previous_version in deploy/install.sh');
+      const into = path.join(root, 'opt/cloudgate');
+      versionTree('0.10.0', into);
+      versionTree('0.9.0', `${into}.previous`);
+
+      const dropped = spawnSync(
+        'bash',
+        [
+          '-c',
+          `set -euo pipefail; INSTALL_DIR="$1"; ${fn[0]} drop_previous_version`,
+          'bash',
+          into,
+        ],
+        { encoding: 'utf8' },
+      );
+
+      expect(dropped.status).toBe(0);
+      expect(fs.readdirSync(path.join(root, 'opt'))).toEqual(['cloudgate']);
+    });
+  });
+
+  // A run that stops between the swap and the restarts (a migration that
+  // fails, say) leaves the units on the version they started from, which
+  // they still read files from: so it is deleted only once both have
+  // restarted onto the new one.
+  it('deletes the old version only after both units have restarted', () => {
+    const lines = code();
+    const placed = lines.indexOf('\nplace_version\n');
+    const restarted = lines.indexOf('systemctl restart cloudgate-console\n');
+    const dropped = lines.indexOf('\ndrop_previous_version\n');
+
+    expect(placed).toBeGreaterThan(-1);
+    expect(dropped).toBeGreaterThan(restarted);
+    expect(restarted).toBeGreaterThan(placed);
+    // place_version itself removes only a .previous left by an earlier run,
+    // before it moves anything.
+    const fn = lines.match(/^place_version\(\) \{\n[\s\S]*?\n\}\n/m)?.[0];
+    expect(fn?.match(/rm -rf "\$INSTALL_DIR\.previous"/g)).toHaveLength(1);
   });
 
   /** What /opt/cloudgate holds that the run can replace, checked before anything changes. */

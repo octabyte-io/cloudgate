@@ -718,12 +718,23 @@ as_service_user() {
 
 # Puts the version this script was run from at $INSTALL_DIR, in place of the
 # one there, and points REPO_ROOT at it. Here, after every step that can stop
-# the run and just before the migrations, rather than in root install.sh: the
-# units keep running the old version until the restart below, and a run that
-# stops earlier leaves the installed version whole beside an unused staging
-# directory. Two renames on one filesystem, then the old one goes: rolling
-# back is not offered, because its migrations only go forward. Run from
-# $INSTALL_DIR itself, a re-run of the installed version, it moves nothing.
+# the run and just before the migrations, rather than in root install.sh: a run
+# that stops earlier leaves the installed version whole beside an unused
+# staging directory. Two renames on one filesystem.
+#
+# The old version is moved to $INSTALL_DIR.previous and kept there, not
+# deleted. From here to the restarts below the old backend and console are
+# still the running processes, and they are not intact: their working
+# directories and open files follow the rename into .previous, but anything
+# they open by absolute path under $INSTALL_DIR (the console loads .next
+# chunks when a page first asks for them) is now the new version's. Deleting
+# .previous here would take the rest from under them too, so
+# drop_previous_version deletes it only once both units have restarted onto
+# the new version. A run that stops in between, at a failed migration say,
+# leaves the new version at $INSTALL_DIR and the old one at .previous; re-run
+# the install to finish, which removes that .previous before it moves anything. Rolling back is not offered,
+# because migrations only go forward. Run from $INSTALL_DIR itself, a re-run
+# of the installed version, it moves nothing.
 #
 # A git checkout there, from an install made before versions (ADR-0082), is
 # moved to $INSTALL_DIR.checkout-<date> and kept rather than deleted: it is
@@ -752,13 +763,17 @@ place_version() {
   fi
   mv "$REPO_ROOT" "$INSTALL_DIR"
   REPO_ROOT="$INSTALL_DIR"
-  rm -rf "$INSTALL_DIR.previous"
   echo "Cloudgate $(cat "$INSTALL_DIR/VERSION") is in place at $INSTALL_DIR"
   if [ -n "$checkout" ]; then
     echo "Moved the git checkout that was at $INSTALL_DIR to $checkout."
     echo "Nothing runs from it now. Once you have kept anything of yours from it, delete it:"
     echo "    rm -rf $checkout"
   fi
+}
+
+# The version place_version moved aside, once nothing runs from it.
+drop_previous_version() {
+  rm -rf "$INSTALL_DIR.previous"
 }
 
 log "Cloudgate ${VERSION}"
@@ -963,6 +978,8 @@ systemctl enable cloudgate-backend cloudgate-console
 # place_version has just put another version where they run from.
 systemctl restart cloudgate-backend
 systemctl restart cloudgate-console
+# Both run from $INSTALL_DIR now, so the old version has no reader left.
+drop_previous_version
 
 # The Hosted instance's hourly backup to B2 and the hourly check that mails
 # BACKUP_ALERT_EMAIL once none has succeeded for 3 hours
