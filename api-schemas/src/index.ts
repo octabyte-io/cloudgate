@@ -12,6 +12,7 @@ export * from './device-login';
 export * from './errors';
 export * from './users';
 export * from './targets';
+export * from './plans';
 export * from './status';
 export * from './variables';
 export * from './deployments';

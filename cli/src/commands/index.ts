@@ -1,4 +1,5 @@
 import type { Command } from '../command.js';
+import { configPlan } from './config-plan.js';
 import { configPull } from './config-pull.js';
 import { deploy } from './deploy.js';
 import { instanceList, instanceUse } from './instance.js';
@@ -28,6 +29,7 @@ export const COMMANDS: readonly Command[] = [
   link,
   unlink,
   configPull,
+  configPlan,
   deploy,
   status,
   logs,

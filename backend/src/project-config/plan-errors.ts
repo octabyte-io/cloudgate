@@ -1,4 +1,5 @@
 import { ConflictException, HttpException } from '@nestjs/common';
+import { CONFIG_VERSION_STALE_CODE } from 'api-schemas';
 
 import { PLAN_REFUSED_CODE } from './applier/plan-applier';
 import { cloudReadOf, cloudStepName } from './planner/cloud-steps';
@@ -28,8 +29,9 @@ export const PLAN_UPGRADE_NOT_CONFIRMED_CODE = 'PLAN_UPGRADE_NOT_CONFIRMED';
 /**
  * A whole-YAML edit that started from an older config version than
  * Cloudgate's (ADR-0080): someone changed the config since it was read.
+ * Spelled in `api-schemas`, which the CLI reads it from.
  */
-export const CONFIG_VERSION_STALE_CODE = 'CONFIG_VERSION_STALE';
+export { CONFIG_VERSION_STALE_CODE };
 /** A move's confirm whose preview's reads no longer hold. */
 export const MOVE_STALE_CODE = 'MOVE_STALE';
 /**

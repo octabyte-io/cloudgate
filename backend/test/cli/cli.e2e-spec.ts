@@ -1124,6 +1124,7 @@ describe('Cloudgate CLI (e2e)', () => {
         projectId: project.projectId,
         environmentId: staging.environmentId,
         configName: row.configName,
+        ownerCtx,
         env: { CLOUDGATE_KEY: key, CLOUDGATE_INSTANCE: instance },
       };
     }
@@ -1376,6 +1377,231 @@ describe('Cloudgate CLI (e2e)', () => {
       } finally {
         removeFolder(repo);
       }
+    });
+
+    describe('config plan', () => {
+      /** The Environment's plans, newest last, as Cloudgate records them. */
+      const plansIn = (environmentId: string) =>
+        ctx.db
+          .select({
+            status: schema.plan.status,
+            steps: schema.plan.steps,
+          })
+          .from(schema.plan)
+          .where(eq(schema.plan.environmentId, environmentId))
+          .orderBy(schema.plan.createdAt);
+
+      /** The copy with `command: node server.js` given to `configName`. */
+      const withCommand = (text: string, configName: string) => {
+        const entry = `  ${configName}:\n    kind: web\n`;
+        expect(text).toContain(entry);
+        return text.replace(entry, `${entry}    command: node server.js\n`);
+      };
+
+      const recordedVersion = (repo: string) =>
+        (
+          JSON.parse(
+            readFileSync(join(repo, '.cloudgate', 'link.json'), 'utf8'),
+          ) as { workingCopy: { version: number } }
+        ).workingCopy.version;
+
+      it("prints each Environment's plan and, with no terminal and no --yes, refuses with exit 2 and applies nothing", async () => {
+        const seeded = await seededProject();
+        const production = await ctx.app
+          .get(EnvironmentsService)
+          .create(seeded.ownerCtx, {
+            name: 'production',
+            projectId: seeded.projectId,
+          });
+        const repo = emptyFolder('monorepo');
+        try {
+          expect(
+            (await runCli(wholeProject, { home, cwd: repo, env: seeded.env }))
+              .code,
+          ).toBe(0);
+          const copy = join(repo, 'cloudgate.yaml');
+          writeFileSync(
+            copy,
+            withCommand(readFileSync(copy, 'utf8'), seeded.configName),
+          );
+
+          const refused = await runCli(['config', 'plan'], {
+            home,
+            cwd: repo,
+            env: { CLOUDGATE_KEY: seeded.key },
+          });
+
+          expect(refused.code).toBe(2);
+          expect(refused.stdout).toContain(
+            `staging: 0 to create, 1 to change, 0 to destroy\n  ~ ${seeded.configName} (web) change command\n`,
+          );
+          expect(refused.stdout).toContain(
+            `production: 1 to create, 0 to change, 0 to destroy\n  + ${seeded.configName} (web) create\n`,
+          );
+          expect(refused.stderr).toContain(
+            'Error: nothing was applied: applying the plan needs a yes',
+          );
+          expect(refused.stderr).toContain('Pass --yes');
+          for (const environmentId of [
+            seeded.environmentId,
+            production.environmentId,
+          ]) {
+            // The plan this run made is still open, waiting for an Apply.
+            expect((await plansIn(environmentId)).at(-1)?.status).toBe('open');
+          }
+          const [inProduction] = await ctx.db
+            .select({ id: schema.application.applicationId })
+            .from(schema.application)
+            .where(
+              eq(schema.application.environmentId, production.environmentId),
+            );
+          expect(inProduction).toBeUndefined();
+        } finally {
+          removeFolder(repo);
+        }
+      });
+
+      it('with --yes applies a plan that destroys nothing, starting no build for a Service it does not touch; the recorded version is the new one, and a second run says nothing changed', async () => {
+        const seeded = await seededProject();
+        const untouched = await ctx.app
+          .get(ApplicationsService)
+          .create(seeded.ownerCtx, {
+            name: 'Shop Admin',
+            appName: 'shop-admin',
+            environmentId: seeded.environmentId,
+          });
+        const repo = emptyFolder('monorepo');
+        try {
+          expect(
+            (await runCli(wholeProject, { home, cwd: repo, env: seeded.env }))
+              .code,
+          ).toBe(0);
+          const copy = join(repo, 'cloudgate.yaml');
+          const edited = withCommand(
+            readFileSync(copy, 'utf8'),
+            seeded.configName,
+          );
+          writeFileSync(copy, edited);
+
+          const applied = await runCli(['config', 'plan', '--yes'], {
+            home,
+            cwd: repo,
+            env: { CLOUDGATE_KEY: seeded.key },
+          });
+
+          expect(applied.stderr).not.toContain('Error');
+          expect(applied.code).toBe(0);
+          expect(applied.stdout).toContain(
+            `  ~ ${seeded.configName} (web) change command\n`,
+          );
+          expect(applied.stderr).toContain('✓ Applied the plan in staging');
+          const kept = await configOf(seeded);
+          expect(kept.text).toBe(edited);
+          expect(recordedVersion(repo)).toBe(kept.version);
+          expect(readFileSync(copy, 'utf8')).toBe(edited);
+          expect(
+            await ctx.db
+              .select({ id: schema.deployment.deploymentId })
+              .from(schema.deployment)
+              .where(
+                eq(schema.deployment.applicationId, untouched.applicationId),
+              ),
+          ).toEqual([]);
+
+          const again = await runCli(['config', 'plan', '--yes'], {
+            home,
+            cwd: repo,
+            env: { CLOUDGATE_KEY: seeded.key },
+          });
+
+          expect(again.stderr).not.toContain('Error');
+          expect(again.code).toBe(0);
+          expect(again.stdout).toBe('staging: no changes\n');
+          expect(again.stderr).toContain('Nothing to change.');
+        } finally {
+          removeFolder(repo);
+        }
+      });
+
+      it('with --yes refuses a plan that destroys a Service, naming it, exit 2, and applies nothing', async () => {
+        const seeded = await seededProject();
+        const repo = emptyFolder('monorepo');
+        try {
+          expect(
+            (await runCli(wholeProject, { home, cwd: repo, env: seeded.env }))
+              .code,
+          ).toBe(0);
+          const before = await configOf(seeded);
+          writeFileSync(
+            join(repo, 'cloudgate.yaml'),
+            'version: 1\nservices: {}\n',
+          );
+
+          const refused = await runCli(['config', 'plan', '--yes'], {
+            home,
+            cwd: repo,
+            env: { CLOUDGATE_KEY: seeded.key },
+          });
+
+          expect(refused.code).toBe(2);
+          expect(refused.stdout).toContain(
+            `  - ${seeded.configName} (web) destroy\n`,
+          );
+          expect(refused.stderr).toContain(
+            `Error: the plan destroys ${seeded.configName} in staging, which --yes alone never does; nothing was applied`,
+          );
+          const [still] = await ctx.db
+            .select({ configName: schema.application.configName })
+            .from(schema.application)
+            .where(eq(schema.application.environmentId, seeded.environmentId));
+          expect(still?.configName).toBe(seeded.configName);
+          expect(await configOf(seeded)).toEqual(before);
+          expect(recordedVersion(repo)).toBe(before.version);
+        } finally {
+          removeFolder(repo);
+        }
+      });
+
+      it('refuses a copy downloaded before the config last changed, pointing to config pull, exit 1, and sends nothing', async () => {
+        const seeded = await seededProject();
+        const repo = emptyFolder('monorepo');
+        try {
+          expect(
+            (await runCli(wholeProject, { home, cwd: repo, env: seeded.env }))
+              .code,
+          ).toBe(0);
+          const downloaded = await configOf(seeded);
+          const copy = join(repo, 'cloudgate.yaml');
+          writeFileSync(
+            copy,
+            withCommand(readFileSync(copy, 'utf8'), seeded.configName),
+          );
+          // A teammate's change in the console moves the config on.
+          await ctx.db
+            .update(schema.projectConfigLocation)
+            .set({ version: downloaded.version + 1 })
+            .where(
+              eq(schema.projectConfigLocation.projectId, seeded.projectId),
+            );
+          const plansBefore = await plansIn(seeded.environmentId);
+
+          const refused = await runCli(['config', 'plan', '--yes'], {
+            home,
+            cwd: repo,
+            env: { CLOUDGATE_KEY: seeded.key },
+          });
+
+          expect(refused.code).toBe(1);
+          expect(refused.stdout).toBe('');
+          expect(refused.stderr).toContain(
+            `Error: cloudgate.yaml is version ${downloaded.version} of the Project config, which has changed in Cloudgate since; nothing was sent`,
+          );
+          expect(refused.stderr).toContain('cloudgate config pull');
+          expect(await plansIn(seeded.environmentId)).toEqual(plansBefore);
+        } finally {
+          removeFolder(repo);
+        }
+      });
     });
   });
 

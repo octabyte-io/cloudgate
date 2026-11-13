@@ -4,12 +4,13 @@ The Cloudgate CLI's own changes, published to npm as `@octabyte-io/cloudgate`. A
 
 ## Unreleased
 
-### `cloudgate link --whole-project` and `cloudgate config pull`: a Project folder
+### `cloudgate link --whole-project`, `cloudgate config pull` and `cloudgate config plan`: a Project folder
 
 A folder can be linked to a whole Project rather than one Service, making it a **Project folder**, usually a monorepo's root (ADR-0080).
 
 - **`link --whole-project`** asks for the Organization, Project and Environment, never a Service, and saves the Project config as `cloudgate.yaml` there, a working copy Cloudgate never reads on its own. The link records the config's version and the SHA-256 of the text written, and `.gitignore` gains `/cloudgate.yaml` beside `.cloudgate/`, keeping lines already there. A `cloudgate.yaml` already there that is not the one downloaded is asked about, or refused without a terminal unless `--yes`. A Project whose config is kept in a repository is refused (exit 1), naming the repository and the console's Move into Cloudgate.
 - **`config pull`** replaces the nearest Project folder's `cloudgate.yaml` with the Project config and records its version. A copy edited since its download is asked about first; without a terminal it is refused (exit 2) unless `--yes`. Outside a Project folder it is refused (exit 2).
+- **`config plan`** sends the Project folder's `cloudgate.yaml` to Cloudgate as a plan, naming the version it was downloaded at, prints what each Environment's plan creates, changes and destroys, and applies it on a yes. A Service it destroys, or upgrades to a new major version, is applied only once its Config name is typed. Without a terminal it is refused (exit 2) unless `--yes`, and `--yes` still refuses a plan that destroys or makes a major upgrade, naming each (exit 2). A copy the Project config has moved on from is refused (exit 1), sending nothing, pointing to `config pull`. After applying, the link records the new version.
 - **In a Project folder**, `status`, `logs` and `vars` ask for the Service, or take `--service`, and without a terminal refuse (exit 2) when it is missing. An app folder's own link still wins over the Project folder's.
 
 ### `test-values.yaml`: a template folder's values for `template try`

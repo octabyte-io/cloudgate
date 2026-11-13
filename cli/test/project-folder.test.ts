@@ -103,16 +103,28 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-/** One run in `cwd`, in a terminal that answers `answers` in order. */
+/** What a run sent: each POST's path and JSON body. */
+interface Sent {
+  path: string;
+  body: unknown;
+}
+
+/**
+ * One run in `cwd`, in a terminal that answers `answers` in order. A POST is
+ * answered from `routes` under `POST <path>`, and recorded in `sent`.
+ */
 async function inTerminal(
   argv: string[],
-  answers: { choose?: number[]; confirm?: boolean[] } = {},
+  answers: { choose?: number[]; confirm?: boolean[]; text?: string[] } = {},
   cwd = root,
+  more: Record<string, unknown> = {},
 ) {
   const out = { stdout: '', stderr: '' };
   const asked: string[] = [];
+  const sent: Sent[] = [];
   const choose = [...(answers.choose ?? [])];
   const confirm = [...(answers.confirm ?? [])];
+  const text = [...(answers.text ?? [])];
   const code = await run({
     argv,
     env: { CLOUDGATE_KEY: 'cg_secret', CLOUDGATE_INSTANCE: instance },
@@ -133,16 +145,27 @@ async function inTerminal(
           : Promise.resolve(answer);
       },
       secret: () => Promise.reject(new Error('asked a secret')),
-      text: () => Promise.reject(new Error('asked a question')),
+      text: (question) => {
+        asked.push(question);
+        const answer = text.shift();
+        return answer === undefined
+          ? Promise.reject(new Error(`asked ${question}`))
+          : Promise.resolve(answer);
+      },
     },
     stdinIsTTY: true,
     stdoutIsTTY: true,
     stderrIsTTY: true,
     stdout: (text) => (out.stdout += text),
     stderr: (text) => (out.stderr += text),
-    fetch: (input) => {
+    fetch: (input, init) => {
       const path = (input as string).slice(`${instance}/backend`.length);
-      const body = routes[path];
+      const post = init?.method === 'POST';
+      if (post) {
+        sent.push({ path, body: JSON.parse(init.body as string) as unknown });
+      }
+      const key = post ? `POST ${path}` : path;
+      const body = key in more ? more[key] : routes[key];
       return Promise.resolve(
         body === undefined
           ? json({ statusCode: 404, message: 'Not found' }, 404)
@@ -151,7 +174,7 @@ async function inTerminal(
     },
     now: () => now,
   });
-  return { code, ...out, asked };
+  return { code, ...out, asked, sent };
 }
 
 const savedLink = () =>
@@ -298,5 +321,192 @@ describe('in a Project folder', () => {
     expect(result.code).toBe(0);
     expect(result.asked).toEqual(['Service: web']);
     expect(result.stdout).toContain('web (Application)');
+  });
+});
+
+describe('config plan', () => {
+  /** The copy as downloaded at version 3, then edited. */
+  const downloadedAt3 = {
+    '/projects/prj_1/config': {
+      projectId: 'prj_1',
+      location: {
+        kind: 'cloudgate',
+        text: DOWNLOADED,
+        textHash: 'x',
+        version: 3,
+        updatedAt: now.toISOString(),
+        movedOutOf: null,
+      },
+    },
+  };
+  const steps = [
+    {
+      action: 'destroy',
+      configName: 'worker',
+      kind: 'worker',
+      serviceType: 'application',
+      serviceId: 'app_2',
+      name: 'Worker',
+    },
+    {
+      action: 'create',
+      configName: 'web',
+      kind: 'web',
+      placement: { kind: 'server', serverId: 'srv_1' },
+      fields: [{ field: 'source', from: null, to: { folder: 'apps/web' } }],
+    },
+    {
+      action: 'change',
+      configName: 'pg',
+      kind: 'postgres',
+      serviceType: 'postgres',
+      serviceId: 'pg_1',
+      name: 'pg',
+      fields: [{ field: 'version', from: '16', to: '17' }],
+      majorUpgrade: { from: '16', to: '17' },
+    },
+  ];
+  const open = {
+    planId: 'plan_s',
+    environmentId: 'env_s',
+    status: 'open',
+    steps,
+    notes: [],
+    results: null,
+  };
+  const answers = {
+    ...downloadedAt3,
+    'POST /projects/prj_1/config/plans': { stored: false, plans: [open] },
+    'POST /environments/env_s/plan/apply': {
+      ...open,
+      status: 'applied',
+      results: steps.map((step) => ({
+        configName: step.configName,
+        action: step.action,
+        status: 'applied',
+        message: null,
+      })),
+    },
+  };
+  const applies = (sent: Sent[]) =>
+    sent.filter((one) => one.path.endsWith('/plan/apply'));
+
+  beforeEach(() => {
+    writeLink(root, rootLink);
+    writeFileSync(join(root, 'cloudgate.yaml'), CURRENT);
+  });
+
+  it("prints each step of each Environment's plan, and applies nothing on no", async () => {
+    const result = await inTerminal(
+      ['config', 'plan'],
+      { confirm: [false] },
+      root,
+      answers,
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toBe(
+      [
+        'staging: 1 to create, 1 to change, 1 to destroy',
+        '  - worker (worker) destroy',
+        '  + web (web) create',
+        '  ~ pg (postgres) change version (major upgrade 16 to 17)',
+        '',
+      ].join('\n'),
+    );
+    expect(result.asked).toEqual(['Apply the plan in staging?']);
+    expect(result.sent).toEqual([
+      {
+        path: '/projects/prj_1/config/plans',
+        body: { text: CURRENT, version: 3 },
+      },
+    ]);
+    expect(result.stderr).toContain('Nothing was applied.');
+  });
+
+  it('applies a destroy and a major upgrade only once each Config name is typed', async () => {
+    const result = await inTerminal(
+      ['config', 'plan'],
+      { confirm: [true], text: ['worker', 'pg'] },
+      root,
+      answers,
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.asked).toEqual([
+      'Apply the plan in staging?',
+      'Type worker to destroy it in staging:',
+      'Type pg to upgrade it from 16 to 17 in staging, which cannot be undone:',
+    ]);
+    expect(applies(result.sent)).toEqual([
+      {
+        path: '/environments/env_s/plan/apply',
+        body: {
+          planId: 'plan_s',
+          confirmDestroy: ['worker'],
+          confirmUpgrade: ['pg'],
+        },
+      },
+    ]);
+    expect(result.stderr).toContain('✓ Applied the plan in staging');
+  });
+
+  it('applies nothing when a typed name is not the Config name', async () => {
+    const result = await inTerminal(
+      ['config', 'plan'],
+      { confirm: [true], text: ['wroker'] },
+      root,
+      answers,
+    );
+
+    expect(result.code).toBe(0);
+    expect(applies(result.sent)).toEqual([]);
+    expect(result.stderr).toContain('That is not worker. Nothing was applied.');
+  });
+
+  it('with --yes refuses a plan that destroys or makes a major upgrade, naming each, exit 2, asking nothing', async () => {
+    const result = await inTerminal(
+      ['config', 'plan', '--yes'],
+      {},
+      root,
+      answers,
+    );
+
+    expect(result.code).toBe(2);
+    expect(result.asked).toEqual([]);
+    expect(applies(result.sent)).toEqual([]);
+    expect(result.stderr).toContain(
+      'Error: the plan destroys worker in staging and upgrades pg in staging to a new major version, which --yes alone never does; nothing was applied',
+    );
+  });
+
+  it('refuses a stale copy, pointing to config pull, and sends nothing', async () => {
+    // The Instance's config is at version 5; the link recorded 3.
+    const result = await inTerminal(['config', 'plan']);
+
+    expect(result.code).toBe(1);
+    expect(result.sent).toEqual([]);
+    expect(result.stderr).toContain(
+      'Error: cloudgate.yaml is version 3 of the Project config, which has changed in Cloudgate since; nothing was sent',
+    );
+    expect(result.stderr).toContain('Run cloudgate config pull');
+  });
+
+  it('refuses outside a Project folder, saying how to make one, exit 2', async () => {
+    const elsewhere = mkdtempSync(join(tmpdir(), 'cloudgate-no-link-'));
+    try {
+      const result = await inTerminal(['config', 'plan'], {}, elsewhere);
+
+      expect(result.code).toBe(2);
+      expect(result.sent).toEqual([]);
+      expect(result.stderr).toContain(
+        'Error: this folder is not in a Project folder',
+      );
+      expect(result.stderr).toContain(
+        'Run cloudgate link --whole-project at the root of the Project first.',
+      );
+    } finally {
+      rmSync(elsewhere, { recursive: true, force: true });
+    }
   });
 });

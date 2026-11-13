@@ -24,3 +24,11 @@ export type ErrorBody = z.infer<typeof errorBodySchema>;
  * that refuses and the CLI that explains the refusal spell it once.
  */
 export const NOT_ORGANIZATION_MEMBER_CODE = 'NOT_ORGANIZATION_MEMBER';
+
+/**
+ * The `code` of the 409 a whole-YAML edit earns when it names a config
+ * version older than Cloudgate's (ADR-0080): someone changed the config
+ * since it was read. Shared so the server that refuses and the CLI that
+ * points to `cloudgate config pull` spell it once.
+ */
+export const CONFIG_VERSION_STALE_CODE = 'CONFIG_VERSION_STALE';
