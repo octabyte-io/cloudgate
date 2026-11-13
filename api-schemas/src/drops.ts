@@ -42,7 +42,7 @@ export type UploadedDrop = z.infer<typeof uploadedDropSchema>;
  *   only the files compare asked for, and the {@link uploadApplicationDropSchema}
  *   fields. It answers what `/drop` answers, an {@link UploadedDrop}, or a
  *   409 {@link UPLOAD_CONFLICT_CODE} when the tree it built did not match the
- *   list, leaving the previous one in place.
+ *   list, leaving the previous one in place, or the apply failed.
  *
  * The list is a file part rather than a field or a JSON body: the
  * application-wide JSON parser stops at 100 kB and a multipart field at 1 MB,
@@ -80,9 +80,10 @@ export type DropComparison = z.infer<typeof dropComparisonSchema>;
 
 /**
  * The `code` of the 409 an apply earns when the tree it built does not match
- * the list, or the apply failed part-way: the build host's tree changed since
- * the comparison, or the upload did not land whole. The previous tree is left
- * as it was; `cloudgate deploy` compares again once.
+ * the list, or the apply failed: the build host's tree changed since the
+ * comparison, the upload did not land whole, or the build host could not be
+ * reached. The message says which; `cloudgate deploy` prints it and compares
+ * again once.
  */
 export const UPLOAD_CONFLICT_CODE = "UPLOAD_CONFLICT";
 

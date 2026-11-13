@@ -32,8 +32,9 @@ const NOT_A_FILE = '-';
 
 /**
  * The exit the apply program takes when the tree it built does not match the
- * list. Any other failure is a failure part-way; both leave the previous tree
- * and answer the same conflict, and only the sentence differs.
+ * list. Any other failure, the build host out of reach included, answers the
+ * same conflict with another sentence: the message says which happened,
+ * because `cloudgate deploy` prints it.
  */
 const MISMATCH_EXIT = 3;
 
@@ -226,9 +227,11 @@ export function applyDropChangesCommand(
 /**
  * Applies an upload of only the changed files on the build host (`serverId`,
  * `null` for the platform host): `entries` are the zip's files, `files` the
- * whole folder. Answers once the new tree is in place; a mismatch or a
- * failure part-way is a 409 {@link UPLOAD_CONFLICT_CODE}, with the previous
- * tree as it was.
+ * whole folder. Answers once the new tree is in place; a mismatch, a
+ * failure part-way or a build host out of reach is a 409 {@link
+ * UPLOAD_CONFLICT_CODE} whose message says which. The previous tree is kept
+ * for the first two (the program's trap); the 409 claims nothing about it,
+ * since a connection lost after the swap answers the same.
  */
 export async function applyDropChanges(
   remoteExec: RemoteExecService,
@@ -251,8 +254,8 @@ export async function applyDropChanges(
     throw new ConflictException({
       code: UPLOAD_CONFLICT_CODE,
       message: mismatch
-        ? 'The files on the build host changed since they were compared, so the upload was not applied; compare again and upload what it asks for'
-        : 'The upload could not be applied on the build host, and its previous files are as they were; compare again and upload what it asks for',
+        ? 'The files on the build host changed since they were compared, so the upload was not applied'
+        : 'The upload could not be applied on the build host: it could not be reached, or the apply stopped part-way',
     });
   }
 }

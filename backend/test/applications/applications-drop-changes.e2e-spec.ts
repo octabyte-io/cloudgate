@@ -321,6 +321,9 @@ describe('Application upload of changed files (e2e)', () => {
   });
 
   describe('apply', () => {
+    /** The 409's message for an apply that failed, whatever the cause. */
+    const FAILED_APPLY =
+      'The upload could not be applied on the build host: it could not be reached, or the apply stopped part-way';
     const before = {
       'index.js': 'console.log(1);\n',
       'src/app.js': 'export const app = 1;\n',
@@ -410,7 +413,11 @@ describe('Application upload of changed files (e2e)', () => {
       );
 
       expect(res.status).toBe(409);
-      expect(res.body).toMatchObject({ code: 'UPLOAD_CONFLICT' });
+      expect(res.body).toMatchObject({
+        code: 'UPLOAD_CONFLICT',
+        message:
+          'The files on the build host changed since they were compared, so the upload was not applied',
+      });
       expect(treeAt(code())).toEqual({ ...before, 'index.js': 'patched\n' });
       expect(fs.readdirSync(nodePath.dirname(code()))).toEqual(['code']);
       const found = await applications.findOne(ownerCtx, created.applicationId);
@@ -454,13 +461,17 @@ describe('Application upload of changed files (e2e)', () => {
       );
 
       expect(res.status).toBe(409);
-      expect(res.body).toMatchObject({ code: 'UPLOAD_CONFLICT' });
+      expect(res.body).toMatchObject({
+        code: 'UPLOAD_CONFLICT',
+        message: FAILED_APPLY,
+      });
       expect(treeAt(code())).toEqual(before);
       expect(fs.readdirSync(nodePath.dirname(code()))).toEqual(['code']);
     });
 
-    it('answers a conflict when the build host cannot be reached part-way', async () => {
-      const { cookie, organizationId, created } = await setUpApplication();
+    it('answers a conflict that says so, switching nothing, when the build host cannot be reached', async () => {
+      const { cookie, ownerCtx, organizationId, created } =
+        await setUpApplication();
       await onBuildServer(organizationId, created.applicationId);
       execMock.execAsyncRemote.mockRejectedValue(
         new Error('Connection lost before handshake'),
@@ -474,7 +485,12 @@ describe('Application upload of changed files (e2e)', () => {
       );
 
       expect(res.status).toBe(409);
-      expect(res.body).toMatchObject({ code: 'UPLOAD_CONFLICT' });
+      expect(res.body).toMatchObject({
+        code: 'UPLOAD_CONFLICT',
+        message: FAILED_APPLY,
+      });
+      const found = await applications.findOne(ownerCtx, created.applicationId);
+      expect(found.sourceType).toBe('github');
     });
 
     it('writes the tree on the build Server, not the Server the workload runs on', async () => {
