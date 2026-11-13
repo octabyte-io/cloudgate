@@ -46,4 +46,25 @@ describe('terminalPrompter', () => {
     expect(await picked).toBe(1);
     expect(terminal.written().match(/Pick 1-2: /g)).toHaveLength(2);
   });
+
+  it('takes the default text on an empty answer, showing it', async () => {
+    const terminal = onStreams();
+    const answered = terminal.prompter.text('Project name', {
+      default: 'shop',
+    });
+    terminal.type('');
+
+    expect(await answered).toBe('shop');
+    expect(terminal.written()).toContain('? Project name [shop] ');
+  });
+
+  it('takes typed text over the default, trimmed', async () => {
+    const terminal = onStreams();
+    const answered = terminal.prompter.text('Project name', {
+      default: 'shop',
+    });
+    terminal.type('  storefront ');
+
+    expect(await answered).toBe('storefront');
+  });
 });

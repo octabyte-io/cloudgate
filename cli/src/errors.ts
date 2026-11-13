@@ -22,6 +22,12 @@ export class CliError extends Error {
     readonly hint?: string,
     /** An Instance's refusal's `code`, the one thing a command may branch on. */
     readonly code?: string,
+    /**
+     * An Instance's refusal's HTTP status. A command branches on it only
+     * where one route's refusals are told apart by status alone: the role's
+     * own 403 publishes no `code`, and neither does a name already taken.
+     */
+    readonly status?: number,
   ) {
     super(message);
     this.name = 'CliError';
@@ -84,6 +90,8 @@ export function refusalFromResponse(
       context.keyFrom === 'env'
         ? 'The Instance does not accept the key in CLOUDGATE_KEY; it may have ended or been deleted.'
         : undefined,
+      undefined,
+      status,
     );
   }
   if (status === 403 && fields.code === NOT_ORGANIZATION_MEMBER_CODE) {
@@ -93,6 +101,8 @@ export function refusalFromResponse(
       message,
       EXIT.failed,
       "Check --org, CLOUDGATE_ORG or this folder's link (cloudgate link to change it).",
+      undefined,
+      status,
     );
   }
   if (status === 403 && (!fields.code || ACCESS_CODES.has(fields.code))) {
@@ -100,9 +110,11 @@ export function refusalFromResponse(
       message,
       EXIT.failed,
       `Ask an owner of ${context.organizationName ?? 'the Organization'} for access.`,
+      fields.code,
+      status,
     );
   }
-  return new CliError(message, EXIT.failed, undefined, fields.code);
+  return new CliError(message, EXIT.failed, undefined, fields.code, status);
 }
 
 /** `fetch failed` says nothing; the cause's code (`ECONNREFUSED`, `ENOTFOUND`) does. */

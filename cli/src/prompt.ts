@@ -26,8 +26,11 @@ export interface Prompter {
   ): Promise<number>;
   /** Asks a yes/no question; anything but yes is no. */
   confirm(question: string): Promise<boolean>;
-  /** Asks for a line of text, shown as it is typed; answers it trimmed. */
-  text(question: string): Promise<string>;
+  /**
+   * Asks for a line of text, shown as it is typed; answers it trimmed. With
+   * a `default`, an empty answer takes that.
+   */
+  text(question: string, options?: { default?: string }): Promise<string>;
   /** Asks for a secret, with nothing of it shown as it is typed. */
   secret(question: string): Promise<string>;
 }
@@ -91,8 +94,11 @@ export function terminalPrompter(streams: {
       const answer = await ask(`? ${question} (y/N) `);
       return /^y(es)?$/i.test(answer.trim());
     },
-    async text(question) {
-      return (await ask(`? ${question} `)).trim();
+    async text(question, options = {}) {
+      const byDefault = options.default;
+      const hint = byDefault === undefined ? '' : ` [${byDefault}]`;
+      const answer = (await ask(`? ${question}${hint} `)).trim();
+      return answer === '' && byDefault !== undefined ? byDefault : answer;
     },
     secret(question) {
       return ask(`? ${question}`, true);
