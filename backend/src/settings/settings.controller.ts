@@ -461,8 +461,8 @@ export class SettingsController {
   }
 
   /**
-   * Compares the running version with the newest `cloudgate/cloudgate` tag on
-   * Docker Hub (any authenticated user). A POST, though it writes nothing.
+   * Compares the running version with the latest Cloudgate version on GitHub
+   * Releases (any authenticated user). A POST, though it writes nothing.
    */
   @Post('update-data')
   @HttpCode(200)

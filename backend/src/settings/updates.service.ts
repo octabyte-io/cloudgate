@@ -8,60 +8,70 @@ import * as semver from 'semver';
 import { FETCH_CLIENT } from '../git-providers/fetch.provider';
 import type { FetchClient } from '../git-providers/fetch.provider';
 import { RemoteExecService } from '../remote/remote-exec.service';
-import { getCloudgateImageTag } from './docker-resource.service';
 
-/** The Docker Hub repository this instance's image would be published to. */
-export const UPDATE_REPOSITORY = 'cloudgate/cloudgate';
+/** This repository's releases on the GitHub API; each Cloudgate version is one (ADR-0082). */
+const RELEASES_URL =
+  'https://api.github.com/repos/octabyte-io/cloudgate/releases?per_page=100';
 
-const TAGS_URL = `https://hub.docker.com/v2/repositories/${UPDATE_REPOSITORY}/tags`;
+/** The one-command install. Re-running it with `CLOUDGATE_VERSION` is the upgrade. */
+const INSTALL_SCRIPT_URL =
+  'https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh';
+
+/**
+ * A Cloudgate version's tag, `vX.Y.Z` and nothing else. The CLI is released
+ * from the same repository as `cli-vX.Y.Z`, and none of those is a Cloudgate
+ * version, however high its number.
+ */
+const CLOUDGATE_VERSION_TAG = /^v\d+\.\d+\.\d+$/;
+
+/**
+ * The image `updateServer` moves the swarm service onto. That control predates
+ * the native install and still cannot work on one (spec #39 leaves it out of
+ * scope); the update check itself no longer asks Docker Hub anything.
+ */
+const CLOUDGATE_IMAGE = 'cloudgate/cloudgate';
 
 export interface UpdateData {
+  /** The newest Cloudgate version on GitHub Releases, as its tag `vX.Y.Z`. */
   latestVersion: string | null;
   updateAvailable: boolean;
+  /** The command that upgrades this instance to `latestVersion`, only when that is newer. */
+  upgradeCommand: string | null;
   /**
    * `null` when the check ran to completion — including when it completed and
    * found nothing newer. A sentence when it did **not** run to completion, so
-   * "Docker Hub has no such repository" and "you are up to date" stop being the
-   * same answer.
+   * "GitHub could not be asked" and "you are up to date" stay different answers.
    */
   error: string | null;
 }
 
-/** The answer when the check completed and had nothing to compare against. */
-export const DEFAULT_UPDATE_DATA: UpdateData = {
-  latestVersion: null,
-  updateAvailable: false,
-  error: null,
-};
-
 const messageOf = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
-interface TagPage {
-  next: string | null;
-  results: { digest: string; name: string }[];
-}
+/** The command that installs `version` over the running one (docs/deploy.md §7). */
+const upgradeCommandFor = (version: string): string =>
+  `curl -fsSL ${INSTALL_SCRIPT_URL} | sudo CLOUDGATE_VERSION=${version} sh`;
 
 /**
- * The update check, against the cloudgate/cloudgate Docker Hub repository.
+ * The update check: the running version against the latest Cloudgate version
+ * on this repository's GitHub Releases (ADR-0082).
  *
  * ## Why this reports its own failures
  *
- * The check as first written could not fail loudly. A 404 body carries no
- * `results`, so `allResults.concat(data.results)` seeded the array with
- * `undefined`, `data?.next` ended the loop, and
- * `.find(t => t.name === 'latest')` threw on that `undefined` element —
- * straight into a `catch` that returned
- * `{latestVersion: null, updateAvailable: false}`. That is byte-identical to
- * the honest "checked, nothing newer" answer, so an instance whose repository
- * does not exist at all was told it was current. On the native install this
- * project ships there is no published `cloudgate/cloudgate` image, so that is
- * exactly what every operator saw.
+ * The Docker Hub check this replaced could not fail loudly: a 404 for a
+ * repository that never existed fell into a `catch` that returned
+ * `{latestVersion: null, updateAvailable: false}`, byte-identical to the honest
+ * "checked, nothing newer" answer, so every native install was told it was
+ * current. Every failure here travels in `UpdateData.error` instead: an
+ * unreachable host, an HTTP status (GitHub's unauthenticated rate limit is a
+ * 403), or a body that is not a release list. Callers that act on the result —
+ * `updateServer`, and the console's Danger Zone — can refuse rather than
+ * quietly do nothing.
  *
- * Every failure now travels in `UpdateData.error` instead: HTTP status, an
- * unreachable host, or a body that is not a tag page. Callers that act on the
- * result — `updateServer`, and the console's Danger Zone — can refuse rather
- * than quietly do nothing.
+ * One page of 100 releases is read. GitHub lists them newest first, so the
+ * latest Cloudgate version is on it unless a hundred CLI releases have been
+ * published since; following `Link` pages was rejected as cost for a case
+ * that does not happen.
  */
 @Injectable()
 export class UpdatesService {
@@ -72,112 +82,70 @@ export class UpdatesService {
     private readonly remoteExec: RemoteExecService,
   ) {}
 
-  /** The image digest the `cloudgate` swarm service is running. */
-  async getServiceImageDigest(): Promise<string> {
-    const { stdout } = await this.remoteExec.execAsync(
-      "docker service inspect cloudgate --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}'",
-    );
-
-    const currentDigest = stdout.trim().split('@')[1];
-    if (!currentDigest) {
-      throw new Error('Could not get current service image digest');
-    }
-    return currentDigest;
-  }
-
-  /** One page of tags, or a thrown error that says what went wrong. */
-  private async fetchTagPage(url: string): Promise<TagPage> {
+  /** The tags of this repository's releases, or a thrown error that says what went wrong. */
+  private async fetchReleaseTags(): Promise<string[]> {
     let response: Response;
     try {
-      response = await this.fetchClient(url, {
+      response = await this.fetchClient(RELEASES_URL, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          Accept: 'application/vnd.github+json',
+          'User-Agent': 'Cloudgate',
+        },
       });
     } catch (error) {
       throw new Error(
-        `Could not reach hub.docker.com: ${messageOf(error)}. ` +
+        `Could not reach api.github.com: ${messageOf(error)}. ` +
           'The update check needs outbound HTTPS from this host.',
       );
     }
 
     if (!response.ok) {
       throw new Error(
-        response.status === 404
-          ? `Docker Hub has no repository ${UPDATE_REPOSITORY} (404). ` +
-              'This instance is not built from an image published there, so there is nothing to compare it against.'
-          : `Docker Hub answered ${response.status} for ${UPDATE_REPOSITORY}.`,
+        `GitHub answered ${response.status} when asked for Cloudgate's releases.`,
       );
     }
 
-    const data = (await response.json()) as Partial<TagPage> | null;
-    if (!Array.isArray(data?.results)) {
-      throw new Error(
-        `Docker Hub returned no tag list for ${UPDATE_REPOSITORY}.`,
-      );
+    const data = (await response.json()) as unknown;
+    if (!Array.isArray(data)) {
+      throw new Error('GitHub returned no release list for Cloudgate.');
     }
-    return { next: data.next ?? null, results: data.results };
+    return (data as ({ tag_name?: unknown } | null)[])
+      .map((release) => release?.tag_name)
+      .filter((tag): tag is string => typeof tag === 'string');
   }
 
-  /** Compare the running version to Docker Hub. */
+  /** Compare the running version to the latest Cloudgate version. */
   async getUpdateData(currentVersion: string): Promise<UpdateData> {
     try {
-      let url: string | null = `${TAGS_URL}?page_size=100`;
-      let allResults: { digest: string; name: string }[] = [];
-
-      while (url) {
-        const page = await this.fetchTagPage(url);
-        allResults = allResults.concat(page.results);
-        url = page.next;
-      }
-
-      const currentImageTag = getCloudgateImageTag();
-
-      // Development tags (canary/feature) change too often for version
-      // checks — only flag a digest drift on the same tag.
-      if (currentImageTag === 'canary' || currentImageTag === 'feature') {
-        const currentDigest = await this.getServiceImageDigest();
-        const latestDigest = allResults.find(
-          (t) => t.name === currentImageTag,
-        )?.digest;
-        if (!latestDigest) {
-          return DEFAULT_UPDATE_DATA;
-        }
-        return {
-          latestVersion: currentImageTag,
-          updateAvailable: currentDigest !== latestDigest,
-          error: null,
-        };
-      }
-
-      // Stable: find the version tag sharing "latest"'s digest, semver-compare.
-      const latestTag = allResults.find((t) => t.name === 'latest');
-      if (!latestTag) {
-        return DEFAULT_UPDATE_DATA;
-      }
-
-      const latestVersionTag = allResults.find(
-        (t) => t.digest === latestTag.digest && t.name.startsWith('v'),
+      const versions = (await this.fetchReleaseTags()).filter((tag) =>
+        CLOUDGATE_VERSION_TAG.test(tag),
       );
-      if (!latestVersionTag) {
-        return DEFAULT_UPDATE_DATA;
-      }
-
-      const latestVersion = latestVersionTag.name;
+      const latestVersion = versions.sort(semver.rcompare)[0] ?? null;
       const cleanedCurrent = semver.clean(currentVersion);
-      const cleanedLatest = semver.clean(latestVersion);
-      if (!cleanedCurrent || !cleanedLatest) {
-        return DEFAULT_UPDATE_DATA;
-      }
+      const updateAvailable =
+        latestVersion !== null &&
+        cleanedCurrent !== null &&
+        semver.gt(latestVersion, cleanedCurrent);
 
       return {
         latestVersion,
-        updateAvailable: semver.gt(cleanedLatest, cleanedCurrent),
+        updateAvailable,
+        upgradeCommand:
+          updateAvailable && latestVersion
+            ? upgradeCommandFor(latestVersion)
+            : null,
         error: null,
       };
     } catch (error) {
       const message = messageOf(error);
       this.logger.error(`Update check failed: ${message}`);
-      return { latestVersion: null, updateAvailable: false, error: message };
+      return {
+        latestVersion: null,
+        updateAvailable: false,
+        upgradeCommand: null,
+        error: message,
+      };
     }
   }
 
@@ -201,7 +169,7 @@ export class UpdatesService {
         'update',
         '--force',
         '--image',
-        `${UPDATE_REPOSITORY}:${data.latestVersion}`,
+        `${CLOUDGATE_IMAGE}:${data.latestVersion}`,
         'cloudgate',
       ]);
     }

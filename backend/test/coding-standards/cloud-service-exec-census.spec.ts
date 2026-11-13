@@ -473,10 +473,6 @@ const CENSUS: Readonly<Record<string, Verdict>> = {
     verdict: MACHINE,
     why: "A machine's Traefik network.",
   },
-  'settings/updates.service.ts#getServiceImageDigest': {
-    verdict: MACHINE,
-    why: "Cloudgate's own image.",
-  },
   'settings/updates.service.ts#updateServer': {
     verdict: MACHINE,
     why: "Cloudgate's own update.",
