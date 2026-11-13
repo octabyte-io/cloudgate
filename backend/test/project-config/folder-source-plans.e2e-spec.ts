@@ -246,6 +246,44 @@ services:
     );
   });
 
+  it('forgets the uploaded files once the source moves off them, so going back to a folder builds nothing stale', async () => {
+    await storeConfig(folderWeb('apps/web'));
+    const created = await askForPlan();
+    expect((await apply((created.body as PlanBody).planId)).status).toBe(200);
+    // A root deploy's upload has reached it.
+    await ctx.db
+      .update(application)
+      .set({ dropUploaded: true })
+      .where(eq(application.applicationId, (await savedWeb()).applicationId));
+
+    await storeConfig(`version: 1
+services:
+  web:
+    kind: web
+    source:
+      image: nginx:1.27
+`);
+    const toImage = await askForPlan();
+    expect((await apply((toImage.body as PlanBody).planId)).status).toBe(200);
+
+    expect(await savedWeb()).toMatchObject({
+      sourceType: 'docker',
+      dropUploaded: false,
+    });
+
+    await storeConfig(folderWeb('apps/web'));
+    const back = await askForPlan();
+    expect((await apply((back.body as PlanBody).planId)).status).toBe(200);
+    const deploy = await request(server)
+      .post(`/applications/${(await savedWeb()).applicationId}/deployments`)
+      .set('Cookie', cookie)
+      .send({ title: 'by hand' });
+    expect(deploy.status).toBe(409);
+    expect((deploy.body as { message: string }).message).toContain(
+      'no files have been uploaded',
+    );
+  });
+
   it('refuses a folder combined with a repository, naming the entry', async () => {
     await storeConfig(`version: 1
 services:

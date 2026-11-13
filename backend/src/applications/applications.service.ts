@@ -781,6 +781,12 @@ export class ApplicationsService {
       ...authorized,
       ...configKindAfter(current.configKind, fields.buildType),
       ...(current.configKind === 'cron' ? cron : undefined),
+      // A source moved off uploaded files forgets them: going back to a
+      // folder source then waits for a new upload instead of building the
+      // old tree (`missingSource`).
+      ...(fields.sourceType !== undefined && fields.sourceType !== 'drop'
+        ? { dropUploaded: false }
+        : undefined),
     };
     // A facet edit that rewrites no column (a Hugging Face token alone)
     // leaves this row as it is.

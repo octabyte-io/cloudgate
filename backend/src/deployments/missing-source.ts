@@ -51,9 +51,9 @@ const GIT_PROVIDER: Partial<
  * source they had not chosen.
  *
  * A `drop` row counts as set once an upload has landed (`dropUploaded`, which
- * only the upload routes write). Its build path is no proof: a plan writes a
- * folder source's (ADR-0080) before any upload, and a build of that row would
- * find nothing on the build host. `raw` is a stack whose source is its own
+ * only the upload routes set and a move to another source clears). Its build
+ * path is no proof: a plan writes a folder source's (ADR-0080) before any
+ * upload, and a build of that row would find nothing on the build host. `raw` is a stack whose source is its own
  * compose file, which has its own gate.
  */
 export function missingSource(row: SourceColumns): string | null {

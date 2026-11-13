@@ -389,10 +389,12 @@ export const application = pgTable(
     // Drop (uploaded archive)
     dropBuildPath: text('drop_build_path'),
     /**
-     * Whether an upload has landed on the build host: written only by the
-     * two upload routes, beside `dropBuildPath`. A plan writes the build path
-     * of a folder source (ADR-0080) before any upload, so the path alone no
-     * longer says the build host holds files to build.
+     * Whether an upload has landed on the build host: set only by the two
+     * upload routes, beside `dropBuildPath`, and cleared when the source
+     * moves off uploaded files (`ApplicationsService.update`). A plan
+     * writes the build path of a folder source (ADR-0080) before any
+     * upload, so the path alone no longer says the build host holds files
+     * to build.
      */
     dropUploaded: boolean('drop_uploaded').notNull().default(false),
     // Docker swarm service-spec overrides
