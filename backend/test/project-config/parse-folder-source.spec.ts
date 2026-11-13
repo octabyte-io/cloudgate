@@ -162,6 +162,21 @@ describe('parseProjectConfig folder source', () => {
     expect(refusal.message).toContain(`folder cannot be combined with ${key}`);
   });
 
+  it('refuses a folder on a web-private, naming the entry and the kinds that take one', () => {
+    const refusal = refused(
+      oneService(
+        'api',
+        'kind: web-private\nport: 8080\nsource:\n  folder: apps/api',
+      ),
+    );
+
+    expect(refusal).toMatchObject({ reason: 'invalid', at: 'api.source' });
+    expect(refusal.message).toMatch(/^api\.source /);
+    expect(refusal.message).toContain(
+      'only a web, a worker, a static or a cron is built from a subfolder of the Project folder',
+    );
+  });
+
   it('names folder among the sources a source may be', () => {
     const refusal = refused(oneService('web', 'kind: web\nsource: {}'));
 
@@ -178,7 +193,33 @@ describe('projectConfigJsonSchema', () => {
       properties: { version: { const: 1 } },
     });
   });
+
+  it('offers no folder source on a web-private', () => {
+    const webPrivate = schemaOfKind(projectConfigJsonSchema(), 'web-private');
+
+    expect(webPrivate).toBeDefined();
+    expect(JSON.stringify(webPrivate?.properties?.source)).not.toContain(
+      '"folder"',
+    );
+  });
 });
+
+interface SchemaNode {
+  properties?: Record<string, unknown> & { kind?: { const?: unknown } };
+}
+
+/** The entry schema anywhere in `node` whose `kind` is the constant `kind`. */
+function schemaOfKind(node: unknown, kind: string): SchemaNode | undefined {
+  if (typeof node !== 'object' || node === null) return undefined;
+  if ((node as SchemaNode).properties?.kind?.const === kind) {
+    return node as SchemaNode;
+  }
+  for (const child of Object.values(node)) {
+    const found = schemaOfKind(child, kind);
+    if (found) return found;
+  }
+  return undefined;
+}
 
 describe('planEnvironment folder source against an uploaded-files Application', () => {
   it('changes nothing when the saved build path is the folder, written with a leading slash', () => {

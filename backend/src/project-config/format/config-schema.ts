@@ -293,12 +293,13 @@ const buildable = {
   build_secrets: variableNames.optional(),
 };
 
+/** A `web-private`'s sources: a `web`'s, but never a folder. */
+const repositoryOrImage = [...providerSources, gitSource, imageSource];
+
 const webEntry = z.strictObject({
   kind: z.literal('web'),
   ...buildable,
-  source: z
-    .union([...providerSources, gitSource, imageSource, folderSource])
-    .optional(),
+  source: z.union([...repositoryOrImage, folderSource]).optional(),
   build: webBuild.optional(),
   port: z.number().int().min(1).max(65535).optional(),
 });
@@ -306,11 +307,13 @@ const webEntry = z.strictObject({
 /**
  * A `web` other Services on its Server reach at its internal address and
  * nothing outside can: `web`'s fields, with `port` required, since the
- * port is what its callers are given.
+ * port is what its callers are given. Never built from a Project folder:
+ * only a web, a worker, a static and a cron are (ADR-0080).
  */
 const webPrivateEntry = webEntry.extend({
   kind: z.literal('web-private'),
   port: webEntry.shape.port.unwrap(),
+  source: z.union(repositoryOrImage).optional(),
 });
 
 /**

@@ -320,6 +320,13 @@ function describeUnion(
     return describeIssue(first, path, document);
   }
 
+  if (folderOnWebPrivate(path, value, document)) {
+    return {
+      reason: 'invalid',
+      at: field,
+      message: `${field} cannot name a folder on a web-private: only a web, a worker, a static or a cron is built from a subfolder of the Project folder`,
+    };
+  }
   const combined = folderCombinedWith(path, value, document);
   if (combined !== null) {
     return {
@@ -365,6 +372,20 @@ function folderCombinedWith(
     return null;
   }
   return SOURCE_KEYS.find((key) => key in value) ?? null;
+}
+
+/** Whether a `web-private`'s `source` names a folder, which it never may. */
+function folderOnWebPrivate(
+  path: Path,
+  value: unknown,
+  document: unknown,
+): boolean {
+  return (
+    path[path.length - 1] === 'source' &&
+    isMap(value) &&
+    'folder' in value &&
+    entryOf(path, document)?.kind === 'web-private'
+  );
 }
 
 function unionForms(path: Path, document: unknown): string {
