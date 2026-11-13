@@ -113,6 +113,8 @@ beforeEach(() => {
     'frontend/server.mjs',
     'frontend/server',
     'frontend/public',
+    'frontend/next.config.ts',
+    'frontend/src/lib/config.ts',
   ]) {
     copy(file);
   }
@@ -151,6 +153,19 @@ function run(bin: string) {
 }
 
 const TARBALL = 'cloudgate-0.3.0-linux-amd64.tar.gz';
+
+/**
+ * What `server.mjs`'s `next({ dev: false })` does at start: load
+ * `next.config.*` from its working directory, for a production server.
+ */
+const LOAD_CONFIG = `
+const loadConfig = require('next/dist/server/config').default;
+const { PHASE_PRODUCTION_SERVER } = require('next/constants');
+loadConfig(PHASE_PRODUCTION_SERVER, process.cwd()).then((config) => {
+  const { proxyTimeout, proxyClientMaxBodySize } = config.experimental;
+  console.log(JSON.stringify({ proxyTimeout, proxyClientMaxBodySize }));
+});
+`;
 
 function listing(): string[] {
   const listed = spawnSync('tar', ['-tzf', path.join(out, TARBALL)], {
@@ -218,6 +233,8 @@ describe('deploy/version-tarball.sh', () => {
         'frontend/server.mjs',
         'frontend/server/api-origin.mjs',
         'frontend/server/forwarded-for.mjs',
+        'frontend/next.config.ts',
+        'frontend/src/lib/config.ts',
         'frontend/.next/BUILD_ID',
         'frontend/.next/server/page.js',
         // production node_modules, with what db:migrate runs
@@ -251,7 +268,7 @@ describe('deploy/version-tarball.sh', () => {
       'backend/test',
       'backend/.env',
       'frontend/.env.local',
-      'frontend/src',
+      'frontend/src/app',
       'frontend/.next/cache',
       'frontend/server/api-origin.test.mjs',
       JEST,
@@ -264,6 +281,28 @@ describe('deploy/version-tarball.sh', () => {
         ),
       ).toEqual([]);
     }
+  });
+
+  it("ships the console's next.config.ts and what it imports, so the unpacked console loads its 240 s proxy timeout and 1 GiB body limit", () => {
+    expect(run(shimPnpm()).status).toBe(0);
+
+    // The tarball's node_modules are the shim's; Next is this repository's.
+    const consoleDir = path.join(unpack(), 'frontend');
+    fs.symlinkSync(
+      path.join(repoRoot, 'frontend/node_modules'),
+      path.join(consoleDir, 'node_modules'),
+    );
+    const loaded = spawnSync('node', ['-e', LOAD_CONFIG], {
+      cwd: consoleDir,
+      env: { ...process.env, NODE_ENV: 'production' },
+      encoding: 'utf8',
+    });
+
+    expect(loaded.stderr).toBe('');
+    expect(JSON.parse(loaded.stdout)).toEqual({
+      proxyTimeout: 240_000,
+      proxyClientMaxBodySize: 1024 * 1024 * 1024,
+    });
   });
 
   it('builds the console against the loopback API, then installs production node_modules afresh and compiles node-pty', () => {

@@ -22,9 +22,12 @@
 
 # BACKEND_INTERNAL_ORIGIN is where the console's own rewrites reach the API.
 # Server-side only — no browser dials it — so it is loopback. Unlike
-# CLOUDGATE_API_URL it is read at BUILD time as well as at runtime, because
-# rewrite destinations are baked into the routes manifest: export it for
-# `next build` too. Unset, it is http://localhost:4000.
+# CLOUDGATE_API_URL it is read only when the console is BUILT: rewrite
+# destinations are written into the routes manifest by `next build`, and the
+# running console takes them from there. A Cloudgate version is built against
+# http://127.0.0.1:4000 (deploy/version-tarball.sh), so changing the value
+# here changes nothing; it is written for whoever builds from source, who must
+# export it for `next build`. Unset, it is http://localhost:4000.
 
 # CONSOLE_TRUSTED_PROXY — Hosted instance only: one address or CIDR
 # range, the docker_gwbridge subnet Traefik reaches the console from. A request

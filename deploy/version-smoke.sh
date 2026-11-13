@@ -11,7 +11,8 @@
 # drizzle-kit, starts the backend on :4000 and the console on :3000 with node
 # alone (no pnpm, no build tools, nothing from the repository), and passes
 # when the backend's /settings/about reports VERSION, the console serves a
-# page, and the console's rewrite reaches the backend over loopback. Both
+# page and loads its own next.config.ts (its proxy limits), and the console's
+# rewrite reaches the backend over loopback. Both
 # processes are stopped when it ends; their logs are printed if it fails.
 #
 # It needs only node on PATH, curl, and ports 3000 and 4000 free.
@@ -110,6 +111,26 @@ echo "backend: $reported"
 log "The console serves a page"
 answer http://127.0.0.1:3000/ "200 307 308" > /dev/null
 echo "console: answered /"
+
+# What server.mjs's next({ dev: false }) loaded at start, asked of the
+# tarball's own Next the same way. A console missing next.config.ts, or what it
+# imports, still serves pages and rewrites (they are in .next), but on Next's
+# defaults: 30 s before a slow backend call is cut, and an upload over 10 MB
+# truncated (#30). Nothing outside the process shows that in under 30 s, so the
+# smoke reads the limits instead.
+log "The console loads its own next.config.ts"
+limits="$(
+  cd "$into/frontend" && NODE_ENV=production node -e '
+    const loadConfig = require("next/dist/server/config").default;
+    const { PHASE_PRODUCTION_SERVER } = require("next/constants");
+    loadConfig(PHASE_PRODUCTION_SERVER, process.cwd()).then((config) => {
+      const { proxyTimeout, proxyClientMaxBodySize } = config.experimental;
+      console.log(`${proxyTimeout} ${proxyClientMaxBodySize}`);
+    });'
+)"
+[ "$limits" = "240000 1073741824" ] ||
+  fail "The console starts with proxyTimeout and proxyClientMaxBodySize '$limits', not '240000 1073741824': next.config.ts did not load from the tarball."
+echo "console: proxyTimeout 240000, proxyClientMaxBodySize 1073741824"
 
 log "The console reaches the backend over loopback"
 proxied="$(answer http://127.0.0.1:3000/backend/settings/about 200 | about_version)"

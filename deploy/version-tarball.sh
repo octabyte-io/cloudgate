@@ -24,12 +24,23 @@
 #                                  drizzle/ (the migrations), drizzle.config.ts,
 #                                  node_modules/ (.bin/drizzle-kit runs db:migrate)
 #     frontend/                    package.json, server.mjs, server/, public/,
-#                                  .next/ (no build cache), node_modules/
+#                                  .next/ (no build cache), node_modules/,
+#                                  next.config.ts and src/lib/config.ts, the one
+#                                  file of source it imports
 #     deploy/                      as in the repository: systemd units, Traefik
 #                                  files, the OpenTofu lock file and schemas,
 #                                  state-login.sql, the hosted scripts
 #
-# No source, tests, env files, CLI or docs. The console is built with
+# `next({ dev: false })` in server.mjs loads next.config.* from disk when the
+# console starts; it does not read the copy the build left in .next. Without
+# it the console ran on Next's defaults, a 30 s proxy timeout and a 10 MB
+# request body (#30), so the config ships, with the file it imports
+# (src/lib/config.ts, which imports server/api-origin.mjs), and Next's own
+# SWC, a production dependency, transpiles it at start. Shipping those two
+# rather than a compiled next.config.mjs keeps one config, not a second,
+# generated one that can drift from it.
+#
+# No other source, and no tests, env files, CLI or docs. The console is built with
 # BACKEND_INTERNAL_ORIGIN set to the install's loopback API; the API's public
 # address is read when the console starts, so one tarball serves every box.
 #
@@ -102,6 +113,7 @@ contents=(
   api-schemas/package.json api-schemas/dist
   backend/package.json backend/dist backend/assets backend/drizzle backend/drizzle.config.ts
   frontend/package.json frontend/server.mjs frontend/server frontend/public frontend/.next
+  frontend/next.config.ts frontend/src/lib/config.ts
   deploy
 )
 for package in api-schemas backend frontend; do
