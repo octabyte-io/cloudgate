@@ -14,7 +14,7 @@ What broke on a real install is written down here as well as what worked: see [K
 | Access | root over SSH |
 | Ports open inbound | 22, 80, 443, 3000, 4000 |
 | DNS | none required — `sslip.io` resolves `<name>.<ip>.sslip.io` to `<ip>`, which is how deployed apps were reached |
-| Outbound | `get.docker.com`, `nodejs.org`, the npm registry, Docker Hub, `github.com` (the OpenTofu and provider releases, [§7](#opentofu-and-the-providers), and the Template catalogue, [below](#the-template-catalogue)), and GitHub's release-download host, `release-assets.githubusercontent.com`, which a release download redirects to |
+| Outbound | `get.docker.com`, `nodejs.org`, the npm registry, Docker Hub, `api.github.com` (which Cloudgate version is the latest), `github.com` (the Cloudgate version itself, the OpenTofu and provider releases, [§7](#opentofu-and-the-providers), and the Template catalogue, [below](#the-template-catalogue)), and GitHub's release-download host, `release-assets.githubusercontent.com`, which a release download redirects to |
 
 Check the host has no cloud firewall in front of it before you start. A provider-level block on 3000/4000 looks exactly like a broken install:
 
@@ -30,39 +30,67 @@ One command, as root, on the host:
 curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo sh
 ```
 
-That is the repository's root `install.sh`. It checks the host is Ubuntu 24.04 on amd64, clones
-the public repository over HTTPS into `/opt/cloudgate` (or fast-forwards the checkout already
-there), finds the public host and hands over to `deploy/install.sh`, which does the install. The
-public host is, in order: `CLOUDGATE_PUBLIC_HOST` if you set it, the one the last install on this
-host was given, and on a first install the host's public IPv4 address as `api.ipify.org` sees it.
-To name it, pass it through `sudo`:
+That is the repository's root `install.sh`. It installs a **Cloudgate version** (ADR-0082): one
+tested version of Cloudgate, `vX.Y.Z`, published as a prebuilt tarball on the GitHub Release for
+its tag once its E2E run was green. Nothing is cloned and nothing is built on the host. The script:
+
+1. checks the host is Ubuntu 24.04 on amd64;
+2. finds the version: the one `CLOUDGATE_VERSION` names, or else the latest one published (the
+   highest `vX.Y.Z` among the repository's releases; the CLI's `cli-v*` releases are never one);
+3. downloads `cloudgate-<X.Y.Z>-linux-amd64.tar.gz` and its `.sha256`, and stops, having changed
+   nothing, when the download does not match the published checksum or the version has no release;
+4. unpacks it into `/opt/cloudgate.next` and hands over to that version's `deploy/install.sh`,
+   which does the install and puts the version in place at `/opt/cloudgate` just before it
+   migrates the database and restarts both units.
+
+To install a particular version, name it through `sudo` (`v0.3.0` and `0.3.0` both work):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh \
+  | sudo CLOUDGATE_VERSION=v0.3.0 sh
+```
+
+The public host is, in order: `CLOUDGATE_PUBLIC_HOST` if you set it, the one the last install on
+this host was given, and on a first install the host's public IPv4 address as `api.ipify.org`
+sees it. To name it:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh \
   | sudo CLOUDGATE_PUBLIC_HOST=<public ip or hostname> sh
 ```
 
-`CLOUDGATE_REF` installs another branch (the default is `main`), and every other variable in the
-environment, `HOSTED_MODE` and its inputs included, reaches `deploy/install.sh` as it was.
+Every other variable in the environment, `HOSTED_MODE` and its inputs included, reaches
+`deploy/install.sh` as it was. `CLOUDGATE_REF` is refused: the install never installs a branch.
+`API_PORT` must stay 4000, because a version's console was built to reach its API there; the
+install refuses any other value before it changes anything.
 
 The same install by hand, which is all the one command does:
 
 ```bash
-git clone https://github.com/octabyte-io/cloudgate.git /opt/cloudgate
-CLOUDGATE_PUBLIC_HOST=<public ip or hostname> bash /opt/cloudgate/deploy/install.sh
+cd /root
+curl -fsSLO https://github.com/octabyte-io/cloudgate/releases/download/v0.3.0/cloudgate-0.3.0-linux-amd64.tar.gz
+curl -fsSLO https://github.com/octabyte-io/cloudgate/releases/download/v0.3.0/cloudgate-0.3.0-linux-amd64.tar.gz.sha256
+sha256sum -c cloudgate-0.3.0-linux-amd64.tar.gz.sha256
+mkdir /opt/cloudgate.next
+tar -xzf cloudgate-0.3.0-linux-amd64.tar.gz -C /opt/cloudgate.next --no-same-owner
+CLOUDGATE_PUBLIC_HOST=<public ip or hostname> bash /opt/cloudgate.next/deploy/install.sh
 ```
 
-The checkout **must** be at `/opt/cloudgate` — the unit files in `deploy/systemd/` hardcode it, and the script refuses to run from anywhere else.
+The tarball has no directory of its own around it: unpack it into an empty one. The version ends
+up at `/opt/cloudgate` wherever it was unpacked — the unit files in `deploy/systemd/` hardcode that
+path — and `deploy/install.sh` refuses to run from anything that is not a Cloudgate version (it
+has a `VERSION` file at its top). A host whose `/opt/cloudgate` is still a git checkout, from an
+install made before versions were published, is refused for now, with nothing changed.
 
 `CLOUDGATE_PUBLIC_HOST` is the only required input. It becomes the API address both env files carry (`CLOUDGATE_API_URL`), which the console reads when it starts; changing it later is an edit to those files and a restart ([§3](#3-why-the-console-and-the-api-share-one-hostname)).
 
-The script is one file, `deploy/install.sh`, and it does the whole thing: swap, base packages including `build-essential`, Node from `nodejs.org` (checksum-verified), pnpm through corepack, Docker, `swarm init`, the `cloudgate-network` overlay, Postgres with a generated role, nixpacks, the `cloudgate` service user, `/etc/cloudgate`, `pnpm install`, migrations, both builds, `traefik.yml`, the Traefik container, two systemd units, and ufw.
+`deploy/install.sh` is one file, and it does the whole thing: base packages, Node from `nodejs.org` (checksum-verified), Docker, `swarm init`, the `cloudgate-network` overlay, Postgres with a generated role, nixpacks, OpenTofu and its providers, the Session Manager plugin, the `cloudgate` service user, `/etc/cloudgate`, the env files, the version put in place, migrations, `traefik.yml`, the Traefik container, two systemd units, and ufw. It needs no `build-essential`, no `python3`, no pnpm and no swap file: the version arrives with the backend and console built and node-pty compiled.
 
-**It takes no subcommands.** `install.sh install` and `install.sh update` do not exist — it is one idempotent script, and re-running it is the update path (see [Upgrades](#7-upgrades)). It has been run three times on the same host, exiting 0 each time, with no duplicated state.
+**It takes no subcommands.** `install.sh install` and `install.sh update` do not exist — it is one idempotent script, and re-running it is the update path (see [Upgrades](#7-upgrades)).
 
 ### What it prints
 
-Progress as `==> Swap`, `==> Docker`, `==> Console build` and so on, then a verification block. This is what a good install ends with:
+Progress as `==> Downloading Cloudgate 0.3.0`, `==> Docker`, `==> Cloudgate 0.3.0`, `==> Database migrations` and so on, then a verification block. This is what a good install ends with:
 
 ```
 ==> Verification
@@ -97,7 +125,30 @@ Two things to know:
 - Services deployed to "this host" carry `serverId: null`, not the Server's id. The Server row is an inventory record, not the deploy target.
 - The audit reports `isDockerGroupMember: false` and that is **correct**, not a failure: the backend runs as root and reaches the Docker socket by being root.
 
-## 3. Why the console and the API share one hostname
+### Building from source, for developers
+
+The install only installs a published Cloudgate version. To run a branch or an unreleased fix on
+a host, build a version tarball from it yourself and install that by hand. Build on an Ubuntu
+24.04 amd64 machine with Node 24.19.0 (the one `deploy/install.sh` installs) and pnpm, in a fresh
+clone made for it: `deploy/version-tarball.sh` replaces every `node_modules` in the tree.
+
+```bash
+sudo apt-get install -y build-essential python3   # node-pty compiles from source
+git clone --branch <branch> https://github.com/octabyte-io/cloudgate.git cloudgate-build
+cd cloudgate-build && corepack enable
+bash deploy/version-tarball.sh ../out
+```
+
+It runs `pnpm install`, both builds and a production `node_modules` with node-pty compiled, and
+writes `cloudgate-<version>-linux-amd64.tar.gz` and its `.sha256` to `../out`, `<version>` being
+`backend/package.json`'s. Copy both to the host and install them as in the by-hand install above.
+The console it builds reaches its API at `127.0.0.1:4000`; for another `API_PORT`, change
+`BACKEND_INTERNAL_ORIGIN` in `deploy/version-tarball.sh` and the refusal in `deploy/install.sh`
+together. The traps of building:
+
+- **`pnpm install`, never `--prod`, never `--ignore-scripts`, for the build.** `--prod` omits `@nestjs/cli` and `next`, and `--ignore-scripts` skips the node-pty compile. The script installs the production tree afresh after building, for exactly that reason.
+- **node-pty has no Linux prebuild** and compiles with node-gyp, so `build-essential` and `python3` are required where you build. The script refuses to pack without `pty.node`. (Do not check for `spawn-helper`: that target only exists on macOS.)
+- ## 3. Why the console and the API share one hostname
 
 **They must.** This is the single most important configuration fact on the page, and getting it wrong produces a console that signs you in, serves REST perfectly, and then shows a dead screen wherever anything is live.
 
@@ -145,7 +196,7 @@ ufw delete allow 4000
 ssh -N -L 3000:127.0.0.1:3000 -L 4000:127.0.0.1:4000 root@<host>
 ```
 
-Then browse `http://localhost:3000`, and build the console with `CLOUDGATE_PUBLIC_HOST=localhost`. One hostname (`localhost`), two ports, cookie carried, all six gateways working — and nothing on the wire. Ports 80 and 443 stay published, because that is where the applications you deploy are served.
+Then browse `http://localhost:3000`, and install with `CLOUDGATE_PUBLIC_HOST=localhost`. One hostname (`localhost`), two ports, cookie carried, all six gateways working — and nothing on the wire. Ports 80 and 443 stay published, because that is where the applications you deploy are served.
 
 The alternative — a TLS-terminating reverse proxy in front of both ports on one hostname — also works and is more convenient for a team, but it is not part of the verified install and Cloudgate's own Traefik cannot do it for you (see the [Traefik contract](#6-the-traefik-contract)).
 
@@ -262,48 +313,40 @@ docker logs cloudgate-traefik | head    # non-empty from here on
 
 ## 7. Upgrades
 
-**Not the console's update button** — it cannot work here.
+**Not the console's update button** — it cannot work here. Settings shows when a newer Cloudgate
+version is out, and the command to install it.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo sh
 ```
 
-The one-command install is the upgrade too: it fast-forwards `/opt/cloudgate` and re-runs
-`deploy/install.sh` with the public host the last install was given. It stops, changing nothing,
-if the checkout has commits or changes of its own. An install made while the repository was
-private may have an SSH `origin` the host has no key for; point it at HTTPS first with
-`git -C /opt/cloudgate remote set-url origin https://github.com/octabyte-io/cloudgate.git`.
+The one-command install is the upgrade too. It installs the latest Cloudgate version, or the one
+`CLOUDGATE_VERSION=vX.Y.Z` names, with the public host the last install was given:
 
-By hand, the same thing:
+1. It downloads the version and checks its sha256, changing nothing if it does not match.
+2. It unpacks it into `/opt/cloudgate.next` and re-runs the install from there. Every step is
+   guarded, so on an upgraded host they find their work done and move on.
+3. Just before the migrations, the version is put in place: the old `/opt/cloudgate` is moved
+   aside, the new one renamed into its place, and the old one deleted. The units run the old
+   version until then, and a run that stops before this point leaves the installed version whole.
+4. It migrates the database with the version's own `drizzle-kit`, and restarts both units.
 
-```bash
-cd /opt/cloudgate
-git -c safe.directory=/opt/cloudgate pull --ff-only
-CLOUDGATE_PUBLIC_HOST=<same value as the install> bash deploy/install.sh
-```
+**A run on the version already installed downloads nothing**: it re-runs the installed version's
+own `deploy/install.sh`, which moves nothing, applies no migration and restarts both units. That
+is the way to repair a host whose packages or files someone changed.
 
-`safe.directory` is there because the checkout belongs to the `cloudgate` user, and git run as
-root refuses a repository someone else owns.
+Read the version's "What to do on upgrade" lines in `CHANGELOG.md` before you upgrade. Versions
+only move forward: a version's migrations cannot be undone, so installing an older version over a
+newer one is not supported, and the install does not keep the previous version.
 
-Re-running the install script *is* the upgrade, and **it has now been verified twice on a host** — every clause of this paragraph was re-checked on a second install: it re-runs `pnpm install --frozen-lockfile`, `db:migrate`, both builds, and ends with `systemctl restart` on both units. The second install took **149 s** against the first's 200 s, printed **zero** `Installed:` lines and two `Required packages are installed ✅`, left the package set byte-identical, and **never opened the apt window at all** — `/var/lib/apt/lists` was untouched, which is the strongest available form of the apt guard's claim. Every other step is guarded and no-ops — the Packages and Postgres steps included: they now hand apt only the packages actually missing, print `Required packages are installed ✅` when none are, and so cannot upgrade `curl`, `git` or `openssl` on the way past. Secrets are read back from `/etc/default/cloudgate-secrets` rather than regenerated, which is exactly right for an upgrade: a new `APP_ENCRYPTION_SECRET` would make every encrypted column permanently unreadable, and a new `PGPW` would leave `DATABASE_URL` disagreeing with a Postgres role the script will not touch. An older install kept them in `/root/cloudgate-live-test/env`, a verification run's scratch directory; the first run after that fix migrates the three keys to `/etc/default/cloudgate-secrets`, renames the old file `.migrated`, and prints that it did. **The rule this establishes is worth stating on its own: the instance's identity is `/etc/default/cloudgate-*`.** Keep those files and a reinstall is the same instance, with the same signing secrets and the same session cookies still valid. To reinstall as a genuinely *new* instance, remove `/etc/default/cloudgate-backend`, `/etc/default/cloudgate-console` and `/etc/default/cloudgate-secrets` **and** drop the `cloudgate` database — the secrets and the rows they key have to go together, and keeping either one alone gets you a half-migrated instance rather than a fresh one.
+By hand, the same thing is the by-hand install in [§2](#2-install) with the new version's
+tarball, and `CLOUDGATE_PUBLIC_HOST` set to the value the install was given.
 
-Do it by hand if you prefer, in this order — the order matters, because a built console that talks to an unmigrated database is worse than a moment of downtime:
+**Migrate, never push.** `drizzle-kit push` writes columns with no journal row; the next migrate then hits an already-applied `ALTER TABLE` and exits 1 with nothing on stdout or stderr.
 
-```bash
-cd /opt/cloudgate && git -c safe.directory=/opt/cloudgate pull --ff-only
-runuser -u cloudgate -- pnpm install --frozen-lockfile
-set -a; . /etc/default/cloudgate-backend; set +a
-runuser -u cloudgate -- env DATABASE_URL="$DATABASE_URL" pnpm --filter backend db:migrate
-runuser -u cloudgate -- env NODE_ENV=production pnpm --filter backend build
-set -a; . /etc/default/cloudgate-console; set +a
-runuser -u cloudgate -- env NODE_ENV=production BACKEND_INTERNAL_ORIGIN="$BACKEND_INTERNAL_ORIGIN" \
-  NODE_OPTIONS=--max-old-space-size=3072 pnpm --filter frontend build
-systemctl restart cloudgate-backend cloudgate-console
-```
+Secrets are read back from `/etc/default/cloudgate-secrets` rather than regenerated, which is exactly right for an upgrade: a new `APP_ENCRYPTION_SECRET` would make every encrypted column permanently unreadable, and a new `PGPW` would leave `DATABASE_URL` disagreeing with a Postgres role the script will not touch. The Packages and Postgres steps hand apt only the packages actually missing, print `Required packages are installed ✅` when none are, and so cannot upgrade `curl`, `git` or `openssl` on the way past. An older install kept its secrets in `/root/cloudgate-live-test/env`, a verification run's scratch directory; the first run after that fix migrates the three keys to `/etc/default/cloudgate-secrets`, renames the old file `.migrated`, and prints that it did. **The rule this establishes is worth stating on its own: the instance's identity is `/etc/default/cloudgate-*`.** Keep those files and a reinstall is the same instance, with the same signing secrets and the same session cookies still valid. To reinstall as a genuinely *new* instance, remove `/etc/default/cloudgate-backend`, `/etc/default/cloudgate-console` and `/etc/default/cloudgate-secrets` **and** drop the `cloudgate` database — the secrets and the rows they key have to go together, and keeping either one alone gets you a half-migrated instance rather than a fresh one.
 
-**Every install and build step runs as `cloudgate` via `runuser`.** Root-owned `node_modules` or `.next` break the next build.
-
-**Migrate, never push.** `db:push` writes columns with no journal row; the next `db:migrate` then hits an already-applied `ALTER TABLE` and exits 1 with nothing on stdout or stderr.
+**A host installed from a git checkout.** Until versions were published, the install cloned the repository into `/opt/cloudgate` and built it there. The install refuses such a host for now, naming `/opt/cloudgate` as a git checkout, and changes nothing. A host from then also keeps the `/swapfile`, `build-essential` and `python3` the build needed; the install no longer creates or uses any of them and leaves them as they are.
 
 A queued deployment survives a restart, as a Cloud run does. The build queue is in memory, so the Deployment rows are what survive, and start-up settles them: a build still `pending` is queued again, oldest first, and Cancel reaches it as it reaches any waiting build, but one that cannot show what it was queued as (a build of a preview deleted in the meantime, or one recorded before Cloudgate kept that) ends `error` rather than being built as a guess; a build still `running` was cut off part-way, ends `error` with "Cut off by a Cloudgate restart before this build finished", and is never run again by itself — deploy it again; a build `held` for a plan stays held. That is why both units are `Restart=always`: `on-failure` was chosen only because `always` would have papered over the queue orphaning a build, and a restart no longer orphans one. A `systemctl stop` still stops the service.
 
@@ -311,10 +354,10 @@ A queued deployment survives a restart, as a Cloud run does. The build queue is 
 
 A Cloud account's resources are made by **OpenTofu** ([ADR-0030](adr/0030-a-cloud-accounts-resources-are-made-by-opentofu-a-servers-by-the-deploy-engine.md)), and `install.sh` installs it with the providers Cloud runs use: `hashicorp/aws` for AWS, and `hashicorp/google` for Google Cloud, which makes every Google resource, the Memorystore instance included (ADR-0030, as amended). That is about **255 MB of downloads** — `tofu` (~35 MB), `hashicorp/aws` (~180 MB) and `hashicorp/google` (~41 MB) — and the providers unpack to about **980 MB** on disk (AWS's 843 MB, Google's 138 MB; the linux_amd64 artefacts of OpenTofu 1.13.1, AWS 6.69.1 and Google 8.8.0, measured when the pin moved to 8.8.0). All land in `/usr/local/share/cloudgate/opentofu/` (`bin/tofu`, and the provider mirror under `providers/`), never in `/usr/local/bin`, so a `tofu` of your own is left alone. Every install has all of them, whichever clouds its Cloud accounts are on; a run uses only its own cloud's. The script writes `OPENTOFU_VERSION`, `OPENTOFU_BINARY`, `OPENTOFU_PROVIDER_MIRROR`, `AWS_PROVIDER_VERSION` and `GOOGLE_PROVIDER_VERSION` into `/etc/default/cloudgate-backend`.
 
-- **All are pinned, with checksums, by the checkout.** `OPENTOFU_VERSION` and `OPENTOFU_SHA256` at the top of `install.sh` (OpenTofu 1.10 or later, amd64 only — the script stops on any other `uname -m`); each provider's version and checksums in `deploy/opentofu/.terraform.lock.hcl`, from the OpenTofu registry. A provider zip whose sha256 is not in its block of that lock file is refused, and `tofu init` checks the unpacked provider against it again.
+- **All are pinned, with checksums, by the Cloudgate version.** `OPENTOFU_VERSION` and `OPENTOFU_SHA256` at the top of `install.sh` (OpenTofu 1.10 or later, amd64 only — the script stops on any other `uname -m`); each provider's version and checksums in `deploy/opentofu/.terraform.lock.hcl`, from the OpenTofu registry. A provider zip whose sha256 is not in its block of that lock file is refused, and `tofu init` checks the unpacked provider against it again.
 - **A Cloud run never downloads anything.** The CLI config it runs with names that mirror as the only place providers come from — there is no direct registry fallback.
 - **A re-run is a no-op when both are already at their pins**, and downloads only the one that moved otherwise. Re-running `install.sh` is the upgrade for these too.
-- **Versions move forward only, and only by a Cloudgate change.** A state written by a newer OpenTofu or provider is refused by an older one, so do not override `OPENTOFU_VERSION` downward, and do not roll the checkout back across a commit that moved either pin once a Cloud run has used it. Moving a provider is `tofu init` (or `tofu providers lock`) in `deploy/opentofu/` after changing `versions.tf.json`, plus its line in `install.sh` and its constant in `backend/src/cloud-accounts/tofu/tofu-environment.ts` — `backend/test/cloud-accounts/opentofu-pins.spec.ts` fails until all four agree. Then regenerate `deploy/opentofu/schemas/` — each provider's schema trimmed to the types Cloudgate's definitions write, and the ECS container's fields of the pinned `@aws-sdk/client-ecs`, which native settings are checked against offline ([ADR-0044](adr/0044-native-adds-settings-to-what-cloudgate-generates-never-resources.md) rule 5): with `OPENTOFU_BINARY` and `OPENTOFU_PROVIDER_MIRROR` from `backend/test/cloud-accounts/moto/install-opentofu.sh <dir> aws google`, run `pnpm opentofu:schemas` in `backend/`. The pin test fails while a schema's version is not the pin's, and `backend/test/cloud-accounts/provider-schemas.spec.ts` while a schema misses a type a definition writes (or holds one none does) or the ECS fields are not the pinned SDK's. A state records the provider that wrote it and that provider's version, and one written by a newer AWS or Google provider is refused, naming it.
+- **Versions move forward only, and only by a Cloudgate change.** A state written by a newer OpenTofu or provider is refused by an older one, so do not override `OPENTOFU_VERSION` downward, and do not install an older Cloudgate version across one that moved either pin once a Cloud run has used it. Moving a provider is `tofu init` (or `tofu providers lock`) in `deploy/opentofu/` after changing `versions.tf.json`, plus its line in `install.sh` and its constant in `backend/src/cloud-accounts/tofu/tofu-environment.ts` — `backend/test/cloud-accounts/opentofu-pins.spec.ts` fails until all four agree. Then regenerate `deploy/opentofu/schemas/` — each provider's schema trimmed to the types Cloudgate's definitions write, and the ECS container's fields of the pinned `@aws-sdk/client-ecs`, which native settings are checked against offline ([ADR-0044](adr/0044-native-adds-settings-to-what-cloudgate-generates-never-resources.md) rule 5): with `OPENTOFU_BINARY` and `OPENTOFU_PROVIDER_MIRROR` from `backend/test/cloud-accounts/moto/install-opentofu.sh <dir> aws google`, run `pnpm opentofu:schemas` in `backend/`. The pin test fails while a schema's version is not the pin's, and `backend/test/cloud-accounts/provider-schemas.spec.ts` while a schema misses a type a definition writes (or holds one none does) or the ECS fields are not the pinned SDK's. A state records the provider that wrote it and that provider's version, and one written by a newer AWS or Google provider is refused, naming it.
 - **The states have a database login of their own.** `install.sh` creates `cloudgate_state` (its password is `STATEPW` in `/etc/default/cloudgate-secrets`) and, after every `db:migrate`, grants it `deploy/opentofu/state-login.sql`: OpenTofu's `states` table in the `infrastructure_state` schema and nothing else, so `tofu` can never read Cloudgate's own tables. It creates nothing either — the migrations make the schema and table. A by-hand upgrade runs that file too, after migrating: `su - postgres -c "psql -q -v ON_ERROR_STOP=1 -d cloudgate" < deploy/opentofu/state-login.sql`.
 - **Never Terraform's binary.** OpenTofu and the provider run unmodified, as separate programs — the licence reasons are in ADR-0030.
 
@@ -353,11 +396,7 @@ To restore onto a fresh host: run `install.sh` first, then stop both units, rest
 
 **`CLOUDGATE_API_URL` names the API on the browser's hostname.** It is read when the console starts, so changing it is a restart. The symptom of a wrong one is not an error — it is a console that works until you look at anything live.
 
-**`db:migrate`, never `db:push`.** See above. The failure is silent and the recovery is manual.
-
-**`build-essential` and `python3` are required.** `node-pty` has no Linux prebuild and compiles from source. Without it the three pty gateways — host terminal, container terminal, container logs — do not work, and the failure surfaces at runtime, not at install. The script asserts `pty.node` exists and stops if it does not. (Do not check for `spawn-helper`: that target only exists on macOS.)
-
-**`pnpm install`, never `--prod`, never `--ignore-scripts`.** `--prod` omits `drizzle-kit`, `@nestjs/cli` and `next` — all devDependencies — so the install "succeeds" and then `db:migrate` cannot find its binary. `--ignore-scripts` skips the `node-pty` compile.
+**Migrate, never push.** See [Upgrades](#7-upgrades). The failure is silent and the recovery is manual.
 
 **ufw does not filter Docker's published ports.** Docker writes its own `iptables` rules ahead of ufw's chain, so a database port published from the console is reachable from the internet even though `ufw status` does not list it — verified from a laptop across the internet on the run. Never use ufw as the reason a published port is safe; what does work is in [Security posture](#4-security-posture-read-this-before-a-public-address).
 
@@ -514,12 +553,12 @@ On every start the Hosted instance reads its endpoints from Stripe and logs a wa
 
 ### Upgrading by hand
 
-Take a backup first, then run the one command with `HOSTED_MODE=true`; every other input is read back from `/etc/default/cloudgate-hosted`. A run without `HOSTED_MODE=true` stops, because that file exists. `CLOUDGATE_REF` names the version tag:
+Take a backup first, then run the one command with `HOSTED_MODE=true`; every other input is read back from `/etc/default/cloudgate-hosted`. A run without `HOSTED_MODE=true` stops, because that file exists. `CLOUDGATE_VERSION` names the version:
 
 ```bash
 systemctl start cloudgate-backup.service
 curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh \
-  | sudo HOSTED_MODE=true CLOUDGATE_REF=v0.3.0 sh
+  | sudo HOSTED_MODE=true CLOUDGATE_VERSION=v0.3.0 sh
 ```
 
 Read the version's "What to do on upgrade" lines in `CHANGELOG.md` before you do: a version that handles a new Stripe event says to subscribe the webhook to it.
@@ -561,6 +600,7 @@ The Stripe, Resend, Turnstile and B2 inputs never go to GitHub. A failed upgrade
 
 ## What has not been verified
 
+- **A Cloudgate version installed on a host.** The install's download, checksum, staging and hand-over are driven by `backend/test/deploy/one-command-install.spec.ts` with GitHub and systemd stubbed, and the publish workflow boots each tarball against an empty database before publishing it. Nobody has yet installed or upgraded a real host from a published version; every host run recorded below built from a checkout.
 - **A second Server.** Everything here is one host deploying to itself. The remote-Server path is exercised only as far as registering this host and running its setup script over SSH.
 - **A teardown that *keeps* the secrets file.** [Upgrades](#7-upgrades) documents the rule in both directions — a fresh install generates the three keys, and a preserved `/etc/default/cloudgate-secrets` **reproduces the same instance**, with the same signing secrets and the same session cookies still valid. Only three quarters of that are read: an **upgrade** was proved to reuse the three keys byte-identically (with four-day-old encrypted columns still decrypting), and a **teardown that removes the file** was proved to inherit nothing — three fresh fingerprints, none equal to the pre-teardown values, and zero occurrences of the migration line. **Nobody has torn the host down while keeping the file.** That is one teardown and two installs, and it is the only thing that closes the claim's last quarter.
 - **Mail.** `MAIL_PROVIDER` was left unset throughout. Invitations were tested through the copyable link.
