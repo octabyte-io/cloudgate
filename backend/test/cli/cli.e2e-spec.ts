@@ -12,6 +12,7 @@ import {
 } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
+import { deflateRawSync } from 'node:zlib';
 
 import { parse } from 'dotenv';
 import { eq } from 'drizzle-orm';
@@ -1560,7 +1561,8 @@ describe('Cloudgate CLI (e2e)', () => {
         expect(deployed.stderr).toContain(
           'Warning: left out main.js, a symlink; an upload keeps no symlinks.\n',
         );
-        // A new Application's build host holds nothing, so all 8 are sent.
+        // A new Application's build host holds nothing, so all 8 are sent;
+        // `assets/blob.bin` is 150 KiB that no zip can shrink.
         expect(deployed.stderr).toMatch(
           /Uploading 8 changed files, 15\d\.\d kB \(0 unchanged\)…\n/,
         );
@@ -1624,10 +1626,16 @@ describe('Cloudgate CLI (e2e)', () => {
         const again = await runCli(['deploy'], { home, cwd: repo, env });
 
         expect(again.code).toBe(0);
-        // 'console.log("shop v2");\n' is 24 bytes; of the 7 files kept, 6
-        // are as the build host holds them, and keep.log is gone.
+        // Of the 7 files kept, 6 are as the build host holds them, and
+        // keep.log is gone. The size is the zip sent, not the file's 24
+        // bytes: the zip's fixed 98 bytes of headers (30 local, 46 central,
+        // 22 end), the name `index.js` twice, and the deflated contents.
+        const sent =
+          98 +
+          2 * 'index.js'.length +
+          deflateRawSync('console.log("shop v2");\n').length;
         expect(again.stderr).toContain(
-          'Uploading 1 changed file, 24 B (6 unchanged, 1 deleted)…\n',
+          `Uploading 1 changed file, ${sent} B (6 unchanged, 1 deleted)…\n`,
         );
         const code = codeOf(seeded.staging.appName);
         expect(filesUnder(code)).not.toContain('keep.log');
