@@ -157,7 +157,10 @@ jobs:
             --access public --tag "$DIST_TAG"
 
       # Only after the publish. `--latest=false` keeps the repository's
-      # "Latest" release the server's, whatever the CLI does.
+      # "Latest" release the server's, whatever the CLI does. A tag made by
+      # publishing a Release on github.com (the way to release from a phone)
+      # already has its Release; that one is given the same title, notes and
+      # flags rather than failing the run after npm has the version.
       - name: GitHub Release with the changelog section
         env:
           GH_TOKEN: ${{ github.token }}
@@ -165,9 +168,17 @@ jobs:
           node cli/scripts/release.ts notes "$VERSION" > "$RUNNER_TEMP/notes.md"
           flags=()
           if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
-          gh release create "$GITHUB_REF_NAME" \
-            --verify-tag \
-            --title "Cloudgate CLI $VERSION" \
-            --notes-file "$RUNNER_TEMP/notes.md" \
-            --latest=false \
-            "${flags[@]}"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" \
+              --title "Cloudgate CLI $VERSION" \
+              --notes-file "$RUNNER_TEMP/notes.md" \
+              --latest=false \
+              "${flags[@]}"
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --verify-tag \
+              --title "Cloudgate CLI $VERSION" \
+              --notes-file "$RUNNER_TEMP/notes.md" \
+              --latest=false \
+              "${flags[@]}"
+          fi
