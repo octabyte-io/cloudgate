@@ -2,9 +2,11 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as nodePath from 'node:path';
+
 import { eq } from 'drizzle-orm';
 import request from 'supertest';
-import { App } from 'supertest/types';
+import type { App } from 'supertest/types';
+
 import { ApplicationsService } from '../../src/applications/applications.service';
 import { REMOTE_CLOUDGATE_DIRECTORY } from '../../src/common/config/cloudgate-directory';
 import {
@@ -16,7 +18,8 @@ import { EnvironmentsService } from '../../src/environments/environments.service
 import { ProjectsService } from '../../src/projects/projects.service';
 import { RemoteExecService } from '../../src/remote/remote-exec.service';
 import type { ExecOptions } from '../../src/remote/remote-exec.service';
-import { createTestApp, TestAppContext } from '../utils/test-app';
+import { createTestApp } from '../utils/test-app';
+import type { TestAppContext } from '../utils/test-app';
 import { buildZip } from '../utils/zip-archive';
 import type { ZipEntry } from '../utils/zip-archive';
 
@@ -197,10 +200,10 @@ describe('Application upload of changed files (e2e)', () => {
     applicationId: string,
     values: Partial<typeof serverTable.$inferInsert> = {},
   ) {
-    const [builder] = await ctx.db
+    const [buildServer] = await ctx.db
       .insert(serverTable)
       .values({
-        name: 'builder-eu',
+        name: 'build-eu',
         ipAddress: '203.0.113.7',
         port: 22,
         organizationId,
@@ -209,12 +212,12 @@ describe('Application upload of changed files (e2e)', () => {
       .returning();
     await ctx.db
       .update(applicationTable)
-      .set({ buildServerId: builder.serverId })
+      .set({ buildServerId: buildServer.serverId })
       .where(eq(applicationTable.applicationId, applicationId));
-    return builder;
+    return buildServer;
   }
 
-  describe('compare', () => {
+  describe('what the build host is missing', () => {
     it('answers only the files the build host is missing or holds different, with the unchanged and to-delete counts', async () => {
       const { cookie, created } = await setUpApplication();
       plant(code(), {
@@ -260,13 +263,13 @@ describe('Application upload of changed files (e2e)', () => {
       });
     });
 
-    it('reads the tree on the build Server, not the platform host', async () => {
+    it('reads the tree on the build host, not the platform host', async () => {
       const { cookie, organizationId, created } = await setUpApplication();
-      const builder = await onBuildServer(
+      const buildServer = await onBuildServer(
         organizationId,
         created.applicationId,
       );
-      // What `sha256sum -z` prints on the build Server: NUL-ended lines.
+      // What `sha256sum -z` prints on the build host: NUL-ended lines.
       execMock.execAsyncRemote.mockResolvedValue({
         stdout: `${sha256('x\n')}  ./index.js\0${sha256('stale\n')}  ./stale.js\0`,
         stderr: '',
@@ -288,7 +291,7 @@ describe('Application upload of changed files (e2e)', () => {
       expect(execMock.execAsync).not.toHaveBeenCalled();
       expect(
         execMock.execAsyncRemote.mock.calls.map(([serverId]) => serverId),
-      ).toEqual([builder.serverId]);
+      ).toEqual([buildServer.serverId]);
       expect(execMock.execAsyncRemote.mock.calls[0][1]).toContain(
         `${REMOTE_CLOUDGATE_DIRECTORY}/applications/drop-app/code`,
       );
@@ -320,7 +323,7 @@ describe('Application upload of changed files (e2e)', () => {
     });
   });
 
-  describe('apply', () => {
+  describe('landing the changes', () => {
     /** The 409's message for an apply that failed, whatever the cause. */
     const FAILED_APPLY =
       'The upload could not be applied on the build host: it could not be reached, or the apply stopped part-way';
@@ -493,12 +496,12 @@ describe('Application upload of changed files (e2e)', () => {
       expect(found.sourceType).toBe('github');
     });
 
-    it('writes the tree on the build Server, not the Server the workload runs on', async () => {
+    it('writes the tree on the build host, not the run Server', async () => {
       const { cookie, organizationId, created } = await setUpApplication();
-      const [runner] = await ctx.db
+      const [runServer] = await ctx.db
         .insert(serverTable)
         .values({
-          name: 'runner-us',
+          name: 'run-us',
           ipAddress: '198.51.100.4',
           port: 22,
           organizationId,
@@ -506,9 +509,9 @@ describe('Application upload of changed files (e2e)', () => {
         .returning();
       await ctx.db
         .update(applicationTable)
-        .set({ serverId: runner.serverId })
+        .set({ serverId: runServer.serverId })
         .where(eq(applicationTable.applicationId, created.applicationId));
-      const builder = await onBuildServer(
+      const buildServer = await onBuildServer(
         organizationId,
         created.applicationId,
       );
@@ -524,7 +527,7 @@ describe('Application upload of changed files (e2e)', () => {
       expect(execMock.execAsync).not.toHaveBeenCalled();
       expect(
         execMock.execAsyncRemote.mock.calls.map(([serverId]) => serverId),
-      ).toEqual([builder.serverId]);
+      ).toEqual([buildServer.serverId]);
       expect(execMock.execAsyncRemote.mock.calls[0][1]).toContain(
         `${REMOTE_CLOUDGATE_DIRECTORY}/applications/drop-app/code`,
       );

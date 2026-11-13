@@ -5,14 +5,15 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as nodePath from 'node:path';
 import { ConflictException } from '@nestjs/common';
+
 import type { DropArchiveEntry } from '../../src/applications/drop-archive';
 import {
   applyDropChanges,
   readBuildHostTree,
 } from '../../src/applications/drop-changes';
+import { unverifiedHostKey } from '../../src/remote/host-key';
 import { RemoteExecService } from '../../src/remote/remote-exec.service';
 import type { ServerKeyProvider } from '../../src/remote/server-key.provider';
-import { unverifiedHostKey } from '../../src/remote/host-key';
 
 /**
  * ssh2 is a system boundary — mocked, as a loopback sshd rather than a
@@ -149,20 +150,20 @@ function projectTree(): DropArchiveEntry[] {
   return entries;
 }
 
-describe('applyDropChanges', () => {
-  let root: string;
-  let code: string;
-  const onServer = new RemoteExecService(keyProvider);
+let root: string;
+let code: string;
+const onServer = new RemoteExecService(keyProvider);
 
-  beforeEach(() => {
-    root = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'cloudgate-changes-'));
-    code = nodePath.join(root, 'applications', 'drop-app', 'code');
-  });
+beforeEach(() => {
+  root = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'cloudgate-changes-'));
+  code = nodePath.join(root, 'applications', 'drop-app', 'code');
+});
 
-  afterEach(() => {
-    fs.rmSync(root, { recursive: true, force: true });
-  });
+afterEach(() => {
+  fs.rmSync(root, { recursive: true, force: true });
+});
 
+describe('readBuildHostTree', () => {
   it('reads a tree on a Server with every name as it is', async () => {
     const entries = projectTree();
     plant(code, entries);
@@ -177,7 +178,9 @@ describe('applyDropChanges', () => {
       linked: '-',
     });
   });
+});
 
+describe('applyDropChanges', () => {
   it('lands several MB of changes on a Server, with the deletions, byte for byte', async () => {
     const previous = projectTree();
     plant(code, previous);
