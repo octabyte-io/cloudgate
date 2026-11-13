@@ -233,13 +233,7 @@ export async function resolveProjectTarget(
   catalog: TargetCatalog,
   options: ResolveOptions = {},
 ): Promise<ProjectTarget> {
-  const organization = await pick(
-    'organization',
-    inputs,
-    await catalog.organizations(),
-    'you are a member of',
-    options,
-  );
+  const organization = await resolveOrganization(inputs, catalog, options);
   const project = await pick(
     'project',
     inputs,
@@ -255,10 +249,30 @@ export async function resolveProjectTarget(
     options,
   );
   return {
-    organization: { id: organization.id, name: organization.name },
+    organization,
     project: { id: project.id, name: project.name },
     environment: { id: environment.id, name: environment.name },
   };
+}
+
+/**
+ * The Organization alone, the way {@link resolveTarget} resolves it: named,
+ * else the only one, else asked about, else refused. A first `deploy` in an
+ * unlinked folder starts here, then asks the Project itself.
+ */
+export async function resolveOrganization(
+  inputs: TargetInputs,
+  catalog: TargetCatalog,
+  options: ResolveOptions = {},
+): Promise<{ id: string; name: string }> {
+  const organization = await pick(
+    'organization',
+    inputs,
+    await catalog.organizations(),
+    'you are a member of',
+    options,
+  );
+  return { id: organization.id, name: organization.name };
 }
 
 async function pick<C extends Candidate>(

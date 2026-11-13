@@ -15,10 +15,14 @@ import { EXIT } from './exit-codes.js';
  * read back by number or name is all `link` needs.
  */
 export interface Prompter {
-  /** Asks to pick one of `choices`; answers its index. */
+  /**
+   * Asks to pick one of `choices`; answers its index. With a `default`, an
+   * empty answer picks that one.
+   */
   choose(
     question: string,
     choices: readonly { label: string; note?: string }[],
+    options?: { default?: number },
   ): Promise<number>;
   /** Asks a yes/no question; anything but yes is no. */
   confirm(question: string): Promise<boolean>;
@@ -65,15 +69,20 @@ export function terminalPrompter(streams: {
   }
 
   return {
-    async choose(question, choices) {
+    async choose(question, choices, options = {}) {
       const width = String(choices.length).length;
       const lines = choices.map(
         (choice, index) =>
           `  ${String(index + 1).padStart(width)}) ${choice.label}${choice.note ? `   (${choice.note})` : ''}`,
       );
       streams.output.write(`? ${question}\n${lines.join('\n')}\n`);
+      const byDefault = options.default;
+      const hint = byDefault === undefined ? '' : ` [${String(byDefault + 1)}]`;
       for (;;) {
-        const answer = (await ask(`  Pick 1-${choices.length}: `)).trim();
+        const answer = (
+          await ask(`  Pick 1-${choices.length}${hint}: `)
+        ).trim();
+        if (answer === '' && byDefault !== undefined) return byDefault;
         const index = pickedIndex(answer, choices);
         if (index !== undefined) return index;
       }

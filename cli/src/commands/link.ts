@@ -1,6 +1,3 @@
-import { projectConfigLocationSchema } from 'api-schemas';
-
-import { ApiClient } from '../api-client.js';
 import type { Command } from '../command.js';
 import { usageError } from '../errors.js';
 import { EXIT } from '../exit-codes.js';
@@ -13,26 +10,20 @@ import {
   writeLink,
 } from '../folder-link.js';
 import type { FolderLink } from '../folder-link.js';
-import { configMatchesFolder, folderInGit } from '../git-origin.js';
-import type { FolderInGit } from '../git-origin.js';
 import {
   resolveProjectTarget,
   resolveTarget,
   TARGET_OPTIONS,
   targetInputs,
 } from '../target.js';
-import type { TargetCatalog } from '../target.js';
 import {
   chooserFor,
   connectToInstance,
   describeTarget,
   instanceCatalog,
+  projectsInThisRepositoryFirst,
 } from '../target-session.js';
-import {
-  downloadProjectConfig,
-  mayReplaceWorkingCopy,
-  saveWorkingCopy,
-} from '../working-copy.js';
+import { linkWholeProject } from '../working-copy.js';
 
 /**
  * `cloudgate link`: saves a Folder link here (CLI spec).
@@ -129,42 +120,7 @@ FLAGS
 
     if (wholeProject) {
       const target = await resolveProjectTarget(inputs, lookup, choose);
-      const downloaded = await downloadProjectConfig(
-        client.inOrganization(target.organization.id, target.organization.name),
-        target.project,
-      );
-      const replacing = readLinkIn(cwd);
-      const recorded =
-        replacing && isProjectFolder(replacing)
-          ? replacing.workingCopy
-          : undefined;
-      if (
-        !(await mayReplaceWorkingCopy(context, cwd, recorded, downloaded, yes))
-      ) {
-        out.note(`Kept ${WORKING_COPY_FILE}. Nothing changed.`);
-        return EXIT.ok;
-      }
-      saveWorkingCopy(
-        cwd,
-        {
-          instance: instance.url,
-          organizationId: target.organization.id,
-          projectId: target.project.id,
-          environmentId: target.environment.id,
-          names: {
-            organization: target.organization.name,
-            project: target.project.name,
-            environment: target.environment.name,
-          },
-        },
-        downloaded,
-      );
-      out.note(
-        `✓ Linked ./ to the whole Project ${target.project.name}, ${target.environment.name} by default, on ${hostOf(instance.url)}`,
-      );
-      out.note(
-        `✓ Saved the Project config, version ${downloaded.version}, as ${WORKING_COPY_FILE}`,
-      );
+      await linkWholeProject(context, { instance, client }, cwd, target, yes);
       return EXIT.ok;
     }
 
@@ -193,54 +149,4 @@ function describeExisting(existing: FolderLink): string {
   return isProjectFolder(existing)
     ? `to the whole Project ${existing.names.project}`
     : `to ${existing.names.service} in ${existing.names.environment} of Project ${existing.names.project}`;
-}
-
-/** An Instance address without its scheme, as the target line prints it. */
-function hostOf(url: string): string {
-  return url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').replace(/\/+$/, '');
-}
-
-/**
- * The catalog `link` asks from: the Project whose config is kept in this
- * folder's git repository, at or above it, is listed first and says so. Only
- * the order changes; a read that fails leaves the Project where it was.
- */
-function projectsInThisRepositoryFirst(
-  catalog: TargetCatalog,
-  client: ApiClient,
-  cwd: string,
-): TargetCatalog {
-  let folder: FolderInGit | undefined | null = null;
-  return {
-    ...catalog,
-    async projects(organizationId) {
-      const projects = await catalog.projects(organizationId);
-      folder ??= folderInGit(cwd);
-      if (!folder) return projects;
-      const scoped = client.inOrganization(organizationId);
-      const here = folder;
-      const matches = await Promise.all(
-        projects.map(async (project) => {
-          try {
-            const { location } = await scoped.get(
-              `/projects/${encodeURIComponent(project.id)}/config`,
-              projectConfigLocationSchema,
-            );
-            return configMatchesFolder(location, here);
-          } catch {
-            return false;
-          }
-        }),
-      );
-      return [
-        ...projects
-          .filter((_, index) => matches[index])
-          .map((project) => ({
-            ...project,
-            note: 'its config is in this repository',
-          })),
-        ...projects.filter((_, index) => !matches[index]),
-      ];
-    },
-  };
 }

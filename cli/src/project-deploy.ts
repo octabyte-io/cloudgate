@@ -31,7 +31,7 @@ import {
   describeTarget,
   instanceCatalog,
 } from './target-session.js';
-import type { TargetSession } from './target-session.js';
+import type { Connection, TargetSession } from './target-session.js';
 import { selectUploadFiles } from './upload-files.js';
 import type { FoundProjectFolder } from './working-copy.js';
 
@@ -83,13 +83,18 @@ function skipReason(entry: ConfigEntry): string {
   }
 }
 
+/**
+ * `connected` is the run's connection when it already has one, as a first
+ * `deploy` that has just made the folder a Project folder does.
+ */
 export async function deployProjectFolder(
   context: CommandContext,
   project: FoundProjectFolder,
+  connected?: Connection,
 ): Promise<ExitCode> {
   const { out, values } = context;
   const { link, folder } = project;
-  const connection = await connectToInstance(context, project);
+  const connection = connected ?? (await connectToInstance(context, project));
   const inputs = targetInputs({ values, env: context.env, link });
   const where = await out.withSpinner(
     `Looking up the Project on ${connection.instance.url}…`,

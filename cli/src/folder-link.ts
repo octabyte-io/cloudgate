@@ -90,7 +90,8 @@ export interface FoundLink {
   link: FolderLink;
 }
 
-function linkFileIn(folder: string): string {
+/** Where `folder`'s link file is, whether or not it holds one. */
+export function linkFileIn(folder: string): string {
   return join(folder, LINK_FOLDER, LINK_FILE);
 }
 

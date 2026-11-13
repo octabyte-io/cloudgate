@@ -2,6 +2,7 @@ import {
   environmentListSchema,
   environmentWithServicesSchema,
   organizationListSchema,
+  projectConfigLocationSchema,
   projectListSchema,
 } from 'api-schemas';
 
@@ -10,6 +11,8 @@ import type { CommandContext } from './command.js';
 import { credentialFor, endedLogin } from './credentials.js';
 import type { Credential } from './credentials.js';
 import { findNearestLink } from './folder-link.js';
+import { configMatchesFolder, folderInGit } from './git-origin.js';
+import type { FolderInGit } from './git-origin.js';
 import type { FoundLink } from './folder-link.js';
 import { chooseInstance, instanceAddress } from './instance.js';
 import type { InstanceChoice } from './instance.js';
@@ -214,10 +217,12 @@ export function describeTarget(
   target: Target,
   instance: string,
 ): string {
-  const host = instance
-    .replace(/^[a-z][a-z0-9+.-]*:\/\//i, '')
-    .replace(/\/+$/, '');
-  return `${folder} to ${target.service.configName} in ${target.environment.name} of Project ${target.project.name} on ${host}`;
+  return `${folder} to ${target.service.configName} in ${target.environment.name} of Project ${target.project.name} on ${hostOf(instance)}`;
+}
+
+/** An Instance address without its scheme, as the target line prints it. */
+export function hostOf(url: string): string {
+  return url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').replace(/\/+$/, '');
 }
 
 /** A `choose` for {@link resolveTarget} that asks through `prompter`. */
@@ -231,5 +236,50 @@ export function chooserFor(prompter: Prompter): ResolveOptions['choose'] {
       })),
     );
     return candidates[index];
+  };
+}
+
+/**
+ * The catalog `link`, and a first `deploy` in an unlinked folder, ask from: the Project whose config is kept in this
+ * folder's git repository, at or above it, is listed first and says so. Only
+ * the order changes; a read that fails leaves the Project where it was.
+ */
+export function projectsInThisRepositoryFirst(
+  catalog: TargetCatalog,
+  client: ApiClient,
+  cwd: string,
+): TargetCatalog {
+  let folder: FolderInGit | undefined | null = null;
+  return {
+    ...catalog,
+    async projects(organizationId) {
+      const projects = await catalog.projects(organizationId);
+      folder ??= folderInGit(cwd);
+      if (!folder) return projects;
+      const scoped = client.inOrganization(organizationId);
+      const here = folder;
+      const matches = await Promise.all(
+        projects.map(async (project) => {
+          try {
+            const { location } = await scoped.get(
+              `/projects/${encodeURIComponent(project.id)}/config`,
+              projectConfigLocationSchema,
+            );
+            return configMatchesFolder(location, here);
+          } catch {
+            return false;
+          }
+        }),
+      );
+      return [
+        ...projects
+          .filter((_, index) => matches[index])
+          .map((project) => ({
+            ...project,
+            note: 'its config is in this repository',
+          })),
+        ...projects.filter((_, index) => !matches[index]),
+      ];
+    },
   };
 }

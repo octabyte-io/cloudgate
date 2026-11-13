@@ -11,10 +11,15 @@ import { EXIT } from './exit-codes.js';
 import {
   findNearestLink,
   isProjectFolder,
+  linkFileIn,
+  readLinkIn,
   WORKING_COPY_FILE,
   writeLink,
 } from './folder-link.js';
 import type { FoundLink, ProjectFolderLink } from './folder-link.js';
+import type { ProjectTarget } from './target.js';
+import { hostOf } from './target-session.js';
+import type { Connection } from './target-session.js';
 
 /**
  * A **Project folder**'s working copy of the Project config (ADR-0080):
@@ -163,4 +168,60 @@ export function saveWorkingCopy(
   };
   writeLink(folder, saved);
   return saved;
+}
+
+/**
+ * Makes `folder` a Project folder linked to `target`, as `cloudgate link
+ * --whole-project` does: downloads the Project config (refusing one kept in
+ * a repository), settles a working copy already there
+ * ({@link mayReplaceWorkingCopy}), then saves the copy and the link and says
+ * so. Answers the Project folder, or undefined when the person kept the copy
+ * there, which changes nothing.
+ */
+export async function linkWholeProject(
+  context: Pick<CommandContext, 'out' | 'prompter'>,
+  connection: Pick<Connection, 'instance' | 'client'>,
+  folder: string,
+  target: ProjectTarget,
+  yes: boolean,
+): Promise<FoundProjectFolder | undefined> {
+  const { out } = context;
+  const downloaded = await downloadProjectConfig(
+    connection.client.inOrganization(
+      target.organization.id,
+      target.organization.name,
+    ),
+    target.project,
+  );
+  const replacing = readLinkIn(folder);
+  const recorded =
+    replacing && isProjectFolder(replacing) ? replacing.workingCopy : undefined;
+  if (
+    !(await mayReplaceWorkingCopy(context, folder, recorded, downloaded, yes))
+  ) {
+    out.note(`Kept ${WORKING_COPY_FILE}. Nothing changed.`);
+    return undefined;
+  }
+  const link = saveWorkingCopy(
+    folder,
+    {
+      instance: connection.instance.url,
+      organizationId: target.organization.id,
+      projectId: target.project.id,
+      environmentId: target.environment.id,
+      names: {
+        organization: target.organization.name,
+        project: target.project.name,
+        environment: target.environment.name,
+      },
+    },
+    downloaded,
+  );
+  out.note(
+    `✓ Linked ./ to the whole Project ${target.project.name}, ${target.environment.name} by default, on ${hostOf(connection.instance.url)}`,
+  );
+  out.note(
+    `✓ Saved the Project config, version ${downloaded.version}, as ${WORKING_COPY_FILE}`,
+  );
+  return { folder, file: linkFileIn(folder), link };
 }
