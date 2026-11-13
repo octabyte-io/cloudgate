@@ -246,13 +246,14 @@ async function uploadWhole(
   files: readonly UploadFile[],
 ): Promise<void> {
   const { out } = context;
-  const summary = announceUpload(out, files);
+  const zip = zipBlob(folder, files);
+  const summary = announceUpload(out, files, zip);
   out.note(
     `Uploading ${summary.count} ${summary.count === 1 ? 'file' : 'files'}, ${describeSize(summary.totalSize)}…`,
   );
   const form = new FormData();
   form.set('dropBuildPath', '/');
-  form.set('zip', zipBlob(folder, files), 'folder.zip');
+  form.set('zip', zip, 'folder.zip');
   await out.withSpinner('Uploading…', () =>
     session.client.post(
       `/applications/${encodeURIComponent(session.target.service.id)}/drop`,
@@ -286,7 +287,8 @@ async function uploadChanges(
     );
     const missing = new Set(comparison.missing);
     const changed = files.filter((file) => missing.has(file.path));
-    const summary = announceUpload(out, changed);
+    const zip = zipBlob(folder, changed);
+    const summary = announceUpload(out, changed, zip);
     const counts = [
       `${comparison.unchanged} unchanged`,
       ...(comparison.deleted > 0 ? [`${comparison.deleted} deleted`] : []),
@@ -297,7 +299,7 @@ async function uploadChanges(
     const applyForm = new FormData();
     applyForm.set('dropBuildPath', '/');
     applyForm.set('files', listBlob(list), 'files.json');
-    applyForm.set('zip', zipBlob(folder, changed), 'changes.zip');
+    applyForm.set('zip', zip, 'changes.zip');
     try {
       await out.withSpinner('Uploading…', () =>
         session.client.post(`${path}/apply`, applyForm, uploadedDropSchema),
@@ -324,14 +326,16 @@ async function uploadChanges(
 }
 
 /**
- * Warns, naming the biggest folders, when what is about to be sent passes
- * 100 MB (deploy step 9), and answers its summary.
+ * Warns, naming the biggest folders, when `zip`, what is about to be sent,
+ * passes 100 MB (deploy step 9), and answers its summary, whose size is the
+ * zip's: the bytes sent, not the files' (spec #10).
  */
 function announceUpload(
   out: CommandContext['out'],
   files: readonly UploadFile[],
+  zip: Blob,
 ): ReturnType<typeof summarizeUpload> {
-  const summary = summarizeUpload(files);
+  const summary = summarizeUpload(files, zip.size);
   if (summary.large) {
     out.note(
       `Warning: this upload is ${describeSize(summary.totalSize)}, more than 100 MB. Its biggest folders:`,

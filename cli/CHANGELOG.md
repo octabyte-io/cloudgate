@@ -26,7 +26,7 @@ A template folder may hold `test-values.yaml`, a map of an `ask` input's name to
 
 ### `cloudgate deploy` uploads only the files that changed
 
-`deploy` now sends a list of the folder's files with the SHA-256 of each, asks the Instance which ones its build host lacks or holds different, and uploads only those. Files deleted locally are deleted on the Instance too, and the new tree replaces the old one only once every file matches. It says what it sent: `Uploading 3 changed files, 12.0 kB (211 unchanged, 1 deleted)…`, and the 100 MB warning is about what is actually sent.
+`deploy` now sends a list of the folder's files with the SHA-256 of each, asks the Instance which ones its build host lacks or holds different, and uploads only those. Files deleted locally are deleted on the Instance too, and the new tree replaces the old one only once every file matches. It says what it sent: `Uploading 3 changed files, 12.0 kB (211 unchanged, 1 deleted)…`, and the size it gives, there and in `--full`'s line, and the 100 MB warning are about the zip actually sent, not the files in it.
 
 - **`--full`** sends every file through the full upload, as before.
 - **An Instance older than 0.2.0** gets the full upload, with no error and no question. 0.1.0 is still the lowest Instance version this CLI works with.

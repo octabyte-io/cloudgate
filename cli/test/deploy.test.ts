@@ -7,6 +7,7 @@ import {
   truncateSync,
   writeFileSync,
 } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -162,6 +163,8 @@ async function deploy(argv: string[], options: Options = {}) {
   const uploads: FormData[] = [];
   const compares: { path: string; sha256: string }[][] = [];
   const applies: Applied[] = [];
+  /** The bytes of each zip the Instance received, full uploads and applies alike. */
+  const sent: number[] = [];
   const buildHost = new Map(Object.entries(options.buildHost ?? {}));
   let applied = 0;
   let asked = 0;
@@ -233,6 +236,7 @@ async function deploy(argv: string[], options: Options = {}) {
         if (!response.ok) return response;
       }
       uploads.push(init.body as FormData);
+      sent.push(((init.body as FormData).get('zip') as Blob).size);
       return json({ applicationId: 'app_1', sourceType: 'drop', env: 'S=1' });
     }
     if (method === 'POST' && path === '/applications/app_1/drop/compare') {
@@ -253,6 +257,7 @@ async function deploy(argv: string[], options: Options = {}) {
     if (method === 'POST' && path === '/applications/app_1/drop/apply') {
       const form = init.body as FormData;
       const files = await listOf(form);
+      sent.push((form.get('zip') as Blob).size);
       applies.push({
         files,
         zipped: zipNames(
@@ -309,6 +314,7 @@ async function deploy(argv: string[], options: Options = {}) {
     uploads,
     compares,
     applies,
+    sent,
     buildHost: Object.fromEntries(buildHost),
     socket,
   };
@@ -323,7 +329,8 @@ describe('cloudgate deploy', () => {
       'Deploying ./ to api in staging of Project shop on cloud.acme.dev\n',
     );
     expect(result.stderr).toContain(
-      'Uploading 2 changed files, 18 B (0 unchanged)…\n',
+      // The bytes the zip sent, not the 18 B of the files in it.
+      `Uploading 2 changed files, ${result.sent[0]} B (0 unchanged)…\n`,
     );
     expect(result.stderr).toContain('Deployment dpl_7Hq2Xc queued\n');
     expect(result.stderr).toContain('✓ Deployment dpl_7Hq2Xc done in 1m 42s\n');
@@ -452,7 +459,7 @@ describe('cloudgate deploy', () => {
       'Warning: left out main.js, a symlink; an upload keeps no symlinks.\n',
     );
     expect(result.stderr).toContain(
-      'Uploading 3 changed files, 25 B (0 unchanged)…\n',
+      `Uploading 3 changed files, ${result.sent[0]} B (0 unchanged)…\n`,
     );
   });
 
@@ -465,7 +472,7 @@ describe('cloudgate deploy', () => {
     expect(result.code).toBe(0);
     expect(result.stderr).toContain('Deploying ./dist/ to api in staging');
     expect(result.stderr).toContain(
-      'Uploading 1 changed file, 1 B (0 unchanged)…\n',
+      `Uploading 1 changed file, ${result.sent[0]} B (0 unchanged)…\n`,
     );
   });
 
@@ -638,7 +645,7 @@ describe('cloudgate deploy', () => {
 
       expect(result.code).toBe(0);
       expect(result.stderr).toContain(
-        'Uploading 1 changed file, 16 B (1 unchanged)…\n',
+        `Uploading 1 changed file, ${result.sent[0]} B (1 unchanged)…\n`,
       );
       expect(result.compares).toEqual([
         [
@@ -670,7 +677,7 @@ describe('cloudgate deploy', () => {
 
       expect(result.code).toBe(0);
       expect(result.stderr).toContain(
-        'Uploading 0 changed files, 0 B (2 unchanged, 1 deleted)…\n',
+        `Uploading 0 changed files, ${result.sent[0]} B (2 unchanged, 1 deleted)…\n`,
       );
       expect(result.applies.map((apply) => apply.zipped)).toEqual([[]]);
       expect(result.buildHost).toEqual({
@@ -685,7 +692,9 @@ describe('cloudgate deploy', () => {
       });
 
       expect(result.code).toBe(0);
-      expect(result.stderr).toContain('Uploading 2 files, 18 B…\n');
+      expect(result.stderr).toContain(
+        `Uploading 2 files, ${result.sent[0]} B…\n`,
+      );
       expect(result.compares).toEqual([]);
       expect(result.applies).toEqual([]);
       expect(result.uploads).toHaveLength(1);
@@ -700,7 +709,9 @@ describe('cloudgate deploy', () => {
       });
 
       expect(result.code).toBe(0);
-      expect(result.stderr).toContain('Uploading 2 files, 18 B…\n');
+      expect(result.stderr).toContain(
+        `Uploading 2 files, ${result.sent[0]} B…\n`,
+      );
       expect(result.stderr).not.toContain('Error');
       expect(result.compares).toEqual([]);
       expect(result.uploads).toHaveLength(1);
@@ -739,30 +750,45 @@ describe('cloudgate deploy', () => {
       expect(result.stderr).not.toContain('queued');
     });
 
-    it('warns about an upload over 100 MB by the bytes it sends, not the size of the folder', async () => {
+    it('warns about an upload over 100 MB by the bytes it sends, not the size of its files', async () => {
       writeFileSync(join(folder, 'big.bin'), '');
       truncateSync(join(folder, 'big.bin'), 101_000_000);
 
+      // Unchanged, so not sent at all.
       const unchanged = await deploy([...TARGET, '--detach'], {
         buildHost: { 'big.bin': SHA.big, 'package.json': SHA.packageJson },
       });
       expect(unchanged.code).toBe(0);
       expect(unchanged.stderr).not.toContain('more than 100 MB');
       expect(unchanged.stderr).toContain(
-        'Uploading 1 changed file, 16 B (2 unchanged)…\n',
+        `Uploading 1 changed file, ${unchanged.sent[0]} B (2 unchanged)…\n`,
       );
 
-      const changed = await deploy([...TARGET, '--detach'], {
+      // Sent, but 101 MB of zeros zips to a fraction of one.
+      const compressible = await deploy([...TARGET, '--detach'], {
         buildHost: { 'index.js': SHA.index, 'package.json': SHA.packageJson },
       });
-      expect(changed.code).toBe(0);
-      expect(changed.stderr).toContain(
-        'Warning: this upload is 101.0 MB, more than 100 MB.',
+      expect(compressible.code).toBe(0);
+      expect(compressible.sent[0]).toBeLessThan(1_000_000);
+      expect(compressible.stderr).not.toContain('more than 100 MB');
+      expect(compressible.stderr).toContain(
+        `Uploading 1 changed file, ${(compressible.sent[0] / 1000).toFixed(1)} kB (2 unchanged)…\n`,
       );
-      expect(changed.stderr).toContain(
-        'Uploading 1 changed file, 101.0 MB (2 unchanged)…\n',
+
+      // Sent, and nothing to squeeze out of it.
+      writeFileSync(join(folder, 'big.bin'), randomBytes(101_000_000));
+      const incompressible = await deploy([...TARGET, '--detach'], {
+        buildHost: { 'index.js': SHA.index, 'package.json': SHA.packageJson },
+      });
+      expect(incompressible.code).toBe(0);
+      const megabytes = `${(incompressible.sent[0] / 1_000_000).toFixed(1)} MB`;
+      expect(incompressible.stderr).toContain(
+        `Warning: this upload is ${megabytes}, more than 100 MB.`,
       );
-    });
+      expect(incompressible.stderr).toContain(
+        `Uploading 1 changed file, ${megabytes} (2 unchanged)…\n`,
+      );
+    }, 60_000);
 
     it('lists --full in cloudgate deploy --help', async () => {
       const result = await deploy(['--help']);

@@ -103,6 +103,7 @@ export const LARGE_UPLOAD_BYTES = 100_000_000;
 /** What `deploy` always says about an upload before sending it. */
 export interface UploadSummary {
   count: number;
+  /** The bytes sent when {@link summarizeUpload} was told them, else the files' sizes. */
   totalSize: number;
   /** Over {@link LARGE_UPLOAD_BYTES}. */
   large: boolean;
@@ -115,8 +116,17 @@ export interface UploadSummary {
   biggestFolders: UploadFile[];
 }
 
-export function summarizeUpload(files: readonly UploadFile[]): UploadSummary {
-  const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+/**
+ * `bytes` is what the upload really sends, the zip, when it is known: the
+ * total and the 100 MB warning are about that (spec #10), since a folder of
+ * text zips to a fraction of its size. The folders are still ranked by their
+ * files' sizes, which is what a `.cloudgateignore` would leave out.
+ */
+export function summarizeUpload(
+  files: readonly UploadFile[],
+  bytes = files.reduce((sum, file) => sum + file.size, 0),
+): UploadSummary {
+  const totalSize = bytes;
   const large = totalSize > LARGE_UPLOAD_BYTES;
   const byFolder = new Map<string, number>();
   if (large) {

@@ -326,6 +326,31 @@ describe('summarizeUpload', () => {
     ]);
   });
 
+  it('given the bytes sent, totals and warns by them, still ranking folders by their files', () => {
+    const MB = 1_000_000;
+    const files = [
+      { path: 'logs/a.txt', size: 150 * MB },
+      { path: 'media/b.bin', size: 90 * MB },
+    ];
+
+    // 240 MB of files zipped to 95 MB: not large.
+    expect(summarizeUpload(files, 95 * MB)).toEqual({
+      count: 2,
+      totalSize: 95 * MB,
+      large: false,
+      biggestFolders: [],
+    });
+    expect(summarizeUpload(files, 120 * MB)).toEqual({
+      count: 2,
+      totalSize: 120 * MB,
+      large: true,
+      biggestFolders: [
+        { path: 'logs', size: 150 * MB },
+        { path: 'media', size: 90 * MB },
+      ],
+    });
+  });
+
   it('is not large at exactly 100 MB', () => {
     expect(summarizeUpload([{ path: 'a', size: 100_000_000 }]).large).toBe(
       false,
