@@ -1,7 +1,11 @@
 import { existsSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
-import { configRepositorySourcesSchema, serviceRowSchema } from 'api-schemas';
+import {
+  configRepositorySourcesSchema,
+  configSourcesSchema,
+  serviceRowSchema,
+} from 'api-schemas';
 
 import type { Command, CommandContext } from '../command.js';
 import { CliError, usageError } from '../errors.js';
@@ -212,17 +216,23 @@ FLAGS
     const waited = await untilNoBuildInProgress(context, session);
     if (waited !== undefined) return waited;
 
-    const selection = selectUploadFiles(folder);
+    // An app of a Project folder built from its subfolder gets what a root
+    // deploy sends it: the whole Project folder, from that subfolder (#33).
+    const place = (await projectFolderPlace(session, folder)) ?? {
+      folder,
+      buildPath: '/',
+    };
+    const selection = selectUploadFiles(place.folder);
     noteLeftOut(out, selection);
     const applicationId = target.service.id;
     const stopped = await uploadFiles(
       context,
       session,
-      folder,
+      place.folder,
       selection.files,
       {
         full: values.full === true,
-        buildPath: '/',
+        buildPath: place.buildPath,
       },
     );
     if (stopped !== undefined) return stopped;
@@ -252,6 +262,39 @@ FLAGS
     return follow(context, session, queued.deploymentId, consoleUrl);
   },
 };
+
+/**
+ * Where a one-Service deploy uploads from when `folder` is inside a
+ * **Project folder** of the same Project and the Service's config entry is
+ * a folder source (ADR-0080): the Project folder, with the entry's
+ * subfolder as the build path, as a root deploy uploads it. Uploading only
+ * `folder` left out the shared code beside it, and its `/` build path
+ * turned the entry into `managed: console` (#33). Undefined otherwise: the
+ * folder itself, from its top.
+ */
+async function projectFolderPlace(
+  session: TargetSession,
+  folder: string,
+): Promise<{ folder: string; buildPath: string } | undefined> {
+  const above = dirname(folder);
+  const found = above === folder ? undefined : findNearestLink(above);
+  if (
+    !found ||
+    !isProjectFolder(found.link) ||
+    found.link.projectId !== session.target.project.id
+  ) {
+    return undefined;
+  }
+  const sources = await session.client.get(
+    `/environments/${encodeURIComponent(session.target.environment.id)}/config/sources`,
+    configSourcesSchema,
+  );
+  const entry = sources.services.find(
+    (one) => one.configName === session.target.service.configName,
+  );
+  if (entry?.source !== 'folder' || entry.folder === null) return undefined;
+  return { folder: found.folder, buildPath: entry.folder };
+}
 
 /** Saves the link the run's questions just answered, as `cloudgate link` does. */
 function saveLink(folder: string, instance: string, target: Target): void {

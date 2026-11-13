@@ -1163,6 +1163,19 @@ describe('cloudgate deploy in a Project folder', () => {
           services: options.sources ?? SOURCES,
         });
       }
+      if (path === '/environments/env_1/config/repository-sources') {
+        return json({ keptIn: 'cloudgate', readable: true, services: [] });
+      }
+      const row = /^\/applications\/([^/]+)$/.exec(path);
+      if (row && method === 'GET') {
+        // A folder source a root deploy has uploaded to.
+        return json({
+          applicationId: row[1],
+          sourceType: 'drop',
+          dropUploaded: true,
+          env: '',
+        });
+      }
       const app = /^\/applications\/([^/]+)\/(.+)$/.exec(path);
       if (app && method === 'GET' && app[2] === 'deployments') {
         const builds = options.builds?.[app[1]] ?? [[]];
@@ -1532,6 +1545,40 @@ describe('cloudgate deploy in a Project folder', () => {
       );
       expect(result.applies).toEqual([]);
     });
+  });
+
+  it("in an app folder linked to its one Service, uploads the Project folder with the app's subfolder as the build path", async () => {
+    const web = join(root, 'apps', 'web');
+    writeLink(web, {
+      instance: 'https://cloud.acme.dev',
+      organizationId: 'org_1',
+      projectId: 'prj_1',
+      environmentId: 'env_1',
+      serviceConfigName: 'web',
+      names: {
+        organization: 'Shop Inc',
+        project: 'shop',
+        environment: 'staging',
+        service: 'web',
+      },
+    });
+
+    const result = await deployProject(['--detach'], { cwd: web });
+
+    expect(result.stderr).not.toContain('Error');
+    expect(result.code).toBe(0);
+    // Its shared code with it, built from its own subfolder, so the config
+    // entry stays `source: { folder: apps/web }`.
+    expect(result.applies).toEqual([
+      {
+        app: 'app_web',
+        // The app folder's link wrote its own .gitignore.
+        files: [...WHOLE_FOLDER, 'apps/web/.gitignore'].sort(),
+        dropBuildPath: 'apps/web',
+      },
+    ]);
+    expect(result.sentPlans).toEqual([]);
+    expect(result.started).toEqual(['app_web']);
   });
 
   it('refuses a [folder] in a Project folder, which is deployed whole, exit 2', async () => {
