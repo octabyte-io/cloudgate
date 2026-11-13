@@ -92,12 +92,32 @@ function serve(url: string, content: string | Buffer) {
   fs.writeFileSync(at, content);
 }
 
-/** GitHub's list of this repository's releases, newest first. */
+/**
+ * GitHub's list of this repository's releases, newest first, each in the
+ * order GitHub writes its fields: `tag_name` and `name` before `assets`. A
+ * `vX.Y.Z` release carries its tarball and checksum unless `bare` names it,
+ * as one made by hand, or still being published, does not yet.
+ */
 function releases(...tags: string[]) {
+  releasesWithout([], ...tags);
+}
+
+function releasesWithout(bare: string[], ...tags: string[]) {
   serve(
     RELEASES_API,
     JSON.stringify(
-      tags.map((tag) => ({ tag_name: tag, draft: false })),
+      tags.map((tag) => {
+        const tarball = `cloudgate-${tag.replace(/^v/, '')}-linux-amd64.tar.gz`;
+        return {
+          tag_name: tag,
+          name: tag,
+          draft: false,
+          assets:
+            bare.includes(tag) || !tag.startsWith('v')
+              ? []
+              : [{ name: tarball }, { name: `${tarball}.sha256` }],
+        };
+      }),
       null,
       2,
     ),
@@ -244,6 +264,20 @@ describe('install.sh (the one-command install)', () => {
       ).toEqual([]);
     });
 
+    it('never counts a tag whose tarball has not been attached as the latest version', () => {
+      releasesWithout(['v0.11.0'], 'v0.11.0', 'v0.10.0');
+      publish('0.10.0');
+
+      const fresh = install();
+
+      expect(fresh.stderr).toBe('');
+      expect(fresh.status).toBe(0);
+      expect(called()).toContain(
+        `deploy/install.sh 0.10.0 from ${root}/opt/cloudgate.next`,
+      );
+      expect(called()).not.toContain('0.11.0');
+    });
+
     it('installs the version CLOUDGATE_VERSION names', () => {
       releases('v0.10.0', 'v0.9.0');
       publish('0.10.0');
@@ -369,6 +403,21 @@ describe('install.sh (the one-command install)', () => {
       expect(fs.readFileSync(path.join(leftover, 'VERSION'), 'utf8')).toBe(
         '0.10.0\n',
       );
+    });
+
+    it('refuses a CLOUDGATE_VERSION older than the installed one, naming both, before changing anything', () => {
+      publish('0.9.0');
+      versionTree('0.10.0', path.join(root, 'opt/cloudgate'));
+      const before = opt();
+
+      const older = install({ CLOUDGATE_VERSION: 'v0.9.0' });
+
+      expect(older.status).toBe(1);
+      expect(older.stderr).toContain(
+        'Cloudgate 0.10.0 is installed, and 0.9.0 is older',
+      );
+      expect(opt()).toEqual(before);
+      expect(called()).toBe('');
     });
 
     it('refuses CLOUDGATE_REF, naming CLOUDGATE_VERSION, before changing anything', () => {

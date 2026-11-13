@@ -337,8 +337,9 @@ own `deploy/install.sh`, which moves nothing, applies no migration and restarts 
 is the way to repair a host whose packages or files someone changed.
 
 Read the version's "What to do on upgrade" lines in `CHANGELOG.md` before you upgrade. Versions
-only move forward: a version's migrations cannot be undone, so installing an older version over a
-newer one is not supported, and the install does not keep the previous version.
+only move forward: a version's migrations cannot be undone, so a `CLOUDGATE_VERSION` older than the
+installed one is refused, naming both, before anything changes, and the install does not keep the
+previous version once both units run the new one.
 
 By hand, the same thing is the by-hand install in [§2](#2-install) with the new version's
 tarball, and `CLOUDGATE_PUBLIC_HOST` set to the value the install was given.

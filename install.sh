@@ -89,17 +89,48 @@ plain_version() {
   printf '%s\n' "$version"
 }
 
-# The highest vX.Y.Z among the repository's releases, as X.Y.Z, compared as
-# numbers (0.10.0 is after 0.9.0). One page of 100, newest first, as the
-# console's update notice reads it. Empty when there is none.
+# Prints whichever of two X.Y.Z versions is lower, compared as numbers
+# (0.9.0 is before 0.10.0).
+lower_version() {
+  printf '%s\n%s\n' "$1" "$2" | sort -t . -k 1,1n -k 2,2n -k 3,3n | head -n 1
+}
+
+# Refuses <version> when it is older than the one installed: going back is not
+# supported, because a version's migrations only go forward.
+refuse_older() {
+  [ -n "$installed" ] && [ "$1" != "$installed" ] || return 0
+  [ "$(lower_version "$1" "$installed")" = "$1" ] || return 0
+  fail \
+    "Cloudgate $installed is installed, and $1 is older. Going back to an older version is not" \
+    "supported: its migrations only go forward, and $installed's have already run." \
+    "Nothing was changed. The versions are listed at $RELEASES_PAGE."
+}
+
+# The highest vX.Y.Z among the repository's releases that carries its
+# tarball, as X.Y.Z, compared as numbers (0.10.0 is after 0.9.0). A release
+# without cloudgate-X.Y.Z-linux-amd64.tar.gz, made by hand or still being
+# published, is not a version yet: its download would fail. One page of 100,
+# newest first, as the console's update notice reads it. Empty when there is
+# none.
+#
+# No jq on a bare box, so the answer is read as the sequence of its
+# "tag_name" and "name" strings: GitHub writes a release's tag_name before
+# its assets, and each asset's name inside them, so a tarball's name is
+# matched against the tag last seen.
 latest_version() {
   releases="$(curl -fsSL "$RELEASES_API")" || fail \
     "Could not ask GitHub for Cloudgate's releases ($RELEASES_API)." \
     "Name the version to install and run this again:" \
     "    curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo CLOUDGATE_VERSION=v<X.Y.Z> sh"
   printf '%s\n' "$releases" |
-    grep -o '"tag_name": *"v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*"' |
-    sed 's/.*"v\(.*\)"$/\1/' |
+    grep -oE '"(tag_name|name)": *"[^"]*"' |
+    awk -F '"' '
+      $2 == "tag_name" {
+        tag = ($4 ~ /^v[0-9]+\.[0-9]+\.[0-9]+$/) ? substr($4, 2) : ""
+      }
+      $2 == "name" && tag != "" && $4 == "cloudgate-" tag "-linux-amd64.tar.gz" {
+        print tag
+      }' |
     sort -t . -k 1,1n -k 2,2n -k 3,3n |
     tail -n 1
 }
@@ -189,6 +220,7 @@ main() {
       "$INSTALL_DIR exists but holds no Cloudgate version (it has no VERSION file)." \
       "Move it aside and run this again. Nothing was changed."
   fi
+  if [ -n "$requested" ]; then refuse_older "$requested"; fi
 
   if ! command -v curl >/dev/null 2>&1; then
     say "Installing curl"
@@ -214,6 +246,7 @@ main() {
     [ -n "$version" ] || fail \
       "No Cloudgate version has been published yet ($RELEASES_PAGE)." \
       "Nothing was changed."
+    refuse_older "$version"
   fi
 
   if [ "$version" = "$installed" ]; then
