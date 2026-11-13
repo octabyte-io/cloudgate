@@ -5,6 +5,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  rmSync,
   statSync,
   symlinkSync,
   writeFileSync,
@@ -1543,7 +1544,10 @@ describe('Cloudgate CLI (e2e)', () => {
         expect(deployed.stderr).toContain(
           'Warning: left out main.js, a symlink; an upload keeps no symlinks.\n',
         );
-        expect(deployed.stderr).toMatch(/Uploading 8 files, 15\d\.\d kB…\n/);
+        // A new Application's build host holds nothing, so all 8 are sent.
+        expect(deployed.stderr).toMatch(
+          /Uploading 8 changed files, 15\d\.\d kB \(0 unchanged\)…\n/,
+        );
         const [recorded] = await deploymentsOf(seeded.staging.applicationId);
         expect(recorded.status).toBe('done');
         expect(deployed.stderr).toContain(
@@ -1576,6 +1580,49 @@ describe('Cloudgate CLI (e2e)', () => {
         expect(
           readFileSync(join(codeOf(seeded.staging.appName), 'assets/blob.bin')),
         ).toEqual(readFileSync(join(repo, 'assets/blob.bin')));
+      } finally {
+        removeFolder(repo);
+      }
+    });
+
+    it('deploys again sending only the changed file, and a file deleted locally is gone from the build host', async () => {
+      const seeded = await seededService();
+      const repo = emptyFolder('repo');
+      try {
+        projectFolder(repo);
+        const env = {
+          CLOUDGATE_KEY: seeded.key,
+          CLOUDGATE_INSTANCE: instance,
+        };
+        const linked = await runCli(linkArgs(seeded.configName), {
+          home,
+          cwd: repo,
+          env,
+        });
+        expect(linked.code).toBe(0);
+        const first = await runCli(['deploy'], { home, cwd: repo, env });
+        expect(first.code).toBe(0);
+
+        writeFileSync(join(repo, 'index.js'), 'console.log("shop v2");\n');
+        rmSync(join(repo, 'keep.log'));
+        const again = await runCli(['deploy'], { home, cwd: repo, env });
+
+        expect(again.code).toBe(0);
+        // 'console.log("shop v2");\n' is 24 bytes; of the 7 files kept, 6
+        // are as the build host holds them, and keep.log is gone.
+        expect(again.stderr).toContain(
+          'Uploading 1 changed file, 24 B (6 unchanged, 1 deleted)…\n',
+        );
+        const code = codeOf(seeded.staging.appName);
+        expect(filesUnder(code)).not.toContain('keep.log');
+        expect(readFileSync(join(code, 'index.js'), 'utf8')).toBe(
+          'console.log("shop v2");\n',
+        );
+        expect(readFileSync(join(code, 'assets/blob.bin'))).toEqual(
+          readFileSync(join(repo, 'assets/blob.bin')),
+        );
+        const deployments = await deploymentsOf(seeded.staging.applicationId);
+        expect(deployments.map((row) => row.status)).toEqual(['done', 'done']);
       } finally {
         removeFolder(repo);
       }

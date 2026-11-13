@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### The server reports version 0.2.0, the first that takes an upload of only the changed files
+
+`backend/package.json`, and so `GET /settings/about`, `GET /settings/version` and the update check, now say `0.2.0`. It is the first version with `POST /applications/:id/drop/compare` and `POST /applications/:id/drop/apply` (spec #10): compare takes the folder's file list with the SHA-256 of each file and answers which files the build host lacks or holds different, plus how many are unchanged and how many it will delete. Apply takes the list and a zip of only those files, builds the new tree beside the current one, and swaps it in only once every file matches. A tree that changed since the comparison is refused with 409 `UPLOAD_CONFLICT` and the previous tree is left as it was. Both routes refuse during a build as `/drop` does. `cloudgate deploy` uses them from `0.2.0` on and sends the full `/drop` upload to an older Instance, so it still works against `0.1.0`. `POST /applications/:id/drop` is unchanged.
+
+**What to do on upgrade**: nothing.
+
 ### Deploy an app straight from the templates website, with no server and no account yet
 
 The public templates website's "Deploy <app>" buttons now land on the console's **Get started** page, `/get-started?template=<id>`, a three-step wizard for someone who has never used a deployment tool (ADR-0073, amending ADR-0065 for the wizard only). Every step lives in the address (`template`, `path=buy|own`, `server`, `step`, `env`), so it survives Stripe Checkout, a bank's 3D Secure page and a reload.
