@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   existsSync,
   mkdirSync,
@@ -13,7 +14,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { Prompter } from '../src/prompt.js';
 import { run } from '../src/run.js';
-import { hashText } from '../src/working-copy.js';
 
 /**
  * "Create a new Project" at a first `cloudgate deploy` in a folder with no
@@ -336,7 +336,10 @@ describe('createProjectHere', () => {
         project: 'storefront',
         environment: 'production',
       },
-      workingCopy: { version: 2, sha256: hashText(STARTER) },
+      workingCopy: {
+        version: 2,
+        sha256: createHash('sha256').update(STARTER).digest('hex'),
+      },
     });
     expect(readFileSync(join(folder, '.gitignore'), 'utf8')).toBe(
       '.cloudgate/\n/cloudgate.yaml\n',
