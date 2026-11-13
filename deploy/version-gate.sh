@@ -10,9 +10,11 @@
 # it. The tag checks are deploy-hosted.yml's and deploy/hosted-release-gate.sh's.
 #
 #   0  publish it: E2E passed, the tag still names the commit E2E tested and
-#      the one checked out here, and it is backend/package.json's version.
+#      the one checked out here, that commit is on origin/main, and the tag is
+#      backend/package.json's version.
 #   1  refused, saying why: the tag is not vX.Y.Z, E2E did not pass, the tag
-#      moved after E2E tested it, or the Instance would report another version.
+#      moved after E2E tested it, it is not on main (or main was not fetched),
+#      or the Instance would report another version.
 #
 # backend/test/deploy/version-gate.spec.ts runs it against a scratch
 # repository.
@@ -38,6 +40,15 @@ tagged="$(git rev-parse --verify --quiet "refs/tags/$tag^{commit}")" ||
   fail "$tag now names $tagged, but E2E tested ${TESTED_SHA:-nothing}. A moved tag is not published untested."
 [ "$(git rev-parse HEAD)" = "$tagged" ] ||
   fail "This tree is $(git rev-parse HEAD), so it is not checked out at $tag ($tagged)."
+
+# Only a tag on main is a Cloudgate version (ADR-0082, which moved this check
+# here from the Hosted instance's checkout): a version published from a branch
+# off main would be the latest one every Self-hosted box installs.
+# publish-version.yml's checkout fetches main for it.
+git rev-parse --verify --quiet "refs/remotes/origin/main^{commit}" > /dev/null ||
+  fail "There is no origin/main here, so whether $tag is on main cannot be checked. Fetch main first."
+git merge-base --is-ancestor "$tagged" origin/main ||
+  fail "$tag ($tagged) is not on main; only a tag on main is published."
 
 package_version="$(node -p "require('./backend/package.json').version")"
 [ "$package_version" = "$version" ] ||

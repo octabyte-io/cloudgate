@@ -13,8 +13,8 @@
 #   4. only then deploy/version-publish.sh creates the GitHub Release for the
 #      tag with the tarball and its .sha256.
 #
-# A red E2E run, a tag moved since the commit E2E tested, or a tag that is not
-# backend/package.json's version publishes nothing; so does a tarball that does
+# A red E2E run, a tag moved since the commit E2E tested, a tag that is not on
+# main, or a tag that is not backend/package.json's version publishes nothing; so does a tarball that does
 # not boot. Re-running this workflow on a tag whose release already has its
 # tarball leaves that release as it is: a published version is never replaced.
 # A release made by hand on github.com before this run gets the two files added.
@@ -69,6 +69,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: refs/tags/${{ env.TAG }}
+          # main's history too: deploy/version-gate.sh publishes only a tag on
+          # origin/main.
+          fetch-depth: 0
 
       # pty.node is built for one Node ABI: the one deploy/install.sh installs.
       - name: The Node the install puts on a box
@@ -85,7 +88,7 @@ jobs:
         with:
           node-version: ${{ steps.node.outputs.version }}
 
-      - name: E2E passed on the commit the tag names, at backend/package.json's version
+      - name: E2E passed on the commit the tag names, on main, at backend/package.json's version
         env:
           E2E_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
           TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
