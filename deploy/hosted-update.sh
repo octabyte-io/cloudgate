@@ -71,7 +71,7 @@ previous_public_host() {
 published_version() {
   local tag="$1" url status=0
   url="$RELEASES_DOWNLOAD/$tag/cloudgate-${tag#v}-linux-amd64.tar.gz.sha256"
-  curl -fsSL --max-time 30 -o /dev/null "$url" || status=$?
+  curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 --max-time 30 -o /dev/null "$url" || status=$?
   case "$status" in
     0) ;;
     22) fail "$tag has no published release ($url), so nothing was backed up or upgraded." \
@@ -88,7 +88,7 @@ published_version() {
 fetch_install() {
   local tag="$1" into="$2" url
   url="$RAW_FILES/$tag/install.sh"
-  curl -fsSL --max-time 60 -o "$into" "$url" ||
+  curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 --max-time 60 -o "$into" "$url" ||
     fail "Could not download $url, so nothing was backed up or upgraded."
 }
 
