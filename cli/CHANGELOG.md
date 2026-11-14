@@ -2,7 +2,9 @@
 
 The Cloudgate CLI's own changes, published to npm as `@octabyte-io/cloudgate`. A server change a CLI feature needs gets its own entry in the root `CHANGELOG.md` as well.
 
-## 0.0.2-beta.4
+## 0.1.0
+
+The first stable release, published to npm's `latest` dist-tag, so `npm install -g @octabyte-io/cloudgate` installs it. It holds everything in the 0.0.2 betas below, plus these changes since 0.0.2-beta.3. Anyone on a beta is told about it by the update notice.
 
 ### Fixes
 
