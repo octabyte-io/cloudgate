@@ -26,7 +26,6 @@ The install unpacks Node into `/usr/local/share/cloudgate/node` instead of over 
 
 **What to do on upgrade**: nothing. The Node an older install unpacked into `/usr/local` (`node`, `npm`, `npx` and `corepack` in `/usr/local/bin`, `lib/node_modules`, `include/node`) is no longer used and is left in place; remove it by hand if nothing else on the platform host uses it. To run a command from `/opt/cloudgate/backend/dist/commands/` by hand, use `/usr/local/share/cloudgate/node/bin/node`.
 
-
 ### The install accepts Ubuntu 26.04
 
 The one-command install now runs on Ubuntu 26.04 as well as 24.04, on amd64, with the same Cloudgate version tarball, which is built on 24.04 (ADR-0085). Any other release, 22.04 or Debian among them, is refused before anything is downloaded, by a message naming both supported releases. A version is published only once its tarball has unpacked, migrated and booted on a 24.04 runner and on a 26.04 one (`docs/deploy.md` §1, §2).
@@ -39,6 +38,22 @@ Before downloading anything, the one-command install warns about what is likely 
 
 **What to do on upgrade**: nothing.
 
+### The install keeps SSH open on any port, waits for apt, and runs one at a time
+
+The firewall step allowed only OpenSSH's port 22 before it enabled ufw, so a host whose sshd listens on another port lost SSH at the end of the install. It now also allows every port `sshd -T` and `ssh.socket` name, and the port the install's own SSH session came in on. Every `apt-get` in `install.sh` and `deploy/install.sh` waits, for up to 10 minutes, while another apt holds its lock, instead of failing at once with "Could not get lock" on a fresh VPS where cloud-init or unattended-upgrades is still running. A second run of the one command started while one is under way stops before it changes anything. A run stopped mid-download by Ctrl-C, a kill or a dropped SSH session removes its download directory, and the next run sweeps away one a killed run left. `CLOUDGATE_PUBLIC_HOST` must be the host alone: a value with a scheme, port or path is refused before anything changes, and an IPv6 address, with or without brackets, is written into the console and API origins in the brackets a URL needs. A re-run of the one command on the Hosted instance reuses the public host its backend was given instead of looking one up (`docs/deploy.md` §2, §7).
+
+**What to do on upgrade**: nothing.
+
+## 0.3.1 (2026-11-14)
+
+### A release's E2E run passes when every suite it failed passes alone
+
+`E2E (release)`, which **Publish Cloudgate version** waits on, failed v0.3.0 on two things that say nothing about the version. Its full single-runner run counted the known teardown flake ("Cannot use a pool after calling end") as a failure even when every failed suite passed when re-run alone; it is now red only when a suite is red alone too, when the run leaves no report, or when more than 20 suites fail, the rule `e2e-shards.yml` already uses. And the Google validate lane held the release because three stored Google plans (`network-create-cloud-nat`, `stack-vm-create`, `stack-vm-domains`) are still marked "not yet from a real project"; that is a warning until the walk in `docs/gcp-walk-by-hand.md` re-records them, then a hold again. v0.3.0 has no tarball, so v0.3.1 is the first Cloudgate version.
+
+**What to do on upgrade**: nothing.
+
+## 0.3.0 (2026-11-14)
+
 ### A template may ship a `.js` config file
 
 A config file under a template's `files/` may now end in `.js`, for an application that reads its config as a JavaScript module, such as Formbricks. The backend's catalogue check, `cloudgate template check` and `cloudgate template pack` all take it. Every other rule for a config file is unchanged, and other scripts (`.sh`, `.py`, `.mjs`, `.cjs`, `.ts`) are still refused. A template ships its JavaScript config as `.js`, never as `.js.txt` renamed by its mount (ADR-0083).
@@ -50,12 +65,6 @@ A config file under a template's `files/` may now end in `.js`, for an applicati
 The one-command install no longer clones or builds anything. It installs a **Cloudgate version**: the latest one published, or the one `CLOUDGATE_VERSION=vX.Y.Z` names (`X.Y.Z` works too). A release counts as published only once its tarball is attached, and a `CLOUDGATE_VERSION` older than the installed one is refused, naming both, with nothing changed: migrations only go forward. It downloads the version's tarball from the GitHub Release for its tag, refuses it, changing nothing, when it does not match the `.sha256` published beside it or when the version has no release, and unpacks it into `/opt/cloudgate.next`. That version's `deploy/install.sh` runs every other step as before (Docker, OpenTofu, the Session Manager plugin, Postgres, Traefik, the env files, the hosted inputs and backups), puts the version in place at `/opt/cloudgate` just before the migrations, migrates with the version's own `drizzle-kit` and restarts both units. A run on the version already installed downloads nothing, moves nothing and only restarts. Gone from the install: `CLOUDGATE_REF` and `CLOUDGATE_REPOSITORY`, the clone and fast-forward, `pnpm install` and its node-pty check, both builds, the swap file, `build-essential`, `python3` and pnpm. `docs/deploy.md` §2 and §7 describe it, and building from source is a by-hand developer section in §2 (ADR-0082).
 
 **What to do on upgrade**: on a host installed before this, whose `/opt/cloudgate` is a git checkout, the next run of the one command switches it over by itself: just before the migrations it moves the checkout to `/opt/cloudgate.checkout-<date>` and puts the version in its place, keeping `/etc/default/cloudgate-*` and the database, so it is the same instance with its sessions and encrypted values. The run prints where the checkout went; nothing runs from it any more, so once you have kept anything of yours from it (changes nobody pushed, say), delete it with `rm -rf`. A `/opt/cloudgate` that is neither a checkout nor a Cloudgate version is still refused, with nothing changed. The Hosted instance's first upgrade to this version is by hand (below). Name a version with `CLOUDGATE_VERSION` instead of `CLOUDGATE_REF`. An install with `API_PORT` set to anything but 4000 is refused, because a version's console reaches its API on 4000. The `/swapfile`, `build-essential` and `python3` an older install made are left in place; remove them by hand if nothing else on the host uses them.
-
-### The install keeps SSH open on any port, waits for apt, and runs one at a time
-
-The firewall step allowed only OpenSSH's port 22 before it enabled ufw, so a host whose sshd listens on another port lost SSH at the end of the install. It now also allows every port `sshd -T` and `ssh.socket` name, and the port the install's own SSH session came in on. Every `apt-get` in `install.sh` and `deploy/install.sh` waits, for up to 10 minutes, while another apt holds its lock, instead of failing at once with "Could not get lock" on a fresh VPS where cloud-init or unattended-upgrades is still running. A second run of the one command started while one is under way stops before it changes anything. A run stopped mid-download by Ctrl-C, a kill or a dropped SSH session removes its download directory, and the next run sweeps away one a killed run left. `CLOUDGATE_PUBLIC_HOST` must be the host alone: a value with a scheme, port or path is refused before anything changes, and an IPv6 address, with or without brackets, is written into the console and API origins in the brackets a URL needs. A re-run of the one command on the Hosted instance reuses the public host its backend was given instead of looking one up (`docs/deploy.md` §2, §7).
-
-**What to do on upgrade**: nothing.
 
 ### The Hosted instance upgrades to the published Cloudgate version
 
