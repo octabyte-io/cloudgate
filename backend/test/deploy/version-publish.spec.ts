@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { parse } from 'yaml';
 
 /**
  * `deploy/version-publish.sh`, the last step of publish-version.yml: it puts
@@ -153,5 +154,58 @@ describe('deploy/version-publish.sh', () => {
     expect(refused.status).toBe(1);
     expect(refused.stderr).toContain('HTTP 502');
     expect(called()).toEqual([]);
+  });
+});
+
+/**
+ * `.github/workflows/publish-version.yml` itself: the tarball is built on
+ * Ubuntu 24.04 and booted by the smoke check on 24.04 and 26.04, the two
+ * releases the install accepts (ADR-0085), before anything is published.
+ */
+describe('.github/workflows/publish-version.yml', () => {
+  interface Job {
+    'runs-on': string;
+    needs?: string | string[];
+    if?: string;
+    strategy?: { matrix?: Record<string, unknown> };
+  }
+
+  function jobs(): Record<string, Job> {
+    const workflow = parse(
+      fs.readFileSync(
+        path.join(repoRoot, '.github/workflows/publish-version.yml'),
+        'utf8',
+      ),
+      { logLevel: 'error' },
+    ) as { jobs: Record<string, Job> };
+    return workflow.jobs;
+  }
+
+  /** Every runner a job runs on, its matrix expanded. */
+  function runners(job: Job): string[] {
+    const fromMatrix = /^\$\{\{\s*matrix\.(\w+)\s*\}\}$/.exec(job['runs-on']);
+    if (!fromMatrix) return [job['runs-on']];
+    const values = job.strategy?.matrix?.[fromMatrix[1]];
+    if (!Array.isArray(values)) throw new Error(`no matrix.${fromMatrix[1]}`);
+    return values.map(String);
+  }
+
+  it('builds the tarball on Ubuntu 24.04', () => {
+    expect(runners(jobs().build)).toEqual(['ubuntu-24.04']);
+  });
+
+  it('runs the smoke check on Ubuntu 24.04 and 26.04', () => {
+    expect(runners(jobs().smoke).sort()).toEqual([
+      'ubuntu-24.04',
+      'ubuntu-26.04',
+    ]);
+  });
+
+  it('publishes only once the smoke check has passed on both', () => {
+    const publish = jobs().publish;
+
+    expect([publish.needs].flat()).toContain('smoke');
+    // An `if:` such as always() would publish past a failed smoke run.
+    expect(publish.if).toBeUndefined();
   });
 });

@@ -5,11 +5,14 @@
 #   1. `git tag v0.3.0 && git push origin v0.3.0` starts `E2E (release)`;
 #   2. when that run ends green, this one checks the tag with
 #      deploy/version-gate.sh, builds the tarball with deploy/version-tarball.sh
-#      on ubuntu-24.04 (node-pty is compiled there, for the one platform the
-#      install accepts), with the Node the install puts on a box;
-#   3. a second, clean runner checks the tarball's checksum, unpacks it,
-#      migrates an empty Postgres from it and boots the backend and the console
-#      from it (deploy/version-smoke.sh);
+#      on ubuntu-24.04 (node-pty is compiled there, against the older of the
+#      two releases the install accepts), with the Node the install puts on a
+#      box;
+#   3. two clean runners, ubuntu-24.04 and ubuntu-26.04, each check the
+#      tarball's checksum, unpack it, migrate an empty Postgres from it and
+#      boot the backend and the console from it (deploy/version-smoke.sh), so
+#      the one tarball is proved on both releases the install accepts
+#      (ADR-0085);
 #   4. only then deploy/version-publish.sh creates the GitHub Release for the
 #      tag with the tarball and its .sha256;
 #   5. and it dispatches `Deploy the Hosted instance` (deploy-hosted.yml) with
@@ -19,7 +22,7 @@
 #
 # A red E2E run, a tag moved since the commit E2E tested, a tag that is not on
 # main, or a tag that is not backend/package.json's version publishes nothing; so does a tarball that does
-# not boot. Re-running this workflow on a tag whose release already has its
+# not boot on one of the two releases. Re-running this workflow on a tag whose release already has its
 # tarball leaves that release as it is: a published version is never replaced.
 # A release made by hand on github.com before this run gets the two files added.
 #
@@ -114,11 +117,16 @@ jobs:
           compression-level: 0
 
   smoke:
-    name: Unpack, migrate and boot it
+    name: Unpack, migrate and boot it on ${{ matrix.runner }}
     needs: build
     # A runner with nothing installed from the repository: only the tarball,
     # Node and an empty Postgres, as on a box after the install's other steps.
-    runs-on: ubuntu-24.04
+    # One per Ubuntu release the install accepts (ADR-0085); publish needs
+    # every one of them green.
+    strategy:
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-26.04]
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     services:
       postgres:
