@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Cloudgate can be uninstalled, keeping the instance unless purged
+
+`deploy/uninstall.sh`, in every version from this one, takes Cloudgate off the platform host as root: it stops, disables and removes `cloudgate-backend` and `cloudgate-console` (and the Hosted backup timers and a running `cloudgate-update`), the `cloudgate-traefik` container, `/opt/cloudgate` with its `.previous` and `.next`, and `/usr/local/share/cloudgate`. It keeps the instance, naming each path: the `cloudgate` database and its roles, `/etc/default/cloudgate-*`, `/etc/cloudgate` and `/var/backups/cloudgate`, so a later install, or a restore on another host, is the same instance. `--purge` removes those as well, only after you type the instance's public host; any other answer changes nothing. Docker, Postgres, the swarm, `cloudgate-network`, ufw and the `cloudgate` user are left in place, and the run says so (`docs/deploy.md` §10, "Uninstalling").
+
+**What to do on upgrade**: nothing.
+
 ### A re-run of the install brings Traefik to its version
 
 A run of the one command, or of `deploy/install.sh`, now recreates `cloudgate-traefik` when the container runs any image but `traefik:v<TRAEFIK_VERSION>`, so the Traefik drift the console reports clears with the upgrade that caused it. The run pulls the new image first, then removes the container and starts it again with the same name, network, binds, ports and log cap, and prints that ports 80 and 443 drop for a few seconds. A failed pull leaves the old container serving, and a container already at its version is left running. Before, an existing container was always skipped, so a version that moved `TRAEFIK_VERSION` never reached a running host (ADR-0086, `docs/deploy.md` §6 and §7).

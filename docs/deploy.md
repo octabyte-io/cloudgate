@@ -592,6 +592,57 @@ SQL
 
 The next sign-in with that email and password goes straight in, and the person can turn two-factor on again from Settings → Account.
 
+### Uninstalling
+
+Every Cloudgate version carries its own uninstall. As root:
+
+```bash
+bash /opt/cloudgate/deploy/uninstall.sh
+```
+
+It stops and disables `cloudgate-backend` and `cloudgate-console` (on the Hosted instance also its
+backup timers and a running `cloudgate-update`), removes their unit files and reloads systemd, then
+removes the `cloudgate-traefik` container, `/opt/cloudgate` with its `.previous` and `.next`, and
+`/usr/local/share/cloudgate` (Node, OpenTofu and its providers, the Session Manager plugin).
+Deployed apps on the platform host stop being routed when Traefik goes; their containers and
+services are left to you.
+
+**It keeps the instance**, and says so with each path: the `cloudgate` database and its roles
+`cloudgate` and `cloudgate_state`, `/etc/default/cloudgate-*`, `/etc/cloudgate` and the dumps in
+`/var/backups/cloudgate`. A later install on the same host with these in place is the same
+instance, with its sessions and encrypted values; to move to another host, take the backup in
+[§8](#8-backing-up-the-instance-itself) first and restore it there as that section says.
+
+**`--purge` removes the instance too**, and cannot be undone:
+
+```bash
+bash /opt/cloudgate/deploy/uninstall.sh --purge
+```
+
+Before it changes anything it asks you to type the instance's public host, the one the install was
+given (read from `/etc/default/cloudgate-backend` or `-console`). On an exact match it uninstalls
+as above, drops the `cloudgate` database and both roles, and then removes
+`/etc/default/cloudgate-*`, `/etc/cloudgate` and `/var/backups/cloudgate`. Any other answer, or
+none, changes nothing. If the drop fails, the files are kept, since without the secrets the
+database cannot be read.
+
+The script is removed with `/opt/cloudgate`, so to remove a kept instance afterwards, do it by hand:
+
+```bash
+su - postgres -c "psql -v ON_ERROR_STOP=1" <<'SQL'
+DROP DATABASE IF EXISTS cloudgate WITH (FORCE);
+DROP ROLE IF EXISTS cloudgate_state;
+DROP ROLE IF EXISTS cloudgate;
+SQL
+rm -rf /etc/default/cloudgate-* /etc/cloudgate /var/backups/cloudgate
+```
+
+**Left in place either way**, because they may serve more than Cloudgate: Docker, Postgres, the
+swarm, `cloudgate-network`, ufw and its rules, and the `cloudgate` user with its home
+`/var/lib/cloudgate`. Remove them by hand if nothing else on the host uses them. On the Hosted
+instance, `/usr/local/sbin/cloudgate-update` and the `cloudgate-deploy` user and sudoers line that
+`deploy/hosted-update-access.sh` made are left as well.
+
 ## 11. The Hosted instance
 
 ### The Stripe webhook endpoint
