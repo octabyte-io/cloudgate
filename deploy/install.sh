@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Cloudgate — native install on a bare Ubuntu 24.04 host.
+# Cloudgate — native install on a bare Ubuntu 24.04 or 26.04 amd64 host.
 #
 # This is the record of the install that was actually performed and verified on
 # a 2 vCPU / 3.7 GB / 38 GB VPS (run log: .project/vps-deploy/RUN-LOG.md, L01,
@@ -1162,8 +1162,8 @@ ufw allow OpenSSH
 # `OpenSSH` is port 22 alone. A box whose sshd listens on another port, a
 # common hardening, lost SSH the moment ufw was enabled below. So every port
 # sshd's configuration names is allowed too, every port ssh.socket listens on
-# (Ubuntu 24.04 starts sshd from it), and the port this run's own SSH session
-# came in on, which sudo may have left out of the environment.
+# (Ubuntu 24.04 and 26.04 both start sshd from it), and the port this run's
+# own SSH session came in on, which sudo may have left out of the environment.
 ssh_ports() {
   {
     sshd -T 2>/dev/null | awk '$1 == "port" { print $2 }' || true

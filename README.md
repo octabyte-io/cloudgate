@@ -118,7 +118,7 @@ were rejected, and why. Read the ones that touch the area you are changing befor
 ## Status
 
 Cloudgate is feature-complete for its first release. One command installs it natively on a bare
-Ubuntu 24.04 host:
+Ubuntu 24.04 or 26.04 amd64 host:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo sh

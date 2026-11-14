@@ -1,6 +1,6 @@
 # Deploying Cloudgate on a server
 
-Cloudgate installs **natively** on one Ubuntu 24.04 host: Node processes under systemd, Postgres on the box, Docker and a Swarm of one, and a Traefik container it owns. There is no Dockerfile for Cloudgate itself and no compose file — it deploys containers, it does not ship as one.
+Cloudgate installs **natively** on one Ubuntu 24.04 or 26.04 amd64 host: Node processes under systemd, Postgres on the box, Docker and a Swarm of one, and a Traefik container it owns. There is no Dockerfile for Cloudgate itself and no compose file — it deploys containers, it does not ship as one.
 
 What broke on a real install is written down here as well as what worked: see [Known broken on a native install](#5-known-broken-on-a-native-install) and [Traps that cost real time](#9-traps-that-cost-real-time).
 
@@ -10,7 +10,7 @@ What broke on a real install is written down here as well as what worked: see [K
 
 | | |
 |---|---|
-| Host | Ubuntu 24.04, **2 vCPU / 4 GB / 40 GB** is enough and was what this was proved on |
+| Host | Ubuntu 24.04 or 26.04 on amd64 (one version tarball serves both; anything else is refused by name), **2 vCPU / 4 GB / 40 GB** is enough and was what this was proved on |
 | Access | root over SSH |
 | Ports open inbound | 22, 80, 443, 3000, 4000 |
 | DNS | none required — `sslip.io` resolves `<name>.<ip>.sslip.io` to `<ip>`, which is how deployed apps were reached |
@@ -34,7 +34,8 @@ That is the repository's root `install.sh`. It installs a **Cloudgate version** 
 tested version of Cloudgate, `vX.Y.Z`, published as a prebuilt tarball on the GitHub Release for
 its tag once its E2E run was green. Nothing is cloned and nothing is built on the host. The script:
 
-1. checks the host is Ubuntu 24.04 on amd64;
+1. checks the host is Ubuntu 24.04 or 26.04 on amd64 (ADR-0085), and stops, naming both, on any
+   other;
 2. finds the version: the one `CLOUDGATE_VERSION` names, or else the latest one published (the
    highest `vX.Y.Z` among the repository's releases; the CLI's `cli-v*` releases are never one);
 3. downloads `cloudgate-<X.Y.Z>-linux-amd64.tar.gz` and its `.sha256`, and stops, having changed
@@ -138,7 +139,8 @@ Two things to know:
 
 The install only installs a published Cloudgate version. To run a branch or an unreleased fix on
 a host, build a version tarball from it yourself and install that by hand. Build on an Ubuntu
-24.04 amd64 machine with Node 24.19.0 (the one `deploy/install.sh` installs) and pnpm, in a fresh
+24.04 amd64 machine, even for a 26.04 host (node-pty built there loads on both; one built on 26.04
+may not load on 24.04), with Node 24.19.0 (the one `deploy/install.sh` installs) and pnpm, in a fresh
 clone made for it: `deploy/version-tarball.sh` replaces every `node_modules` in the tree.
 
 ```bash

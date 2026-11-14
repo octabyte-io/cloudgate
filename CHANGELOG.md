@@ -20,6 +20,13 @@ The install unpacks Node into `/usr/local/share/cloudgate/node` instead of over 
 
 **What to do on upgrade**: nothing. The Node an older install unpacked into `/usr/local` (`node`, `npm`, `npx` and `corepack` in `/usr/local/bin`, `lib/node_modules`, `include/node`) is no longer used and is left in place; remove it by hand if nothing else on the host uses it. To run a command from `/opt/cloudgate/backend/dist/commands/` by hand, use `/usr/local/share/cloudgate/node/bin/node`.
 
+
+### The install accepts Ubuntu 26.04
+
+The one-command install now runs on Ubuntu 26.04 as well as 24.04, on amd64, with the same Cloudgate version tarball, which is built on 24.04 (ADR-0085). Any other release, 22.04 or Debian among them, is refused before anything is downloaded, by a message naming both supported releases. A version is published only once its tarball has unpacked, migrated and booted on a 24.04 runner and on a 26.04 one (`docs/deploy.md` §1, §2).
+
+**What to do on upgrade**: nothing.
+
 ### A template may ship a `.js` config file
 
 A config file under a template's `files/` may now end in `.js`, for an application that reads its config as a JavaScript module, such as Formbricks. The backend's catalogue check, `cloudgate template check` and `cloudgate template pack` all take it. Every other rule for a config file is unchanged, and other scripts (`.sh`, `.py`, `.mjs`, `.cjs`, `.ts`) are still refused. A template ships its JavaScript config as `.js`, never as `.js.txt` renamed by its mount (ADR-0083).
