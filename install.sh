@@ -177,7 +177,7 @@ refuse_older() {
 # its assets, and each asset's name inside them, so a tarball's name is
 # matched against the tag last seen.
 latest_version() {
-  releases="$(curl -fsSL "$RELEASES_API")" || fail \
+  releases="$(curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 "$RELEASES_API")" || fail \
     "Could not ask GitHub for Cloudgate's releases ($RELEASES_API)." \
     "Name the version to install and run this again:" \
     "    curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo CLOUDGATE_VERSION=v<X.Y.Z> sh"
@@ -216,10 +216,10 @@ download_version() {
   trap 'exit 129' HUP
 
   say "Downloading Cloudgate $version"
-  curl -fsSL -o "$download/$name.sha256" "$url.sha256" || fail \
+  curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 -o "$download/$name.sha256" "$url.sha256" || fail \
     "Cloudgate v$version has no published release to install ($url.sha256)." \
     "The versions are listed at $RELEASES_PAGE. Nothing was changed."
-  curl -fsSL -o "$download/$name" "$url" || fail \
+  curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 -o "$download/$name" "$url" || fail \
     "Could not download $url. Nothing was changed."
 
   # Compared here rather than with `sha256sum -c`, which checks whichever file

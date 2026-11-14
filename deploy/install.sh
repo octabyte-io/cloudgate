@@ -380,8 +380,8 @@ if [ "$("$NODE_DIR/bin/node" --version 2>/dev/null || true)" != "$NODE_VERSION" 
   tmp="$(mktemp -d)"
   (
     cd "$tmp"
-    curl -fsSLO "https://nodejs.org/dist/${NODE_VERSION}/${tarball}"
-    curl -fsSLO "https://nodejs.org/dist/${NODE_VERSION}/SHASUMS256.txt"
+    curl -fsSLO --retry 3 --retry-connrefused --connect-timeout 15 "https://nodejs.org/dist/${NODE_VERSION}/${tarball}"
+    curl -fsSLO --retry 3 --retry-connrefused --connect-timeout 15 "https://nodejs.org/dist/${NODE_VERSION}/SHASUMS256.txt"
     grep " ${tarball}\$" SHASUMS256.txt | sha256sum -c -
     mkdir node
     tar -xJf "$tarball" -C node --strip-components=1 --no-same-owner
@@ -401,7 +401,7 @@ fi
 
 log "Docker"
 if ! command -v docker >/dev/null; then
-  curl -fsSL https://get.docker.com | sh      # brings the compose + buildx plugins
+  curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 https://get.docker.com | sh      # brings the compose + buildx plugins
 fi
 systemctl enable --now docker
 
@@ -529,7 +529,7 @@ fi
 # (backend/src/builders/pack-install.ts).
 
 log "nixpacks"
-command -v nixpacks >/dev/null || curl -sSL https://nixpacks.com/install.sh | bash
+command -v nixpacks >/dev/null || curl -sSL --retry 3 --retry-connrefused --connect-timeout 15 https://nixpacks.com/install.sh | bash
 
 ### -------------------------------------------------------------- opentofu ---
 # OpenTofu and the providers, all pinned above, all checked, all into
@@ -569,7 +569,7 @@ if [ "$("$OPENTOFU_BINARY" version -json 2>/dev/null | jq -r .terraform_version 
   tmp="$(mktemp -d)"
   (
     cd "$tmp"
-    curl -fsSLO "https://github.com/opentofu/opentofu/releases/download/v${OPENTOFU_VERSION}/${tarball}"
+    curl -fsSLO --retry 3 --retry-connrefused --connect-timeout 15 "https://github.com/opentofu/opentofu/releases/download/v${OPENTOFU_VERSION}/${tarball}"
     echo "${OPENTOFU_SHA256}  ${tarball}" | sha256sum -c -
     mkdir unpacked
     tar -xzf "$tarball" -C unpacked --no-same-owner
@@ -606,7 +606,7 @@ install_provider() {
   tmp="$(mktemp -d "$OPENTOFU_DIR/.download.XXXXXX")"
   (
     cd "$tmp"
-    curl -fsSLO "https://github.com/opentofu/terraform-provider-${type}/releases/download/v${version}/${zip}"
+    curl -fsSLO --retry 3 --retry-connrefused --connect-timeout 15 "https://github.com/opentofu/terraform-provider-${type}/releases/download/v${version}/${zip}"
     sum="$(sha256sum "$zip" | cut -d' ' -f1)"
     if ! grep -qx "    \"zh:${sum}\"," <<<"$block"; then
       echo "$zip (sha256 $sum) is not a checksum $opentofu_lock pins." >&2
@@ -642,7 +642,7 @@ if [ "$("$SESSION_MANAGER_PLUGIN" --version 2>/dev/null || true)" != "$SESSION_M
   tmp="$(mktemp -d)"
   (
     cd "$tmp"
-    curl -fsSLo session-manager-plugin.deb "https://s3.amazonaws.com/session-manager-downloads/plugin/${SESSION_MANAGER_PLUGIN_VERSION}/ubuntu_64bit/session-manager-plugin.deb"
+    curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 -o session-manager-plugin.deb "https://s3.amazonaws.com/session-manager-downloads/plugin/${SESSION_MANAGER_PLUGIN_VERSION}/ubuntu_64bit/session-manager-plugin.deb"
     echo "${SESSION_MANAGER_PLUGIN_SHA256}  session-manager-plugin.deb" | sha256sum -c -
     dpkg-deb -x session-manager-plugin.deb unpacked
     install -D -m 0755 unpacked/usr/local/sessionmanagerplugin/bin/session-manager-plugin "$SESSION_MANAGER_PLUGIN"
