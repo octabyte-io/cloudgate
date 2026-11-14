@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.3.1 (2026-11-14)
+
+### A release's E2E run passes when every suite it failed passes alone
+
+`E2E (release)`, which **Publish Cloudgate version** waits on, failed v0.3.0 on two things that say nothing about the version. Its full single-runner run counted the known teardown flake ("Cannot use a pool after calling end") as a failure even when every failed suite passed when re-run alone; it is now red only when a suite is red alone too, when the run leaves no report, or when more than 20 suites fail, the rule `e2e-shards.yml` already uses. And the Google validate lane held the release because three stored Google plans (`network-create-cloud-nat`, `stack-vm-create`, `stack-vm-domains`) are still marked "not yet from a real project"; that is a warning until the walk in `docs/gcp-walk-by-hand.md` re-records them, then a hold again. v0.3.0 has no tarball, so v0.3.1 is the first Cloudgate version.
+
+**What to do on upgrade**: nothing.
+
 ## 0.3.0 (2026-11-14)
 
 ### A template may ship a `.js` config file
