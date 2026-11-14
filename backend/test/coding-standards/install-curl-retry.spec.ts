@@ -26,6 +26,11 @@ const EXEMPT: { file: string; site: RegExp; why: string }[] = [
     site: /curl -4 -fsS --max-time 10 "\$lookup"/,
     why: 'the public address lookup: it tries a second service when the first does not answer',
   },
+  {
+    file: 'install.sh',
+    site: /curl -s -o \/dev\/null --max-time 5 "https:\/\/\$host\/"/,
+    why: 'the preflight probe: it asks once whether a host answers within 5 seconds',
+  },
 ];
 
 /** Each curl command in `file`, as one line. */
@@ -38,7 +43,11 @@ function curls(file: string): string[] {
     .replace(/\\\n\s*/g, ' ')
     .split('\n')
     .map((line) => line.trim())
-    .filter((line) => /(^|\$\(|[;&|(]\s*)curl\s+-/.test(line));
+    .filter((line) =>
+      /(^|\$\(|[;&|(!]\s*|\b(if|then|else|do|while|until)\s+)curl\s+-/.test(
+        line,
+      ),
+    );
 }
 
 describe('deploy/install.sh and install.sh, on every download curl retrying', () => {

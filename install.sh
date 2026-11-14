@@ -246,6 +246,113 @@ download_version() {
     "$name unpacked to a VERSION other than $version; it was left at $STAGING_DIR."
 }
 
+### Preflight: warnings only. What it finds is likely to fail the install
+### minutes into its downloads, and is said before them; nothing here stops
+### the run. CLOUDGATE_SKIP_PREFLIGHT=1 skips it. Each check prints one line
+### per finding; a GB is 1,000,000,000 bytes.
+
+# The ports the install's own services take: Traefik 80 and 443, the console
+# 3000 and the API 4000.
+PREFLIGHT_PORTS='80 443 3000 4000'
+# docs/deploy.md §1's Outbound row, held equal to it by
+# backend/test/deploy/one-command-install.spec.ts.
+PREFLIGHT_HOSTS='get.docker.com nodejs.org registry.npmjs.org registry-1.docker.io api.github.com github.com release-assets.githubusercontent.com'
+# 15 GB and 4 GB, in the KiB df and /proc/meminfo count in.
+PREFLIGHT_MIN_DISK_KIB=14648438
+PREFLIGHT_MIN_MEMORY_KIB=3906250
+
+# 0 when the listener <name> <pid> is Cloudgate's own, as on a re-run: a
+# process of one of its units, or docker-proxy holding a port for its Traefik.
+cloudgate_listener() {
+  grep -qE 'cloudgate-(backend|console)\.service' "${INSTALL_ROOT:-}/proc/$2/cgroup" 2>/dev/null &&
+    return 0
+  [ "$1" = docker-proxy ] && command -v docker >/dev/null 2>&1 &&
+    [ -n "$(docker ps -q --filter 'name=^cloudgate-traefik$' 2>/dev/null)" ]
+}
+
+# Each of PREFLIGHT_PORTS another process listens on, from `ss -Hltnp`: one
+# line per port and process, an address family's second socket left out.
+preflight_ports() {
+  ss -Hltnp 2>/dev/null |
+    awk -v ports=" $PREFLIGHT_PORTS " '{
+      n = split($4, address, ":")
+      port = address[n]
+      if (index(ports, " " port " ") == 0) next
+      name = "an unnamed process"; pid = "?"
+      if (match($0, /users:\(\("[^"]*",pid=[0-9]+/)) {
+        found = substr($0, RSTART, RLENGTH)
+        split(found, quoted, "\"")
+        name = quoted[2]
+        pid = found
+        sub(/.*pid=/, "", pid)
+      }
+      if (seen[port " " pid]++) next
+      print port "\t" pid "\t" name
+    }' |
+    while IFS="$(printf '\t')" read -r port pid name; do
+      cloudgate_listener "$name" "$pid" && continue
+      echo "port $port is held by $name (pid $pid), which is not Cloudgate's; what Cloudgate runs on it will not start until it is free."
+    done
+}
+
+# Each filesystem /opt or /usr/local is on with less than 15 GB free, once.
+preflight_disk() {
+  for dir in /opt /usr/local; do
+    df -Pk "${INSTALL_ROOT:-}$dir" 2>/dev/null | awk -v dir="$dir" 'NR == 2 { print $6, $4, dir }'
+  done |
+    awk -v min="$PREFLIGHT_MIN_DISK_KIB" '{
+      if (!($1 in free)) { order[++n] = $1; free[$1] = $2; dirs[$1] = $3 }
+      else dirs[$1] = dirs[$1] " and " $3
+    }
+    END {
+      for (i = 1; i <= n; i++) {
+        mount = order[i]
+        if (free[mount] < min)
+          printf "only %.1f GB is free on %s (which holds %s); the install needs 15 GB.\n", free[mount] * 1024 / 1e9, mount, dirs[mount]
+      }
+    }'
+}
+
+preflight_memory() {
+  kib="$(awk '$1 == "MemTotal:" { print $2 }' "${INSTALL_ROOT:-}/proc/meminfo" 2>/dev/null)"
+  [ -n "$kib" ] && [ "$kib" -lt "$PREFLIGHT_MIN_MEMORY_KIB" ] || return 0
+  awk -v kib="$kib" 'BEGIN {
+    printf "this host has %.1f GB of memory (MemTotal); Cloudgate needs 4 GB.\n", kib * 1024 / 1e9
+  }'
+}
+
+# Each host that gives no answer at all within 5 seconds; any HTTP status is
+# one. Asked all at once, so an offline host costs 5 seconds, not 35.
+preflight_hosts() {
+  answered="$(mktemp -d)"
+  for host in $PREFLIGHT_HOSTS; do
+    (if curl -s -o /dev/null --max-time 5 "https://$host/"; then : >"$answered/$host"; fi) &
+  done
+  wait
+  for host in $PREFLIGHT_HOSTS; do
+    [ -e "$answered/$host" ] ||
+      echo "$host did not answer within 5 seconds; the install downloads from it (docs/deploy.md §1)."
+  done
+  rm -rf "$answered"
+}
+
+preflight() {
+  [ "${CLOUDGATE_SKIP_PREFLIGHT:-}" != 1 ] || return 0
+  say "Checking the host"
+  # In an || list, so no failing command in a check can end the run.
+  warnings="$(
+    {
+      preflight_ports
+      preflight_disk
+      preflight_memory
+      preflight_hosts
+    } || true
+  )"
+  [ -n "$warnings" ] || return 0
+  printf '%s\n' "$warnings" | sed 's/^/Warning: /' >&2
+  echo "The install carries on. Set CLOUDGATE_SKIP_PREFLIGHT=1 to skip these checks." >&2
+}
+
 main() {
   [ "$(id -u)" -eq 0 ] || fail \
     "Run it as root:" \
@@ -320,6 +427,9 @@ main() {
     apt_get update -qq
     apt_get install -y -qq curl ca-certificates
   fi
+
+  # Before anything is downloaded; it needs curl for the hosts.
+  preflight
 
   if [ -z "$public_host" ]; then
     public_host="$(previous_public_host)"

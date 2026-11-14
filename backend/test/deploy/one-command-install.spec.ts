@@ -187,11 +187,16 @@ function run(script: string, uid: number, extra: Record<string, string> = {}) {
   });
 }
 
-/** A root run of install.sh on the scratch host. */
+/**
+ * A root run of install.sh on the scratch host. The preflight is skipped
+ * unless `extra` turns it back on: it reads the test machine's own ports,
+ * disk and memory otherwise.
+ */
 function install(extra: Record<string, string> = {}) {
   return run(installer, 0, {
     INSTALL_ROOT: root,
     CLOUDGATE_PUBLIC_HOST: '203.0.113.10',
+    CLOUDGATE_SKIP_PREFLIGHT: '1',
     ...extra,
   });
 }
@@ -1915,6 +1920,264 @@ exec "${bin}/curl-served" "$@"
       expect(piped.stderr).toBe('');
       expect(argsFor(tarball)).not.toContain('--progress-bar');
       expect(argsFor(tarball)).toMatch(/(^|\s)-[A-Za-z]*s[A-Za-z]*(\s|$)/);
+    });
+  });
+
+  /**
+   * The warnings before any download. `ss`, `df` and `docker` are shimmed,
+   * /proc is under INSTALL_ROOT, and the host starts healthy: nothing on the
+   * ports, 40 GB free, 8 GB of memory and every host answering.
+   */
+  describe('preflight', () => {
+    // docs/deploy.md §1's Outbound row names them; each is probed.
+    const HOSTS = [
+      'get.docker.com',
+      'nodejs.org',
+      'registry.npmjs.org',
+      'registry-1.docker.io',
+      'api.github.com',
+      'github.com',
+      'release-assets.githubusercontent.com',
+    ];
+
+    function shim(tool: string, body: string) {
+      fs.writeFileSync(path.join(scratch, 'bin', tool), `#!/bin/sh\n${body}\n`, {
+        mode: 0o755,
+      });
+    }
+
+    /** `ss -Hltnp`'s lines, as Ubuntu 24.04's iproute2 prints them. */
+    function listening(...lines: string[]) {
+      fs.writeFileSync(path.join(scratch, 'ss-out'), lines.join('\n') + '\n');
+    }
+
+    /** What `df -Pk` says of /opt and of /usr/local: KiB free and the mount. */
+    function disk(opt: [number, string], usrLocal: [number, string]) {
+      const line = ([free, mount]: [number, string]) =>
+        `/dev/sda1 99999999 1 ${free} 1% ${mount}`;
+      shim(
+        'df',
+        `echo "Filesystem 1024-blocks Used Available Capacity Mounted on"
+case "$*" in
+  */opt) echo "${line(opt)}" ;;
+  */usr/local) echo "${line(usrLocal)}" ;;
+esac`,
+      );
+    }
+
+    function memory(kB: number) {
+      fs.writeFileSync(
+        path.join(root, 'proc/meminfo'),
+        `MemTotal:       ${kB} kB\nMemFree:         1000000 kB\n`,
+      );
+    }
+
+    /** A process `pid` running in systemd unit `unit`, as /proc shows it. */
+    function inUnit(pid: number, unit: string) {
+      fs.mkdirSync(path.join(root, `proc/${pid}`), { recursive: true });
+      fs.writeFileSync(
+        path.join(root, `proc/${pid}/cgroup`),
+        `0::/system.slice/${unit}\n`,
+      );
+    }
+
+    beforeEach(() => {
+      releases('v0.10.0');
+      publish('0.10.0');
+      fs.mkdirSync(path.join(root, 'proc'));
+      shim('ss', `echo "ss $*" >> "${calls}"\ncat "${scratch}/ss-out"`);
+      shim('docker', 'exit 0');
+      listening();
+      disk([40_000_000, '/'], [40_000_000, '/']);
+      memory(8_000_000);
+    });
+
+    function checked(extra: Record<string, string> = {}) {
+      return install({ CLOUDGATE_SKIP_PREFLIGHT: '', ...extra });
+    }
+
+    function handedOver(): boolean {
+      return called().includes(
+        `deploy/install.sh 0.10.0 from ${root}/opt/cloudgate.next`,
+      );
+    }
+
+    it('warns about nothing on a host that is ready', () => {
+      const ready = checked();
+
+      expect(ready.status).toBe(0);
+      expect(ready.stderr).toBe('');
+      expect(handedOver()).toBe(true);
+    });
+
+    it('warns about a port another process holds, naming the process, and carries on', () => {
+      listening(
+        'LISTEN 0 511 0.0.0.0:80 0.0.0.0:* users:(("nginx",pid=812,fd=6),("nginx",pid=813,fd=6))',
+        'LISTEN 0 511 [::]:80 [::]:* users:(("nginx",pid=812,fd=7))',
+        'LISTEN 0 4096 127.0.0.1:4000 0.0.0.0:* users:(("python3",pid=990,fd=3))',
+        'LISTEN 0 128 0.0.0.0:22 0.0.0.0:* users:(("sshd",pid=700,fd=3))',
+        'LISTEN 0 4096 127.0.0.1:5432 0.0.0.0:* users:(("postgres",pid=701,fd=5))',
+      );
+
+      const busy = checked();
+
+      expect(busy.status).toBe(0);
+      expect(handedOver()).toBe(true);
+      const warnings = busy.stderr
+        .split('\n')
+        .filter((line) => line.includes('port'));
+      expect(warnings).toHaveLength(2);
+      expect(warnings[0]).toMatch(/port 80 .*nginx \(pid 812\)/);
+      expect(warnings[1]).toMatch(/port 4000 .*python3 \(pid 990\)/);
+      expect(busy.stderr).not.toMatch(/port (22|5432)/);
+    });
+
+    it('says nothing of the ports Cloudgate itself holds on a re-run', () => {
+      inUnit(900, 'cloudgate-console.service');
+      inUnit(901, 'cloudgate-backend.service');
+      listening(
+        'LISTEN 0 511 *:3000 *:* users:(("next-server (v1",pid=900,fd=20))',
+        'LISTEN 0 511 *:4000 *:* users:(("node",pid=901,fd=21))',
+        'LISTEN 0 4096 0.0.0.0:80 0.0.0.0:* users:(("docker-proxy",pid=950,fd=7))',
+        'LISTEN 0 4096 0.0.0.0:443 0.0.0.0:* users:(("docker-proxy",pid=951,fd=7))',
+      );
+      // Cloudgate's Traefik is the container docker-proxy holds 80 and 443 for.
+      shim(
+        'docker',
+        `case "$*" in *cloudgate-traefik*) echo 3f2a9c1b ;; esac`,
+      );
+
+      const rerun = checked();
+
+      expect(rerun.status).toBe(0);
+      expect(rerun.stderr).toBe('');
+    });
+
+    it('warns about docker-proxy on 80 when it is not Cloudgate’s Traefik', () => {
+      listening(
+        'LISTEN 0 4096 0.0.0.0:80 0.0.0.0:* users:(("docker-proxy",pid=950,fd=7))',
+      );
+
+      const other = checked();
+
+      expect(other.status).toBe(0);
+      expect(other.stderr).toMatch(/port 80 .*docker-proxy \(pid 950\)/);
+    });
+
+    it('warns when less than 15 GB is free where /opt and /usr/local live, naming each mount once', () => {
+      // 12 GB on /, which holds both.
+      disk([11_718_750, '/'], [11_718_750, '/']);
+
+      const low = checked();
+
+      expect(low.status).toBe(0);
+      expect(handedOver()).toBe(true);
+      const warnings = low.stderr
+        .split('\n')
+        .filter((line) => line.includes('free'));
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain('12');
+      expect(warnings[0]).toContain(' / ');
+      expect(warnings[0]).toContain('/opt and /usr/local');
+      expect(warnings[0]).toContain('15 GB');
+    });
+
+    it('warns about only the mount that is short when /opt and /usr/local are on two', () => {
+      disk([40_000_000, '/opt'], [4_882_813, '/']);
+
+      const split = checked();
+
+      expect(split.status).toBe(0);
+      const warnings = split.stderr
+        .split('\n')
+        .filter((line) => line.includes('free'));
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain('/usr/local');
+      expect(warnings[0]).not.toContain('/opt');
+    });
+
+    it('warns when MemTotal is under 4 GB', () => {
+      memory(2_000_000);
+
+      const small = checked();
+
+      expect(small.status).toBe(0);
+      expect(handedOver()).toBe(true);
+      expect(small.stderr).toMatch(/memory.*4 GB/);
+    });
+
+    it('warns about each host that does not answer within 5 seconds, naming it', () => {
+      const offline = checked({
+        UNREACHABLE: 'nodejs.org release-assets.githubusercontent.com',
+      });
+
+      expect(offline.status).toBe(0);
+      expect(handedOver()).toBe(true);
+      const warnings = offline.stderr
+        .split('\n')
+        .filter((line) => line.includes('did not answer'));
+      expect(warnings).toHaveLength(2);
+      expect(warnings.join('\n')).toContain('nodejs.org');
+      expect(warnings.join('\n')).toContain(
+        'release-assets.githubusercontent.com',
+      );
+      for (const host of HOSTS) {
+        expect({ host, probe: argsFor(`https://${host}/`) }).toEqual({
+          host,
+          probe: expect.stringContaining('--max-time 5') as string,
+        });
+      }
+    });
+
+    it('probes exactly the hosts docs/deploy.md §1 lists as outbound', () => {
+      const docs = fs.readFileSync(path.join(repoRoot, 'docs/deploy.md'), 'utf8');
+      const outbound = docs.split('\n').find((line) => line.startsWith('| Outbound |'));
+      const listed = [...(outbound ?? '').matchAll(/`([a-z0-9.-]+\.[a-z]+)`/g)]
+        .map((match) => match[1])
+        .sort();
+
+      const offline = checked({ UNREACHABLE: listed.join(' ') });
+
+      const warned = offline.stderr
+        .split('\n')
+        .filter((line) => line.includes('did not answer'))
+        .map((line) => listed.find((host) => line.includes(` ${host} `)))
+        .sort();
+      expect(listed).toEqual([...HOSTS].sort());
+      expect(warned).toEqual(listed);
+    });
+
+    it('carries on through every warning at once', () => {
+      listening(
+        'LISTEN 0 511 0.0.0.0:443 0.0.0.0:* users:(("apache2",pid=640,fd=4))',
+      );
+      disk([1_000_000, '/'], [1_000_000, '/']);
+      memory(1_000_000);
+
+      const everything = checked({ UNREACHABLE: HOSTS.join(' ') });
+
+      expect(everything.status).toBe(0);
+      expect(handedOver()).toBe(true);
+      expect(everything.stderr).toContain('CLOUDGATE_SKIP_PREFLIGHT=1');
+    });
+
+    it('checks nothing and warns about nothing under CLOUDGATE_SKIP_PREFLIGHT=1', () => {
+      listening(
+        'LISTEN 0 511 0.0.0.0:443 0.0.0.0:* users:(("apache2",pid=640,fd=4))',
+      );
+      disk([1_000_000, '/'], [1_000_000, '/']);
+      memory(1_000_000);
+
+      const skipped = checked({
+        CLOUDGATE_SKIP_PREFLIGHT: '1',
+        UNREACHABLE: HOSTS.join(' '),
+      });
+
+      expect(skipped.status).toBe(0);
+      expect(skipped.stderr).toBe('');
+      expect(handedOver()).toBe(true);
+      expect(called()).not.toContain('ss ');
+      for (const host of HOSTS) expect(argsFor(`https://${host}/`)).toBe('');
     });
   });
 });
