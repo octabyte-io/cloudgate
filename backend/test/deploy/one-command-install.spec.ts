@@ -1941,9 +1941,13 @@ exec "${bin}/curl-served" "$@"
     ];
 
     function shim(tool: string, body: string) {
-      fs.writeFileSync(path.join(scratch, 'bin', tool), `#!/bin/sh\n${body}\n`, {
-        mode: 0o755,
-      });
+      fs.writeFileSync(
+        path.join(scratch, 'bin', tool),
+        `#!/bin/sh\n${body}\n`,
+        {
+          mode: 0o755,
+        },
+      );
     }
 
     /** `ss -Hltnp`'s lines, as Ubuntu 24.04's iproute2 prints them. */
@@ -2042,10 +2046,7 @@ esac`,
         'LISTEN 0 4096 0.0.0.0:443 0.0.0.0:* users:(("docker-proxy",pid=951,fd=7))',
       );
       // Cloudgate's Traefik is the container docker-proxy holds 80 and 443 for.
-      shim(
-        'docker',
-        `case "$*" in *cloudgate-traefik*) echo 3f2a9c1b ;; esac`,
-      );
+      shim('docker', `case "$*" in *cloudgate-traefik*) echo 3f2a9c1b ;; esac`);
 
       const rerun = checked();
 
@@ -2130,8 +2131,13 @@ esac`,
     });
 
     it('probes exactly the hosts docs/deploy.md §1 lists as outbound', () => {
-      const docs = fs.readFileSync(path.join(repoRoot, 'docs/deploy.md'), 'utf8');
-      const outbound = docs.split('\n').find((line) => line.startsWith('| Outbound |'));
+      const docs = fs.readFileSync(
+        path.join(repoRoot, 'docs/deploy.md'),
+        'utf8',
+      );
+      const outbound = docs
+        .split('\n')
+        .find((line) => line.startsWith('| Outbound |'));
       const listed = [...(outbound ?? '').matchAll(/`([a-z0-9.-]+\.[a-z]+)`/g)]
         .map((match) => match[1])
         .sort();

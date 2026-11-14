@@ -55,7 +55,9 @@ describe('deploy/install.sh and install.sh, on every download curl retrying', ()
     const downloads = curls(file).filter(
       (line) =>
         !line.includes('127.0.0.1') &&
-        !EXEMPT.some((exempt) => exempt.file === file && exempt.site.test(line)),
+        !EXEMPT.some(
+          (exempt) => exempt.file === file && exempt.site.test(line),
+        ),
     );
     expect(downloads.length).toBeGreaterThan(0);
 
