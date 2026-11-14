@@ -252,6 +252,52 @@ describe('install.sh (the one-command install)', () => {
     expect(source).not.toMatch(/^\s*git /m);
   });
 
+  /**
+   * One tarball, built on 24.04, installs on Ubuntu 24.04 and 26.04 amd64
+   * (ADR-0085); every other Ubuntu version or distribution is refused by name,
+   * before anything is downloaded.
+   */
+  describe('the Ubuntu versions it installs on', () => {
+    function hostOs(content: string) {
+      fs.writeFileSync(path.join(root, 'etc/os-release'), content);
+    }
+
+    it('installs on Ubuntu 26.04', () => {
+      hostOs('ID=ubuntu\nVERSION_ID="26.04"\n');
+      releases('v0.10.0');
+      publish('0.10.0');
+
+      const fresh = install();
+
+      expect(fresh.stderr).toBe('');
+      expect(fresh.status).toBe(0);
+      expect(called()).toContain(
+        `deploy/install.sh 0.10.0 from ${root}/opt/cloudgate.next`,
+      );
+    });
+
+    it.each([
+      ['Ubuntu 22.04', 'ID=ubuntu\nVERSION_ID="22.04"\n', 'ubuntu 22.04'],
+      ['Debian 12', 'ID=debian\nVERSION_ID="12"\n', 'debian 12'],
+    ])(
+      'refuses %s, naming 24.04 and 26.04, before downloading anything',
+      (_, content, found) => {
+        hostOs(content);
+        releases('v0.10.0');
+        publish('0.10.0');
+
+        const refused = install();
+
+        expect(refused.status).toBe(1);
+        expect(refused.stderr).toContain(
+          `Cloudgate installs on Ubuntu 24.04 or 26.04; this host is ${found}.`,
+        );
+        expect(called()).toBe('');
+        expect(opt()).toEqual([]);
+      },
+    );
+  });
+
   describe('one run at a time', () => {
     it('refuses a run while another is under way, before changing anything', () => {
       releases('v0.10.0');

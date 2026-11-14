@@ -4,8 +4,9 @@
 #
 #     curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo sh
 #
-# On a bare Ubuntu 24.04 host it downloads a Cloudgate version (ADR-0082): the
-# tarball on the GitHub Release for its tag, checked against the sha256
+# On a bare Ubuntu 24.04 or 26.04 amd64 host (ADR-0085) it downloads a
+# Cloudgate version (ADR-0082): the tarball on the GitHub Release for its tag,
+# checked against the sha256
 # published beside it and unpacked into /opt/cloudgate.next. Then it hands over
 # to that version's deploy/install.sh, which does the install itself and puts
 # the version in place at /opt/cloudgate. Nothing is cloned or built. Running it
@@ -253,9 +254,13 @@ main() {
     os_id="$(. "$OS_RELEASE" && printf '%s' "${ID:-}")"
     os_version="$(. "$OS_RELEASE" && printf '%s' "${VERSION_ID:-}")"
   fi
-  [ "$os_id" = ubuntu ] && [ "$os_version" = 24.04 ] || fail \
-    "Cloudgate installs on Ubuntu 24.04; this host is ${os_id:-unknown} ${os_version:-unknown}." \
-    "docs/deploy.md §1 lists what the host needs."
+  # One tarball, built on 24.04, runs on both (ADR-0085).
+  case "$os_id $os_version" in
+    'ubuntu 24.04' | 'ubuntu 26.04') ;;
+    *) fail \
+      "Cloudgate installs on Ubuntu 24.04 or 26.04; this host is ${os_id:-unknown} ${os_version:-unknown}." \
+      "docs/deploy.md §1 lists what the host needs." ;;
+  esac
   [ "$(uname -m)" = x86_64 ] || fail \
     "Cloudgate installs on amd64 (x86_64); this host is $(uname -m)."
 
