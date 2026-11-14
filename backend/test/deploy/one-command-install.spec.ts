@@ -1103,6 +1103,99 @@ echo "$CONSOLE_ORIGIN $API_ORIGIN"`,
   });
 
   /**
+   * The Traefik container step (ADR-0086), cut out of the file as written from
+   * `run_traefik` to the end of the `if` that uses it, and run with `docker`
+   * shimmed: it records each call, and `docker inspect` answers as a host whose
+   * `cloudgate-traefik` runs `running` does, or as one with no such container.
+   */
+  describe('the Traefik container', () => {
+    function traefik(running?: string) {
+      const step = code().match(
+        /\nrun_traefik\(\) \{\n[\s\S]*?\n\}\n[\s\S]*?\nfi\n/,
+      );
+      if (!step)
+        throw new Error('no Traefik container step in deploy/install.sh');
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(
+        path.join(bin, 'docker'),
+        `#!/bin/sh
+echo "docker $*" >> "${calls}"
+if [ "$1" = inspect ]; then
+  [ -n "$RUNNING" ] || exit 1
+  [ "$2" = -f ] && echo "$RUNNING"
+fi
+exit 0
+`,
+        { mode: 0o755 },
+      );
+      const ran = spawnSync(
+        'bash',
+        [
+          '-c',
+          `set -euo pipefail; log() { :; }; TRAEFIK_VERSION=3.6.7; CLOUDGATE_DIR=/etc/cloudgate; CONTAINER_LOG_MAX_SIZE=10m; CONTAINER_LOG_MAX_FILE=3\n${step[0]}`,
+        ],
+        {
+          env: {
+            PATH: `${bin}:${process.env.PATH}`,
+            RUNNING: running ?? '',
+          },
+          encoding: 'utf8',
+        },
+      );
+      const docker = called()
+        .trim()
+        .split('\n')
+        .filter((line) => line && !line.startsWith('docker inspect'));
+      return { ran, docker };
+    }
+
+    /** The one `docker run` every start of Traefik makes (deploy.md §6). */
+    const RUN =
+      'docker run -d --name cloudgate-traefik --restart always --network cloudgate-network' +
+      ' --log-driver json-file --log-opt max-size=10m --log-opt max-file=3' +
+      ' -v /etc/cloudgate/traefik/traefik.yml:/etc/traefik/traefik.yml' +
+      ' -v /etc/cloudgate/traefik/dynamic:/etc/cloudgate/traefik/dynamic' +
+      ' -v /var/run/docker.sock:/var/run/docker.sock' +
+      ' -p 80:80 -p 443:443 -p 443:443/udp traefik:v3.6.7';
+
+    it('pulls and starts Traefik at its version on a host with no container', () => {
+      const { ran, docker } = traefik();
+
+      expect(ran.stderr).toBe('');
+      expect(ran.status).toBe(0);
+      expect(docker).toEqual(['docker pull -q traefik:v3.6.7', RUN]);
+    });
+
+    it('recreates a container on another version: pulls first, then removes and starts it, saying 80 and 443 drop', () => {
+      const { ran, docker } = traefik('traefik:v3.5.0');
+
+      expect(ran.stderr).toBe('');
+      expect(ran.status).toBe(0);
+      expect(docker).toEqual([
+        'docker pull -q traefik:v3.6.7',
+        'docker rm -f cloudgate-traefik',
+        RUN,
+      ]);
+      expect(ran.stdout).toContain('traefik:v3.5.0');
+      expect(ran.stdout).toContain('traefik:v3.6.7');
+      expect(ran.stdout).toMatch(/80 and 443 drop for a few seconds/);
+    });
+
+    it('leaves a container already at its version running, untouched', () => {
+      const { ran, docker } = traefik('traefik:v3.6.7');
+
+      expect(ran.status).toBe(0);
+      // Nothing was pulled, removed or started.
+      expect(docker).toEqual([]);
+      expect(ran.stdout).toBe('');
+    });
+
+    it('holds the `docker run` for Traefik in one place', () => {
+      expect(code().match(/\bdocker run\b/g)).toHaveLength(1);
+    });
+  });
+
+  /**
    * The Firewall step, cut out of the file as written and run with ufw and
    * sshd shimmed: what it allows, and in what order relative to enabling ufw.
    */

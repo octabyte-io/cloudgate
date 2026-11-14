@@ -995,20 +995,21 @@ if [ -n "$HOSTED_MODE" ]; then
   mv "$CLOUDGATE_DIR/traefik/dynamic/hosted.yml.tmp" "$CLOUDGATE_DIR/traefik/dynamic/hosted.yml"
 fi
 
-if ! docker inspect cloudgate-traefik >/dev/null 2>&1; then
-  docker pull -q "traefik:v${TRAEFIK_VERSION}"
-  # Shape matches TraefikSetupService.initializeStandaloneTraefik — and, since
-  # both paths share one set of constants, setupTraefikInstance in
-  # server-setup.ts as well: same name, same network, same three binds,
-  # 80 + 443/tcp + 443/udp, restart always.
-  # The dynamic dir's bind *target* is /etc/cloudgate/traefik/dynamic because
-  # that is the path inside the container the file provider watches.
-  #
-  # The --log-opt flags are what bounds Traefik's now-chatty application log.
-  # Same driver as the stock default, so `docker logs cloudgate-traefik` still
-  # reads it; the cap is 30 MB, and re-running this script does NOT apply a
-  # changed cap, because the guard above skips an existing container. Changing it
-  # on a running host is `docker rm -f cloudgate-traefik` and a re-run.
+# Shape matches TraefikSetupService.initializeStandaloneTraefik — and, since
+# both paths share one set of constants, setupTraefikInstance in
+# server-setup.ts as well: same name, same network, same three binds,
+# 80 + 443/tcp + 443/udp, restart always.
+# The dynamic dir's bind *target* is /etc/cloudgate/traefik/dynamic because
+# that is the path inside the container the file provider watches.
+#
+# The --log-opt flags are what bounds Traefik's now-chatty application log.
+# Same driver as the stock default, so `docker logs cloudgate-traefik` still
+# reads it; the cap is 30 MB.
+#
+# The first start and the recreate below both go through this one function, so
+# a recreated Traefik cannot come back with a bind, port or cap the first start
+# would not have given it.
+run_traefik() {
   docker run -d \
     --name cloudgate-traefik \
     --restart always \
@@ -1021,6 +1022,28 @@ if ! docker inspect cloudgate-traefik >/dev/null 2>&1; then
     -v /var/run/docker.sock:/var/run/docker.sock \
     -p 80:80 -p 443:443 -p 443:443/udp \
     "traefik:v${TRAEFIK_VERSION}"
+}
+
+# A container on another image is recreated at TRAEFIK_VERSION (ADR-0086).
+# Before, an existing container was always skipped, so an upgrade that moved
+# TRAEFIK_VERSION wrote the new value into /etc/default/cloudgate-backend while
+# Traefik kept the old image, and the console showed the drift. The pull comes
+# before the rm, so a pull that fails leaves the old Traefik serving. The product
+# never restarts Traefik on its own; running this script is the operator choosing
+# to change the box. A container already at its version is left running: a
+# changed log cap alone does not recreate it, and applying one is still
+# `docker rm -f cloudgate-traefik` and a re-run.
+if ! docker inspect cloudgate-traefik >/dev/null 2>&1; then
+  docker pull -q "traefik:v${TRAEFIK_VERSION}"
+  run_traefik
+else
+  running_traefik_image=$(docker inspect -f '{{.Config.Image}}' cloudgate-traefik)
+  if [ "$running_traefik_image" != "traefik:v${TRAEFIK_VERSION}" ]; then
+    echo "Traefik runs ${running_traefik_image}; recreating it at traefik:v${TRAEFIK_VERSION}. Ports 80 and 443 drop for a few seconds."
+    docker pull -q "traefik:v${TRAEFIK_VERSION}"
+    docker rm -f cloudgate-traefik
+    run_traefik
+  fi
 fi
 
 ### ------------------------------------------------------------------ units ---

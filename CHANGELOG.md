@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### A re-run of the install brings Traefik to its version
+
+A run of the one command, or of `deploy/install.sh`, now recreates `cloudgate-traefik` when the container runs any image but `traefik:v<TRAEFIK_VERSION>`, so the Traefik drift the console reports clears with the upgrade that caused it. The run pulls the new image first, then removes the container and starts it again with the same name, network, binds, ports and log cap, and prints that ports 80 and 443 drop for a few seconds. A failed pull leaves the old container serving, and a container already at its version is left running. Before, an existing container was always skipped, so a version that moved `TRAEFIK_VERSION` never reached a running host (ADR-0086, `docs/deploy.md` §6 and §7).
+
+**What to do on upgrade**: nothing. Expect ports 80 and 443 to drop for a few seconds during the run when the version moves Traefik.
+
 ### A template may ship a `.js` config file
 
 A config file under a template's `files/` may now end in `.js`, for an application that reads its config as a JavaScript module, such as Formbricks. The backend's catalogue check, `cloudgate template check` and `cloudgate template pack` all take it. Every other rule for a config file is unchanged, and other scripts (`.sh`, `.py`, `.mjs`, `.cjs`, `.ts`) are still refused. A template ships its JavaScript config as `.js`, never as `.js.txt` renamed by its mount (ADR-0083).
