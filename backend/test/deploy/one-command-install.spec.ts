@@ -1244,11 +1244,9 @@ describe('deploy/install.sh', () => {
        */
       function goBack(commands: string[]) {
         const bin = path.join(scratch, 'bin');
-        fs.writeFileSync(
-          path.join(bin, 'su'),
-          `#!/bin/sh\nexec sh -c "$4"\n`,
-          { mode: 0o755 },
-        );
+        fs.writeFileSync(path.join(bin, 'su'), `#!/bin/sh\nexec sh -c "$4"\n`, {
+          mode: 0o755,
+        });
         for (const tool of ['dropdb', 'createdb']) {
           fs.writeFileSync(
             path.join(bin, tool),
@@ -1313,7 +1311,9 @@ describe('deploy/install.sh', () => {
 
         expect(said.status).toBe(0);
         expect(said.stdout).toContain('journalctl -u cloudgate-backend');
-        expect(said.stdout).toContain(`Cloudgate 0.9.0 is kept at ${into()}.previous`);
+        expect(said.stdout).toContain(
+          `Cloudgate 0.9.0 is kept at ${into()}.previous`,
+        );
         expect(said.stdout).toContain(file);
         expect(said.stdout).toContain('/usr/local/share/cloudgate/node');
         expect(said.stdout).toContain('Traefik');

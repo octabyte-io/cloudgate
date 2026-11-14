@@ -262,7 +262,9 @@ describe('deploy/uninstall.sh', () => {
       }
       expect(called()).toContain('userdel --remove cloudgate-deploy');
       // Before the units, so no deploy can start while they go.
-      expect(called().indexOf('userdel --remove cloudgate-deploy')).toBeLessThan(
+      expect(
+        called().indexOf('userdel --remove cloudgate-deploy'),
+      ).toBeLessThan(
         called().indexOf('systemctl disable --now cloudgate-backend.service'),
       );
       expect(ran.stdout).toContain('cloudgate-deploy');
@@ -274,9 +276,7 @@ describe('deploy/uninstall.sh', () => {
 
       expect(uninstall().status).toBe(0);
 
-      expect(called().filter((line) => line.startsWith('userdel'))).toEqual(
-        [],
-      );
+      expect(called().filter((line) => line.startsWith('userdel'))).toEqual([]);
       expect(exists('etc/sudoers.d/operator')).toBe(true);
     });
   });
@@ -379,9 +379,9 @@ describe('deploy/uninstall.sh', () => {
       const ran = uninstall();
 
       expect(ran.status).toBe(0);
-      expect(exists('opt/cloudgate.checkout-2026-11-01/backend/package.json')).toBe(
-        true,
-      );
+      expect(
+        exists('opt/cloudgate.checkout-2026-11-01/backend/package.json'),
+      ).toBe(true);
       expect(ran.stdout).toContain(`${root}/opt/cloudgate.checkout-2026-11-01`);
     });
 
@@ -451,7 +451,9 @@ describe('deploy/uninstall.sh', () => {
       expect(ran.status).toBe(0);
       expect(exists('root/cloudgate-live-test/env.migrated')).toBe(false);
       expect(exists('root/cloudgate-live-test/notes')).toBe(true);
-      expect(ran.stdout).toContain(`${root}/root/cloudgate-live-test/env.migrated`);
+      expect(ran.stdout).toContain(
+        `${root}/root/cloudgate-live-test/env.migrated`,
+      );
     });
 
     it.each([
