@@ -29,7 +29,8 @@
 #                                  file of source it imports
 #     deploy/                      as in the repository: systemd units, Traefik
 #                                  files, the OpenTofu lock file and schemas,
-#                                  state-login.sql, the hosted scripts
+#                                  state-login.sql, the hosted scripts,
+#                                  uninstall.sh
 #
 # `next({ dev: false })` in server.mjs loads next.config.* from disk when the
 # console starts; it does not read the copy the build left in .next. Without
