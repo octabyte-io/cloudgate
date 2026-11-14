@@ -366,12 +366,16 @@ if [ -n "$HOSTED_MODE" ]; then
 fi
 
 ### ------------------------------------------------------------------ node ---
-# Installed to /usr/local so /usr/local/bin/node is a stable path the committed
-# unit files can hardcode. No pnpm: nothing is installed or built with it here,
-# and the migrations run the version's own drizzle-kit.
+# Cloudgate's own, as OpenTofu is: unpacked into its own folder, never over
+# /usr/local, whose bin, lib and include may hold the operator's own Node. The
+# committed unit files and as_service_user's PATH name this folder. An older
+# Node a previous install left in /usr/local is not touched (CHANGELOG). No
+# pnpm: nothing is installed or built with it here, and the migrations run the
+# version's own drizzle-kit.
+NODE_DIR=/usr/local/share/cloudgate/node
 
 log "Node ${NODE_VERSION}"
-if [ "$(/usr/local/bin/node --version 2>/dev/null || true)" != "$NODE_VERSION" ]; then
+if [ "$("$NODE_DIR/bin/node" --version 2>/dev/null || true)" != "$NODE_VERSION" ]; then
   tarball="node-${NODE_VERSION}-linux-x64.tar.xz"
   tmp="$(mktemp -d)"
   (
@@ -379,8 +383,13 @@ if [ "$(/usr/local/bin/node --version 2>/dev/null || true)" != "$NODE_VERSION" ]
     curl -fsSLO "https://nodejs.org/dist/${NODE_VERSION}/${tarball}"
     curl -fsSLO "https://nodejs.org/dist/${NODE_VERSION}/SHASUMS256.txt"
     grep " ${tarball}\$" SHASUMS256.txt | sha256sum -c -
-    tar -xJf "$tarball" -C /usr/local --strip-components=1 --no-same-owner
+    mkdir node
+    tar -xJf "$tarball" -C node --strip-components=1 --no-same-owner
   )
+  # Whole, so nothing of an older Node is left beside the new one.
+  mkdir -p "$(dirname "$NODE_DIR")"
+  rm -rf "$NODE_DIR"
+  mv "$tmp/node" "$NODE_DIR"
   rm -rf "$tmp"
 fi
 
@@ -769,7 +778,7 @@ umask 022
 
 as_service_user() {
   runuser -u "$SERVICE_USER" -- env \
-    PATH=/usr/local/bin:/usr/bin:/bin \
+    PATH=/usr/local/share/cloudgate/node/bin:/usr/local/bin:/usr/bin:/bin \
     HOME=/var/lib/cloudgate \
     "$@"
 }

@@ -1516,6 +1516,201 @@ exit 0
     });
   });
 
+  /**
+   * The Node step, cut out of the file as written and run against a scratch
+   * host: every `/usr/local` in it points under the scratch root, as
+   * `INSTALL_ROOT` does for root install.sh. `curl` serves nodejs.org from the
+   * scratch directory; `tar`, `sha256sum` and the rest are the real ones. The
+   * Node it unpacks is a stand-in whose `bin/node` prints its version.
+   */
+  describe('Node in Cloudgate’s own folder', () => {
+    const NODE_VERSION = 'v24.19.0';
+    const OURS = 'usr/local/share/cloudgate/node';
+
+    /** A file tree under the scratch root, as path → content. */
+    function tree(under: string): Record<string, string> {
+      const at = path.join(root, under);
+      if (!fs.existsSync(at)) return {};
+      return Object.fromEntries(
+        fs
+          .readdirSync(at, { recursive: true })
+          .map(String)
+          .filter((file) => fs.statSync(path.join(at, file)).isFile())
+          .sort()
+          .map((file) => [file, fs.readFileSync(path.join(at, file), 'utf8')]),
+      );
+    }
+
+    function put(file: string, content: string, mode = 0o644) {
+      const at = path.join(root, file);
+      fs.mkdirSync(path.dirname(at), { recursive: true });
+      fs.writeFileSync(at, content, { mode });
+    }
+
+    /** A Node install's layout, at `into`, whose node says `version`. */
+    function nodeLayout(into: string, version: string) {
+      put(`${into}/bin/node`, `#!/bin/sh\necho ${version}\n`, 0o755);
+      put(`${into}/lib/node_modules/npm/package.json`, `{"node":"${version}"}`);
+      put(`${into}/include/node/node.h`, `/* ${version} */`);
+    }
+
+    /** nodejs.org's tarball for NODE_VERSION and its SHASUMS256.txt. */
+    function serveNode() {
+      const name = `node-${NODE_VERSION}-linux-x64`;
+      const build = path.join(scratch, 'node-build');
+      const top = path.join(build, name);
+      fs.mkdirSync(path.join(top, 'bin'), { recursive: true });
+      fs.writeFileSync(
+        path.join(top, 'bin/node'),
+        `#!/bin/sh\necho ${NODE_VERSION}\n`,
+        { mode: 0o755 },
+      );
+      fs.mkdirSync(path.join(top, 'lib/node_modules/npm'), { recursive: true });
+      fs.writeFileSync(
+        path.join(top, 'lib/node_modules/npm/package.json'),
+        '{}',
+      );
+      fs.mkdirSync(path.join(top, 'include/node'), { recursive: true });
+      fs.writeFileSync(path.join(top, 'include/node/node.h'), '');
+      const tarball = path.join(scratch, `${name}.tar.xz`);
+      const packed = spawnSync('tar', ['-cJf', tarball, '-C', build, name]);
+      if (packed.status !== 0) throw new Error(String(packed.stderr));
+      const bytes = fs.readFileSync(tarball);
+      const sum = createHash('sha256').update(bytes).digest('hex');
+      serve(`nodejs.org/dist/${NODE_VERSION}/${name}.tar.xz`, bytes);
+      serve(
+        `nodejs.org/dist/${NODE_VERSION}/SHASUMS256.txt`,
+        `${'0'.repeat(64)}  node-${NODE_VERSION}-linux-arm64.tar.xz\n${sum}  ${name}.tar.xz\n`,
+      );
+    }
+
+    function nodeStep() {
+      const step = source().match(/\n### -+ node ---\n[\s\S]*?(?=\n### -+ )/);
+      if (!step) throw new Error('no node step in deploy/install.sh');
+      const bin = path.join(scratch, 'bin');
+      // `curl [flags] <url>`, saving the served file under its own name, as
+      // -O does, or curl's own exit code for an HTTP error under -f.
+      fs.writeFileSync(
+        path.join(bin, 'curl'),
+        `#!/bin/sh
+url=''
+for arg in "$@"; do case "$arg" in http*) url="$arg" ;; esac; done
+echo "curl $url" >> "${calls}"
+file="${served}/\${url#https://}"
+[ -f "$file" ] || exit 22
+cat "$file" > "\${url##*/}"
+`,
+        { mode: 0o755 },
+      );
+      const ran = spawnSync(
+        'bash',
+        [
+          '-c',
+          `set -euo pipefail; log() { :; }; NODE_VERSION=${NODE_VERSION}\n${step[0].replaceAll('/usr/local', `${root}/usr/local`)}`,
+        ],
+        {
+          env: { PATH: `${bin}:${process.env.PATH}`, HOME: scratch },
+          encoding: 'utf8',
+        },
+      );
+      return ran;
+    }
+
+    it('unpacks Node into /usr/local/share/cloudgate/node', () => {
+      serveNode();
+
+      const ran = nodeStep();
+
+      expect(ran.stderr).toBe('');
+      expect(ran.status).toBe(0);
+      const node = spawnSync(path.join(root, OURS, 'bin/node'), ['--version'], {
+        encoding: 'utf8',
+      });
+      expect(node.stdout.trim()).toBe(NODE_VERSION);
+      expect(Object.keys(tree(OURS))).toEqual([
+        'bin/node',
+        'include/node/node.h',
+        'lib/node_modules/npm/package.json',
+      ]);
+    });
+
+    it('downloads nothing when the Node there is already the version', () => {
+      serveNode();
+      nodeLayout(OURS, NODE_VERSION);
+
+      const ran = nodeStep();
+
+      expect(ran.status).toBe(0);
+      expect(called()).toBe('');
+    });
+
+    it('replaces an older Node in its folder whole, on an upgrade', () => {
+      serveNode();
+      nodeLayout(OURS, 'v22.11.0');
+      put(`${OURS}/lib/node_modules/corepack/package.json`, '{}');
+
+      const ran = nodeStep();
+
+      expect(ran.status).toBe(0);
+      expect(tree(OURS)['bin/node']).toBe(`#!/bin/sh\necho ${NODE_VERSION}\n`);
+      expect(Object.keys(tree(OURS))).not.toContain(
+        'lib/node_modules/corepack/package.json',
+      );
+    });
+
+    it.each([
+      ['a first install', false],
+      ['an upgrade', true],
+    ])(
+      'writes and removes nothing in /usr/local/bin, lib or include, on %s',
+      (_, upgrade) => {
+        serveNode();
+        // The operator's own Node, and what an older Cloudgate install unpacked.
+        nodeLayout('usr/local', 'v20.18.0');
+        put('usr/local/bin/their-script', '#!/bin/sh\n', 0o755);
+        if (upgrade) nodeLayout(OURS, 'v22.11.0');
+        const before = ['bin', 'lib', 'include'].map((dir) =>
+          tree(`usr/local/${dir}`),
+        );
+
+        const ran = nodeStep();
+
+        expect(ran.status).toBe(0);
+        expect(
+          ['bin', 'lib', 'include'].map((dir) => tree(`usr/local/${dir}`)),
+        ).toEqual(before);
+        expect(tree(OURS)['bin/node']).toBe(
+          `#!/bin/sh\necho ${NODE_VERSION}\n`,
+        );
+      },
+    );
+
+    it('runs as_service_user’s node from Cloudgate’s folder, not one the operator keeps in /usr/local/bin', () => {
+      const fn = source().match(/^as_service_user\(\) \{\n[\s\S]*?\n\}\n/m);
+      if (!fn) throw new Error('no as_service_user in deploy/install.sh');
+      nodeLayout('usr/local', 'v20.18.0');
+      nodeLayout(OURS, NODE_VERSION);
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(
+        path.join(bin, 'runuser'),
+        '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n',
+        { mode: 0o755 },
+      );
+
+      const ran = spawnSync(
+        'bash',
+        [
+          '-c',
+          `set -euo pipefail; SERVICE_USER=cloudgate\n${fn[0].replaceAll('/usr/local', `${root}/usr/local`)}\nas_service_user sh -c 'node --version'`,
+        ],
+        { env: { PATH: `${bin}:${process.env.PATH}` }, encoding: 'utf8' },
+      );
+
+      expect(ran.stderr).toBe('');
+      expect(ran.stdout.trim()).toBe(NODE_VERSION);
+    });
+  });
+
   describe('ensure_packages', () => {
     it('waits while another apt holds its lock, then installs what is missing', () => {
       const fns = ['apt_get', 'ensure_packages']

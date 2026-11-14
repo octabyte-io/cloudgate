@@ -18,7 +18,7 @@ Environment=HOME=/var/lib/cloudgate
 # is built without `xfwd`. server.mjs is `next start` plus that one
 # header. NODE_ENV=production comes from EnvironmentFile, which matters here:
 # `next start` sets it itself and a custom server does not.
-ExecStart=/usr/local/bin/node /opt/cloudgate/frontend/server.mjs
+ExecStart=/usr/local/share/cloudgate/node/bin/node /opt/cloudgate/frontend/server.mjs
 
 Restart=always
 RestartSec=5s
