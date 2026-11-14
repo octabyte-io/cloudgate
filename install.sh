@@ -219,7 +219,11 @@ download_version() {
   curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 -o "$download/$name.sha256" "$url.sha256" || fail \
     "Cloudgate v$version has no published release to install ($url.sha256)." \
     "The versions are listed at $RELEASES_PAGE. Nothing was changed."
-  curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 -o "$download/$name" "$url" || fail \
+  # A progress bar for an operator watching a terminal; nothing when the
+  # output goes to a file or a pipe, which would only collect its redraws.
+  progress=-sS
+  if [ -t 2 ]; then progress=--progress-bar; fi
+  curl -fL "$progress" --retry 3 --retry-connrefused --connect-timeout 15 -o "$download/$name" "$url" || fail \
     "Could not download $url. Nothing was changed."
 
   # Compared here rather than with `sha256sum -c`, which checks whichever file

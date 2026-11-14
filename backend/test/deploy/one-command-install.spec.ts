@@ -1831,3 +1831,90 @@ fi
     });
   });
 });
+
+/**
+ * What root install.sh does before and around its downloads: the preflight
+ * warnings and the tarball's progress bar. `curl` is wrapped so every call's
+ * arguments are kept, and a probe of `https://<host>/` answers unless
+ * UNREACHABLE names the host; anything else goes to the served shim above.
+ */
+describe('install.sh, before and while it downloads', () => {
+  const curlArgs = () => path.join(scratch, 'curl-args');
+
+  beforeEach(() => {
+    const bin = path.join(scratch, 'bin');
+    fs.renameSync(path.join(bin, 'curl'), path.join(bin, 'curl-served'));
+    fs.writeFileSync(
+      path.join(bin, 'curl'),
+      `#!/bin/sh
+echo "$*" >> "${curlArgs()}"
+for arg in "$@"; do
+  case "$arg" in
+    https://*/*/*) ;;
+    https://*/)
+      host="\${arg#https://}"
+      host="\${host%/}"
+      case " \${UNREACHABLE:-} " in *" $host "*) exit 28 ;; esac
+      exit 0
+      ;;
+  esac
+done
+exec "${bin}/curl-served" "$@"
+`,
+      { mode: 0o755 },
+    );
+  });
+
+  /** The arguments the run gave the curl that fetched `url`. */
+  function argsFor(url: string): string {
+    const lines = fs.existsSync(curlArgs())
+      ? fs.readFileSync(curlArgs(), 'utf8').split('\n')
+      : [];
+    return lines.find((line) => line.endsWith(` ${url}`)) ?? '';
+  }
+
+  describe('the tarball download', () => {
+    const tarball = `https://${DOWNLOAD}/v0.10.0/cloudgate-0.10.0-linux-amd64.tar.gz`;
+
+    it('shows a progress bar when stderr is a terminal', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(path.join(bin, 'id'), '#!/bin/sh\necho 0\n', {
+        mode: 0o755,
+      });
+
+      // script(1) runs it on a terminal of its own.
+      const onTerminal = spawnSync(
+        'script',
+        ['-qec', `sh ${installer}`, '/dev/null'],
+        {
+          env: {
+            PATH: `${bin}:${process.env.PATH}`,
+            HOME: scratch,
+            CALLS: calls,
+            INSTALL_ROOT: root,
+            CLOUDGATE_PUBLIC_HOST: '203.0.113.10',
+            CLOUDGATE_SKIP_PREFLIGHT: '1',
+          },
+          encoding: 'utf8',
+        },
+      );
+
+      expect(onTerminal.status).toBe(0);
+      expect(argsFor(tarball)).toContain('--progress-bar');
+    });
+
+    it('stays quiet when stderr is not a terminal', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+
+      const piped = install();
+
+      expect(piped.status).toBe(0);
+      expect(piped.stderr).toBe('');
+      expect(argsFor(tarball)).not.toContain('--progress-bar');
+      expect(argsFor(tarball)).toMatch(/(^|\s)-[A-Za-z]*s[A-Za-z]*(\s|$)/);
+    });
+  });
+});
