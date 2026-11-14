@@ -91,7 +91,9 @@ install made before versions were published, is switched over: the checkout is m
 
 `CLOUDGATE_PUBLIC_HOST` is the only required input. It becomes the API address both env files carry (`CLOUDGATE_API_URL`), which the console reads when it starts; changing it later is an edit to those files and a restart ([§3](#3-why-the-console-and-the-api-share-one-hostname)).
 
-`deploy/install.sh` is one file, and it does the whole thing: base packages, Node from `nodejs.org` (checksum-verified), Docker, `swarm init`, the `cloudgate-network` overlay, Postgres with a generated role, nixpacks, OpenTofu and its providers, the Session Manager plugin, the `cloudgate` service user, `/etc/cloudgate`, the env files, the version put in place, migrations, `traefik.yml`, the Traefik container, two systemd units, and ufw. It needs no `build-essential`, no `python3`, no pnpm and no swap file: the version arrives with the backend and console built and node-pty compiled.
+`deploy/install.sh` is one file, and it does the whole thing: base packages, Node from `nodejs.org` (checksum-verified, into `/usr/local/share/cloudgate/node`), Docker, `swarm init`, the `cloudgate-network` overlay, Postgres with a generated role, nixpacks, OpenTofu and its providers, the Session Manager plugin, the `cloudgate` service user, `/etc/cloudgate`, the env files, the version put in place, migrations, `traefik.yml`, the Traefik container, two systemd units, and ufw. It needs no `build-essential`, no `python3`, no pnpm and no swap file: the version arrives with the backend and console built and node-pty compiled.
+
+Node is Cloudgate's own, as OpenTofu is: both units run `/usr/local/share/cloudgate/node/bin/node`, never `/usr/local/bin/node`, and nothing in `/usr/local/bin`, `/usr/local/lib` or `/usr/local/include` is written or removed, so a Node of your own there is left alone. A command from `/opt/cloudgate/backend/dist/commands/` run by hand takes that path too.
 
 **It takes no subcommands.** `install.sh install` and `install.sh update` do not exist — it is one idempotent script, and re-running it is the update path (see [Upgrades](#7-upgrades)).
 
