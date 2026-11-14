@@ -336,25 +336,47 @@ The one-command install is the upgrade too. It installs the latest Cloudgate ver
 1. It downloads the version and checks its sha256, changing nothing if it does not match.
 2. It unpacks it into `/opt/cloudgate.next` and re-runs the install from there. Every step is
    guarded, so on an upgraded host they find their work done and move on.
-3. Just before the migrations, the version is put in place: the old `/opt/cloudgate` is moved
+3. When the version changes, it dumps the database with `pg_dump -Fc` to
+   `/var/backups/cloudgate/pre-<version>-<time>.dump` (mode 0600, root's), and keeps the newest
+   3 dumps there. A dump that fails stops the run with nothing moved. `CLOUDGATE_SKIP_BACKUP=1`
+   skips it, for a database too large to dump on every upgrade, and the run says it did.
+4. Just before the migrations, the version is put in place: the old `/opt/cloudgate` is moved
    to `/opt/cloudgate.previous`, and the new one renamed into its place. The units run the old
    version until then, and a run that stops before this point leaves the installed version whole.
-   The old version is deleted once both units have restarted onto the new one; a run that stops
-   in between leaves it at `.previous`, and the next run removes it before it moves anything.
-4. It migrates the database with the version's own `drizzle-kit`, and restarts both units.
+5. It migrates the database with the version's own `drizzle-kit`, and restarts both units.
+6. The old version is deleted once the backend answers `/settings/health`. A run that stops
+   before then leaves it at `.previous`, and the next run removes it before it moves anything.
 
 **A version that moves `TRAEFIK_VERSION` recreates `cloudgate-traefik` at it**, between the
 migrations and the restart, so ports 80 and 443 drop for a few seconds
 ([§6](#6-the-traefik-contract)).
 
 **A run on the version already installed downloads nothing**: it re-runs the installed version's
-own `deploy/install.sh`, which moves nothing, applies no migration and restarts both units. That
-is the way to repair a host whose packages or files someone changed.
+own `deploy/install.sh`, which takes no dump, moves nothing, applies no migration and restarts
+both units. That is the way to repair a host whose packages or files someone changed.
+
+**Going back, by hand.** When the backend never answers its health check, the run exits non-zero
+and keeps `/opt/cloudgate.previous`. It prints the dump it took, the old version's path,
+`journalctl -u cloudgate-backend` to read why, and these steps, which are never run for you:
+
+```bash
+systemctl stop cloudgate-backend cloudgate-console
+su - postgres -c "pg_restore --clean --if-exists --single-transaction -d cloudgate" < /var/backups/cloudgate/pre-<version>-<time>.dump
+rm -rf /opt/cloudgate && mv /opt/cloudgate.previous /opt/cloudgate
+install -m 0644 /opt/cloudgate/deploy/systemd/cloudgate-*.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl start cloudgate-backend cloudgate-console
+```
+
+Restore the dump together with the old version: the new version's migrations have already run
+against the database, and the old version does not know their tables. Or fix what the journal
+names and re-run the install, which finishes the upgrade and deletes `.previous`. The Hosted
+instance takes no dump here, since its updater backs up to B2 before it runs the install (§11).
 
 Read the version's "What to do on upgrade" lines in `CHANGELOG.md` before you upgrade. Versions
 only move forward: a version's migrations cannot be undone, so a `CLOUDGATE_VERSION` older than the
-installed one is refused, naming both, before anything changes, and the install does not keep the
-previous version once both units run the new one.
+installed one is refused, naming both, before anything changes. The previous version is kept only
+until the new one is healthy, and going back to it is by hand, above.
 
 By hand, the same thing is the by-hand install in [§2](#2-install) with the new version's
 tarball, and `CLOUDGATE_PUBLIC_HOST` set to the value the install was given.
@@ -363,7 +385,7 @@ tarball, and `CLOUDGATE_PUBLIC_HOST` set to the value the install was given.
 
 Secrets are read back from `/etc/default/cloudgate-secrets` rather than regenerated, which is exactly right for an upgrade: a new `APP_ENCRYPTION_SECRET` would make every encrypted column permanently unreadable, and a new `PGPW` would leave `DATABASE_URL` disagreeing with a Postgres role the script will not touch. The Packages and Postgres steps hand apt only the packages actually missing, print `Required packages are installed ✅` when none are, and so cannot upgrade `curl`, `git` or `openssl` on the way past. An older install kept its secrets in `/root/cloudgate-live-test/env`, a verification run's scratch directory; the first run after that fix migrates the three keys to `/etc/default/cloudgate-secrets`, renames the old file `.migrated`, and prints that it did. **The rule this establishes is worth stating on its own: the instance's identity is `/etc/default/cloudgate-*`.** Keep those files and a reinstall is the same instance, with the same signing secrets and the same session cookies still valid. To reinstall as a genuinely *new* instance, remove `/etc/default/cloudgate-backend`, `/etc/default/cloudgate-console` and `/etc/default/cloudgate-secrets` **and** drop the `cloudgate` database — the secrets and the rows they key have to go together, and keeping either one alone gets you a half-migrated instance rather than a fresh one.
 
-**A host installed from a git checkout.** Until versions were published, the install cloned the repository into `/opt/cloudgate` and built it there. The next run of the one command switches such a host over by itself. The checkout holds no `VERSION`, so the run installs the latest version (or the one `CLOUDGATE_VERSION` names) as on a new host, reusing the public host from `/etc/default/cloudgate-console`. Where step 3 above would delete the old `/opt/cloudgate`, it moves the checkout to `/opt/cloudgate.checkout-<date>` instead (`.checkout-<date>.2` if one was moved there already that day) and keeps it, `node_modules` and `.next` included. `/etc/default/cloudgate-*` and the database are the instance's identity and are kept, so sessions and encrypted values still work after the switch. The run prints where the checkout went and that it can be deleted: nothing runs from it any more, so once anything of yours in it (changes nobody pushed, say) is kept elsewhere, `rm -rf` it. A `/opt/cloudgate` that is neither a checkout nor a Cloudgate version is refused, with nothing changed: move it aside yourself. A host from then also keeps the `/swapfile`, `build-essential` and `python3` the build needed; the install no longer creates or uses any of them and leaves them as they are.
+**A host installed from a git checkout.** Until versions were published, the install cloned the repository into `/opt/cloudgate` and built it there. The next run of the one command switches such a host over by itself. The checkout holds no `VERSION`, so the run installs the latest version (or the one `CLOUDGATE_VERSION` names) as on a new host, reusing the public host from `/etc/default/cloudgate-console`, and dumps the database first as step 3 says. Where step 4 above would move the old `/opt/cloudgate` to `.previous`, it moves the checkout to `/opt/cloudgate.checkout-<date>` instead (`.checkout-<date>.2` if one was moved there already that day) and keeps it, `node_modules` and `.next` included. `/etc/default/cloudgate-*` and the database are the instance's identity and are kept, so sessions and encrypted values still work after the switch. The run prints where the checkout went and that it can be deleted: nothing runs from it any more, so once anything of yours in it (changes nobody pushed, say) is kept elsewhere, `rm -rf` it. A `/opt/cloudgate` that is neither a checkout nor a Cloudgate version is refused, with nothing changed: move it aside yourself. A host from then also keeps the `/swapfile`, `build-essential` and `python3` the build needed; the install no longer creates or uses any of them and leaves them as they are.
 
 A queued deployment survives a restart, as a Cloud run does. The build queue is in memory, so the Deployment rows are what survive, and start-up settles them: a build still `pending` is queued again, oldest first, and Cancel reaches it as it reaches any waiting build, but one that cannot show what it was queued as (a build of a preview deleted in the meantime, or one recorded before Cloudgate kept that) ends `error` rather than being built as a guess; a build still `running` was cut off part-way, ends `error` with "Cut off by a Cloudgate restart before this build finished", and is never run again by itself — deploy it again; a build `held` for a plan stays held. That is why both units are `Restart=always`: `on-failure` was chosen only because `always` would have papered over the queue orphaning a build, and a restart no longer orphans one. A `systemctl stop` still stops the service.
 

@@ -8,6 +8,12 @@ A run of the one command, or of `deploy/install.sh`, now recreates `cloudgate-tr
 
 **What to do on upgrade**: nothing. Expect ports 80 and 443 to drop for a few seconds during the run when the version moves Traefik.
 
+### An upgrade dumps the database first and keeps the old version until the new one is healthy
+
+A Self-hosted run of the install that changes the version, from another version or from a git checkout, now dumps the database with `pg_dump -Fc` to `/var/backups/cloudgate/pre-<version>-<time>.dump` (mode 0600, root's) before it puts the new version in place, and keeps the newest 3 dumps, so `/var/backups` holds up to three copies of the database. A dump that fails stops the run with nothing moved. `CLOUDGATE_SKIP_BACKUP=1` skips the dump and the run says so; a run on the version already installed takes none, and neither does the Hosted instance, whose updater backs up to B2 first. The old version stays at `/opt/cloudgate.previous` until the backend answers `/settings/health`, not only until both units restart. When it never answers, the run exits non-zero, keeps `.previous`, and prints the dump, the old version's path, `journalctl -u cloudgate-backend` and the steps to go back by hand, which are never run for you (`docs/deploy.md` §7, ADR-0084).
+
+**What to do on upgrade**: nothing.
+
 ### A template may ship a `.js` config file
 
 A config file under a template's `files/` may now end in `.js`, for an application that reads its config as a JavaScript module, such as Formbricks. The backend's catalogue check, `cloudgate template check` and `cloudgate template pack` all take it. Every other rule for a config file is unchanged, and other scripts (`.sh`, `.py`, `.mjs`, `.cjs`, `.ts`) are still refused. A template ships its JavaScript config as `.js`, never as `.js.txt` renamed by its mount (ADR-0083).
