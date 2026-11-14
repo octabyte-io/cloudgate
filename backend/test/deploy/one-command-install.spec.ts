@@ -1688,7 +1688,16 @@ exit 0
    * sshd shimmed: what it allows, and in what order relative to enabling ufw.
    */
   describe('the firewall', () => {
-    function firewall(options: { sshd: string; sshConnection?: string }) {
+    /**
+     * The Firewall step as written, with `ufw` recording each rule, `sshd -T`
+     * answering as `sshd` says, and `systemctl show ssh.socket` answering
+     * with `socket` as the socket's Listen= value (none: no such unit).
+     */
+    function firewall(options: {
+      sshd: string;
+      sshConnection?: string;
+      socket?: string;
+    }) {
       const step = code().match(
         /\nlog "Firewall"\n[\s\S]*?\nufw --force enable\n/,
       );
@@ -1697,6 +1706,13 @@ exit 0
       fs.writeFileSync(
         path.join(bin, 'ufw'),
         `#!/bin/sh\necho "ufw $*" >> "${calls}"\n`,
+        { mode: 0o755 },
+      );
+      fs.writeFileSync(
+        path.join(bin, 'systemctl'),
+        options.socket === undefined
+          ? '#!/bin/sh\nexit 1\n'
+          : `#!/bin/sh\n[ "$1 $2 $3 $4" = "show ssh.socket --property=Listen --value" ] || exit 1\necho '${options.socket}'\n`,
         { mode: 0o755 },
       );
       fs.writeFileSync(path.join(bin, 'sshd'), `#!/bin/sh\n${options.sshd}\n`, {
@@ -1739,6 +1755,24 @@ exit 0
         expect(allowed).toBeLessThan(enabled);
       }
       expect(ufw).toContain('ufw allow OpenSSH');
+    });
+
+    // On 24.04 and later sshd is socket-activated: ssh.socket holds the
+    // port, and a port moved there (ListenStream=) is not in `sshd -T`.
+    it('allows a port ssh.socket listens on, before it enables ufw', () => {
+      const { ran, ufw } = firewall({
+        sshd: '[ "$1" = -T ] && printf "port 22\\n"',
+        socket: '0.0.0.0:2022 (Stream) [::]:2022 (Stream)',
+      });
+
+      expect(ran.stderr).toBe('');
+      expect(ran.status).toBe(0);
+      const allowed = ufw.indexOf('ufw allow 2022/tcp');
+      expect(allowed).toBeGreaterThan(-1);
+      expect(allowed).toBeLessThan(ufw.indexOf('ufw --force enable'));
+      expect(ufw.filter((rule) => rule === 'ufw allow 2022/tcp')).toHaveLength(
+        1,
+      );
     });
 
     it('still allows OpenSSH and enables ufw when sshd cannot say its ports', () => {
