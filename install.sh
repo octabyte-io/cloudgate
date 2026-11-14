@@ -259,17 +259,22 @@ download_version() {
 PREFLIGHT_PORTS='80 443 3000 4000'
 # docs/deploy.md §1's Outbound row, held equal to it by
 # backend/test/deploy/one-command-install.spec.ts.
-PREFLIGHT_HOSTS='get.docker.com nodejs.org registry.npmjs.org registry-1.docker.io api.github.com github.com release-assets.githubusercontent.com'
+PREFLIGHT_HOSTS='get.docker.com nodejs.org registry.npmjs.org registry-1.docker.io api.github.com github.com release-assets.githubusercontent.com s3.amazonaws.com nixpacks.com'
 # 15 GB and 4 GB, in the KiB df and /proc/meminfo count in.
 PREFLIGHT_MIN_DISK_KIB=14648438
 PREFLIGHT_MIN_MEMORY_KIB=3906250
 
-# 0 when the listener <name> <pid> is Cloudgate's own, as on a re-run: a
-# process of one of its units, or docker-proxy holding a port for its Traefik.
+# 0 when the listener <name> <pid> on <port> is Cloudgate's own, as on a
+# re-run: a process of one of its units, or docker-proxy holding 80 or 443 for
+# its Traefik. docker-proxy holds a port for any container that publishes it,
+# and Traefik publishes only those two, so one on 3000 or 4000 is someone
+# else's container.
 cloudgate_listener() {
   grep -qE 'cloudgate-(backend|console)\.service' "${INSTALL_ROOT:-}/proc/$2/cgroup" 2>/dev/null &&
     return 0
-  [ "$1" = docker-proxy ] && command -v docker >/dev/null 2>&1 &&
+  [ "$1" = docker-proxy ] || return 1
+  case "$3" in 80 | 443) ;; *) return 1 ;; esac
+  command -v docker >/dev/null 2>&1 &&
     [ -n "$(docker ps -q --filter 'name=^cloudgate-traefik$' 2>/dev/null)" ]
 }
 
@@ -293,7 +298,7 @@ preflight_ports() {
       print port "\t" pid "\t" name
     }' |
     while IFS="$(printf '\t')" read -r port pid name; do
-      cloudgate_listener "$name" "$pid" && continue
+      cloudgate_listener "$name" "$pid" "$port" && continue
       echo "port $port is held by $name (pid $pid), which is not Cloudgate's; what Cloudgate runs on it will not start until it is free."
     done
 }

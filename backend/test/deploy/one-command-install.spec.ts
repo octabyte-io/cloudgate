@@ -2155,6 +2155,8 @@ exec "${bin}/curl-served" "$@"
       'api.github.com',
       'github.com',
       'release-assets.githubusercontent.com',
+      's3.amazonaws.com',
+      'nixpacks.com',
     ];
 
     function shim(tool: string, body: string) {
@@ -2280,6 +2282,28 @@ esac`,
 
       expect(other.status).toBe(0);
       expect(other.stderr).toMatch(/port 80 .*docker-proxy \(pid 950\)/);
+    });
+
+    // docker-proxy holds a port for whichever container publishes it; while
+    // Cloudgate's Traefik runs, only 80 and 443 are its.
+    it('warns about docker-proxy on 3000 or 4000 while Cloudgate’s Traefik runs, since Traefik publishes only 80 and 443', () => {
+      listening(
+        'LISTEN 0 4096 0.0.0.0:80 0.0.0.0:* users:(("docker-proxy",pid=950,fd=7))',
+        'LISTEN 0 4096 0.0.0.0:443 0.0.0.0:* users:(("docker-proxy",pid=951,fd=7))',
+        'LISTEN 0 4096 0.0.0.0:3000 0.0.0.0:* users:(("docker-proxy",pid=960,fd=7))',
+        'LISTEN 0 4096 0.0.0.0:4000 0.0.0.0:* users:(("docker-proxy",pid=961,fd=7))',
+      );
+      shim('docker', `case "$*" in *cloudgate-traefik*) echo 3f2a9c1b ;; esac`);
+
+      const published = checked();
+
+      expect(published.status).toBe(0);
+      const warnings = published.stderr
+        .split('\n')
+        .filter((line) => line.includes('docker-proxy'));
+      expect(warnings).toHaveLength(2);
+      expect(warnings[0]).toMatch(/port 3000 .*docker-proxy \(pid 960\)/);
+      expect(warnings[1]).toMatch(/port 4000 .*docker-proxy \(pid 961\)/);
     });
 
     it('warns when less than 15 GB is free where /opt and /usr/local live, naming each mount once', () => {

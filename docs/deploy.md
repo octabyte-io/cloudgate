@@ -14,7 +14,7 @@ What broke on a real install is written down here as well as what worked: see [K
 | Access | root over SSH |
 | Ports open inbound | 22, 80, 443, 3000, 4000 |
 | DNS | none required — `sslip.io` resolves `<name>.<ip>.sslip.io` to `<ip>`, which is how deployed apps were reached |
-| Outbound | `get.docker.com`, `nodejs.org`, the npm registry (`registry.npmjs.org`), Docker Hub (`registry-1.docker.io`), `api.github.com` (which Cloudgate version is the latest), `github.com` (the Cloudgate version itself, the OpenTofu and provider releases, [§7](#opentofu-and-the-providers), and the Template catalogue, [below](#the-template-catalogue)), and GitHub's release-download host, `release-assets.githubusercontent.com`, which a release download redirects to |
+| Outbound | `get.docker.com`, `nodejs.org`, the npm registry (`registry.npmjs.org`), Docker Hub (`registry-1.docker.io`), `api.github.com` (which Cloudgate version is the latest), `github.com` (the Cloudgate version itself, the OpenTofu and provider releases, [§7](#opentofu-and-the-providers), and the Template catalogue, [below](#the-template-catalogue)), GitHub's release-download host, `release-assets.githubusercontent.com`, which a release download redirects to, `s3.amazonaws.com` (the Session Manager plugin) and `nixpacks.com` (nixpacks' installer) |
 
 Check the host has no cloud firewall in front of it before you start. A provider-level block on 3000/4000 looks exactly like a broken install:
 
