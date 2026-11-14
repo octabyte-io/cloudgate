@@ -1843,7 +1843,7 @@ fi
  * arguments are kept, and a probe of `https://<host>/` answers unless
  * UNREACHABLE names the host; anything else goes to the served shim above.
  */
-describe('install.sh, before and while it downloads', () => {
+describe('install.sh (before and while it downloads)', () => {
   const curlArgs = () => path.join(scratch, 'curl-args');
 
   beforeEach(() => {
@@ -2158,6 +2158,12 @@ esac`,
 
       expect(everything.status).toBe(0);
       expect(handedOver()).toBe(true);
+      expect(everything.stderr).toMatch(/port 443 .*apache2/);
+      expect(everything.stderr).toContain('free on /');
+      expect(everything.stderr).toContain('memory');
+      expect(everything.stderr.match(/did not answer/g)).toHaveLength(
+        HOSTS.length,
+      );
       expect(everything.stderr).toContain('CLOUDGATE_SKIP_PREFLIGHT=1');
     });
 
@@ -2179,5 +2185,117 @@ esac`,
       expect(called()).not.toContain('ss ');
       for (const host of HOSTS) expect(argsFor(`https://${host}/`)).toBe('');
     });
+  });
+});
+
+/**
+ * The log every run of deploy/install.sh leaves: start_install_log cut out of
+ * the file and run under bash with the log directory in scratch. The clock is
+ * the one boundary: `date` says 2026-11-14 12:00:00.
+ */
+describe('deploy/install.sh (its log)', () => {
+  const script = path.join(repoRoot, 'deploy/install.sh');
+  const source = () => fs.readFileSync(script, 'utf8');
+  const logs = () => path.join(scratch, 'var/log/cloudgate');
+  const NEW_LOG = 'install-20261114-120000.log';
+
+  /** Runs start_install_log, then `then`, as the rest of a run. */
+  function logged(then: string) {
+    const fns = ['start_install_log', 'install_log_exit']
+      .map((name) => {
+        const fn = source().match(
+          new RegExp(`^${name}\\(\\) \\{\\n[\\s\\S]*?\\n\\}\\n`, 'm'),
+        );
+        if (!fn) throw new Error(`no ${name} in deploy/install.sh`);
+        return fn[0];
+      })
+      .join('');
+    const bin = path.join(scratch, 'bin');
+    fs.writeFileSync(
+      path.join(bin, 'date'),
+      '#!/bin/sh\n[ "$1" = +%Y%m%d-%H%M%S ] && echo 20261114-120000\n',
+      { mode: 0o755 },
+    );
+    return spawnSync(
+      'bash',
+      [
+        '-c',
+        `set -euo pipefail; INSTALL_LOG_DIR="$1"\n${fns}start_install_log\n${then}`,
+        'bash',
+        logs(),
+      ],
+      {
+        env: { PATH: `${bin}:${process.env.PATH}` },
+        encoding: 'utf8',
+      },
+    );
+  }
+
+  it('copies the run’s stdout and stderr to install-<YYYYmmdd-HHMMSS>.log, readable by root alone', () => {
+    const ran = logged('echo "==> Docker"; echo "E: a failure" >&2');
+
+    expect(ran.status).toBe(0);
+    expect(ran.stdout).toContain('==> Docker');
+    expect(ran.stderr).toContain('E: a failure');
+    const log = path.join(logs(), NEW_LOG);
+    expect(fs.readFileSync(log, 'utf8')).toContain('==> Docker\n');
+    expect(fs.readFileSync(log, 'utf8')).toContain('E: a failure\n');
+    expect(fs.statSync(log).mode & 0o777).toBe(0o600);
+  });
+
+  it('keeps the newest 10 logs, this run’s among them', () => {
+    fs.mkdirSync(logs(), { recursive: true });
+    for (let day = 1; day <= 12; day++) {
+      const date = `202611${String(day).padStart(2, '0')}`;
+      fs.writeFileSync(path.join(logs(), `install-${date}-090000.log`), '');
+    }
+    fs.writeFileSync(path.join(logs(), 'notes.txt'), 'mine');
+
+    const ran = logged('true');
+
+    expect(ran.status).toBe(0);
+    expect(fs.readdirSync(logs()).sort()).toEqual([
+      'install-20261104-090000.log',
+      'install-20261105-090000.log',
+      'install-20261106-090000.log',
+      'install-20261107-090000.log',
+      'install-20261108-090000.log',
+      'install-20261109-090000.log',
+      'install-20261110-090000.log',
+      'install-20261111-090000.log',
+      'install-20261112-090000.log',
+      NEW_LOG,
+      'notes.txt',
+    ]);
+  });
+
+  it('names the log and the backend’s journal when the run fails', () => {
+    const failed = logged('echo "==> Database migrations"; exit 3');
+
+    expect(failed.status).toBe(3);
+    expect(failed.stderr).toContain(path.join(logs(), NEW_LOG));
+    expect(failed.stderr).toContain('journalctl -u cloudgate-backend -n 50');
+  });
+
+  it('names neither when the run succeeds', () => {
+    const done = logged('echo "==> Done."');
+
+    expect(done.status).toBe(0);
+    expect(done.stderr).not.toContain('journalctl');
+    expect(done.stderr).not.toContain(NEW_LOG);
+  });
+
+  it('starts logging once the run is root’s and before anything changes the box', () => {
+    const lines = source()
+      .split('\n')
+      .filter((line) => !/^\s*#/.test(line))
+      .join('\n');
+    const root = lines.indexOf('[ "$(id -u)" -eq 0 ] ||');
+    const started = lines.indexOf('\nstart_install_log\n');
+    const packages = lines.indexOf('\nlog "Packages"\n');
+
+    expect(root).toBeGreaterThan(-1);
+    expect(started).toBeGreaterThan(root);
+    expect(packages).toBeGreaterThan(started);
   });
 });

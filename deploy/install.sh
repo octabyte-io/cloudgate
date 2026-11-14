@@ -323,6 +323,30 @@ ensure_packages() {
 
 [ "$(id -u)" -eq 0 ] || { echo "must run as root" >&2; exit 1; }
 
+# Every run's output, stdout and stderr both, is copied to its own log, so a
+# failure can be read after the terminal that watched it is gone. Root's
+# alone (0600), as /etc/default/cloudgate-* are: a failing command can print
+# what it was handed. The newest 10 are kept; the names sort by time.
+# A failing exit ends by naming the log and the backend's journal.
+INSTALL_LOG_DIR=/var/log/cloudgate
+start_install_log() {
+  mkdir -p "$INSTALL_LOG_DIR"
+  INSTALL_LOG="$INSTALL_LOG_DIR/install-$(date +%Y%m%d-%H%M%S).log"
+  (umask 077 && : >>"$INSTALL_LOG")
+  chmod 0600 "$INSTALL_LOG"
+  find "$INSTALL_LOG_DIR" -maxdepth 1 -type f -name 'install-*.log' | sort | head -n -10 |
+    while read -r old; do rm -f -- "$old"; done
+  exec > >(tee -a "$INSTALL_LOG") 2> >(tee -a "$INSTALL_LOG" >&2)
+  trap 'install_log_exit $?' EXIT
+}
+install_log_exit() {
+  [ "$1" -ne 0 ] || return 0
+  echo "" >&2
+  echo "The install stopped (exit code $1). Everything it printed is in $INSTALL_LOG." >&2
+  echo "What the backend logged last: journalctl -u cloudgate-backend -n 50" >&2
+}
+start_install_log
+
 # A Cloudgate version carries VERSION at its top level; a git checkout or a
 # copy of the repository does not, and has nothing built to run.
 if [ ! -f "$REPO_ROOT/VERSION" ]; then
