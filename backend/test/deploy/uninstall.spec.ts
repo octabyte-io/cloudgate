@@ -327,6 +327,125 @@ describe('deploy/uninstall.sh', () => {
     });
   });
 
+  describe('--purge', () => {
+    const INSTANCE = [
+      'etc/default/cloudgate-backend',
+      'etc/default/cloudgate-console',
+      'etc/default/cloudgate-secrets',
+      'etc/cloudgate',
+      'var/backups/cloudgate',
+    ];
+
+    /** The SQL psql was handed, one statement a line, in order. */
+    function sql(): string[] {
+      return called().filter((line) => /^DROP /.test(line));
+    }
+
+    it('asks for the public host, and on an exact match drops the database and both roles and removes the env files, /etc/cloudgate and the dumps', () => {
+      installed();
+
+      const ran = uninstall(['--purge'], { input: '203.0.113.10\n' });
+
+      expect(ran.stderr).toBe('');
+      expect(ran.status).toBe(0);
+      expect(ran.stdout).toContain('203.0.113.10');
+      expect(called()).toContain('su - postgres');
+      expect(sql()).toEqual([
+        'DROP DATABASE IF EXISTS cloudgate WITH (FORCE);',
+        'DROP ROLE IF EXISTS cloudgate_state;',
+        'DROP ROLE IF EXISTS cloudgate;',
+      ]);
+      // The units that hold connections to it are gone first.
+      expect(called().indexOf('su - postgres')).toBeGreaterThan(
+        called().indexOf('systemctl disable --now cloudgate-backend.service'),
+      );
+      for (const gone of INSTANCE) {
+        expect({ gone, exists: exists(gone) }).toEqual({ gone, exists: false });
+      }
+      expect(exists('opt/cloudgate')).toBe(false);
+      expect(exists('etc/default/ufw')).toBe(true);
+      expect(exists('opt/mine/notes')).toBe(true);
+    });
+
+    it.each([
+      ['another host', '198.51.100.7\n'],
+      ['a prefix of it', '203.0.113.1\n'],
+      ['it with a space in front', ' 203.0.113.10\n'],
+      ['nothing, at the end of its input', ''],
+    ])('changes nothing when the answer is %s', (_, input) => {
+      installed();
+      const before = snapshot();
+
+      const ran = uninstall(['--purge'], { input });
+
+      expect(ran.status).not.toBe(0);
+      expect(ran.stderr).toContain('Nothing was changed');
+      expect(called()).toEqual([]);
+      expect(snapshot()).toEqual(before);
+      expect(fs.existsSync(traefik)).toBe(true);
+    });
+
+    // The Hosted instance's console is reached at https://<hostname>, which
+    // names no address; its backend's env file keeps the one it was given.
+    it('reads the Hosted instance’s host from the backend’s CLOUDGATE_PUBLIC_HOST', () => {
+      installed();
+      put(
+        'etc/default/cloudgate-backend',
+        `${BACKEND_ENV}CLOUDGATE_PUBLIC_HOST='198.51.100.7'\n`,
+      );
+      put(
+        'etc/default/cloudgate-console',
+        'NODE_ENV=production\nCLOUDGATE_API_URL=https://cloudgate.example.app\n',
+      );
+
+      const ran = uninstall(['--purge'], { input: '198.51.100.7\n' });
+
+      expect(ran.status).toBe(0);
+      expect(sql()).toHaveLength(3);
+      expect(exists('etc/default/cloudgate-backend')).toBe(false);
+    });
+
+    it('reads an IPv6 host without the brackets its URL carries', () => {
+      installed();
+      put(
+        'etc/default/cloudgate-console',
+        'NODE_ENV=production\nCLOUDGATE_API_URL=http://[2001:db8::10]:4000\n',
+      );
+
+      const ran = uninstall(['--purge'], { input: '2001:db8::10\n' });
+
+      expect(ran.status).toBe(0);
+      expect(sql()).toHaveLength(3);
+    });
+
+    it('refuses, changing nothing, when neither env file names a public host', () => {
+      installed();
+      fs.rmSync(path.join(root, 'etc/default/cloudgate-console'));
+      const before = snapshot();
+
+      const ran = uninstall(['--purge'], { input: '203.0.113.10\n' });
+
+      expect(ran.status).not.toBe(0);
+      expect(ran.stderr).toContain('Nothing was changed');
+      expect(called()).toEqual([]);
+      expect(snapshot()).toEqual(before);
+    });
+
+    // The secrets are what make the database readable: removed only once it
+    // is gone, so a failed drop never leaves a database nothing can decrypt.
+    it('keeps the env files, /etc/cloudgate and the dumps when the database cannot be dropped', () => {
+      installed();
+      shim('psql', `echo "psql $*" >> "${calls}"\ncat > /dev/null\nexit 1`);
+
+      const ran = uninstall(['--purge'], { input: '203.0.113.10\n' });
+
+      expect(ran.status).not.toBe(0);
+      for (const kept of INSTANCE) {
+        expect({ kept, exists: exists(kept) }).toEqual({ kept, exists: true });
+      }
+    });
+  });
+
   it('refuses a run that is not root, changing nothing', () => {
     installed();
     const before = snapshot();
