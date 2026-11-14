@@ -818,7 +818,7 @@ describe('deploy/install.sh', () => {
     });
 
     it('installs only the subset that is missing', () => {
-      expect(guard()).toContain('apt-get install -y -qq $missing');
+      expect(guard()).toContain('apt_get install -y -qq $missing');
     });
 
     it('routes both apt-using steps through the guard', () => {
