@@ -71,6 +71,32 @@ One install runs at a time. A second run started while one is under way stops be
 anything and says so. apt calls wait, for up to 10 minutes, while another apt holds its lock, as
 cloud-init and unattended-upgrades do for the first minutes of a fresh VPS.
 
+Before it downloads anything, the install checks the host and warns about what is likely to fail
+later. Each warning names what it found, and **none of them stops the run**:
+
+- a process that is not Cloudgate's listening on port 80, 443, 3000 or 4000 (from `ss -ltnp`,
+  naming the process and its pid); the units and Traefik of an earlier install are Cloudgate's;
+- less than 15 GB free on the filesystem that holds `/opt` or `/usr/local`;
+- less than 4 GB of memory (`MemTotal` in `/proc/meminfo`);
+- each host in the Outbound row of [§1](#1-what-you-need) that does not answer within 5 seconds.
+
+A GB here is 1,000,000,000 bytes. `CLOUDGATE_SKIP_PREFLIGHT=1` skips every check:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh \
+  | sudo CLOUDGATE_SKIP_PREFLIGHT=1 sh
+```
+
+Every download (the Cloudgate version, Node, Docker's installer, nixpacks, OpenTofu, its
+providers and the Session Manager plugin) is tried again up to 3 times when the connection drops
+or is refused, and gives up on a host that has not connected in 15 seconds. The Cloudgate tarball
+shows a progress bar when the install runs on a terminal.
+
+**Every run leaves a log.** `deploy/install.sh` copies everything it prints, errors included, to
+`/var/log/cloudgate/install-<YYYYmmdd-HHMMSS>.log`, readable by root alone, and keeps the newest
+10. A run that fails ends by naming its log and the command for the backend's last lines,
+`journalctl -u cloudgate-backend -n 50`.
+
 The same install by hand, which is all the one command does:
 
 ```bash

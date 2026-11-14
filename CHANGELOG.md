@@ -27,6 +27,12 @@ The one-command install now runs on Ubuntu 26.04 as well as 24.04, on amd64, wit
 
 **What to do on upgrade**: nothing.
 
+### The install warns before it downloads, retries its downloads, and logs every run
+
+Before downloading anything, the one-command install warns about what is likely to fail later: a process that is not Cloudgate's on port 80, 443, 3000 or 4000 (named, with its pid), less than 15 GB free where `/opt` or `/usr/local` live, less than 4 GB of memory, and each host `docs/deploy.md` §1 lists that does not answer within 5 seconds. No warning stops the run, and `CLOUDGATE_SKIP_PREFLIGHT=1` skips the checks. Every download in `install.sh` and `deploy/install.sh` tries again up to 3 times when its connection drops or is refused, and the Cloudgate tarball shows a progress bar on a terminal. `deploy/install.sh` copies everything it prints to `/var/log/cloudgate/install-<YYYYmmdd-HHMMSS>.log` (root only), keeps the newest 10, and a failed run ends by naming its log and `journalctl -u cloudgate-backend -n 50` (`docs/deploy.md` §2).
+
+**What to do on upgrade**: nothing.
+
 ### A template may ship a `.js` config file
 
 A config file under a template's `files/` may now end in `.js`, for an application that reads its config as a JavaScript module, such as Formbricks. The backend's catalogue check, `cloudgate template check` and `cloudgate template pack` all take it. Every other rule for a config file is unchanged, and other scripts (`.sh`, `.py`, `.mjs`, `.cjs`, `.ts`) are still refused. A template ships its JavaScript config as `.js`, never as `.js.txt` renamed by its mount (ADR-0083).

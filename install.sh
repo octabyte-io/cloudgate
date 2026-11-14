@@ -26,6 +26,9 @@
 #                          Default: the value the last install on this host
 #                          was given, and on a first install this host's
 #                          public IPv4 address, as api.ipify.org sees it.
+#   CLOUDGATE_SKIP_PREFLIGHT  1 skips the checks before the download, which
+#                          warn about busy ports, low disk and memory and
+#                          hosts that do not answer, and never stop the run.
 #
 # Everything else in the environment (HOSTED_MODE and its inputs, CONSOLE_PORT,
 # ...) reaches deploy/install.sh unchanged.
