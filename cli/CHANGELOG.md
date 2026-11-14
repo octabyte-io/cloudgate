@@ -2,6 +2,19 @@
 
 The Cloudgate CLI's own changes, published to npm as `@octabyte-io/cloudgate`. A server change a CLI feature needs gets its own entry in the root `CHANGELOG.md` as well.
 
+## 0.0.2-beta.4
+
+### Fixes
+
+- **`config plan` exits 1 when its plan is declined.** A no, or a mistyped Config name, applies nothing and now exits 1, as a root `cloudgate deploy` does, so a script can tell a declined plan from an applied one. It used to exit 0 (#34).
+- **A one-app `deploy` inside a Project folder uploads the Project folder.** In an app folder linked to one Service, when that folder sits in a Project folder of the same Project and the Service's config entry is a folder source (`source: { folder: apps/web }`), `deploy` now uploads the whole Project folder with the entry's subfolder as the build path, as a root deploy does for that app. It used to upload the app folder alone with `/` as its build path, losing the shared code beside it and turning the entry into `managed: console` (#33).
+- **A root `deploy` no longer rebuilds each folder-source app's previous upload.** The plan's Apply used to queue a build of the previous upload under the new build settings, which failed whenever they named a file only the new upload has, just before the CLI uploaded and built it properly. A root deploy now tells the Apply its folder-source apps are deployed next, so the Apply saves their settings and queues nothing for them. `config plan` alone, and a deploy with `--service`, behave as before (#28).
+- **The changed-files upload says what really changed.** The `.env` a build writes is no longer counted as a deleted file, so a deploy stops saying `1 deleted` every time. When nothing is missing or deleted and the build path is the same, `deploy` says `Nothing changed since the last upload` and skips the upload's apply; an older Instance that does not answer this still applies. A field a plan removes reads `<field> (removed)` rather than as a plain change (#31).
+
+### `template check` and `template pack` take a `.js` config file
+
+A config file under a template's `files/` may end in `.js`, for an application that reads its config as a JavaScript module. Every other rule for a config file is unchanged, and other scripts (`.sh`, `.py`, `.mjs`, `.cjs`, `.ts`) are still refused (ADR-0083).
+
 ## 0.0.2-beta.3
 
 ### `cloudgate link --whole-project`, `cloudgate config pull` and `cloudgate config plan`: a Project folder
