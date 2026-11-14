@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### A template may ship a `.js` config file
+
+A config file under a template's `files/` may now end in `.js`, for an application that reads its config as a JavaScript module, such as Formbricks. The backend's catalogue check, `cloudgate template check` and `cloudgate template pack` all take it. Every other rule for a config file is unchanged, and other scripts (`.sh`, `.py`, `.mjs`, `.cjs`, `.ts`) are still refused. A template ships its JavaScript config as `.js`, never as `.js.txt` renamed by its mount (ADR-0083).
+
+**What to do on upgrade**: nothing. An install on an older Cloudgate refuses a catalogue that holds a `.js` and keeps its last good copy, so `cg-templates` publishes a template with a `.js` only after this version is out.
+
 ### The install installs a Cloudgate version instead of building one
 
 The one-command install no longer clones or builds anything. It installs a **Cloudgate version**: the latest one published, or the one `CLOUDGATE_VERSION=vX.Y.Z` names (`X.Y.Z` works too). A release counts as published only once its tarball is attached, and a `CLOUDGATE_VERSION` older than the installed one is refused, naming both, with nothing changed: migrations only go forward. It downloads the version's tarball from the GitHub Release for its tag, refuses it, changing nothing, when it does not match the `.sha256` published beside it or when the version has no release, and unpacks it into `/opt/cloudgate.next`. That version's `deploy/install.sh` runs every other step as before (Docker, OpenTofu, the Session Manager plugin, Postgres, Traefik, the env files, the hosted inputs and backups), puts the version in place at `/opt/cloudgate` just before the migrations, migrates with the version's own `drizzle-kit` and restarts both units. A run on the version already installed downloads nothing, moves nothing and only restarts. Gone from the install: `CLOUDGATE_REF` and `CLOUDGATE_REPOSITORY`, the clone and fast-forward, `pnpm install` and its node-pty check, both builds, the swap file, `build-essential`, `python3` and pnpm. `docs/deploy.md` §2 and §7 describe it, and building from source is a by-hand developer section in §2 (ADR-0082).

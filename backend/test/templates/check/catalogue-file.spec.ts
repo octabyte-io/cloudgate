@@ -364,13 +364,15 @@ describe('readCatalogueFile', () => {
 
   describe('config files', () => {
     const NOT_CONFIG =
-      'which is not a kind of config file a template ships; a config file ends in .conf, .cfg, .ini, .yaml, .yml, .json, .toml, .xml, .properties, .sql, .txt, .html, .css, .tmpl, or is named Caddyfile';
+      'which is not a kind of config file a template ships; a config file ends in .conf, .cfg, .ini, .yaml, .yml, .json, .toml, .xml, .properties, .sql, .txt, .html, .css, .tmpl, .js, or is named Caddyfile';
 
     it('refuses a script, a program, an archive, an image or a name with no ending', () => {
       for (const name of [
         'entrypoint.sh',
         'setup.py',
-        'init.js',
+        'init.mjs',
+        'init.cjs',
+        'init.ts',
         'app.env',
         'backup.zip',
         'logo.png',
@@ -386,8 +388,8 @@ describe('readCatalogueFile', () => {
       }
     });
 
-    it('takes every config ending ADR-0072 names, and Caddyfile, at any depth', () => {
-      // Written out from the ADR, not read from the module's own list.
+    it('takes every config ending ADR-0072 and ADR-0083 name, and Caddyfile, at any depth', () => {
+      // Written out from the ADRs, not read from the module's own list.
       const names = [
         'a.conf',
         'a.cfg',
@@ -403,6 +405,7 @@ describe('readCatalogueFile', () => {
         'a.html',
         'a.css',
         'a.tmpl',
+        'a.js',
         'Caddyfile',
         'nginx/conf.d/site.conf',
         'caddy/Caddyfile',
