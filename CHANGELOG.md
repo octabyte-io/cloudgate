@@ -22,7 +22,7 @@ A Self-hosted run of the install that changes the version, from another version 
 
 ### Cloudgate runs Node from its own folder
 
-The install unpacks Node into `/usr/local/share/cloudgate/node` instead of over `/usr/local`, and both units, the migrations and the Hosted commands run it from there. Nothing in `/usr/local/bin`, `/usr/local/lib` or `/usr/local/include` is written or removed, on a first install or an upgrade, so a Node of your own in `/usr/local` is left alone (`docs/deploy.md` §2).
+The install unpacks Node into `/usr/local/share/cloudgate/node` instead of over `/usr/local`, and both units, the migrations and the Hosted commands run it from there. Node writes and removes nothing in `/usr/local/bin`, `/usr/local/lib` or `/usr/local/include`, on a first install or an upgrade, so a Node of your own in `/usr/local` is left alone (`docs/deploy.md` §2). nixpacks' installer still writes `/usr/local/bin/nixpacks` until nixpacks is pinned (#56).
 
 **What to do on upgrade**: nothing. The Node an older install unpacked into `/usr/local` (`node`, `npm`, `npx` and `corepack` in `/usr/local/bin`, `lib/node_modules`, `include/node`) is no longer used and is left in place; remove it by hand if nothing else on the host uses it. To run a command from `/opt/cloudgate/backend/dist/commands/` by hand, use `/usr/local/share/cloudgate/node/bin/node`.
 
