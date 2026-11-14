@@ -436,6 +436,15 @@ main() {
 
   if [ -z "$public_host" ]; then
     public_host="$(previous_public_host)"
+    # Read back from files someone may have edited, so held to the same rule
+    # as one given, and refused before anything is downloaded.
+    if [ -n "$public_host" ] && ! public_host_ok "$public_host"; then
+      fail \
+        "The public host the last install used, read back from $BACKEND_ENV_FILE or $CONSOLE_ENV_FILE," \
+        "is \"$public_host\", which is not an IP address or hostname alone. Name it and run this again:" \
+        "    curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo CLOUDGATE_PUBLIC_HOST=<public ip or hostname> sh" \
+        "Nothing was changed."
+    fi
     [ -z "$public_host" ] || echo "Public host: $public_host (the one the last install used)"
   fi
   if [ -z "$public_host" ]; then

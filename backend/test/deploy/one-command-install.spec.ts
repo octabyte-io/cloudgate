@@ -418,6 +418,53 @@ describe('install.sh (the one-command install)', () => {
       expect(named.status).toBe(0);
       expect(called()).toContain('host=cloud.example.com\n');
     });
+
+    // A re-run with no CLOUDGATE_PUBLIC_HOST reuses what the env files hold,
+    // which someone may have edited since.
+    it.each([
+      [
+        'cloudgate-backend',
+        "NODE_ENV=production\nCLOUDGATE_PUBLIC_HOST='https://cloud.example.com'\n",
+        'https://cloud.example.com',
+      ],
+      [
+        'cloudgate-console',
+        'NODE_ENV=production\nCLOUDGATE_API_URL=http://203.0.113.10/console:4000\n',
+        '203.0.113.10/console',
+      ],
+    ])(
+      'refuses a public host read back from %s that is not a host alone, before downloading anything, saying to pass CLOUDGATE_PUBLIC_HOST',
+      (file, content, host) => {
+        releases('v0.10.0');
+        publish('0.10.0');
+        fs.mkdirSync(path.join(root, 'etc/default'), { recursive: true });
+        fs.writeFileSync(path.join(root, 'etc/default', file), content);
+
+        const refused = install({ CLOUDGATE_PUBLIC_HOST: '' });
+
+        expect(refused.status).toBe(1);
+        expect(refused.stderr).toContain(JSON.stringify(host));
+        expect(refused.stderr).toContain('sudo CLOUDGATE_PUBLIC_HOST=');
+        expect(refused.stderr).toContain('Nothing was changed');
+        expect(called()).toBe('');
+        expect(opt()).toEqual([]);
+      },
+    );
+
+    it('reuses a public host read back from the env files when it is a host alone', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+      fs.mkdirSync(path.join(root, 'etc/default'), { recursive: true });
+      fs.writeFileSync(
+        path.join(root, 'etc/default/cloudgate-console'),
+        'NODE_ENV=production\nCLOUDGATE_API_URL=http://198.51.100.7:4000\n',
+      );
+
+      const reused = install({ CLOUDGATE_PUBLIC_HOST: '' });
+
+      expect(reused.status).toBe(0);
+      expect(called()).toContain('host=198.51.100.7\n');
+    });
   });
 
   describe('the Cloudgate version it installs', () => {
