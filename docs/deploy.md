@@ -366,7 +366,8 @@ The one-command install is the upgrade too. It installs the latest Cloudgate ver
 1. It downloads the version and checks its sha256, changing nothing if it does not match.
 2. It unpacks it into `/opt/cloudgate.next` and re-runs the install from there. Every step is
    guarded, so on an upgraded host they find their work done and move on.
-3. When the version changes, it dumps the database with `pg_dump -Fc` to
+3. When the version changes and the `cloudgate` database was there before the run (a reinstall
+   after the uninstall in [§10](#10-operating-it) included), it dumps the database with `pg_dump -Fc` to
    `/var/backups/cloudgate/pre-<version>-<time>.dump` (mode 0600, root's), and keeps the newest
    3 dumps there. A dump that fails stops the run with nothing moved. `CLOUDGATE_SKIP_BACKUP=1`
    skips it, for a database too large to dump on every upgrade, and the run says it did.
@@ -391,16 +392,24 @@ and keeps `/opt/cloudgate.previous`. It prints the dump it took, the old version
 
 ```bash
 systemctl stop cloudgate-backend cloudgate-console
-su - postgres -c "pg_restore --clean --if-exists --single-transaction -d cloudgate" < /var/backups/cloudgate/pre-<version>-<time>.dump
+su - postgres -c "dropdb --if-exists cloudgate"
+su - postgres -c "createdb -O cloudgate cloudgate"
+su - postgres -c "pg_restore --exit-on-error --single-transaction -d cloudgate" < /var/backups/cloudgate/pre-<version>-<time>.dump
 rm -rf /opt/cloudgate && mv /opt/cloudgate.previous /opt/cloudgate
-install -m 0644 /opt/cloudgate/deploy/systemd/cloudgate-*.service /etc/systemd/system/
+install -m 0644 /opt/cloudgate/deploy/systemd/cloudgate-backend.service /opt/cloudgate/deploy/systemd/cloudgate-console.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl start cloudgate-backend cloudgate-console
 ```
 
 Restore the dump together with the old version: the new version's migrations have already run
-against the database, and the old version does not know their tables. Or fix what the journal
-names and re-run the install, which finishes the upgrade and deletes `.previous`. The Hosted
+against the database, and the old version does not know their tables. The database is dropped and
+created again, owned by `cloudgate`, before the dump goes into it: `pg_restore --clean` would drop
+only what the dump holds, leave what the migrations added, and can stop halfway on what depends on
+it. When the run took no dump (`CLOUDGATE_SKIP_BACKUP=1`), it says so and prints no database steps:
+the old version would then run against a database the new one migrated. Going back leaves Node in
+`/usr/local/share/cloudgate/node`, Traefik and `/etc/default/cloudgate-*` as the run left them.
+Or fix what the journal names and re-run the install, which finishes the upgrade and deletes
+`.previous`. The Hosted
 instance takes no dump here, since its updater backs up to B2 before it runs the install (§11).
 
 Read the version's "What to do on upgrade" lines in `CHANGELOG.md` before you upgrade. Versions

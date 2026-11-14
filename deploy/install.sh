@@ -870,9 +870,13 @@ drop_previous_version() {
 }
 
 # A dump of the database before a run that changes the version, because the
-# migrations after place_version only go forward (ADR-0084). Taken when what
-# is at $INSTALL_DIR is another version or a git checkout; a re-run of the
-# installed version migrates nothing and a first install has nothing to keep.
+# migrations after place_version only go forward (ADR-0084). Taken when the
+# cloudgate database was there before this run (have_db, Postgres's answer
+# before the guard above created it) and what is at $INSTALL_DIR is another
+# version, a git checkout or nothing: a reinstall after deploy/uninstall.sh
+# finds no $INSTALL_DIR but the database it kept. A re-run of the installed
+# version migrates nothing and a first install has no database to keep.
+# A .partial left by a run killed mid-dump is swept away first.
 # The Hosted instance's updater backs up to B2 before it runs the install
 # (ADR-0081), so it takes none here. Written by root under umask 077, so the
 # dump, which holds every secret the database does, is root's alone; the
@@ -883,8 +887,9 @@ DATABASE_DUMP=''
 dump_database() {
   local installed='' partial
   DATABASE_DUMP=''
+  rm -f -- "$BACKUP_DIR"/pre-*.dump.partial
   [ -n "${HOSTED_MODE:-}" ] && return 0
-  [ -e "$INSTALL_DIR" ] || return 0
+  [ "${have_db:-}" = 1 ] || return 0
   [ -f "$INSTALL_DIR/VERSION" ] && installed="$(cat "$INSTALL_DIR/VERSION")"
   [ "$installed" = "$VERSION" ] && return 0
   if [ "${CLOUDGATE_SKIP_BACKUP:-}" = 1 ]; then
@@ -1226,30 +1231,44 @@ log "Verification"
 
 # How to go back by hand to the version place_version moved aside, printed
 # when the new one never answers its health check. Never done for the
-# operator: going back is by hand (ADR-0084). The old version's own unit
-# files go back with it, since the new version's were installed above.
+# operator: going back is by hand (ADR-0084). The database is dropped and
+# created again before the dump is restored, not restored over with
+# `pg_restore --clean`: that drops only what the dump holds, so it leaves the
+# tables and types the new version's migrations added, and can stop halfway on
+# what depends on them. Only the old version's two units go back with it: a
+# glob would also catch the Hosted instance's cloudgate-backup units.
 way_back() {
-  local previous="$INSTALL_DIR.previous"
+  local previous="$INSTALL_DIR.previous" old units
   echo "The backend did not answer http://127.0.0.1:${API_PORT}/settings/health."
   echo "journalctl -u cloudgate-backend says why."
   [ -d "$previous" ] || return 0
+  old="Cloudgate $(cat "$previous/VERSION" 2>/dev/null || echo '(a checkout)')"
+  units="$INSTALL_DIR/deploy/systemd"
   echo
-  echo "Cloudgate $(cat "$previous/VERSION" 2>/dev/null || echo '(a checkout)') is kept at $previous."
+  echo "$old is kept at $previous."
   if [ -n "$DATABASE_DUMP" ]; then
     echo "The database as it was before this run is dumped at $DATABASE_DUMP."
   else
-    echo "No dump of the database was taken before this run."
+    echo "No dump of the database was taken before this run. Going back puts the old"
+    echo "version's files back, and nothing else:"
+    echo "$old would run against a database Cloudgate $(cat "$INSTALL_DIR/VERSION" 2>/dev/null) has migrated."
   fi
   echo "To go back to it by hand, as root:"
   echo
   echo "    systemctl stop cloudgate-backend cloudgate-console"
   if [ -n "$DATABASE_DUMP" ]; then
-    echo "    su - postgres -c \"pg_restore --clean --if-exists --single-transaction -d cloudgate\" < $DATABASE_DUMP"
+    echo "    su - postgres -c \"dropdb --if-exists cloudgate\""
+    echo "    su - postgres -c \"createdb -O cloudgate cloudgate\""
+    echo "    su - postgres -c \"pg_restore --exit-on-error --single-transaction -d cloudgate\" < $DATABASE_DUMP"
   fi
   echo "    rm -rf $INSTALL_DIR && mv $previous $INSTALL_DIR"
-  echo "    install -m 0644 $INSTALL_DIR/deploy/systemd/cloudgate-*.service /etc/systemd/system/"
+  echo "    install -m 0644 $units/cloudgate-backend.service $units/cloudgate-console.service /etc/systemd/system/"
   echo "    systemctl daemon-reload"
   echo "    systemctl start cloudgate-backend cloudgate-console"
+  echo
+  echo "Going back leaves Node in /usr/local/share/cloudgate/node, Traefik and"
+  echo "/etc/default/cloudgate-* as this run left them."
+  echo "Re-running the install instead finishes the upgrade, and removes $previous."
 }
 
 # The backend maps its routes before it listens, which takes ~15s on two slow

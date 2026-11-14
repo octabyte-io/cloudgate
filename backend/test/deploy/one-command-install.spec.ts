@@ -975,9 +975,18 @@ describe('deploy/install.sh', () => {
     const into = () => path.join(root, 'opt/cloudgate');
     const backups = () => path.join(root, 'var/backups/cloudgate');
 
+    /**
+     * `database` is Postgres's answer, before the install's guard creates
+     * it, to whether a `cloudgate` database is there: the install asks once
+     * and keeps the answer in `have_db`.
+     */
     function dump(
       installing: string,
-      options: { env?: Record<string, string>; pgDump?: string } = {},
+      options: {
+        env?: Record<string, string>;
+        pgDump?: string;
+        database?: boolean;
+      } = {},
     ) {
       const fn = source().match(/^dump_database\(\) \{\n[\s\S]*?\n\}\n/m);
       if (!fn) throw new Error('no dump_database in deploy/install.sh');
@@ -1002,11 +1011,12 @@ describe('deploy/install.sh', () => {
         'bash',
         [
           '-c',
-          `set -euo pipefail; INSTALL_DIR="$1"; BACKUP_DIR="$2"; VERSION="$3"; ${fn[0]} dump_database || exit 1; echo "DATABASE_DUMP=$DATABASE_DUMP"`,
+          `set -euo pipefail; INSTALL_DIR="$1"; BACKUP_DIR="$2"; VERSION="$3"; have_db="$4"; ${fn[0]} dump_database || exit 1; echo "DATABASE_DUMP=$DATABASE_DUMP"`,
           'bash',
           into(),
           backups(),
           installing,
+          options.database === false ? '' : '1',
         ],
         {
           encoding: 'utf8',
@@ -1060,11 +1070,50 @@ describe('deploy/install.sh', () => {
     });
 
     it('takes no dump on a first install, which has no database to keep', () => {
+      const dumped = dump('0.10.0', { database: false });
+
+      expect(dumped.status).toBe(0);
+      expect(dumped.stdout).toContain('DATABASE_DUMP=\n');
+      expect(dumps()).toEqual([]);
+      expect(called()).toBe('');
+    });
+
+    it('dumps the database on a reinstall after an uninstall, which kept the database and removed /opt/cloudgate', () => {
+      const dumped = dump('0.10.0');
+
+      expect(dumped.status).toBe(0);
+      expect(dumps()).toEqual(['pre-0.10.0-20261114T120000Z.dump']);
+      expect(called()).toBe('su - postgres\npg_dump -Fc cloudgate\n');
+    });
+
+    it('decides on the answer Postgres gave before the install created the database', () => {
+      const lines = code();
+      const asked = lines.indexOf(
+        `have_db="$(su - postgres -c "psql -tAc \\"SELECT 1 FROM pg_database WHERE datname='cloudgate'\\"")"`,
+      );
+      const created = lines.indexOf('createdb -O cloudgate cloudgate');
+
+      expect(asked).toBeGreaterThan(-1);
+      expect(created).toBeGreaterThan(asked);
+      expect(lines.indexOf('\ndump_database || exit 1\n')).toBeGreaterThan(
+        created,
+      );
+      // Nothing between the question and the dump assigns it again.
+      expect(lines.match(/\bhave_db=/g)).toHaveLength(1);
+    });
+
+    it('sweeps away a partial dump a killed run left behind', () => {
+      versionTree('0.10.0', into());
+      fs.mkdirSync(backups(), { recursive: true });
+      fs.writeFileSync(
+        path.join(backups(), 'pre-0.10.0-20261113T090000Z.dump.partial'),
+        'half',
+      );
+
       const dumped = dump('0.10.0');
 
       expect(dumped.status).toBe(0);
       expect(dumps()).toEqual([]);
-      expect(called()).toBe('');
     });
 
     it('skips the dump with CLOUDGATE_SKIP_BACKUP=1, and says so', () => {
@@ -1162,6 +1211,8 @@ describe('deploy/install.sh', () => {
     });
 
     describe('way_back', () => {
+      const into = () => path.join(root, 'opt/cloudgate');
+
       function wayBack(dumpFile: string) {
         const fn = source().match(/^way_back\(\) \{\n[\s\S]*?\n\}\n/m);
         if (!fn) throw new Error('no way_back in deploy/install.sh');
@@ -1171,41 +1222,126 @@ describe('deploy/install.sh', () => {
             '-c',
             `set -euo pipefail; API_PORT=4000; INSTALL_DIR="$1"; DATABASE_DUMP="$2"; ${fn[0]} way_back`,
             'bash',
-            path.join(root, 'opt/cloudgate'),
+            into(),
             dumpFile,
           ],
           { encoding: 'utf8' },
         );
       }
 
-      it('names the dump, the old version, the backend’s journal and the restore steps', () => {
-        const into = path.join(root, 'opt/cloudgate');
-        versionTree('0.10.0', into);
-        versionTree('0.9.0', `${into}.previous`);
+      /** The commands it prints to run as root, one per line, in order. */
+      function steps(said: string): string[] {
+        return said
+          .split('\n')
+          .filter((line) => line.startsWith('    '))
+          .map((line) => line.trim());
+      }
+
+      /**
+       * Runs the printed commands as root would, with Postgres's tools,
+       * `su`, `systemctl` and `install` shimmed to record what they were
+       * asked, and with what was redirected into each.
+       */
+      function goBack(commands: string[]) {
+        const bin = path.join(scratch, 'bin');
+        fs.writeFileSync(
+          path.join(bin, 'su'),
+          `#!/bin/sh\nexec sh -c "$4"\n`,
+          { mode: 0o755 },
+        );
+        for (const tool of ['dropdb', 'createdb']) {
+          fs.writeFileSync(
+            path.join(bin, tool),
+            `#!/bin/sh\necho "${tool} $*" >> "${calls}"\n`,
+            { mode: 0o755 },
+          );
+        }
+        fs.writeFileSync(
+          path.join(bin, 'pg_restore'),
+          `#!/bin/sh\necho "pg_restore $* < $(cat)" >> "${calls}"\n`,
+          { mode: 0o755 },
+        );
+        fs.writeFileSync(
+          path.join(bin, 'install'),
+          `#!/bin/sh\necho "install $*" >> "${calls}"\n`,
+          { mode: 0o755 },
+        );
+        return spawnSync('sh', ['-e', '-c', commands.join('\n')], {
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'pipe'],
+          env: { PATH: `${bin}:${process.env.PATH}` },
+        });
+      }
+
+      it('drops and recreates the database owned by cloudgate, restores the dump into it, then puts the old version back', () => {
+        versionTree('0.10.0', into());
+        versionTree('0.9.0', `${into()}.previous`);
+        const file = path.join(scratch, 'pre-0.10.0-20261114T120000Z.dump');
+        fs.writeFileSync(file, 'the dump');
+
+        const said = wayBack(file);
+        const back = goBack(steps(said.stdout));
+
+        expect(said.status).toBe(0);
+        expect(back.stderr).toBe('');
+        expect(back.status).toBe(0);
+        const units = `${into()}/deploy/systemd`;
+        expect(called()).toBe(
+          [
+            'systemctl stop cloudgate-backend cloudgate-console',
+            'dropdb --if-exists cloudgate',
+            'createdb -O cloudgate cloudgate',
+            'pg_restore --exit-on-error --single-transaction -d cloudgate < the dump',
+            `install -m 0644 ${units}/cloudgate-backend.service ${units}/cloudgate-console.service /etc/systemd/system/`,
+            'systemctl daemon-reload',
+            'systemctl start cloudgate-backend cloudgate-console',
+            '',
+          ].join('\n'),
+        );
+        expect(fs.readFileSync(path.join(into(), 'VERSION'), 'utf8')).toBe(
+          '0.9.0\n',
+        );
+        expect(fs.existsSync(`${into()}.previous`)).toBe(false);
+      });
+
+      it('names the dump, the old version, the backend’s journal, and what going back leaves as this run left it', () => {
+        versionTree('0.10.0', into());
+        versionTree('0.9.0', `${into()}.previous`);
         const file = '/var/backups/cloudgate/pre-0.10.0-20261114T120000Z.dump';
 
         const said = wayBack(file);
 
         expect(said.status).toBe(0);
         expect(said.stdout).toContain('journalctl -u cloudgate-backend');
-        expect(said.stdout).toContain(`${into}.previous`);
-        expect(said.stdout).toContain('0.9.0');
+        expect(said.stdout).toContain(`Cloudgate 0.9.0 is kept at ${into()}.previous`);
         expect(said.stdout).toContain(file);
+        expect(said.stdout).toContain('/usr/local/share/cloudgate/node');
+        expect(said.stdout).toContain('Traefik');
+        expect(said.stdout).toContain('/etc/default/cloudgate-*');
+        expect(said.stdout).toMatch(/re-run.*removes .*\.previous/is);
+        expect(said.stdout).not.toContain('pg_restore --clean');
+        // The Hosted instance's backup units are the version's too, and stay.
+        expect(said.stdout).not.toContain('cloudgate-*.service');
+      });
+
+      it('says the old version would run against a database the new one migrated, when no dump was taken', () => {
+        versionTree('0.10.0', into());
+        versionTree('0.9.0', `${into()}.previous`);
+
+        const said = wayBack('');
+
+        expect(said.status).toBe(0);
+        expect(said.stdout).toContain('No dump of the database was taken');
         expect(said.stdout).toContain(
-          'systemctl stop cloudgate-backend cloudgate-console',
+          'would run against a database Cloudgate 0.10.0 has migrated',
         );
-        expect(said.stdout).toContain(
-          `pg_restore --clean --if-exists --single-transaction -d cloudgate" < ${file}`,
-        );
-        expect(said.stdout).toContain(`mv ${into}.previous ${into}`);
-        expect(said.stdout).toContain(
-          'systemctl start cloudgate-backend cloudgate-console',
+        expect(steps(said.stdout).join('\n')).not.toMatch(
+          /dropdb|createdb|pg_restore/,
         );
       });
 
       it('names only the journal when there is no old version to go back to', () => {
-        const into = path.join(root, 'opt/cloudgate');
-        versionTree('0.10.0', into);
+        versionTree('0.10.0', into());
 
         const said = wayBack('');
 
