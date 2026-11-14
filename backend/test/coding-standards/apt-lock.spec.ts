@@ -30,7 +30,7 @@ function bare(file: string): { line: number; text: string }[] {
     .filter(({ text }) => APT_GET.test(text));
 }
 
-describe('the install scripts, on every apt-get going through apt_get', () => {
+describe('install.sh and every deploy/*.sh, on every apt-get going through apt_get', () => {
   const scripts = installScripts();
 
   it('reads the install scripts from git, the one-command install and deploy/install.sh among them', () => {

@@ -62,7 +62,7 @@ function exempt(file: string, line: string): boolean {
   return EXEMPT.some((e) => e.file === file && e.site.test(line));
 }
 
-describe('the install scripts, on every download curl retrying', () => {
+describe('install.sh and every deploy/*.sh, on every download curl retrying', () => {
   const scripts = installScripts();
 
   it('reads the install scripts from git, the one-command install and deploy/install.sh among them', () => {
