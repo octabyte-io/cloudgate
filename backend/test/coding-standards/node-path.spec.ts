@@ -18,7 +18,7 @@ const NEEDLE = ['/usr/local/bin', 'node'].join('/');
 const OURS = '/usr/local/share/cloudgate/node/bin/node';
 
 describe('deploy/install.sh and deploy/systemd/, on Node in /usr/local/share/cloudgate/node', () => {
-  it('names /usr/local/bin/node in no committed file outside docs/', () => {
+  it(`names ${NEEDLE} in no committed file outside docs/`, () => {
     const tracked = execFileSync('git', ['ls-files', '-z'], {
       cwd: repoRoot,
       encoding: 'utf8',
