@@ -199,6 +199,8 @@ CLOUDGATE_DIR=/etc/cloudgate
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # The committed unit files hardcode /opt/cloudgate so they need no templating.
 INSTALL_DIR=/opt/cloudgate
+# Where dump_database puts the dump it takes before an upgrade (ADR-0084).
+BACKUP_DIR=/var/backups/cloudgate
 # The generated secrets. NOT under CLOUDGATE_DIRECTORY, for the reason
 # docs/deploy.md §4 gives for /etc/default/cloudgate-backend: this file holds the
 # database password and both signing secrets, and the platform directory is where
@@ -786,11 +788,13 @@ as_service_user() {
 # chunks when a page first asks for them) is now the new version's. Deleting
 # .previous here would take the rest from under them too, so
 # drop_previous_version deletes it only once both units have restarted onto
-# the new version. A run that stops in between, at a failed migration say,
-# leaves the new version at $INSTALL_DIR and the old one at .previous; re-run
-# the install to finish, which removes that .previous before it moves anything. Rolling back is not offered,
-# because migrations only go forward. Run from $INSTALL_DIR itself, a re-run
-# of the installed version, it moves nothing.
+# the new version and the backend answers its health check (ADR-0084). A run
+# that stops in between, at a failed migration or a failed health check say,
+# leaves the new version at $INSTALL_DIR and the old one at .previous, and a
+# failed health check prints how to go back to it with the dump dump_database
+# took; re-run the install to finish instead, which removes that .previous
+# before it moves anything. Going back is never automatic. Run from
+# $INSTALL_DIR itself, a re-run of the installed version, it moves nothing.
 #
 # A git checkout there, from an install made before versions (ADR-0082), is
 # moved to $INSTALL_DIR.checkout-<date> and kept rather than deleted: it is
@@ -827,10 +831,54 @@ place_version() {
   fi
 }
 
-# The version place_version moved aside, once nothing runs from it.
+# The version place_version moved aside, once the new one is healthy.
 drop_previous_version() {
   rm -rf "$INSTALL_DIR.previous"
 }
+
+# A dump of the database before a run that changes the version, because the
+# migrations after place_version only go forward (ADR-0084). Taken when what
+# is at $INSTALL_DIR is another version or a git checkout; a re-run of the
+# installed version migrates nothing and a first install has nothing to keep.
+# The Hosted instance's updater backs up to B2 before it runs the install
+# (ADR-0081), so it takes none here. Written by root under umask 077, so the
+# dump, which holds every secret the database does, is root's alone; the
+# newest 3 are kept. A failed dump stops the run here, with nothing moved.
+# CLOUDGATE_SKIP_BACKUP=1 skips it, for a database too large to dump on every
+# upgrade. Sets DATABASE_DUMP to the file, or to nothing.
+DATABASE_DUMP=''
+dump_database() {
+  local installed='' partial
+  DATABASE_DUMP=''
+  [ -n "${HOSTED_MODE:-}" ] && return 0
+  [ -e "$INSTALL_DIR" ] || return 0
+  [ -f "$INSTALL_DIR/VERSION" ] && installed="$(cat "$INSTALL_DIR/VERSION")"
+  [ "$installed" = "$VERSION" ] && return 0
+  if [ "${CLOUDGATE_SKIP_BACKUP:-}" = 1 ]; then
+    echo "CLOUDGATE_SKIP_BACKUP=1: no dump of the database before Cloudgate ${VERSION}."
+    return 0
+  fi
+  mkdir -p "$BACKUP_DIR" && chmod 0700 "$BACKUP_DIR" || return 1
+  DATABASE_DUMP="$BACKUP_DIR/pre-${VERSION}-$(date -u +%Y%m%dT%H%M%SZ).dump"
+  partial="$DATABASE_DUMP.partial"
+  if ! (umask 077 && su - postgres -c "pg_dump -Fc cloudgate" > "$partial"); then
+    rm -f "$partial"
+    DATABASE_DUMP=''
+    echo "The dump of the database before Cloudgate ${VERSION} failed. Nothing was changed:" >&2
+    echo "the installed version is still in place. Fix what pg_dump says above and re-run," >&2
+    echo "or re-run with CLOUDGATE_SKIP_BACKUP=1 to upgrade without a dump." >&2
+    return 1
+  fi
+  mv "$partial" "$DATABASE_DUMP" || return 1
+  # Newest first by when each was taken; the names sort by version first.
+  ls -1t "$BACKUP_DIR"/pre-*.dump | tail -n +4 | while read -r old; do
+    rm -f -- "$old"
+  done
+  echo "Dumped the database to $DATABASE_DUMP"
+}
+
+log "Database dump"
+dump_database || exit 1
 
 log "Cloudgate ${VERSION}"
 place_version
@@ -1057,8 +1105,8 @@ systemctl enable cloudgate-backend cloudgate-console
 # place_version has just put another version where they run from.
 systemctl restart cloudgate-backend
 systemctl restart cloudgate-console
-# Both run from $INSTALL_DIR now, so the old version has no reader left.
-drop_previous_version
+# The old version stays at .previous until the backend answers its health
+# check, below (ADR-0084).
 
 # The Hosted instance's hourly backup to B2 and the hourly check that mails
 # BACKUP_ALERT_EMAIL once none has succeeded for 3 hours
@@ -1143,12 +1191,50 @@ echo "      \`ufw status\` says. See docs/deploy.md, \"Security posture\"."
 
 log "Verification"
 
+# How to go back by hand to the version place_version moved aside, printed
+# when the new one never answers its health check. Never done for the
+# operator: going back is by hand (ADR-0084). The old version's own unit
+# files go back with it, since the new version's were installed above.
+way_back() {
+  local previous="$INSTALL_DIR.previous"
+  echo "The backend did not answer http://127.0.0.1:${API_PORT}/settings/health."
+  echo "journalctl -u cloudgate-backend says why."
+  [ -d "$previous" ] || return 0
+  echo
+  echo "Cloudgate $(cat "$previous/VERSION" 2>/dev/null || echo '(a checkout)') is kept at $previous."
+  if [ -n "$DATABASE_DUMP" ]; then
+    echo "The database as it was before this run is dumped at $DATABASE_DUMP."
+  else
+    echo "No dump of the database was taken before this run."
+  fi
+  echo "To go back to it by hand, as root:"
+  echo
+  echo "    systemctl stop cloudgate-backend cloudgate-console"
+  if [ -n "$DATABASE_DUMP" ]; then
+    echo "    su - postgres -c \"pg_restore --clean --if-exists --single-transaction -d cloudgate\" < $DATABASE_DUMP"
+  fi
+  echo "    rm -rf $INSTALL_DIR && mv $previous $INSTALL_DIR"
+  echo "    install -m 0644 $INSTALL_DIR/deploy/systemd/cloudgate-*.service /etc/systemd/system/"
+  echo "    systemctl daemon-reload"
+  echo "    systemctl start cloudgate-backend cloudgate-console"
+}
+
 # The backend maps its routes before it listens, which takes ~15s on two slow
-# cores. Poll rather than sleeping a guessed interval.
+# cores. Poll rather than sleeping a guessed interval. Only once it answers is
+# the old version deleted; until then it is the way back.
+healthy=''
 for _ in $(seq 1 60); do
-  curl -fsS -o /dev/null "http://127.0.0.1:${API_PORT}/settings/health" 2>/dev/null && break
+  if curl -fsS -o /dev/null "http://127.0.0.1:${API_PORT}/settings/health" 2>/dev/null; then
+    healthy=1
+    break
+  fi
   sleep 2
 done
+if [ -z "$healthy" ]; then
+  way_back >&2
+  exit 1
+fi
+drop_previous_version
 
 curl -fsS "http://127.0.0.1:${API_PORT}/settings/health"; echo
 curl -fsS "http://127.0.0.1:${API_PORT}/auth/sign-up-open"; echo
