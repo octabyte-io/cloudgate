@@ -612,14 +612,19 @@ bash /opt/cloudgate/deploy/uninstall.sh
 It stops and disables `cloudgate-backend` and `cloudgate-console` (on the Hosted instance also its
 backup timers and a running `cloudgate-update`), removes their unit files and reloads systemd, then
 removes the `cloudgate-traefik` container, `/opt/cloudgate` with its `.previous` and `.next`, and
-`/usr/local/share/cloudgate` (Node, OpenTofu and its providers, the Session Manager plugin).
-Deployed apps on the platform host stop being routed when Traefik goes; their containers and
-services are left to you.
+`/usr/local/share/cloudgate` (Node, OpenTofu and its providers, the Session Manager plugin). On the
+Hosted instance it first removes what `deploy/hosted-update-access.sh` made, so the next deploy of
+a version tag cannot install Cloudgate again: `/usr/local/sbin/cloudgate-update`,
+`/etc/sudoers.d/cloudgate-deploy`, and the `cloudgate-deploy` user with its home
+`/var/lib/cloudgate-deploy` and the deploy key in it. Services deployed on the platform host stop
+being routed when Traefik goes; their Swarm services and containers are left to you.
 
 **It keeps the instance**, and says so with each path: the `cloudgate` database and its roles
 `cloudgate` and `cloudgate_state`, `/etc/default/cloudgate-*`, `/etc/cloudgate` and the dumps in
-`/var/backups/cloudgate`. A later install on the same host with these in place is the same
-instance, with its sessions and encrypted values; to move to another host, take the backup in
+`/var/backups/cloudgate`. It keeps the install logs in `/var/log/cloudgate` too, and names them. A
+later install on the same platform host with these in place is the same instance, with its
+sessions and encrypted values, and dumps the kept database before it migrates it
+([§7](#7-upgrades)); to move to another platform host, take the backup in
 [§8](#8-backing-up-the-instance-itself) first and restore it there as that section says.
 
 **`--purge` removes the instance too**, and cannot be undone:
@@ -631,8 +636,9 @@ bash /opt/cloudgate/deploy/uninstall.sh --purge
 Before it changes anything it asks you to type the instance's public host, the one the install was
 given (read from `/etc/default/cloudgate-backend` or `-console`). On an exact match it uninstalls
 as above, drops the `cloudgate` database and both roles, and then removes
-`/etc/default/cloudgate-*`, `/etc/cloudgate` and `/var/backups/cloudgate`. Any other answer, or
-none, changes nothing. If the drop fails, the files are kept, since without the secrets the
+`/etc/default/cloudgate-*`, `/etc/cloudgate`, `/var/backups/cloudgate`, `/var/log/cloudgate` and,
+when an earlier install left it, `/root/cloudgate-live-test/env.migrated` (old secrets the install
+moved aside and no longer reads). Any other answer, or none, changes nothing. If the drop fails, the files are kept, since without the secrets the
 database cannot be read.
 
 The script is removed with `/opt/cloudgate`, so to remove a kept instance afterwards, do it by hand:
@@ -643,14 +649,15 @@ DROP DATABASE IF EXISTS cloudgate WITH (FORCE);
 DROP ROLE IF EXISTS cloudgate_state;
 DROP ROLE IF EXISTS cloudgate;
 SQL
-rm -rf /etc/default/cloudgate-* /etc/cloudgate /var/backups/cloudgate
+rm -rf /etc/default/cloudgate-* /etc/cloudgate /var/backups/cloudgate /var/log/cloudgate
+rm -f /root/cloudgate-live-test/env.migrated
 ```
 
 **Left in place either way**, because they may serve more than Cloudgate: Docker, Postgres, the
 swarm, `cloudgate-network`, ufw and its rules, and the `cloudgate` user with its home
-`/var/lib/cloudgate`. Remove them by hand if nothing else on the host uses them. On the Hosted
-instance, `/usr/local/sbin/cloudgate-update` and the `cloudgate-deploy` user and sudoers line that
-`deploy/hosted-update-access.sh` made are left as well.
+`/var/lib/cloudgate`. Remove them by hand if nothing else on the platform host uses them. A git
+checkout an earlier install moved to `/opt/cloudgate.checkout-<date>` ([§7](#7-upgrades)) is left
+too, and named: it may hold changes of yours, so delete it once you have kept them.
 
 ## 11. The Hosted instance
 

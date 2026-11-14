@@ -56,7 +56,15 @@ exit 0`,
   );
   shim('su', `echo "su $1 $2" >> "${calls}"\nexec sh -c "$4"`);
   shim('psql', `echo "psql $*" >> "${calls}"\ncat >> "${calls}"`);
-  shim('id', 'echo "${UID_IS:-0}"');
+  // `id -u` says who runs it; `id <user>` finds only the users the test says
+  // exist.
+  shim(
+    'id',
+    `if [ "$1" = -u ]; then echo "\${UID_IS:-0}"; exit 0; fi
+for user in \${USERS:-}; do [ "$user" = "$1" ] && exit 0; done
+exit 1`,
+  );
+  shim('userdel', `echo "userdel $*" >> "${calls}"`);
 });
 
 afterEach(() => {
@@ -108,7 +116,22 @@ function installed() {
   put('etc/default/ufw', 'IPV6=yes\n');
   put('etc/cloudgate/traefik/traefik.yml', 'entryPoints: {}\n');
   put('var/backups/cloudgate/pre-0.10.0-20261114T120000Z.dump', 'dump\n');
+  put('var/log/cloudgate/install-20261114T120000Z.log', 'log\n');
   fs.writeFileSync(traefik, '');
+}
+
+/**
+ * What deploy/hosted-update-access.sh adds on the Hosted instance: the
+ * updater, its one sudoers line, and the cloudgate-deploy user whose home
+ * holds the key that can run only that updater.
+ */
+const REMOTE_UPDATER = [
+  'usr/local/sbin/cloudgate-update',
+  'etc/sudoers.d/cloudgate-deploy',
+  'var/lib/cloudgate-deploy/.ssh/authorized_keys',
+];
+function remoteUpdater() {
+  for (const file of REMOTE_UPDATER) put(file, 'hosted\n');
 }
 
 /** Runs the script on the scratch host with `args`, `input` on its stdin. */
@@ -223,6 +246,39 @@ describe('deploy/uninstall.sh', () => {
       );
       expect(called()[1]).toBe('systemctl stop cloudgate-update.service');
     });
+
+    // Left in place, the next green tag's deploy would log in with the key and
+    // run the updater, which installs Cloudgate again.
+    it('removes the Hosted remote updater: cloudgate-update, its sudoers line, and the cloudgate-deploy user with its home', () => {
+      installed();
+      remoteUpdater();
+
+      const ran = uninstall([], { env: { USERS: 'cloudgate-deploy' } });
+
+      expect(ran.stderr).toBe('');
+      expect(ran.status).toBe(0);
+      for (const gone of [...REMOTE_UPDATER, 'var/lib/cloudgate-deploy']) {
+        expect({ gone, exists: exists(gone) }).toEqual({ gone, exists: false });
+      }
+      expect(called()).toContain('userdel --remove cloudgate-deploy');
+      // Before the units, so no deploy can start while they go.
+      expect(called().indexOf('userdel --remove cloudgate-deploy')).toBeLessThan(
+        called().indexOf('systemctl disable --now cloudgate-backend.service'),
+      );
+      expect(ran.stdout).toContain('cloudgate-deploy');
+    });
+
+    it('removes no user and no sudoers line on a Self-hosted box', () => {
+      installed();
+      put('etc/sudoers.d/operator', 'mine\n');
+
+      expect(uninstall().status).toBe(0);
+
+      expect(called().filter((line) => line.startsWith('userdel'))).toEqual(
+        [],
+      );
+      expect(exists('etc/sudoers.d/operator')).toBe(true);
+    });
   });
 
   describe('what it removes and what it keeps', () => {
@@ -258,7 +314,7 @@ describe('deploy/uninstall.sh', () => {
       expect(exists('usr/local/bin/tofu')).toBe(true);
     });
 
-    it('keeps the database, /etc/default/cloudgate-*, /etc/cloudgate and /var/backups/cloudgate, naming each', () => {
+    it('keeps the database, /etc/default/cloudgate-*, /etc/cloudgate, /var/backups/cloudgate and /var/log/cloudgate, naming each', () => {
       installed();
 
       const ran = uninstall();
@@ -276,6 +332,7 @@ describe('deploy/uninstall.sh', () => {
         'etc/default/cloudgate-secrets',
         'etc/cloudgate/traefik/traefik.yml',
         'var/backups/cloudgate/pre-0.10.0-20261114T120000Z.dump',
+        'var/log/cloudgate/install-20261114T120000Z.log',
       ]) {
         expect({ kept, exists: exists(kept) }).toEqual({ kept, exists: true });
       }
@@ -287,6 +344,7 @@ describe('deploy/uninstall.sh', () => {
         `${root}/etc/default/cloudgate-secrets`,
         `${root}/etc/cloudgate`,
         `${root}/var/backups/cloudgate`,
+        `${root}/var/log/cloudgate`,
       ]) {
         expect(ran.stdout).toContain(named);
       }
@@ -314,7 +372,20 @@ describe('deploy/uninstall.sh', () => {
       );
     });
 
-    it('finishes a second run, on a host it has already uninstalled', () => {
+    it('leaves a git checkout an earlier install moved aside, and names it', () => {
+      installed();
+      put('opt/cloudgate.checkout-2026-11-01/backend/package.json', '{}\n');
+
+      const ran = uninstall();
+
+      expect(ran.status).toBe(0);
+      expect(exists('opt/cloudgate.checkout-2026-11-01/backend/package.json')).toBe(
+        true,
+      );
+      expect(ran.stdout).toContain(`${root}/opt/cloudgate.checkout-2026-11-01`);
+    });
+
+    it('finishes a second run, on a platform host it has already uninstalled', () => {
       installed();
       expect(uninstall().status).toBe(0);
       fs.rmSync(calls);
@@ -334,6 +405,7 @@ describe('deploy/uninstall.sh', () => {
       'etc/default/cloudgate-secrets',
       'etc/cloudgate',
       'var/backups/cloudgate',
+      'var/log/cloudgate',
     ];
 
     /** The SQL psql was handed, one statement a line, in order. */
@@ -341,7 +413,7 @@ describe('deploy/uninstall.sh', () => {
       return called().filter((line) => /^DROP /.test(line));
     }
 
-    it('asks for the public host, and on an exact match drops the database and both roles and removes the env files, /etc/cloudgate and the dumps', () => {
+    it('asks for the public host, and on an exact match drops the database and both roles and removes the env files, /etc/cloudgate, the dumps and the install logs', () => {
       installed();
 
       const ran = uninstall(['--purge'], { input: '203.0.113.10\n' });
@@ -365,6 +437,21 @@ describe('deploy/uninstall.sh', () => {
       expect(exists('opt/cloudgate')).toBe(false);
       expect(exists('etc/default/ufw')).toBe(true);
       expect(exists('opt/mine/notes')).toBe(true);
+    });
+
+    // The secrets an install before /etc/default/cloudgate-secrets kept, which
+    // the install renamed when it moved them and never read again.
+    it('removes the old secrets the install moved aside, and nothing else of that folder', () => {
+      installed();
+      put('root/cloudgate-live-test/env.migrated', 'PGPW=old\n');
+      put('root/cloudgate-live-test/notes', 'mine\n');
+
+      const ran = uninstall(['--purge'], { input: '203.0.113.10\n' });
+
+      expect(ran.status).toBe(0);
+      expect(exists('root/cloudgate-live-test/env.migrated')).toBe(false);
+      expect(exists('root/cloudgate-live-test/notes')).toBe(true);
+      expect(ran.stdout).toContain(`${root}/root/cloudgate-live-test/env.migrated`);
     });
 
     it.each([
@@ -433,7 +520,7 @@ describe('deploy/uninstall.sh', () => {
 
     // The secrets are what make the database readable: removed only once it
     // is gone, so a failed drop never leaves a database nothing can decrypt.
-    it('keeps the env files, /etc/cloudgate and the dumps when the database cannot be dropped', () => {
+    it('keeps the env files, /etc/cloudgate, the dumps and the install logs when the database cannot be dropped', () => {
       installed();
       shim('psql', `echo "psql $*" >> "${calls}"\ncat > /dev/null\nexit 1`);
 
