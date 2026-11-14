@@ -67,7 +67,8 @@ export function isLeftOutOfCatalogue(pathInFolder: string): boolean {
  * The endings a config file under `files/` may have, and the few names
  * written without one. A config file is text the template's own containers
  * read; scripts, programs, archives and images are not config, and a new
- * kind is added here only by amending ADR-0072.
+ * kind is added here only by amending ADR-0072. `.js` is here by ADR-0083:
+ * an application may read its config as a JavaScript module.
  */
 export const CONFIG_FILE_ENDINGS: readonly string[] = [
   '.conf',
@@ -84,6 +85,7 @@ export const CONFIG_FILE_ENDINGS: readonly string[] = [
   '.html',
   '.css',
   '.tmpl',
+  '.js',
 ];
 export const CONFIG_FILE_NAMES: readonly string[] = ['Caddyfile'];
 

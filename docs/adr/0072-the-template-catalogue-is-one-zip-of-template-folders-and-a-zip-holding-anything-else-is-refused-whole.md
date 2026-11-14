@@ -28,7 +28,7 @@ ADR-0062 publishes each version of the **Template catalogue** as one `catalogue.
   It is read in memory and never written to disk.
 - **Which config files a template may ship under `files/`.** A config file is text the template's own containers read. Cloudgate never runs it itself. Every one must pass all of these, or the whole zip is refused:
   - it is listed in that template's `template.yaml` `files`, so nothing sits in a folder that the template does not say it uses;
-  - its name ends in one of `.conf`, `.cfg`, `.ini`, `.yaml`, `.yml`, `.json`, `.toml`, `.xml`, `.properties`, `.sql`, `.txt`, `.html`, `.css`, `.tmpl`, or it is named `Caddyfile`. Any other name is refused, which includes scripts (`.sh`, `.py`, `.js`, …), programs, archives, images and hidden files such as `.env`;
+  - its name ends in one of `.conf`, `.cfg`, `.ini`, `.yaml`, `.yml`, `.json`, `.toml`, `.xml`, `.properties`, `.sql`, `.txt`, `.html`, `.css`, `.tmpl`, or it is named `Caddyfile`. Any other name is refused, which includes scripts (`.sh`, `.py`, …), programs, archives, images and hidden files such as `.env`. [ADR-0083](0083-a-template-may-ship-a-javascript-config-file.md) adds `.js`;
   - it is UTF-8 text with no NUL byte;
   - it is at most 256 KB, and one template's `files/` is at most 1 MB in all;
   - its path stays inside `files/`, is written plainly, and holds no `"`, `` ` ``, `$`, `\` or line break (today's `filesRule`).
