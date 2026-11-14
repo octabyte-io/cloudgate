@@ -55,6 +55,26 @@ set -euo pipefail
 # Both env files below carry it as CLOUDGATE_API_URL, which the console reads
 # when it starts, so changing it later is a restart (docs/deploy.md §3).
 : "${CLOUDGATE_PUBLIC_HOST:?set it to the public IP or hostname of this host}"
+# The host alone: an IPv4 address, a hostname, or an IPv6 address, which may
+# come in the brackets a URL gives it and is kept without them. A scheme, port
+# or path would end up inside every origin below, as http://https://host:3000.
+# Refused before anything is touched, as root install.sh refuses it.
+CLOUDGATE_PUBLIC_HOST="${CLOUDGATE_PUBLIC_HOST#\[}"
+CLOUDGATE_PUBLIC_HOST="${CLOUDGATE_PUBLIC_HOST%\]}"
+public_host_ok() {
+  case "$1" in
+    '' | *[!0-9A-Za-z.:-]*) return 1 ;;
+    *:*:*)
+      case "$1" in *[!0-9A-Fa-f:.]*) return 1 ;; esac
+      ;;
+    *:*) return 1 ;;
+  esac
+}
+if ! public_host_ok "$CLOUDGATE_PUBLIC_HOST"; then
+  echo "CLOUDGATE_PUBLIC_HOST is the public IP address or hostname alone, such as 203.0.113.10," >&2
+  echo "2001:db8::10 or cloud.example.com, not \"$CLOUDGATE_PUBLIC_HOST\": no scheme, port or path." >&2
+  exit 1
+fi
 
 CONSOLE_PORT="${CONSOLE_PORT:-3000}"
 API_PORT="${API_PORT:-4000}"
@@ -194,8 +214,16 @@ SECRETS_FILE=/etc/default/cloudgate-secrets
 LEGACY_SECRETS_FILE=/root/cloudgate-live-test/env
 SERVICE_USER=cloudgate
 
-CONSOLE_ORIGIN="http://${CLOUDGATE_PUBLIC_HOST}:${CONSOLE_PORT}"
-API_ORIGIN="http://${CLOUDGATE_PUBLIC_HOST}:${API_PORT}"
+# A host as a URL writes it: an IPv6 address in brackets, which
+# http://2001:db8::10:3000 lacks and no browser can open.
+url_host() {
+  case "$1" in
+    *:*) printf '[%s]' "$1" ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+CONSOLE_ORIGIN="http://$(url_host "$CLOUDGATE_PUBLIC_HOST"):${CONSOLE_PORT}"
+API_ORIGIN="http://$(url_host "$CLOUDGATE_PUBLIC_HOST"):${API_PORT}"
 
 log() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 
@@ -246,6 +274,34 @@ fi
 # sequence for an operator who wants one, and a knob nobody sets is a branch
 # nobody tests. `set -euo pipefail` is safe across the pipeline below because it
 # is the condition of a `||`.
+#
+# Every apt-get goes through apt_get, which waits out the lock another apt
+# holds. On a VPS's first boot cloud-init and unattended-upgrades hold it for
+# minutes, and a bare apt-get failed the install at once with "Could not get
+# lock". DPkg::Lock::Timeout has apt wait for dpkg's lock itself; a refusal
+# that still names a lock (update's lists lock among them) is tried again,
+# every 10 seconds for 10 minutes. Any other failure is apt's answer, and is
+# returned at once. backend/test/coding-standards/apt-lock.spec.ts fails on a
+# bare apt-get in this file or in root install.sh.
+apt_get() {
+  local tries=0 errors
+  errors="$(mktemp)"
+  while :; do
+    if DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=600 "$@" 2>"$errors"; then
+      cat "$errors" >&2
+      rm -f "$errors"
+      return 0
+    fi
+    cat "$errors" >&2
+    tries=$((tries + 1))
+    if ! grep -q 'Could not get lock' "$errors" || [ "$tries" -ge 60 ]; then
+      rm -f "$errors"
+      return 1
+    fi
+    echo "Another apt is running; waiting for it to finish (try $tries of 60)." >&2
+    sleep 10
+  done
+}
 ensure_packages() {
   local missing=""
   for pkg in "$@"; do
@@ -257,9 +313,9 @@ ensure_packages() {
     return
   fi
   export DEBIAN_FRONTEND=noninteractive
-  apt-get update -qq
+  apt_get update -qq
   # shellcheck disable=SC2086
-  apt-get install -y -qq $missing
+  apt_get install -y -qq $missing
   echo "Installed:$missing ✅"
 }
 
@@ -1023,6 +1079,22 @@ fi
 
 log "Firewall"
 ufw allow OpenSSH
+# `OpenSSH` is port 22 alone. A box whose sshd listens on another port, a
+# common hardening, lost SSH the moment ufw was enabled below. So every port
+# sshd's configuration names is allowed too, every port ssh.socket listens on
+# (Ubuntu 24.04 starts sshd from it), and the port this run's own SSH session
+# came in on, which sudo may have left out of the environment.
+ssh_ports() {
+  {
+    sshd -T 2>/dev/null | awk '$1 == "port" { print $2 }' || true
+    systemctl show ssh.socket --property=Listen --value 2>/dev/null |
+      grep -oE ':[0-9]+ \(Stream\)' | tr -dc '0-9\n' || true
+    printf '%s\n' "${SSH_CONNECTION:-}" | awk 'NF == 4 { print $4 }'
+  } | grep -xE '[0-9]+' | sort -un || true
+}
+for port in $(ssh_ports); do
+  ufw allow "$port/tcp"
+done
 if [ -n "$HOSTED_MODE" ]; then
   ufw default deny incoming
   ufw delete allow "$CONSOLE_PORT" >/dev/null 2>&1 || true

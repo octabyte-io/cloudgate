@@ -18,10 +18,12 @@
 #
 #   CLOUDGATE_VERSION      the Cloudgate version to install, vX.Y.Z (or X.Y.Z).
 #                          Default: the latest one published.
-#   CLOUDGATE_PUBLIC_HOST  the public IP or hostname browsers will use. The
-#                          console reads it when it starts, so changing it is a
-#                          restart. Default: the value the last install on this
-#                          host was given, and on a first install this host's
+#   CLOUDGATE_PUBLIC_HOST  the public IP or hostname browsers will use: the
+#                          host alone, an IPv4 or IPv6 address or a hostname,
+#                          with no scheme, port or path. The console reads it
+#                          when it starts, so changing it is a restart.
+#                          Default: the value the last install on this host
+#                          was given, and on a first install this host's
 #                          public IPv4 address, as api.ipify.org sees it.
 #
 # Everything else in the environment (HOSTED_MODE and its inputs, CONSOLE_PORT,
@@ -40,6 +42,11 @@ INSTALL_DIR="${INSTALL_ROOT:-}/opt/cloudgate"
 # it into place with a rename, and a small VPS's /tmp may be memory.
 STAGING_DIR="$INSTALL_DIR.next"
 CONSOLE_ENV_FILE="${INSTALL_ROOT:-}/etc/default/cloudgate-console"
+BACKEND_ENV_FILE="${INSTALL_ROOT:-}/etc/default/cloudgate-backend"
+# Held for the whole run, deploy/install.sh included: two runs at once would
+# both empty and unpack into $STAGING_DIR, and one could put the other's
+# half-unpacked version in place.
+LOCK_FILE="${INSTALL_ROOT:-}/run/lock/cloudgate-install.lock"
 OS_RELEASE="${INSTALL_ROOT:-}/etc/os-release"
 
 # A Cloudgate version's release is tagged vX.Y.Z. The same repository also
@@ -54,18 +61,69 @@ fail() {
   exit 1
 }
 
-# The host the previous install gave the console, read back from the console's
-# environment file, so a re-run with no input is an upgrade of the same
-# instance rather than an install for a newly guessed address. A file written
-# before the console read its address at start (ADR-0082) names it
-# NEXT_PUBLIC_API_URL; that line is read only here, so such a box keeps its
-# address when this run rewrites the file with CLOUDGATE_API_URL.
+# The host the previous install was given, so a re-run with no input is an
+# upgrade of the same instance rather than an install for a newly guessed
+# address. The Hosted instance keeps it as CLOUDGATE_PUBLIC_HOST in the
+# backend's environment file, because its console is reached at
+# https://<hostname>, which names no address; a Self-hosted box has it in the
+# console's API address. A console file written before the console read its
+# address at start (ADR-0082) names that NEXT_PUBLIC_API_URL; that line is
+# read only here, so such a box keeps its address when this run rewrites the
+# file with CLOUDGATE_API_URL. An IPv6 address comes back without the
+# brackets its URL needs.
 previous_public_host() {
+  if [ -r "$BACKEND_ENV_FILE" ]; then
+    host="$(sed -n "s/^CLOUDGATE_PUBLIC_HOST='\(.*\)'\$/\1/p" "$BACKEND_ENV_FILE" | tail -n 1)"
+    if [ -n "$host" ]; then
+      printf '%s\n' "$host"
+      return 0
+    fi
+  fi
   [ -r "$CONSOLE_ENV_FILE" ] || return 0
   sed -n \
     -e 's|^CLOUDGATE_API_URL=http://\(.*\):[0-9][0-9]*$|\1|p' \
     -e 's|^NEXT_PUBLIC_API_URL=http://\(.*\):[0-9][0-9]*$|\1|p' \
-    "$CONSOLE_ENV_FILE" | tail -n 1
+    "$CONSOLE_ENV_FILE" | tail -n 1 | tr -d '[]'
+}
+
+# 0 when $1 is a host alone: an IPv4 address, a hostname, or an IPv6 address
+# (two colons at least, and only hex digits, colons and dots). A scheme, port
+# or path would end up inside every origin the install writes, as
+# http://https://host:3000.
+public_host_ok() {
+  case "$1" in
+    '' | *[!0-9A-Za-z.:-]*) return 1 ;;
+    *:*:*)
+      case "$1" in *[!0-9A-Fa-f:.]*) return 1 ;; esac
+      ;;
+    *:*) return 1 ;;
+  esac
+}
+
+# apt-get, waiting out the lock another apt holds. On a VPS's first boot
+# cloud-init and unattended-upgrades hold it for minutes, and apt-get fails at
+# once with "Could not get lock". DPkg::Lock::Timeout has apt wait for dpkg's
+# lock itself; a refusal that still names a lock (update's lists lock among
+# them) is tried again, every 10 seconds for 10 minutes. Any other failure is
+# apt's answer, and is returned at once.
+apt_get() {
+  tries=0
+  apt_errors="$(mktemp)"
+  while :; do
+    if DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=600 "$@" 2>"$apt_errors"; then
+      cat "$apt_errors" >&2
+      rm -f "$apt_errors"
+      return 0
+    fi
+    cat "$apt_errors" >&2
+    tries=$((tries + 1))
+    if ! grep -q 'Could not get lock' "$apt_errors" || [ "$tries" -ge 60 ]; then
+      rm -f "$apt_errors"
+      return 1
+    fi
+    echo "Another apt is running; waiting for it to finish (try $tries of 60)." >&2
+    sleep 10
+  done
 }
 
 detect_public_ipv4() {
@@ -144,8 +202,17 @@ download_version() {
   name="cloudgate-$version-linux-amd64.tar.gz"
   url="$RELEASES_DOWNLOAD/v$version/$name"
 
+  # A run killed outright (SIGKILL, a power cut) can leave one; under the
+  # lock, none belongs to another run.
+  rm -rf "$INSTALL_DIR".download.*
   download="$(mktemp -d "$INSTALL_DIR.download.XXXXXX")"
   trap 'rm -rf "$download"' EXIT
+  # dash, which runs `curl | sh`, runs no EXIT trap for a signal that kills
+  # it, so Ctrl-C (INT), a kill (TERM) and a dropped SSH session (HUP) exit
+  # instead, which runs it.
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  trap 'exit 129' HUP
 
   say "Downloading Cloudgate $version"
   curl -fsSL -o "$download/$name.sha256" "$url.sha256" || fail \
@@ -169,7 +236,7 @@ download_version() {
   mkdir -p "$STAGING_DIR"
   tar -xzf "$download/$name" -C "$STAGING_DIR" --no-same-owner
   rm -rf "$download"
-  trap - EXIT
+  trap - EXIT INT TERM HUP
   [ "$(cat "$STAGING_DIR/VERSION" 2>/dev/null)" = "$version" ] || fail \
     "$name unpacked to a VERSION other than $version; it was left at $STAGING_DIR."
 }
@@ -207,6 +274,23 @@ main() {
       "The versions are listed at $RELEASES_PAGE."
   fi
 
+  public_host="${CLOUDGATE_PUBLIC_HOST:-}"
+  # An IPv6 address may come in the brackets a URL gives it.
+  public_host="${public_host#\[}"
+  public_host="${public_host%\]}"
+  if [ -n "${CLOUDGATE_PUBLIC_HOST:-}" ] && ! public_host_ok "$public_host"; then
+    fail \
+      "CLOUDGATE_PUBLIC_HOST is the public IP address or hostname alone, such as 203.0.113.10," \
+      "2001:db8::10 or cloud.example.com, not \"$CLOUDGATE_PUBLIC_HOST\": no scheme, port or path." \
+      "Nothing was changed."
+  fi
+
+  mkdir -p "$(dirname "$LOCK_FILE")"
+  exec 9>"$LOCK_FILE"
+  flock -n 9 || fail \
+    "Another Cloudgate install is running on this host; this one stopped before changing anything." \
+    "Let it finish, then run this again if you still need to."
+
   # A box installed from a git checkout, before the install installed
   # versions, is switched over: the checkout holds no version, so the run
   # installs as on a new box, and the version's own deploy/install.sh moves
@@ -224,11 +308,10 @@ main() {
 
   if ! command -v curl >/dev/null 2>&1; then
     say "Installing curl"
-    apt-get update -qq
-    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl ca-certificates
+    apt_get update -qq
+    apt_get install -y -qq curl ca-certificates
   fi
 
-  public_host="${CLOUDGATE_PUBLIC_HOST:-}"
   if [ -z "$public_host" ]; then
     public_host="$(previous_public_host)"
     [ -z "$public_host" ] || echo "Public host: $public_host (the one the last install used)"
@@ -260,6 +343,7 @@ main() {
 
   CLOUDGATE_PUBLIC_HOST="$public_host"
   export CLOUDGATE_PUBLIC_HOST
+  # The lock on descriptor 9 goes with it, so it is held until the install ends.
   exec bash "$dir/deploy/install.sh"
 }
 

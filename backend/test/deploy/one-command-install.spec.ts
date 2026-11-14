@@ -75,6 +75,18 @@ done
 echo "curl $url" >> "${calls}"
 file="${served}/\${url#https://}"
 [ -f "$file" ] || exit 22
+# INTERRUPT=<signal>: the run is sent it half-way through the tarball's
+# download, as Ctrl-C (INT), a kill (TERM) or a dropped SSH session (HUP) does.
+case "$url" in
+  *.tar.gz)
+    if [ -n "\${INTERRUPT:-}" ]; then
+      head -c 10 "$file" > "$out"
+      kill -"$INTERRUPT" "$PPID"
+      sleep 1
+      exit 0
+    fi
+    ;;
+esac
 if [ -n "$out" ]; then cat "$file" > "$out"; else cat "$file"; fi
 `,
     { mode: 0o755 },
@@ -238,6 +250,123 @@ describe('install.sh (the one-command install)', () => {
       'https://github.com/octabyte-io/cloudgate/releases/download',
     );
     expect(source).not.toMatch(/^\s*git /m);
+  });
+
+  describe('one run at a time', () => {
+    it('refuses a run while another is under way, before changing anything', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+      const lock = path.join(root, 'run/lock/cloudgate-install.lock');
+      fs.mkdirSync(path.dirname(lock), { recursive: true });
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(path.join(bin, 'id'), '#!/bin/sh\necho 0\n', {
+        mode: 0o755,
+      });
+
+      // The run under way holds the lock on its own open of the file.
+      const second = spawnSync(
+        'sh',
+        ['-c', 'exec 8>"$1"; flock 8; exec sh "$2"', 'sh', lock, installer],
+        {
+          env: {
+            PATH: `${bin}:${process.env.PATH}`,
+            HOME: scratch,
+            CALLS: calls,
+            INSTALL_ROOT: root,
+            CLOUDGATE_PUBLIC_HOST: '203.0.113.10',
+          },
+          encoding: 'utf8',
+        },
+      );
+
+      expect(second.status).toBe(1);
+      expect(second.stderr).toContain(
+        'Another Cloudgate install is running on this host',
+      );
+      expect(called()).toBe('');
+      expect(opt()).toEqual([]);
+    });
+  });
+
+  describe('a run that is stopped', () => {
+    it.each(['INT', 'TERM', 'HUP'])(
+      'removes its download directory when it is sent SIG%s mid-download',
+      (signal) => {
+        releases('v0.10.0');
+        publish('0.10.0');
+
+        const stopped = install({ INTERRUPT: signal });
+
+        expect(stopped.status).not.toBe(0);
+        expect(called()).not.toContain('deploy/install.sh');
+        expect(opt()).toEqual([]);
+      },
+    );
+
+    it('sweeps away a download directory a killed run left behind', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+      const leftover = path.join(root, 'opt/cloudgate.download.Ab12Cd');
+      fs.mkdirSync(leftover);
+      fs.writeFileSync(path.join(leftover, 'half.tar.gz'), 'half');
+
+      const again = install();
+
+      expect(again.status).toBe(0);
+      expect(fs.existsSync(leftover)).toBe(false);
+    });
+  });
+
+  describe('CLOUDGATE_PUBLIC_HOST', () => {
+    it.each([
+      'https://cloud.example.com',
+      'cloud.example.com:3000',
+      '203.0.113.10/',
+      'http://203.0.113.10:4000',
+      'cloud example.com',
+    ])(
+      'refuses %j, which is not a host alone, before changing anything',
+      (host) => {
+        releases('v0.10.0');
+        publish('0.10.0');
+
+        const refused = install({ CLOUDGATE_PUBLIC_HOST: host });
+
+        expect(refused.status).toBe(1);
+        expect(refused.stderr).toContain(
+          `CLOUDGATE_PUBLIC_HOST is the public IP address or hostname alone`,
+        );
+        expect(refused.stderr).toContain(JSON.stringify(host));
+        expect(called()).toBe('');
+        expect(opt()).toEqual([]);
+      },
+    );
+
+    it.each(['2001:db8::10', '[2001:db8::10]'])(
+      'takes the IPv6 address %s, handing it over without brackets',
+      (host) => {
+        releases('v0.10.0');
+        publish('0.10.0');
+
+        const v6 = install({ CLOUDGATE_PUBLIC_HOST: host });
+
+        expect(v6.stderr).toBe('');
+        expect(v6.status).toBe(0);
+        expect(called()).toContain(
+          `deploy/install.sh 0.10.0 from ${root}/opt/cloudgate.next host=2001:db8::10\n`,
+        );
+      },
+    );
+
+    it('takes a hostname', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+
+      const named = install({ CLOUDGATE_PUBLIC_HOST: 'cloud.example.com' });
+
+      expect(named.status).toBe(0);
+      expect(called()).toContain('host=cloud.example.com\n');
+    });
   });
 
   describe('the Cloudgate version it installs', () => {
@@ -498,16 +627,18 @@ describe('install.sh (the one-command install)', () => {
    * before that still has NEXT_PUBLIC_API_URL until this run rewrites it.
    */
   describe('the host a re-run reuses', () => {
-    function previousHost(consoleEnv: string): string {
+    function previousHost(consoleEnv: string, backendEnv = ''): string {
       const source = fs.readFileSync(installer, 'utf8');
       const fn = source.match(/^previous_public_host\(\) \{\n[\s\S]*?\n\}\n/m);
       if (!fn) throw new Error('no previous_public_host in install.sh');
       const envFile = path.join(scratch, 'cloudgate-console');
       fs.writeFileSync(envFile, consoleEnv);
+      const backendFile = path.join(scratch, 'cloudgate-backend');
+      fs.writeFileSync(backendFile, backendEnv);
       const script = path.join(scratch, 'previous-host.sh');
       fs.writeFileSync(
         script,
-        `CONSOLE_ENV_FILE='${envFile}'\n${fn[0]}previous_public_host\n`,
+        `set -eu\nCONSOLE_ENV_FILE='${envFile}'\nBACKEND_ENV_FILE='${backendFile}'\n${fn[0]}previous_public_host\n`,
       );
       return spawnSync('sh', [script], { encoding: 'utf8' }).stdout.trim();
     }
@@ -524,6 +655,25 @@ describe('install.sh (the one-command install)', () => {
       expect(
         previousHost(
           'NODE_ENV=production\nPORT=3000\nNEXT_PUBLIC_API_URL=http://198.51.100.7:4000\n',
+        ),
+      ).toBe('198.51.100.7');
+    });
+
+    it('reads an IPv6 address without the brackets its URL carries', () => {
+      expect(
+        previousHost(
+          'NODE_ENV=production\nPORT=3000\nCLOUDGATE_API_URL=http://[2001:db8::10]:4000\n',
+        ),
+      ).toBe('2001:db8::10');
+    });
+
+    // The Hosted instance's console is reached at https://<hostname>, which
+    // names no address; the backend's env file keeps the one it was given.
+    it('reads the Hosted instance’s from the backend’s CLOUDGATE_PUBLIC_HOST', () => {
+      expect(
+        previousHost(
+          'NODE_ENV=production\nPORT=3000\nCLOUDGATE_API_URL=https://cloudgate.example.app\n',
+          "NODE_ENV=production\nCLOUDGATE_PUBLIC_HOST='198.51.100.7'\n",
         ),
       ).toBe('198.51.100.7');
     });
@@ -886,5 +1036,210 @@ describe('deploy/install.sh', () => {
     expect(refused.stderr).toContain('4000');
     expect(refused.stderr).not.toContain('must run as root');
     expect(refused.stdout).not.toContain('==>');
+  });
+
+  describe('CLOUDGATE_PUBLIC_HOST', () => {
+    it('refuses a URL in place of a host, before touching the box', () => {
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(path.join(bin, 'id'), '#!/bin/sh\necho 1000\n', {
+        mode: 0o755,
+      });
+
+      const refused = spawnSync('bash', [script], {
+        env: {
+          PATH: `${bin}:${process.env.PATH}`,
+          HOME: scratch,
+          CLOUDGATE_PUBLIC_HOST: 'https://cloud.example.com',
+        },
+        encoding: 'utf8',
+      });
+
+      expect(refused.status).toBe(1);
+      expect(refused.stderr).toContain(
+        'CLOUDGATE_PUBLIC_HOST is the public IP address or hostname alone',
+      );
+      expect(refused.stderr).not.toContain('must run as root');
+      expect(refused.stdout).not.toContain('==>');
+    });
+
+    /** The console and API origins the env files are written with, for `host`. */
+    function origins(host: string): string {
+      const lines = source().split('\n');
+      const kept = lines.filter((line) =>
+        /^(CONSOLE_ORIGIN|API_ORIGIN|CLOUDGATE_PUBLIC_HOST)=/.test(line),
+      );
+      const fn = source().match(/^url_host\(\) \{\n[\s\S]*?\n\}\n/m);
+      return spawnSync(
+        'bash',
+        [
+          '-c',
+          `set -euo pipefail; CLOUDGATE_PUBLIC_HOST="$1"; CONSOLE_PORT=3000; API_PORT=4000
+${fn?.[0] ?? ''}${kept.join('\n')}
+echo "$CONSOLE_ORIGIN $API_ORIGIN"`,
+          'bash',
+          host,
+        ],
+        { encoding: 'utf8' },
+      ).stdout.trim();
+    }
+
+    it('brackets an IPv6 address in the origins a browser is handed', () => {
+      expect(origins('2001:db8::10')).toBe(
+        'http://[2001:db8::10]:3000 http://[2001:db8::10]:4000',
+      );
+      expect(origins('[2001:db8::10]')).toBe(
+        'http://[2001:db8::10]:3000 http://[2001:db8::10]:4000',
+      );
+    });
+
+    it('writes an IPv4 address and a hostname as they are', () => {
+      expect(origins('203.0.113.10')).toBe(
+        'http://203.0.113.10:3000 http://203.0.113.10:4000',
+      );
+      expect(origins('cloud.example.com')).toBe(
+        'http://cloud.example.com:3000 http://cloud.example.com:4000',
+      );
+    });
+  });
+
+  /**
+   * The Firewall step, cut out of the file as written and run with ufw and
+   * sshd shimmed: what it allows, and in what order relative to enabling ufw.
+   */
+  describe('the firewall', () => {
+    function firewall(options: { sshd: string; sshConnection?: string }) {
+      const step = code().match(
+        /\nlog "Firewall"\n[\s\S]*?\nufw --force enable\n/,
+      );
+      if (!step) throw new Error('no Firewall step in deploy/install.sh');
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(
+        path.join(bin, 'ufw'),
+        `#!/bin/sh\necho "ufw $*" >> "${calls}"\n`,
+        { mode: 0o755 },
+      );
+      fs.writeFileSync(path.join(bin, 'sshd'), `#!/bin/sh\n${options.sshd}\n`, {
+        mode: 0o755,
+      });
+      const ran = spawnSync(
+        'bash',
+        [
+          '-c',
+          `set -euo pipefail; log() { :; }; HOSTED_MODE=; CONSOLE_PORT=3000; API_PORT=4000\n${step[0]}`,
+        ],
+        {
+          env: {
+            PATH: `${bin}:${process.env.PATH}`,
+            ...(options.sshConnection
+              ? { SSH_CONNECTION: options.sshConnection }
+              : {}),
+          },
+          encoding: 'utf8',
+        },
+      );
+      return { ran, ufw: called().trim().split('\n') };
+    }
+
+    it('allows every port sshd listens on, and the one this run came in on, before it enables ufw', () => {
+      const { ran, ufw } = firewall({
+        sshd: '[ "$1" = -T ] && printf "port 2222\\nport 22\\naddressfamily any\\n"',
+        sshConnection: '198.51.100.1 50122 203.0.113.10 2200',
+      });
+
+      expect(ran.stderr).toBe('');
+      expect(ran.status).toBe(0);
+      const enabled = ufw.indexOf('ufw --force enable');
+      for (const port of ['22', '2200', '2222']) {
+        const allowed = ufw.indexOf(`ufw allow ${port}/tcp`);
+        expect({ port, allowed: allowed > -1 }).toEqual({
+          port,
+          allowed: true,
+        });
+        expect(allowed).toBeLessThan(enabled);
+      }
+      expect(ufw).toContain('ufw allow OpenSSH');
+    });
+
+    it('still allows OpenSSH and enables ufw when sshd cannot say its ports', () => {
+      const { ran, ufw } = firewall({ sshd: 'exit 255' });
+
+      expect(ran.status).toBe(0);
+      expect(ufw).toContain('ufw allow OpenSSH');
+      expect(ufw[ufw.length - 1]).toBe('ufw --force enable');
+    });
+  });
+
+  describe('ensure_packages', () => {
+    it('waits while another apt holds its lock, then installs what is missing', () => {
+      const fns = ['apt_get', 'ensure_packages']
+        .map((name) =>
+          source().match(
+            new RegExp(`^${name}\\(\\) \\{\\n[\\s\\S]*?\\n\\}\\n`, 'm'),
+          ),
+        )
+        .map((match) => match?.[0] ?? '')
+        .join('');
+      const bin = path.join(scratch, 'bin');
+      const tries = path.join(scratch, 'apt-tries');
+      // apt on a VPS's first boot: cloud-init or unattended-upgrades holds the
+      // lock for the first two tries.
+      fs.writeFileSync(
+        path.join(bin, 'apt-get'),
+        `#!/bin/sh
+echo "apt-get $*" >> "${calls}"
+echo x >> "${tries}"
+if [ "$(wc -l < "${tries}")" -le 2 ]; then
+  echo "E: Could not get lock /var/lib/apt/lists/lock. It is held by process 812 (apt-get)" >&2
+  exit 100
+fi
+`,
+        { mode: 0o755 },
+      );
+      fs.writeFileSync(path.join(bin, 'dpkg-query'), '#!/bin/sh\nexit 1\n', {
+        mode: 0o755,
+      });
+      fs.writeFileSync(path.join(bin, 'sleep'), '#!/bin/sh\n', { mode: 0o755 });
+
+      const ran = spawnSync(
+        'bash',
+        ['-c', `set -euo pipefail; ${fns} ensure_packages jq rclone`],
+        { env: { PATH: `${bin}:${process.env.PATH}` }, encoding: 'utf8' },
+      );
+
+      expect(ran.status).toBe(0);
+      expect(ran.stdout).toContain('Installed: jq rclone');
+      expect(called()).toMatch(/apt-get .*install -y -qq jq rclone/);
+    });
+
+    it('gives up on a failure that is not the lock, at once', () => {
+      const fns = ['apt_get', 'ensure_packages']
+        .map((name) =>
+          source().match(
+            new RegExp(`^${name}\\(\\) \\{\\n[\\s\\S]*?\\n\\}\\n`, 'm'),
+          ),
+        )
+        .map((match) => match?.[0] ?? '')
+        .join('');
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(
+        path.join(bin, 'apt-get'),
+        `#!/bin/sh\necho "apt-get $*" >> "${calls}"\necho "E: Unable to locate package jq" >&2\nexit 100\n`,
+        { mode: 0o755 },
+      );
+      fs.writeFileSync(path.join(bin, 'dpkg-query'), '#!/bin/sh\nexit 1\n', {
+        mode: 0o755,
+      });
+      fs.writeFileSync(path.join(bin, 'sleep'), '#!/bin/sh\n', { mode: 0o755 });
+
+      const ran = spawnSync(
+        'bash',
+        ['-c', `set -euo pipefail; ${fns} ensure_packages jq`],
+        { env: { PATH: `${bin}:${process.env.PATH}` }, encoding: 'utf8' },
+      );
+
+      expect(ran.status).not.toBe(0);
+      expect(ran.stderr).toContain('Unable to locate package jq');
+      expect(called().trim().split('\n')).toHaveLength(1);
+    });
   });
 });

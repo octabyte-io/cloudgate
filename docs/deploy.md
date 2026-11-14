@@ -52,7 +52,9 @@ curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.
 
 The public host is, in order: `CLOUDGATE_PUBLIC_HOST` if you set it, the one the last install on
 this host was given, and on a first install the host's public IPv4 address as `api.ipify.org`
-sees it. To name it:
+sees it. It is the host alone: an IPv4 address, an IPv6 address (with or without brackets) or a
+hostname. A value with a scheme, port or path, such as `https://cloud.example.com`, is refused
+before anything changes. To name it:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh \
@@ -63,6 +65,10 @@ Every other variable in the environment, `HOSTED_MODE` and its inputs included, 
 `deploy/install.sh` as it was. `CLOUDGATE_REF` is refused: the install never installs a branch.
 `API_PORT` must stay 4000, because a version's console was built to reach its API there; the
 install refuses any other value before it changes anything.
+
+One install runs at a time. A second run started while one is under way stops before it changes
+anything and says so. apt calls wait, for up to 10 minutes, while another apt holds its lock, as
+cloud-init and unattended-upgrades do for the first minutes of a fresh VPS.
 
 The same install by hand, which is all the one command does:
 
@@ -212,7 +218,7 @@ Three facts, plainly. None is a misconfiguration you can correct in the install;
 
 **The backend runs as root, and root is the honest choice.** It shells out to `docker`, `git`, `ssh`, `nixpacks`, `rclone` and `tail`, writes `/etc/cloudgate`, and forks ptys. A service user in the `docker` group would gain nothing — **membership of the `docker` group is equivalent to root**, because you can mount the host filesystem into a container you control. Running as a non-root user in the `docker` group is the same power with more `EACCES` on container-written files.
 
-**The firewall the install turns on does not cover anything Cloudgate publishes later.** The last thing `install.sh` does before it verifies is enable ufw with OpenSSH, 80, 443, 3000 and 4000 allowed and Swarm's cluster ports denied, which reads as a backstop for every other port on the box. It is not one. ufw is not in the path of a Docker publish: Docker writes its own `iptables` rules and they are evaluated first, so a container port Docker publishes is reachable from the internet while `ufw status` still shows the port is not allowed. That is not a theory about the ruleset — on the verified run a Postgres service was given `externalPort: 5433` from the console and, from a laptop across the internet, `nc -z <host> 5433` connected and an authenticated `psql -h <host> -p 5433` query returned, while `ufw status` listed nothing for 5433 and `ss -ltn` on the host reported `0.0.0.0:5433` and `[::]:5433`. What the console tells you when you set that field is the accurate account: Cloudgate adds no allowlist and no firewall rule, and the password is the only protection. ufw does not quietly supply the missing one.
+**The firewall the install turns on does not cover anything Cloudgate publishes later.** The last thing `install.sh` does before it verifies is enable ufw with OpenSSH (port 22, and every other port sshd listens on), 80, 443, 3000 and 4000 allowed and Swarm's cluster ports denied, which reads as a backstop for every other port on the box. It is not one. ufw is not in the path of a Docker publish: Docker writes its own `iptables` rules and they are evaluated first, so a container port Docker publishes is reachable from the internet while `ufw status` still shows the port is not allowed. That is not a theory about the ruleset — on the verified run a Postgres service was given `externalPort: 5433` from the console and, from a laptop across the internet, `nc -z <host> 5433` connected and an authenticated `psql -h <host> -p 5433` query returned, while `ufw status` listed nothing for 5433 and `ss -ltn` on the host reported `0.0.0.0:5433` and `[::]:5433`. What the console tells you when you set that field is the accurate account: Cloudgate adds no allowlist and no firewall rule, and the password is the only protection. ufw does not quietly supply the missing one.
 
 So giving a database an external port is a decision to put it on the internet, and it has to be made on those terms. If one genuinely must be reachable from off the host, the restriction has to go somewhere Docker's rules do not precede: the `DOCKER-USER` chain, which Docker consults before its own published-port rules and never rewrites,
 
@@ -329,8 +335,10 @@ The one-command install is the upgrade too. It installs the latest Cloudgate ver
 2. It unpacks it into `/opt/cloudgate.next` and re-runs the install from there. Every step is
    guarded, so on an upgraded host they find their work done and move on.
 3. Just before the migrations, the version is put in place: the old `/opt/cloudgate` is moved
-   aside, the new one renamed into its place, and the old one deleted. The units run the old
+   to `/opt/cloudgate.previous`, and the new one renamed into its place. The units run the old
    version until then, and a run that stops before this point leaves the installed version whole.
+   The old version is deleted once both units have restarted onto the new one; a run that stops
+   in between leaves it at `.previous`, and the next run removes it before it moves anything.
 4. It migrates the database with the version's own `drizzle-kit`, and restarts both units.
 
 **A run on the version already installed downloads nothing**: it re-runs the installed version's
