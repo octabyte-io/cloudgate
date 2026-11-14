@@ -178,7 +178,7 @@ SQL
     echo "  and the old secrets in $OLD_SECRETS_FILE"
   fi
 else
-  # The instance: a reinstall, or a restore on another host (docs/deploy.md
+  # The instance: a reinstall, or a restore on another platform host (docs/deploy.md
   # §8), with these is the same instance, its sessions and encrypted values
   # intact.
   log "Kept the instance"

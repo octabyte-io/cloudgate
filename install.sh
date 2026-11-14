@@ -4,7 +4,7 @@
 #
 #     curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo sh
 #
-# On a bare Ubuntu 24.04 or 26.04 amd64 host (ADR-0085) it downloads a
+# On a bare Ubuntu 24.04 or 26.04 amd64 platform host (ADR-0085) it downloads a
 # Cloudgate version (ADR-0082): the tarball on the GitHub Release for its tag,
 # checked against the sha256
 # published beside it and unpacked into /opt/cloudgate.next. Then it hands over
@@ -325,7 +325,7 @@ preflight_memory() {
   kib="$(awk '$1 == "MemTotal:" { print $2 }' "${INSTALL_ROOT:-}/proc/meminfo" 2>/dev/null)"
   [ -n "$kib" ] && [ "$kib" -lt "$PREFLIGHT_MIN_MEMORY_KIB" ] || return 0
   awk -v kib="$kib" 'BEGIN {
-    printf "this host has %.1f GB of memory (MemTotal); Cloudgate needs 4 GB.\n", kib * 1024 / 1e9
+    printf "this platform host has %.1f GB of memory (MemTotal); Cloudgate needs 4 GB.\n", kib * 1024 / 1e9
   }'
 }
 
@@ -346,7 +346,7 @@ preflight_hosts() {
 
 preflight() {
   [ "${CLOUDGATE_SKIP_PREFLIGHT:-}" != 1 ] || return 0
-  say "Checking the host"
+  say "Checking the platform host"
   # In an || list, so no failing command in a check can end the run.
   warnings="$(
     {
@@ -377,11 +377,11 @@ main() {
   case "$os_id $os_version" in
     'ubuntu 24.04' | 'ubuntu 26.04') ;;
     *) fail \
-      "Cloudgate installs on Ubuntu 24.04 or 26.04; this host is ${os_id:-unknown} ${os_version:-unknown}." \
-      "docs/deploy.md §1 lists what the host needs." ;;
+      "Cloudgate installs on Ubuntu 24.04 or 26.04; this platform host is ${os_id:-unknown} ${os_version:-unknown}." \
+      "docs/deploy.md §1 lists what the platform host needs." ;;
   esac
   [ "$(uname -m)" = x86_64 ] || fail \
-    "Cloudgate installs on amd64 (x86_64); this host is $(uname -m)."
+    "Cloudgate installs on amd64 (x86_64); this platform host is $(uname -m)."
 
   # A branch was what the install built before it installed versions. Refused
   # rather than ignored: a run asked for one thing must not install another.
@@ -412,7 +412,7 @@ main() {
   mkdir -p "$(dirname "$LOCK_FILE")"
   exec 9>"$LOCK_FILE"
   flock -n 9 || fail \
-    "Another Cloudgate install is running on this host; this one stopped before changing anything." \
+    "Another Cloudgate install is running on this platform host; this one stopped before changing anything." \
     "Let it finish, then run this again if you still need to."
 
   # A box installed from a git checkout, before the install installed

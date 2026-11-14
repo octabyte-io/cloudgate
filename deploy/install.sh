@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Cloudgate — native install on a bare Ubuntu 24.04 or 26.04 amd64 host.
+# Cloudgate — native install on a bare Ubuntu 24.04 or 26.04 amd64 platform host.
 #
 # This is the record of the install that was actually performed and verified on
 # a 2 vCPU / 3.7 GB / 38 GB VPS (run log: .project/vps-deploy/RUN-LOG.md, L01,

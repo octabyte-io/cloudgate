@@ -295,7 +295,7 @@ describe('install.sh (the one-command install)', () => {
 
         expect(refused.status).toBe(1);
         expect(refused.stderr).toContain(
-          `Cloudgate installs on Ubuntu 24.04 or 26.04; this host is ${found}.`,
+          `Cloudgate installs on Ubuntu 24.04 or 26.04; this platform host is ${found}.`,
         );
         expect(called()).toBe('');
         expect(opt()).toEqual([]);
@@ -332,7 +332,7 @@ describe('install.sh (the one-command install)', () => {
 
       expect(second.status).toBe(1);
       expect(second.stderr).toContain(
-        'Another Cloudgate install is running on this host',
+        'Another Cloudgate install is running on this platform host',
       );
       expect(called()).toBe('');
       expect(opt()).toEqual([]);
@@ -724,7 +724,7 @@ describe('install.sh (the one-command install)', () => {
    * env file names it CLOUDGATE_API_URL now (ADR-0082), and a box installed
    * before that still has NEXT_PUBLIC_API_URL until this run rewrites it.
    */
-  describe('the host a re-run reuses', () => {
+  describe('the public host a re-run reuses', () => {
     function previousHost(consoleEnv: string, backendEnv = ''): string {
       const source = fs.readFileSync(installer, 'utf8');
       const fn = source.match(/^previous_public_host\(\) \{\n[\s\S]*?\n\}\n/m);
@@ -1646,7 +1646,7 @@ exit 0
       ' -v /var/run/docker.sock:/var/run/docker.sock' +
       ' -p 80:80 -p 443:443 -p 443:443/udp traefik:v3.6.7';
 
-    it('pulls and starts Traefik at its version on a host with no container', () => {
+    it('pulls and starts Traefik at its version on a platform host with no container', () => {
       const { ran, docker } = traefik();
 
       expect(ran.stderr).toBe('');
@@ -2225,7 +2225,7 @@ esac`,
       );
     }
 
-    it('warns about nothing on a host that is ready', () => {
+    it('warns about nothing on a platform host that is ready', () => {
       const ready = checked();
 
       expect(ready.status).toBe(0);

@@ -1,6 +1,6 @@
 # Deploying Cloudgate on a server
 
-Cloudgate installs **natively** on one Ubuntu 24.04 or 26.04 amd64 host: Node processes under systemd, Postgres on the box, Docker and a Swarm of one, and a Traefik container it owns. There is no Dockerfile for Cloudgate itself and no compose file — it deploys containers, it does not ship as one.
+Cloudgate installs **natively** on one Ubuntu 24.04 or 26.04 amd64 machine, its platform host: Node processes under systemd, Postgres on the box, Docker and a Swarm of one, and a Traefik container it owns. There is no Dockerfile for Cloudgate itself and no compose file — it deploys containers, it does not ship as one.
 
 What broke on a real install is written down here as well as what worked: see [Known broken on a native install](#5-known-broken-on-a-native-install) and [Traps that cost real time](#9-traps-that-cost-real-time).
 
@@ -34,7 +34,7 @@ That is the repository's root `install.sh`. It installs a **Cloudgate version** 
 tested version of Cloudgate, `vX.Y.Z`, published as a prebuilt tarball on the GitHub Release for
 its tag once its E2E run was green. Nothing is cloned and nothing is built on the host. The script:
 
-1. checks the host is Ubuntu 24.04 or 26.04 on amd64 (ADR-0085), and stops, naming both, on any
+1. checks the platform host is Ubuntu 24.04 or 26.04 on amd64 (ADR-0085), and stops, naming both, on any
    other;
 2. finds the version: the one `CLOUDGATE_VERSION` names, or else the latest one published (the
    highest `vX.Y.Z` among the repository's releases; the CLI's `cli-v*` releases are never one);
@@ -52,7 +52,7 @@ curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.
 ```
 
 The public host is, in order: `CLOUDGATE_PUBLIC_HOST` if you set it, the one the last install on
-this host was given, and on a first install the host's public IPv4 address as `api.ipify.org`
+this platform host was given, and on a first install its public IPv4 address as `api.ipify.org`
 sees it. It is the host alone: an IPv4 address, an IPv6 address (with or without brackets) or a
 hostname. A value with a scheme, port or path, such as `https://cloud.example.com`, is refused
 before anything changes. To name it:
@@ -72,7 +72,7 @@ under way stops before it changes anything and says so. A by-hand `deploy/instal
 lock, so do not start one while the one command is running. apt calls wait, for up to 10 minutes, while another apt holds its lock, as
 cloud-init and unattended-upgrades do for the first minutes of a fresh VPS.
 
-Before it downloads anything, the install checks the host and warns about what is likely to fail
+Before it downloads anything, the install checks the platform host and warns about what is likely to fail
 later. Each warning names what it found, and **none of them stops the run**:
 
 - a process that is not Cloudgate's listening on port 80, 443, 3000 or 4000 (from `ss -ltnp`,
@@ -90,7 +90,7 @@ curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.
 
 Every download (the Cloudgate version, Node, Docker's installer, nixpacks, OpenTofu, its
 providers and the Session Manager plugin) is tried again up to 3 times when the connection drops
-or is refused, and gives up on a host that has not connected in 15 seconds. The Cloudgate tarball
+or is refused, and gives up on a download that has not connected in 15 seconds. The Cloudgate tarball
 shows a progress bar when the install runs on a terminal.
 
 **Every run leaves a log.** `deploy/install.sh` copies everything it prints, errors included, to
@@ -166,7 +166,7 @@ Two things to know:
 
 The install only installs a published Cloudgate version. To run a branch or an unreleased fix on
 a host, build a version tarball from it yourself and install that by hand. Build on an Ubuntu
-24.04 amd64 machine, even for a 26.04 host (node-pty built there loads on both; one built on 26.04
+24.04 amd64 machine, even for a 26.04 platform host (node-pty built there loads on both; one built on 26.04
 may not load on 24.04), with Node 24.19.0 (the one `deploy/install.sh` installs) and pnpm, in a fresh
 clone made for it: `deploy/version-tarball.sh` replaces every `node_modules` in the tree.
 
@@ -385,7 +385,7 @@ migrations and the restart, so ports 80 and 443 drop for a few seconds
 
 **A run on the version already installed downloads nothing**: it re-runs the installed version's
 own `deploy/install.sh`, which takes no dump, moves nothing, applies no migration and restarts
-both units. That is the way to repair a host whose packages or files someone changed.
+both units. That is the way to repair a platform host whose packages or files someone changed.
 
 **Going back, by hand.** When the backend never answers its health check, the run exits non-zero
 and keeps `/opt/cloudgate.previous`. It prints the dump it took, the old version's path,
