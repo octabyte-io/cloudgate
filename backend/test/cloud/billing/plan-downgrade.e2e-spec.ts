@@ -583,40 +583,48 @@ describe('Downgrading Business to Starter (e2e)', () => {
     ).not.toHaveBeenCalled();
   });
 
+  // The confirmation emails' cast and catalogue (spec #69).
+  const OWNER = 'grace@example.com';
+  const ADMIN = 'ada@example.com';
+  const MEMBER = 'edsger@example.com';
+
+  /** Hopper Labs on Business, with an admin and a member; the catalogue at 15, 35 and 5 USD. */
+  async function givenBusinessWithAdmin() {
+    const owner = await givenOwnerOn('business');
+    await signUpMember(http, owner.cookie, {
+      email: ADMIN,
+      name: 'Ada Lovelace',
+      role: 'admin',
+    });
+    await signUpMember(http, owner.cookie, {
+      email: MEMBER,
+      name: 'Edsger Dijkstra',
+      role: 'member',
+    });
+    const amounts: Record<string, number> = {
+      [STARTER_PRICE]: 1500,
+      [BUSINESS_PRICE]: 3500,
+      [ADD_ON_PRICE]: 500,
+    };
+    retrievePrice.mockImplementation((id) =>
+      Promise.resolve({
+        id,
+        unit_amount: amounts[id],
+        currency: 'usd',
+      } as unknown as Stripe.Price),
+    );
+    recorder.clear();
+    return owner;
+  }
+
+  /** The end of the paid month as the emails print it, worked out apart from the code. */
+  const monthEnd = new Date(periodEnd * 1000).toLocaleDateString('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+  });
+
   describe('the "your plan changed" email', () => {
-    const OWNER = 'grace@example.com';
-    const ADMIN = 'ada@example.com';
-    const MEMBER = 'edsger@example.com';
-
-    /** Hopper Labs on Business, with an admin and a member; the catalogue at 15, 35 and 5 USD. */
-    async function givenBusinessWithAdmin() {
-      const owner = await givenOwnerOn('business');
-      await signUpMember(http, owner.cookie, {
-        email: ADMIN,
-        name: 'Ada Lovelace',
-        role: 'admin',
-      });
-      await signUpMember(http, owner.cookie, {
-        email: MEMBER,
-        name: 'Edsger Dijkstra',
-        role: 'member',
-      });
-      const amounts: Record<string, number> = {
-        [STARTER_PRICE]: 1500,
-        [BUSINESS_PRICE]: 3500,
-        [ADD_ON_PRICE]: 500,
-      };
-      retrievePrice.mockImplementation((id) =>
-        Promise.resolve({
-          id,
-          unit_amount: amounts[id],
-          currency: 'usd',
-        } as unknown as Stripe.Price),
-      );
-      recorder.clear();
-      return owner;
-    }
-
     const planChanged = (address: string) =>
       recorder
         .to(address)
@@ -625,13 +633,6 @@ describe('Downgrading Business to Starter (e2e)', () => {
           subject: sent.email.subject,
           html: sent.email.html.replace(/<!-- -->/g, ''),
         }));
-
-    /** The end of the paid month as the emails print it, worked out apart from the code. */
-    const monthEnd = new Date(periodEnd * 1000).toLocaleDateString('en-US', {
-      month: 'short',
-      day: '2-digit',
-      year: 'numeric',
-    });
 
     it('scheduling the move to Starter emails every owner and admin its date, and the move taking effect emails them again, once', async () => {
       const owner = await givenBusinessWithAdmin();
@@ -714,6 +715,86 @@ describe('Downgrading Business to Starter (e2e)', () => {
       expect((await downgrade(owner.cookie)).status).toBe(409);
 
       expect(planChanged(OWNER)).toHaveLength(1);
+    });
+  });
+
+  describe('the "your Add-ons changed" email', () => {
+    const addOnsChanged = (address: string) =>
+      recorder
+        .to(address)
+        .filter((sent) => sent.email.subject.startsWith('Your Add-ons changed'))
+        .map((sent) => ({
+          subject: sent.email.subject,
+          html: sent.email.html.replace(/<!-- -->/g, ''),
+        }));
+
+    it('changing the count emails every owner and admin once, with the new count and monthly amount, and the webhook carrying it twice sends nothing more', async () => {
+      const owner = await givenBusinessWithAdmin();
+
+      expect((await setAddOns(owner.cookie, 4)).status).toBe(200);
+      expect(updateSubscription).toHaveBeenCalledTimes(1);
+      atStripe = businessAtStripe({ addOns: 4 });
+      for (let delivery = 0; delivery < 2; delivery++) {
+        expect(
+          (await postWebhook('customer.subscription.updated', atStripe)).status,
+        ).toBe(200);
+      }
+
+      for (const address of [OWNER, ADMIN]) {
+        const sent = addOnsChanged(address);
+        expect(sent).toHaveLength(1);
+        expect(sent[0].subject).toBe(
+          'Your Add-ons changed: Hopper Labs now has 4 Add-ons',
+        );
+        expect(sent[0].html).toContain(
+          'Hopper Labs went from 2 Add-ons to 4 Add-ons today.',
+        );
+        expect(sent[0].html).toContain(
+          'Plan: Business with 4 Add-ons, for 7 Servers and 7 Cloud Environments.',
+        );
+        expect(sent[0].html).toContain(
+          `Charged: $55.00 per month, from ${monthEnd}.`,
+        );
+      }
+      expect(addOnsChanged(MEMBER)).toEqual([]);
+    });
+
+    it('a change while the move to Starter waits emails once, with Starter’s monthly amount from the move, and the move sends no more of it', async () => {
+      const owner = await givenBusinessWithAdmin();
+      expect((await downgrade(owner.cookie)).status).toBe(200);
+      const [scheduleId] = schedules.ids();
+
+      expect((await setAddOns(owner.cookie, 4)).status).toBe(200);
+      await renewal(scheduleId);
+
+      for (const address of [OWNER, ADMIN]) {
+        const sent = addOnsChanged(address);
+        expect(sent).toHaveLength(1);
+        expect(sent[0].subject).toBe(
+          'Your Add-ons changed: Hopper Labs now has 4 Add-ons',
+        );
+        expect(sent[0].html).toContain(
+          `Hopper Labs keeps Business until ${monthEnd}, then moves to Starter with 4 Add-ons.`,
+        );
+        expect(sent[0].html).toContain(
+          'Plan: Starter with 4 Add-ons, for 7 Servers and 7 Cloud Environments.',
+        );
+        expect(sent[0].html).toContain(
+          `Charged: $35.00 per month, from ${monthEnd}.`,
+        );
+      }
+      expect(addOnsChanged(MEMBER)).toEqual([]);
+    });
+
+    it('setting the same count sends nothing', async () => {
+      const owner = await givenBusinessWithAdmin();
+
+      const res = await setAddOns(owner.cookie, 2);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ addOns: 2 });
+      expect(addOnsChanged(OWNER)).toEqual([]);
+      expect(addOnsChanged(ADMIN)).toEqual([]);
     });
   });
 });

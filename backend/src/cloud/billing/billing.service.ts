@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Inject,
   Injectable,
+  Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { and, eq, isNull } from 'drizzle-orm';
@@ -332,6 +333,8 @@ interface UpgradeTarget {
  */
 @Injectable()
 export class BillingService {
+  private readonly logger = new Logger(BillingService.name);
+
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     @Inject(STRIPE_API) private readonly stripe: StripeApi,
@@ -774,9 +777,73 @@ export class BillingService {
           proration_behavior: 'create_prorations',
         });
       }
+      // Stripe holds the new count now: an email that cannot be sent is
+      // logged, never answered as a failed change.
+      await this.sendAddOnsChanged(organizationId, row, current, prices, {
+        was: item?.quantity ?? 0,
+        addOns,
+      }).catch((error: unknown) =>
+        this.logger.warn(
+          `Could not send the Add-ons-changed email: ${String(error)}`,
+        ),
+      );
     }
 
     return { addOns };
+  }
+
+  /**
+   * "Your Add-ons changed", once Stripe accepted a new count. Sent from here
+   * alone: the webhook's sync only stores the count it reads, so a retried or
+   * late event never sends it again. While a move to Starter waits, the
+   * facts are Starter's from the move, which the count carries across to.
+   */
+  private async sendAddOnsChanged(
+    organizationId: string,
+    row: Subscription | null,
+    current: Stripe.Subscription,
+    prices: CompleteCatalogue,
+    count: { was: number; addOns: number },
+  ): Promise<void> {
+    const businessItem = itemCarrying(current, prices.businessPriceId);
+    const planItem =
+      businessItem ?? itemCarrying(current, prices.starterPriceId);
+    const held: PlanName | null = businessItem
+      ? 'business'
+      : planItem
+        ? 'starter'
+        : (row?.plan ?? null);
+    if (!held) return;
+    const periodEnd = planItem
+      ? new Date(planItem.current_period_end * 1000)
+      : new Date();
+    const movesOn = row?.stripeScheduleId ? row.downgradeAt : null;
+    if (movesOn) {
+      await this.planChanges.sendAddOnsChanged(
+        organizationId,
+        { kind: 'move-waiting', was: count.was, from: movesOn, movesOn },
+        'starter',
+        count.addOns,
+      );
+    } else if (isTrialStatus(current.status)) {
+      await this.planChanges.sendAddOnsChanged(
+        organizationId,
+        {
+          kind: 'trial',
+          was: count.was,
+          from: trialFactsOf(current).trialEndsAt ?? periodEnd,
+        },
+        held,
+        count.addOns,
+      );
+    } else {
+      await this.planChanges.sendAddOnsChanged(
+        organizationId,
+        { kind: 'prorated', was: count.was, from: periodEnd },
+        held,
+        count.addOns,
+      );
+    }
   }
 
   // ---------------------------------------------------------------------------

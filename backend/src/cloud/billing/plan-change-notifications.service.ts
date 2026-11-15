@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { format } from 'date-fns';
 import type Stripe from 'stripe';
+import { renderAddOnsChangedEmail } from '../../mail/templates/add-ons-changed';
 import { renderPlanChangedEmail } from '../../mail/templates/plan-changed';
 import type { PlanChangedFacts } from '../../mail/templates/plan-changed';
 import type { PlanFacts } from '../../mail/templates/plan-facts';
@@ -25,10 +26,21 @@ export type PlanChange =
   | { kind: 'trial-switch'; to: PlanName; trialEndsOn: Date };
 
 /**
+ * An Add-on count Stripe accepted, from `was`: prorated, free during the
+ * Free trial, or prorated while a move to Starter waits for `movesOn`. `from`
+ * is the next day the plan is charged on, for the facts block.
+ */
+export type AddOnsChange = { was: number; from: Date } & (
+  { kind: 'prorated' | 'trial' } | { kind: 'move-waiting'; movesOn: Date }
+);
+
+/**
  * "Your plan changed" (spec #69, #73), to every owner and admin, always. The
  * caller sends it once, beside the conditional write that recorded the
  * change; this words it and sends it, and never throws for an amount it
  * could not read: the email then points at the Billing page.
+ *
+ * "Your Add-ons changed" (#74) goes the same way, from {@link sendAddOnsChanged}.
  *
  * {@link planFactsOf} is the plan-and-Add-ons facts block, the plan, its
  * Add-ons and what they cost per month at this instance's catalogue prices,
@@ -61,6 +73,36 @@ export class PlanChangeNotifications {
           userName: recipient.name,
           organizationName,
           change: formatted(change),
+          plan: facts,
+          billingUrl,
+        }),
+    );
+  }
+
+  /**
+   * Sends "Your Add-ons changed" for `change`, the plan then being `plan`
+   * with `addOns` (Starter while a move to it waits).
+   */
+  async sendAddOnsChanged(
+    organizationId: string,
+    change: AddOnsChange,
+    plan: PlanName,
+    addOns: number,
+  ): Promise<void> {
+    const facts = await this.planFactsOf(plan, addOns, change.from);
+    const billingUrl = `${this.config.siteUrl}/settings/billing`;
+    await this.notifications.sendToOwnersAndAdmins(
+      organizationId,
+      'add-ons-changed',
+      (recipient, organizationName) =>
+        renderAddOnsChangedEmail({
+          userName: recipient.name,
+          organizationName,
+          was: change.was,
+          change:
+            change.kind === 'move-waiting'
+              ? { kind: 'move-waiting', movesOn: formatDate(change.movesOn) }
+              : { kind: change.kind },
           plan: facts,
           billingUrl,
         }),
