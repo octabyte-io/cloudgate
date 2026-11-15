@@ -508,6 +508,23 @@ describe('Extra storage on a Bought Server (e2e)', () => {
       });
     });
 
+    it('emails the owners once that the storage grew, with the new monthly price', async () => {
+      const id = await readyServer({ storageGb: 100 });
+      mail.clear();
+
+      const res = await grow(id, 250);
+
+      expect(res.status).toBe(200);
+      const sent = mail.to('grace@example.com');
+      expect(sent.map((one) => one.email.subject)).toEqual([
+        'Your Server web-1 now has 250 GB of extra storage',
+      ]);
+      // The Server's $25 and 250 GB of storage's $24.
+      expect(sent[0].email.html).toContain('$49.00 a month');
+      expect(sent[0].email.html).toContain(`/servers/${id}`);
+      expect(sent[0].email.html).not.toMatch(/hetzner/i);
+    });
+
     it('refuses a smaller size, or the same, before anything is charged', async () => {
       const id = await readyServer({ storageGb: 100 });
 
@@ -582,6 +599,10 @@ describe('Extra storage on a Bought Server (e2e)', () => {
         "We couldn't grow the extra storage of web-1 to 250 GB, so the payment was refunded",
       );
       expect(sent.email.html).not.toMatch(/hetzner/i);
+      // Its refund email only: the change was not made.
+      expect(
+        mail.sent.filter(({ email }) => email.subject.includes('now has')),
+      ).toEqual([]);
     });
 
     it('is Ready with the storage grown when the machine cannot be reached, for the next setup to grow', async () => {

@@ -321,6 +321,24 @@ describe('Changing the size of a Bought Server (e2e)', () => {
       expect(res.body).toMatchObject({ monthlyCents: 3000 });
     });
 
+    it('emails the owners once with the new size and the new monthly price', async () => {
+      const id = await readyServer('cx23', true);
+      mail.clear();
+
+      const res = await setSize(id, 'cpx22');
+
+      expect(res.status).toBe(200);
+      const sent = mail.to('grace@example.com');
+      expect(sent.map((one) => one.email.subject)).toEqual([
+        'Your Server web-1 has a new size',
+      ]);
+      const html = sent[0].email.html.replace(/<!-- -->/g, '');
+      // cpx22 is 3 vCPU and 4 GB in the fake; $25 and its backups' $5.
+      expect(html).toContain('now runs on 3 vCPU · 4 GB RAM');
+      expect(html).toContain('$30.00 a month');
+      expect(html).not.toMatch(/hetzner|cpx22|cx23/i);
+    });
+
     it('asks the provider for nothing when the card is refused', async () => {
       const id = await readyServer('cx23');
       mode = 'refused';
@@ -427,6 +445,10 @@ describe('Changing the size of a Bought Server (e2e)', () => {
         "We couldn't change the size of web-1, so the payment was refunded",
       );
       expect(sent.email.html).not.toMatch(/hetzner|cpx22|cx23/i);
+      // Its refund email only: the change was not made.
+      expect(
+        mail.sent.filter(({ email }) => email.subject.includes('new size')),
+      ).toEqual([]);
     });
 
     it('powers the machine back on when it cannot be powered off, refunding', async () => {
@@ -509,6 +531,22 @@ describe('Changing the size of a Bought Server (e2e)', () => {
         status: 'running',
       });
       expect(res.body).toMatchObject({ stage: 'ready', monthlyCents: 1100 });
+    });
+
+    it('emails the owners once with the smaller size and the new monthly price', async () => {
+      const id = await readyServer('cpx22', true, 'hel1', 40);
+      mail.clear();
+
+      const res = await setSize(id, 'cx23');
+
+      expect(res.status).toBe(200);
+      const sent = mail.to('grace@example.com');
+      expect(sent.map((one) => one.email.subject)).toEqual([
+        'Your Server web-1 has a new size',
+      ]);
+      const html = sent[0].email.html.replace(/<!-- -->/g, '');
+      expect(html).toContain('now runs on 2 vCPU · 4 GB RAM');
+      expect(html).toContain('$11.00 a month');
     });
 
     it('stays allowed while the Organization is frozen', async () => {
