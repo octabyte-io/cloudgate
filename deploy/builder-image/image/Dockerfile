@@ -17,8 +17,9 @@
 # build installs (backend/src/builders/pack-install.ts); a unit test
 # (backend/test/builders/cloud-builder-image.spec.ts) keeps them equal.
 # Railpack's checksums are the ones in its release's checksums.txt. Nixpacks
-# publishes no checksums, so its two were taken from the release downloads
-# when they were pinned.
+# publishes no checksums file, so its two are the sha256 digests GitHub shows
+# for the release's assets. Its version and amd64 checksum are the ones the
+# platform host installs (deploy/install.sh); the same unit test keeps them equal.
 #
 # The base is glibc (Debian), not Alpine. A build runs what its tools download
 # while it builds, and those are glibc binaries: `railpack prepare` fetches the
@@ -49,9 +50,9 @@ ARG PACK_VERSION=0.40.9
 ARG PACK_SHA256_AMD64=dc0ee1e931cf8a106d7555a01a214864f9acb60b77adf15d69b74df4404758e9
 ARG PACK_SHA256_ARM64=091ccb213823656c727731537ef8f1000eb4dc3ec61641506653e7f9d6da0c5e
 
-ARG NIXPACKS_VERSION=1.39.0
-ARG NIXPACKS_SHA256_AMD64=055828d808645ee63bff61fda87b1022e12ce3902d0748c8751505883ad7353a
-ARG NIXPACKS_SHA256_ARM64=6a10c16b39e7fd773e4ec744b08e56fbf142a635c414ab84f5714cb736cb4892
+ARG NIXPACKS_VERSION=1.41.0
+ARG NIXPACKS_SHA256_AMD64=0f55de7874507b9cf7502113120bd96f2ab6979f78d10eaf2eb2ade9207b3af6
+ARG NIXPACKS_SHA256_ARM64=912bd02dd2bb6f9c3a9ed965fe8a68b4aa318dc7a2546e2eca6f2806a894ba39
 
 ARG RAILPACK_VERSION=0.15.4
 ARG RAILPACK_SHA256_AMD64=459d86f5a9d8698bee8c7be4f224a305f51158fe5f44eb528255dfd568e4eaf1

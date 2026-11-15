@@ -54,6 +54,27 @@ describe('CLOUD_BUILDER_IMAGE', () => {
     expect(dockerfileArg('PACK_SHA256_ARM64')).toBe(PACK_RELEASES.arm64.sha256);
   });
 
+  // A Nixpacks build runs the same nixpacks in the cloud as on the platform
+  // host, so one Application builds the same way in both.
+  it('carries the nixpacks version the platform host installs, with its amd64 checksum', () => {
+    const installSh = readFileSync(
+      join(__dirname, '../../../deploy/install.sh'),
+      'utf8',
+    );
+    const installPin = (name: string): string | undefined =>
+      new RegExp(`^${name}="\\$\\{${name}:-(\\S+)\\}"$`, 'm').exec(
+        installSh,
+      )?.[1];
+
+    expect(dockerfileArg('NIXPACKS_VERSION')).toBe('1.41.0');
+    expect(dockerfileArg('NIXPACKS_VERSION')).toBe(
+      installPin('NIXPACKS_VERSION'),
+    );
+    expect(dockerfileArg('NIXPACKS_SHA256_AMD64')).toBe(
+      installPin('NIXPACKS_SHA256'),
+    );
+  });
+
   it('pins every image it is built from by digest', () => {
     const froms = dockerfile.match(/^FROM .*$/gm) ?? [];
     expect(froms.length).toBeGreaterThan(0);
