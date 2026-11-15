@@ -17,6 +17,7 @@ import {
   openHostedSignUp,
   signUpHostedCustomer,
 } from '../../utils/hosted-sign-up';
+import { signUpMember } from '../../utils/test-auth';
 import { createTestApp, TestAppContext } from '../../utils/test-app';
 
 jest.setTimeout(120_000);
@@ -39,12 +40,14 @@ const previewInvoice = jest.fn<
   [Stripe.InvoiceCreatePreviewParams]
 >();
 const constructEvent = jest.fn<Stripe.Event, [Buffer | string, string]>();
+const retrievePrice = jest.fn<Promise<Stripe.Price>, [string]>();
 const schedules = fakeSubscriptionSchedules();
 const stripe = fakeStripe({
   retrieveSubscription,
   updateSubscription,
   previewInvoice,
   constructEvent,
+  retrievePrice,
   ...schedules.methods,
 });
 
@@ -87,6 +90,7 @@ describe('Downgrading Business to Starter (e2e)', () => {
   beforeEach(async () => {
     await ctx.resetDb();
     jest.resetAllMocks();
+    recorder.clear();
     atStripe = businessAtStripe();
     retrieveSubscription.mockImplementation(() => Promise.resolve(atStripe));
     schedules.reset(() => atStripe);
@@ -577,5 +581,139 @@ describe('Downgrading Business to Starter (e2e)', () => {
     expect(
       schedules.methods.releaseSubscriptionSchedule,
     ).not.toHaveBeenCalled();
+  });
+
+  describe('the "your plan changed" email', () => {
+    const OWNER = 'grace@example.com';
+    const ADMIN = 'ada@example.com';
+    const MEMBER = 'edsger@example.com';
+
+    /** Hopper Labs on Business, with an admin and a member; the catalogue at 15, 35 and 5 USD. */
+    async function givenBusinessWithAdmin() {
+      const owner = await givenOwnerOn('business');
+      await signUpMember(http, owner.cookie, {
+        email: ADMIN,
+        name: 'Ada Lovelace',
+        role: 'admin',
+      });
+      await signUpMember(http, owner.cookie, {
+        email: MEMBER,
+        name: 'Edsger Dijkstra',
+        role: 'member',
+      });
+      const amounts: Record<string, number> = {
+        [STARTER_PRICE]: 1500,
+        [BUSINESS_PRICE]: 3500,
+        [ADD_ON_PRICE]: 500,
+      };
+      retrievePrice.mockImplementation((id) =>
+        Promise.resolve({
+          id,
+          unit_amount: amounts[id],
+          currency: 'usd',
+        } as unknown as Stripe.Price),
+      );
+      recorder.clear();
+      return owner;
+    }
+
+    const planChanged = (address: string) =>
+      recorder
+        .to(address)
+        .filter((sent) => sent.email.subject.startsWith('Your plan changed'))
+        .map((sent) => ({
+          subject: sent.email.subject,
+          html: sent.email.html.replace(/<!-- -->/g, ''),
+        }));
+
+    /** The end of the paid month as the emails print it, worked out apart from the code. */
+    const monthEnd = new Date(periodEnd * 1000).toLocaleDateString('en-US', {
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric',
+    });
+
+    it('scheduling the move to Starter emails every owner and admin its date, and the move taking effect emails them again, once', async () => {
+      const owner = await givenBusinessWithAdmin();
+
+      expect((await downgrade(owner.cookie)).status).toBe(200);
+
+      for (const address of [OWNER, ADMIN]) {
+        const sent = planChanged(address);
+        expect(sent).toHaveLength(1);
+        expect(sent[0].subject).toBe(
+          `Your plan changed: Hopper Labs moves to Starter on ${monthEnd}`,
+        );
+        expect(sent[0].html).toContain(
+          'Plan: Starter with 2 Add-ons, for 5 Servers and 5 Cloud Environments.',
+        );
+        expect(sent[0].html).toContain(
+          `Charged: $25.00 per month, from ${monthEnd}.`,
+        );
+      }
+
+      const [scheduleId] = schedules.ids();
+      await renewal(scheduleId);
+      // Stripe delivers the renewal again: nothing more.
+      expect(
+        (await postWebhook('customer.subscription.updated', atStripe)).status,
+      ).toBe(200);
+
+      for (const address of [OWNER, ADMIN]) {
+        const sent = planChanged(address);
+        expect(sent).toHaveLength(2);
+        expect(sent[1].subject).toBe(
+          'Your plan changed: Hopper Labs is now on Starter',
+        );
+        expect(sent[1].html).toContain(
+          'Hopper Labs moved from Business to Starter today.',
+        );
+        expect(sent[1].html).toContain(
+          `Charged: $25.00 per month, from ${monthEnd}.`,
+        );
+      }
+      expect(planChanged(MEMBER)).toEqual([]);
+    });
+
+    it('Keep Business emails every owner and admin that it stays on Business, and the schedule’s release sends nothing more', async () => {
+      const owner = await givenBusinessWithAdmin();
+      expect((await downgrade(owner.cookie)).status).toBe(200);
+      const [scheduleId] = schedules.ids();
+      recorder.clear();
+
+      expect((await keepBusiness(owner.cookie)).status).toBe(200);
+      expect(
+        (
+          await postWebhook(
+            'subscription_schedule.released',
+            schedules.get(scheduleId),
+          )
+        ).status,
+      ).toBe(200);
+
+      for (const address of [OWNER, ADMIN]) {
+        const sent = planChanged(address);
+        expect(sent).toHaveLength(1);
+        expect(sent[0].subject).toBe(
+          'Your plan changed: Hopper Labs stays on Business',
+        );
+        expect(sent[0].html).toContain(
+          'Plan: Business with 2 Add-ons, for 5 Servers and 5 Cloud Environments.',
+        );
+        expect(sent[0].html).toContain(
+          `Charged: $45.00 per month, from ${monthEnd}.`,
+        );
+      }
+      expect(planChanged(MEMBER)).toEqual([]);
+    });
+
+    it('sends nothing for a move refused while one already waits', async () => {
+      const owner = await givenBusinessWithAdmin();
+      expect((await downgrade(owner.cookie)).status).toBe(200);
+
+      expect((await downgrade(owner.cookie)).status).toBe(409);
+
+      expect(planChanged(OWNER)).toHaveLength(1);
+    });
   });
 });

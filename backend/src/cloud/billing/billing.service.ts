@@ -8,7 +8,7 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { withCheckoutOutcome } from 'api-schemas';
 import type Stripe from 'stripe';
 import { user } from '../../auth/auth.schema';
@@ -1041,10 +1041,24 @@ export class BillingService {
     );
 
     const scheduledAt = downgradeDateOf(created);
-    await this.db
+    const stored = await this.db
       .update(subscription)
       .set({ stripeScheduleId: created.id, downgradeAt: scheduledAt })
-      .where(eq(subscription.organizationId, organizationId));
+      .where(
+        and(
+          eq(subscription.organizationId, organizationId),
+          isNull(subscription.stripeScheduleId),
+        ),
+      )
+      .returning({ id: subscription.id });
+    if (stored.length > 0) {
+      await this.planChanges.sendPlanChanged(
+        organizationId,
+        { kind: 'move-scheduled', movesOn: scheduledAt },
+        'starter',
+        addOnItem?.quantity ?? 0,
+      );
+    }
     return { scheduledPlan: 'starter', scheduledAt };
   }
 
@@ -1177,6 +1191,11 @@ export class BillingService {
    * "Keep Business": releases the waiting downgrade's schedule, which leaves
    * the subscription on Business as it is, with nothing charged, and forgets
    * the schedule. Refused when no downgrade waits.
+   *
+   * The schedule is forgotten first, in one conditional write, so the
+   * release's own `subscription_schedule.released` finds nothing to clear
+   * and the write that took the move back sends "you stay on Business",
+   * once. A release Stripe refuses puts the schedule back.
    */
   async keepBusiness(ctx: PermissionCtx): Promise<{ plan: PlanName }> {
     this.assertCloud();
@@ -1191,11 +1210,41 @@ export class BillingService {
         code: 'NO_DOWNGRADE_WAITING',
       });
     }
-    await this.stripe.releaseSubscriptionSchedule(row.stripeScheduleId);
-    await this.db
+    const { stripeScheduleId, downgradeAt } = row;
+    const forgotten = await this.db
       .update(subscription)
       .set({ stripeScheduleId: null, downgradeAt: null })
-      .where(eq(subscription.organizationId, organizationId));
+      .where(
+        and(
+          eq(subscription.organizationId, organizationId),
+          eq(subscription.stripeScheduleId, stripeScheduleId),
+        ),
+      )
+      .returning({ addOns: subscription.addOns });
+    try {
+      await this.stripe.releaseSubscriptionSchedule(stripeScheduleId);
+    } catch (error) {
+      if (forgotten.length > 0) {
+        await this.db
+          .update(subscription)
+          .set({ stripeScheduleId, downgradeAt })
+          .where(
+            and(
+              eq(subscription.organizationId, organizationId),
+              isNull(subscription.stripeScheduleId),
+            ),
+          );
+      }
+      throw error;
+    }
+    if (forgotten.length > 0) {
+      await this.planChanges.sendPlanChanged(
+        organizationId,
+        { kind: 'kept-business', from: downgradeAt ?? new Date() },
+        'business',
+        forgotten[0].addOns,
+      );
+    }
     return { plan: 'business' };
   }
 
