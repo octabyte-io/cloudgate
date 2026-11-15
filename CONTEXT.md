@@ -288,7 +288,7 @@ An Instance a customer installs and runs on their own machine, unlocking paid fe
 _Avoid_: On-prem, community edition
 
 **Cloudgate version**:
-One tested version of Cloudgate itself, `vX.Y.Z`, published as a prebuilt tarball on the GitHub Release for its tag once its E2E run is green. It is the only thing the install puts on a platform host: a Self-hosted instance and the Hosted instance both install and upgrade to a Cloudgate version, never a branch (ADR-0082).
+One tested version of Cloudgate itself, `vX.Y.Z`, published as two prebuilt tarballs, one per CPU (`linux-amd64` and `linux-arm64`), on the GitHub Release for its tag once its E2E run is green. A Self-hosted instance installs only the amd64 one; the arm64 one is for the Hosted instance alone (ADR-0088). It is the only thing the install puts on a platform host: a Self-hosted instance and the Hosted instance both install and upgrade to a Cloudgate version, never a branch (ADR-0082).
 _Avoid_: Release on its own (that word is avoided for a Deployment), build, image, checkout
 
 **Hosted plan**:
