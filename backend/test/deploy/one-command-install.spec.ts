@@ -75,6 +75,18 @@ done
 echo "curl $url" >> "${calls}"
 file="${served}/\${url#https://}"
 [ -f "$file" ] || exit 22
+# INTERRUPT=<signal>: the run is sent it half-way through the tarball's
+# download, as Ctrl-C (INT), a kill (TERM) or a dropped SSH session (HUP) does.
+case "$url" in
+  *.tar.gz)
+    if [ -n "\${INTERRUPT:-}" ]; then
+      head -c 10 "$file" > "$out"
+      kill -"$INTERRUPT" "$PPID"
+      sleep 1
+      exit 0
+    fi
+    ;;
+esac
 if [ -n "$out" ]; then cat "$file" > "$out"; else cat "$file"; fi
 `,
     { mode: 0o755 },
@@ -175,11 +187,16 @@ function run(script: string, uid: number, extra: Record<string, string> = {}) {
   });
 }
 
-/** A root run of install.sh on the scratch host. */
+/**
+ * A root run of install.sh on the scratch host. The preflight is skipped
+ * unless `extra` turns it back on: it reads the test machine's own ports,
+ * disk and memory otherwise.
+ */
 function install(extra: Record<string, string> = {}) {
   return run(installer, 0, {
     INSTALL_ROOT: root,
     CLOUDGATE_PUBLIC_HOST: '203.0.113.10',
+    CLOUDGATE_SKIP_PREFLIGHT: '1',
     ...extra,
   });
 }
@@ -238,6 +255,216 @@ describe('install.sh (the one-command install)', () => {
       'https://github.com/octabyte-io/cloudgate/releases/download',
     );
     expect(source).not.toMatch(/^\s*git /m);
+  });
+
+  /**
+   * One tarball, built on 24.04, installs on Ubuntu 24.04 and 26.04 amd64
+   * (ADR-0085); every other Ubuntu version or distribution is refused by name,
+   * before anything is downloaded.
+   */
+  describe('the Ubuntu versions it installs on', () => {
+    function hostOs(content: string) {
+      fs.writeFileSync(path.join(root, 'etc/os-release'), content);
+    }
+
+    it('installs on Ubuntu 26.04', () => {
+      hostOs('ID=ubuntu\nVERSION_ID="26.04"\n');
+      releases('v0.10.0');
+      publish('0.10.0');
+
+      const fresh = install();
+
+      expect(fresh.stderr).toBe('');
+      expect(fresh.status).toBe(0);
+      expect(called()).toContain(
+        `deploy/install.sh 0.10.0 from ${root}/opt/cloudgate.next`,
+      );
+    });
+
+    it.each([
+      ['Ubuntu 22.04', 'ID=ubuntu\nVERSION_ID="22.04"\n', 'ubuntu 22.04'],
+      ['Debian 12', 'ID=debian\nVERSION_ID="12"\n', 'debian 12'],
+    ])(
+      'refuses %s, naming 24.04 and 26.04, before downloading anything',
+      (_, content, found) => {
+        hostOs(content);
+        releases('v0.10.0');
+        publish('0.10.0');
+
+        const refused = install();
+
+        expect(refused.status).toBe(1);
+        expect(refused.stderr).toContain(
+          `Cloudgate installs on Ubuntu 24.04 or 26.04; this platform host is ${found}.`,
+        );
+        expect(called()).toBe('');
+        expect(opt()).toEqual([]);
+      },
+    );
+  });
+
+  describe('one run at a time', () => {
+    it('refuses a run while another is under way, before changing anything', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+      const lock = path.join(root, 'run/lock/cloudgate-install.lock');
+      fs.mkdirSync(path.dirname(lock), { recursive: true });
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(path.join(bin, 'id'), '#!/bin/sh\necho 0\n', {
+        mode: 0o755,
+      });
+
+      // The run under way holds the lock on its own open of the file.
+      const second = spawnSync(
+        'sh',
+        ['-c', 'exec 8>"$1"; flock 8; exec sh "$2"', 'sh', lock, installer],
+        {
+          env: {
+            PATH: `${bin}:${process.env.PATH}`,
+            HOME: scratch,
+            CALLS: calls,
+            INSTALL_ROOT: root,
+            CLOUDGATE_PUBLIC_HOST: '203.0.113.10',
+          },
+          encoding: 'utf8',
+        },
+      );
+
+      expect(second.status).toBe(1);
+      expect(second.stderr).toContain(
+        'Another Cloudgate install is running on this platform host',
+      );
+      expect(called()).toBe('');
+      expect(opt()).toEqual([]);
+    });
+  });
+
+  describe('a run that is stopped', () => {
+    it.each(['INT', 'TERM', 'HUP'])(
+      'removes its download directory when it is sent SIG%s mid-download',
+      (signal) => {
+        releases('v0.10.0');
+        publish('0.10.0');
+
+        const stopped = install({ INTERRUPT: signal });
+
+        expect(stopped.status).not.toBe(0);
+        expect(called()).not.toContain('deploy/install.sh');
+        expect(opt()).toEqual([]);
+      },
+    );
+
+    it('sweeps away a download directory a killed run left behind', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+      const leftover = path.join(root, 'opt/cloudgate.download.Ab12Cd');
+      fs.mkdirSync(leftover);
+      fs.writeFileSync(path.join(leftover, 'half.tar.gz'), 'half');
+
+      const again = install();
+
+      expect(again.status).toBe(0);
+      expect(fs.existsSync(leftover)).toBe(false);
+    });
+  });
+
+  describe('CLOUDGATE_PUBLIC_HOST', () => {
+    it.each([
+      'https://cloud.example.com',
+      'cloud.example.com:3000',
+      '203.0.113.10/',
+      'http://203.0.113.10:4000',
+      'cloud example.com',
+    ])(
+      'refuses %j, which is not a host alone, before changing anything',
+      (host) => {
+        releases('v0.10.0');
+        publish('0.10.0');
+
+        const refused = install({ CLOUDGATE_PUBLIC_HOST: host });
+
+        expect(refused.status).toBe(1);
+        expect(refused.stderr).toContain(
+          `CLOUDGATE_PUBLIC_HOST is the public IP address or hostname alone`,
+        );
+        expect(refused.stderr).toContain(JSON.stringify(host));
+        expect(called()).toBe('');
+        expect(opt()).toEqual([]);
+      },
+    );
+
+    it.each(['2001:db8::10', '[2001:db8::10]'])(
+      'takes the IPv6 address %s, handing it over without brackets',
+      (host) => {
+        releases('v0.10.0');
+        publish('0.10.0');
+
+        const v6 = install({ CLOUDGATE_PUBLIC_HOST: host });
+
+        expect(v6.stderr).toBe('');
+        expect(v6.status).toBe(0);
+        expect(called()).toContain(
+          `deploy/install.sh 0.10.0 from ${root}/opt/cloudgate.next host=2001:db8::10\n`,
+        );
+      },
+    );
+
+    it('takes a hostname', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+
+      const named = install({ CLOUDGATE_PUBLIC_HOST: 'cloud.example.com' });
+
+      expect(named.status).toBe(0);
+      expect(called()).toContain('host=cloud.example.com\n');
+    });
+
+    // A re-run with no CLOUDGATE_PUBLIC_HOST reuses what the env files hold,
+    // which someone may have edited since.
+    it.each([
+      [
+        'cloudgate-backend',
+        "NODE_ENV=production\nCLOUDGATE_PUBLIC_HOST='https://cloud.example.com'\n",
+        'https://cloud.example.com',
+      ],
+      [
+        'cloudgate-console',
+        'NODE_ENV=production\nCLOUDGATE_API_URL=http://203.0.113.10/console:4000\n',
+        '203.0.113.10/console',
+      ],
+    ])(
+      'refuses a public host read back from %s that is not a host alone, before downloading anything, saying to pass CLOUDGATE_PUBLIC_HOST',
+      (file, content, host) => {
+        releases('v0.10.0');
+        publish('0.10.0');
+        fs.mkdirSync(path.join(root, 'etc/default'), { recursive: true });
+        fs.writeFileSync(path.join(root, 'etc/default', file), content);
+
+        const refused = install({ CLOUDGATE_PUBLIC_HOST: '' });
+
+        expect(refused.status).toBe(1);
+        expect(refused.stderr).toContain(JSON.stringify(host));
+        expect(refused.stderr).toContain('sudo CLOUDGATE_PUBLIC_HOST=');
+        expect(refused.stderr).toContain('Nothing was changed');
+        expect(called()).toBe('');
+        expect(opt()).toEqual([]);
+      },
+    );
+
+    it('reuses a public host read back from the env files when it is a host alone', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+      fs.mkdirSync(path.join(root, 'etc/default'), { recursive: true });
+      fs.writeFileSync(
+        path.join(root, 'etc/default/cloudgate-console'),
+        'NODE_ENV=production\nCLOUDGATE_API_URL=http://198.51.100.7:4000\n',
+      );
+
+      const reused = install({ CLOUDGATE_PUBLIC_HOST: '' });
+
+      expect(reused.status).toBe(0);
+      expect(called()).toContain('host=198.51.100.7\n');
+    });
   });
 
   describe('the Cloudgate version it installs', () => {
@@ -497,17 +724,19 @@ describe('install.sh (the one-command install)', () => {
    * env file names it CLOUDGATE_API_URL now (ADR-0082), and a box installed
    * before that still has NEXT_PUBLIC_API_URL until this run rewrites it.
    */
-  describe('the host a re-run reuses', () => {
-    function previousHost(consoleEnv: string): string {
+  describe('the public host a re-run reuses', () => {
+    function previousHost(consoleEnv: string, backendEnv = ''): string {
       const source = fs.readFileSync(installer, 'utf8');
       const fn = source.match(/^previous_public_host\(\) \{\n[\s\S]*?\n\}\n/m);
       if (!fn) throw new Error('no previous_public_host in install.sh');
       const envFile = path.join(scratch, 'cloudgate-console');
       fs.writeFileSync(envFile, consoleEnv);
+      const backendFile = path.join(scratch, 'cloudgate-backend');
+      fs.writeFileSync(backendFile, backendEnv);
       const script = path.join(scratch, 'previous-host.sh');
       fs.writeFileSync(
         script,
-        `CONSOLE_ENV_FILE='${envFile}'\n${fn[0]}previous_public_host\n`,
+        `set -eu\nCONSOLE_ENV_FILE='${envFile}'\nBACKEND_ENV_FILE='${backendFile}'\n${fn[0]}previous_public_host\n`,
       );
       return spawnSync('sh', [script], { encoding: 'utf8' }).stdout.trim();
     }
@@ -524,6 +753,25 @@ describe('install.sh (the one-command install)', () => {
       expect(
         previousHost(
           'NODE_ENV=production\nPORT=3000\nNEXT_PUBLIC_API_URL=http://198.51.100.7:4000\n',
+        ),
+      ).toBe('198.51.100.7');
+    });
+
+    it('reads an IPv6 address without the brackets its URL carries', () => {
+      expect(
+        previousHost(
+          'NODE_ENV=production\nPORT=3000\nCLOUDGATE_API_URL=http://[2001:db8::10]:4000\n',
+        ),
+      ).toBe('2001:db8::10');
+    });
+
+    // The Hosted instance's console is reached at https://<hostname>, which
+    // names no address; the backend's env file keeps the one it was given.
+    it('reads the Hosted instance’s from the backend’s CLOUDGATE_PUBLIC_HOST', () => {
+      expect(
+        previousHost(
+          'NODE_ENV=production\nPORT=3000\nCLOUDGATE_API_URL=https://cloudgate.example.app\n',
+          "NODE_ENV=production\nCLOUDGATE_PUBLIC_HOST='198.51.100.7'\n",
         ),
       ).toBe('198.51.100.7');
     });
@@ -762,6 +1010,396 @@ describe('deploy/install.sh', () => {
     expect(fn?.match(/rm -rf "\$INSTALL_DIR\.previous"/g)).toHaveLength(1);
   });
 
+  /**
+   * The upgrade safety net (ADR-0084): a dump of the database before a run
+   * that changes the version, and the old version kept until the new one
+   * answers its health check. Each function is cut out of the file as written
+   * and run with its boundaries shimmed: `su` runs the command it is handed,
+   * `pg_dump` prints a stand-in dump and records how it was called, and
+   * `date` says 2026-11-14 12:00:00 UTC.
+   */
+  describe('dump_database', () => {
+    const into = () => path.join(root, 'opt/cloudgate');
+    const backups = () => path.join(root, 'var/backups/cloudgate');
+
+    /**
+     * `database` is Postgres's answer, before the install's guard creates
+     * it, to whether a `cloudgate` database is there: the install asks once
+     * and keeps the answer in `have_db`.
+     */
+    function dump(
+      installing: string,
+      options: {
+        env?: Record<string, string>;
+        pgDump?: string;
+        database?: boolean;
+      } = {},
+    ) {
+      const fn = source().match(/^dump_database\(\) \{\n[\s\S]*?\n\}\n/m);
+      if (!fn) throw new Error('no dump_database in deploy/install.sh');
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(
+        path.join(bin, 'su'),
+        `#!/bin/sh\necho "su $1 $2" >> "${calls}"\nexec sh -c "$4"\n`,
+        { mode: 0o755 },
+      );
+      fs.writeFileSync(
+        path.join(bin, 'pg_dump'),
+        options.pgDump ??
+          `#!/bin/sh\necho "pg_dump $*" >> "${calls}"\necho "the cloudgate database"\n`,
+        { mode: 0o755 },
+      );
+      fs.writeFileSync(
+        path.join(bin, 'date'),
+        '#!/bin/sh\necho 20261114T120000Z\n',
+        { mode: 0o755 },
+      );
+      return spawnSync(
+        'bash',
+        [
+          '-c',
+          `set -euo pipefail; INSTALL_DIR="$1"; BACKUP_DIR="$2"; VERSION="$3"; have_db="$4"; ${fn[0]} dump_database || exit 1; echo "DATABASE_DUMP=$DATABASE_DUMP"`,
+          'bash',
+          into(),
+          backups(),
+          installing,
+          options.database === false ? '' : '1',
+        ],
+        {
+          encoding: 'utf8',
+          env: {
+            PATH: `${bin}:${process.env.PATH}`,
+            HOSTED_MODE: '',
+            ...options.env,
+          },
+        },
+      );
+    }
+
+    function dumps(): string[] {
+      return fs.existsSync(backups()) ? fs.readdirSync(backups()).sort() : [];
+    }
+
+    it('dumps the database to /var/backups/cloudgate/pre-<version>-<time>.dump, readable by root alone, when the version changes', () => {
+      versionTree('0.9.0', into());
+
+      const dumped = dump('0.10.0');
+
+      expect(dumped.stderr).toBe('');
+      expect(dumped.status).toBe(0);
+      const file = path.join(backups(), 'pre-0.10.0-20261114T120000Z.dump');
+      expect(dumped.stdout).toContain(`DATABASE_DUMP=${file}\n`);
+      expect(fs.readFileSync(file, 'utf8')).toBe('the cloudgate database\n');
+      expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+      expect(fs.statSync(backups()).mode & 0o777).toBe(0o700);
+      expect(called()).toBe('su - postgres\npg_dump -Fc cloudgate\n');
+      expect(dumped.stdout).toContain(file);
+    });
+
+    it('dumps the database before a git checkout is switched over to a version', () => {
+      fs.mkdirSync(path.join(into(), '.git'), { recursive: true });
+
+      const dumped = dump('0.10.0');
+
+      expect(dumped.status).toBe(0);
+      expect(dumps()).toEqual(['pre-0.10.0-20261114T120000Z.dump']);
+    });
+
+    it('takes no dump on a run of the version already installed', () => {
+      versionTree('0.10.0', into());
+
+      const dumped = dump('0.10.0');
+
+      expect(dumped.status).toBe(0);
+      expect(dumped.stdout).toContain('DATABASE_DUMP=\n');
+      expect(dumps()).toEqual([]);
+      expect(called()).toBe('');
+    });
+
+    it('takes no dump on a first install, which has no database to keep', () => {
+      const dumped = dump('0.10.0', { database: false });
+
+      expect(dumped.status).toBe(0);
+      expect(dumped.stdout).toContain('DATABASE_DUMP=\n');
+      expect(dumps()).toEqual([]);
+      expect(called()).toBe('');
+    });
+
+    it('dumps the database on a reinstall after an uninstall, which kept the database and removed /opt/cloudgate', () => {
+      const dumped = dump('0.10.0');
+
+      expect(dumped.status).toBe(0);
+      expect(dumps()).toEqual(['pre-0.10.0-20261114T120000Z.dump']);
+      expect(called()).toBe('su - postgres\npg_dump -Fc cloudgate\n');
+    });
+
+    it('decides on the answer Postgres gave before the install created the database', () => {
+      const lines = code();
+      const asked = lines.indexOf(
+        `have_db="$(su - postgres -c "psql -tAc \\"SELECT 1 FROM pg_database WHERE datname='cloudgate'\\"")"`,
+      );
+      const created = lines.indexOf('createdb -O cloudgate cloudgate');
+
+      expect(asked).toBeGreaterThan(-1);
+      expect(created).toBeGreaterThan(asked);
+      expect(lines.indexOf('\ndump_database || exit 1\n')).toBeGreaterThan(
+        created,
+      );
+      // Nothing between the question and the dump assigns it again.
+      expect(lines.match(/\bhave_db=/g)).toHaveLength(1);
+    });
+
+    it('sweeps away a partial dump a killed run left behind', () => {
+      versionTree('0.10.0', into());
+      fs.mkdirSync(backups(), { recursive: true });
+      fs.writeFileSync(
+        path.join(backups(), 'pre-0.10.0-20261113T090000Z.dump.partial'),
+        'half',
+      );
+
+      const dumped = dump('0.10.0');
+
+      expect(dumped.status).toBe(0);
+      expect(dumps()).toEqual([]);
+    });
+
+    it('skips the dump with CLOUDGATE_SKIP_BACKUP=1, and says so', () => {
+      versionTree('0.9.0', into());
+
+      const dumped = dump('0.10.0', { env: { CLOUDGATE_SKIP_BACKUP: '1' } });
+
+      expect(dumped.status).toBe(0);
+      expect(dumped.stdout).toContain('CLOUDGATE_SKIP_BACKUP=1');
+      expect(dumped.stdout).toContain('DATABASE_DUMP=\n');
+      expect(dumps()).toEqual([]);
+      expect(called()).toBe('');
+    });
+
+    it('keeps the newest 3 dumps', () => {
+      versionTree('0.9.0', into());
+      fs.mkdirSync(backups(), { recursive: true });
+      const older = [
+        ['pre-0.7.0-20260901T090000Z.dump', '2026-09-01T09:00:00Z'],
+        ['pre-0.8.0-20261001T090000Z.dump', '2026-10-01T09:00:00Z'],
+        ['pre-0.9.0-20261101T090000Z.dump', '2026-11-01T09:00:00Z'],
+      ];
+      for (const [name, at] of older) {
+        const file = path.join(backups(), name);
+        fs.writeFileSync(file, '', { mode: 0o600 });
+        fs.utimesSync(file, new Date(at), new Date(at));
+      }
+      fs.writeFileSync(path.join(backups(), 'mine.sql'), '');
+
+      const dumped = dump('0.10.0');
+
+      expect(dumped.status).toBe(0);
+      expect(dumps()).toEqual([
+        'mine.sql',
+        'pre-0.10.0-20261114T120000Z.dump',
+        'pre-0.8.0-20261001T090000Z.dump',
+        'pre-0.9.0-20261101T090000Z.dump',
+      ]);
+    });
+
+    it('fails, saying so and leaving no partial dump, when pg_dump fails', () => {
+      versionTree('0.9.0', into());
+
+      const dumped = dump('0.10.0', {
+        pgDump:
+          '#!/bin/sh\necho "half a dump"\necho "pg_dump: error: connection to server failed" >&2\nexit 1\n',
+      });
+
+      expect(dumped.status).toBe(1);
+      expect(dumped.stderr).toContain('connection to server failed');
+      expect(dumped.stderr).toContain('Nothing was changed');
+      expect(dumped.stderr).toContain('CLOUDGATE_SKIP_BACKUP=1');
+      expect(dumps()).toEqual([]);
+    });
+
+    it('runs before place_version, and a failed dump stops the run there', () => {
+      const lines = code();
+      const dumped = lines.indexOf('\ndump_database || exit 1\n');
+      const placed = lines.indexOf('\nplace_version\n');
+
+      expect(dumped).toBeGreaterThan(-1);
+      expect(placed).toBeGreaterThan(dumped);
+      // After Postgres is running and the cloudgate database exists.
+      expect(dumped).toBeGreaterThan(
+        lines.indexOf('systemctl enable --now postgresql\n'),
+      );
+    });
+
+    it('takes no dump on the Hosted instance, whose updater backs up to B2 first', () => {
+      versionTree('0.9.0', into());
+
+      const dumped = dump('0.10.0', { env: { HOSTED_MODE: 'true' } });
+
+      expect(dumped.status).toBe(0);
+      expect(dumps()).toEqual([]);
+      expect(called()).toBe('');
+    });
+  });
+
+  describe('the health check before the old version goes', () => {
+    it('deletes the old version only after the backend answers /settings/health', () => {
+      const lines = code();
+      const polled = lines.indexOf(
+        'curl -fsS -o /dev/null "http://127.0.0.1:${API_PORT}/settings/health"',
+      );
+      const dropped = lines.indexOf('\ndrop_previous_version\n');
+
+      expect(polled).toBeGreaterThan(-1);
+      expect(dropped).toBeGreaterThan(polled);
+      expect(lines.match(/\ndrop_previous_version\n/g)).toHaveLength(1);
+      // The run ends non-zero, with the way back, before it gets there.
+      const failed = lines.indexOf('  way_back >&2\n  exit 1\n');
+      expect(failed).toBeGreaterThan(polled);
+      expect(dropped).toBeGreaterThan(failed);
+    });
+
+    describe('way_back', () => {
+      const into = () => path.join(root, 'opt/cloudgate');
+
+      function wayBack(dumpFile: string) {
+        const fn = source().match(/^way_back\(\) \{\n[\s\S]*?\n\}\n/m);
+        if (!fn) throw new Error('no way_back in deploy/install.sh');
+        return spawnSync(
+          'bash',
+          [
+            '-c',
+            `set -euo pipefail; API_PORT=4000; INSTALL_DIR="$1"; DATABASE_DUMP="$2"; ${fn[0]} way_back`,
+            'bash',
+            into(),
+            dumpFile,
+          ],
+          { encoding: 'utf8' },
+        );
+      }
+
+      /** The commands it prints to run as root, one per line, in order. */
+      function steps(said: string): string[] {
+        return said
+          .split('\n')
+          .filter((line) => line.startsWith('    '))
+          .map((line) => line.trim());
+      }
+
+      /**
+       * Runs the printed commands as root would, with Postgres's tools,
+       * `su`, `systemctl` and `install` shimmed to record what they were
+       * asked, and with what was redirected into each.
+       */
+      function goBack(commands: string[]) {
+        const bin = path.join(scratch, 'bin');
+        fs.writeFileSync(path.join(bin, 'su'), `#!/bin/sh\nexec sh -c "$4"\n`, {
+          mode: 0o755,
+        });
+        for (const tool of ['dropdb', 'createdb']) {
+          fs.writeFileSync(
+            path.join(bin, tool),
+            `#!/bin/sh\necho "${tool} $*" >> "${calls}"\n`,
+            { mode: 0o755 },
+          );
+        }
+        fs.writeFileSync(
+          path.join(bin, 'pg_restore'),
+          `#!/bin/sh\necho "pg_restore $* < $(cat)" >> "${calls}"\n`,
+          { mode: 0o755 },
+        );
+        fs.writeFileSync(
+          path.join(bin, 'install'),
+          `#!/bin/sh\necho "install $*" >> "${calls}"\n`,
+          { mode: 0o755 },
+        );
+        return spawnSync('sh', ['-e', '-c', commands.join('\n')], {
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'pipe'],
+          env: { PATH: `${bin}:${process.env.PATH}` },
+        });
+      }
+
+      it('drops and recreates the database owned by cloudgate, restores the dump into it, then puts the old version back', () => {
+        versionTree('0.10.0', into());
+        versionTree('0.9.0', `${into()}.previous`);
+        const file = path.join(scratch, 'pre-0.10.0-20261114T120000Z.dump');
+        fs.writeFileSync(file, 'the dump');
+
+        const said = wayBack(file);
+        const back = goBack(steps(said.stdout));
+
+        expect(said.status).toBe(0);
+        expect(back.stderr).toBe('');
+        expect(back.status).toBe(0);
+        const units = `${into()}/deploy/systemd`;
+        expect(called()).toBe(
+          [
+            'systemctl stop cloudgate-backend cloudgate-console',
+            'dropdb --if-exists cloudgate',
+            'createdb -O cloudgate cloudgate',
+            'pg_restore --exit-on-error --single-transaction -d cloudgate < the dump',
+            `install -m 0644 ${units}/cloudgate-backend.service ${units}/cloudgate-console.service /etc/systemd/system/`,
+            'systemctl daemon-reload',
+            'systemctl start cloudgate-backend cloudgate-console',
+            '',
+          ].join('\n'),
+        );
+        expect(fs.readFileSync(path.join(into(), 'VERSION'), 'utf8')).toBe(
+          '0.9.0\n',
+        );
+        expect(fs.existsSync(`${into()}.previous`)).toBe(false);
+      });
+
+      it('names the dump, the old version, the backend’s journal, and what going back leaves as this run left it', () => {
+        versionTree('0.10.0', into());
+        versionTree('0.9.0', `${into()}.previous`);
+        const file = '/var/backups/cloudgate/pre-0.10.0-20261114T120000Z.dump';
+
+        const said = wayBack(file);
+
+        expect(said.status).toBe(0);
+        expect(said.stdout).toContain('journalctl -u cloudgate-backend');
+        expect(said.stdout).toContain(
+          `Cloudgate 0.9.0 is kept at ${into()}.previous`,
+        );
+        expect(said.stdout).toContain(file);
+        expect(said.stdout).toContain('/usr/local/share/cloudgate/node');
+        expect(said.stdout).toContain('Traefik');
+        expect(said.stdout).toContain('/etc/default/cloudgate-*');
+        expect(said.stdout).toMatch(/re-run.*removes .*\.previous/is);
+        expect(said.stdout).not.toContain('pg_restore --clean');
+        // The Hosted instance's backup units are the version's too, and stay.
+        expect(said.stdout).not.toContain('cloudgate-*.service');
+      });
+
+      it('says the old version would run against a database the new one migrated, when no dump was taken', () => {
+        versionTree('0.10.0', into());
+        versionTree('0.9.0', `${into()}.previous`);
+
+        const said = wayBack('');
+
+        expect(said.status).toBe(0);
+        expect(said.stdout).toContain('No dump of the database was taken');
+        expect(said.stdout).toContain(
+          'would run against a database Cloudgate 0.10.0 has migrated',
+        );
+        expect(steps(said.stdout).join('\n')).not.toMatch(
+          /dropdb|createdb|pg_restore/,
+        );
+      });
+
+      it('names only the journal when there is no old version to go back to', () => {
+        versionTree('0.10.0', into());
+
+        const said = wayBack('');
+
+        expect(said.status).toBe(0);
+        expect(said.stdout).toContain('journalctl -u cloudgate-backend');
+        expect(said.stdout).not.toContain('.previous');
+        expect(said.stdout).not.toContain('pg_restore');
+      });
+    });
+  });
+
   /** What /opt/cloudgate holds that the run can replace, checked before anything changes. */
   describe('check_install_dir', () => {
     /** Runs check_install_dir run from `from` for an install at `into`. */
@@ -886,5 +1524,1025 @@ describe('deploy/install.sh', () => {
     expect(refused.stderr).toContain('4000');
     expect(refused.stderr).not.toContain('must run as root');
     expect(refused.stdout).not.toContain('==>');
+  });
+
+  describe('CLOUDGATE_PUBLIC_HOST', () => {
+    it('refuses a URL in place of a host, before touching the box', () => {
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(path.join(bin, 'id'), '#!/bin/sh\necho 1000\n', {
+        mode: 0o755,
+      });
+
+      const refused = spawnSync('bash', [script], {
+        env: {
+          PATH: `${bin}:${process.env.PATH}`,
+          HOME: scratch,
+          CLOUDGATE_PUBLIC_HOST: 'https://cloud.example.com',
+        },
+        encoding: 'utf8',
+      });
+
+      expect(refused.status).toBe(1);
+      expect(refused.stderr).toContain(
+        'CLOUDGATE_PUBLIC_HOST is the public IP address or hostname alone',
+      );
+      expect(refused.stderr).not.toContain('must run as root');
+      expect(refused.stdout).not.toContain('==>');
+    });
+
+    /** The console and API origins the env files are written with, for `host`. */
+    function origins(host: string): string {
+      const lines = source().split('\n');
+      const kept = lines.filter((line) =>
+        /^(CONSOLE_ORIGIN|API_ORIGIN|CLOUDGATE_PUBLIC_HOST)=/.test(line),
+      );
+      const fn = source().match(/^url_host\(\) \{\n[\s\S]*?\n\}\n/m);
+      return spawnSync(
+        'bash',
+        [
+          '-c',
+          `set -euo pipefail; CLOUDGATE_PUBLIC_HOST="$1"; CONSOLE_PORT=3000; API_PORT=4000
+${fn?.[0] ?? ''}${kept.join('\n')}
+echo "$CONSOLE_ORIGIN $API_ORIGIN"`,
+          'bash',
+          host,
+        ],
+        { encoding: 'utf8' },
+      ).stdout.trim();
+    }
+
+    it('brackets an IPv6 address in the origins a browser is handed', () => {
+      expect(origins('2001:db8::10')).toBe(
+        'http://[2001:db8::10]:3000 http://[2001:db8::10]:4000',
+      );
+      expect(origins('[2001:db8::10]')).toBe(
+        'http://[2001:db8::10]:3000 http://[2001:db8::10]:4000',
+      );
+    });
+
+    it('writes an IPv4 address and a hostname as they are', () => {
+      expect(origins('203.0.113.10')).toBe(
+        'http://203.0.113.10:3000 http://203.0.113.10:4000',
+      );
+      expect(origins('cloud.example.com')).toBe(
+        'http://cloud.example.com:3000 http://cloud.example.com:4000',
+      );
+    });
+  });
+
+  /**
+   * The Traefik container step (ADR-0086), cut out of the file as written from
+   * `run_traefik` to the end of the `if` that uses it, and run with `docker`
+   * shimmed: it records each call, and `docker inspect` answers as a host whose
+   * `cloudgate-traefik` runs `running` does, or as one with no such container.
+   */
+  describe('the Traefik container', () => {
+    function traefik(running?: string) {
+      const step = code().match(
+        /\nrun_traefik\(\) \{\n[\s\S]*?\n\}\n[\s\S]*?\nfi\n/,
+      );
+      if (!step)
+        throw new Error('no Traefik container step in deploy/install.sh');
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(
+        path.join(bin, 'docker'),
+        `#!/bin/sh
+echo "docker $*" >> "${calls}"
+if [ "$1" = inspect ]; then
+  [ -n "$RUNNING" ] || exit 1
+  [ "$2" = -f ] && echo "$RUNNING"
+fi
+exit 0
+`,
+        { mode: 0o755 },
+      );
+      const ran = spawnSync(
+        'bash',
+        [
+          '-c',
+          `set -euo pipefail; log() { :; }; TRAEFIK_VERSION=3.6.7; CLOUDGATE_DIR=/etc/cloudgate; CONTAINER_LOG_MAX_SIZE=10m; CONTAINER_LOG_MAX_FILE=3\n${step[0]}`,
+        ],
+        {
+          env: {
+            PATH: `${bin}:${process.env.PATH}`,
+            RUNNING: running ?? '',
+          },
+          encoding: 'utf8',
+        },
+      );
+      const docker = called()
+        .trim()
+        .split('\n')
+        .filter((line) => line && !line.startsWith('docker inspect'));
+      return { ran, docker };
+    }
+
+    /** The one `docker run` every start of Traefik makes (deploy.md §6). */
+    const RUN =
+      'docker run -d --name cloudgate-traefik --restart always --network cloudgate-network' +
+      ' --log-driver json-file --log-opt max-size=10m --log-opt max-file=3' +
+      ' -v /etc/cloudgate/traefik/traefik.yml:/etc/traefik/traefik.yml' +
+      ' -v /etc/cloudgate/traefik/dynamic:/etc/cloudgate/traefik/dynamic' +
+      ' -v /var/run/docker.sock:/var/run/docker.sock' +
+      ' -p 80:80 -p 443:443 -p 443:443/udp traefik:v3.6.7';
+
+    it('pulls and starts Traefik at its version on a platform host with no container', () => {
+      const { ran, docker } = traefik();
+
+      expect(ran.stderr).toBe('');
+      expect(ran.status).toBe(0);
+      expect(docker).toEqual(['docker pull -q traefik:v3.6.7', RUN]);
+    });
+
+    it('recreates a container on another version: pulls first, then removes and starts it, saying 80 and 443 drop', () => {
+      const { ran, docker } = traefik('traefik:v3.5.0');
+
+      expect(ran.stderr).toBe('');
+      expect(ran.status).toBe(0);
+      expect(docker).toEqual([
+        'docker pull -q traefik:v3.6.7',
+        'docker rm -f cloudgate-traefik',
+        RUN,
+      ]);
+      expect(ran.stdout).toContain('traefik:v3.5.0');
+      expect(ran.stdout).toContain('traefik:v3.6.7');
+      expect(ran.stdout).toMatch(/80 and 443 drop for a few seconds/);
+    });
+
+    it('leaves a container already at its version running, untouched', () => {
+      const { ran, docker } = traefik('traefik:v3.6.7');
+
+      expect(ran.status).toBe(0);
+      // Nothing was pulled, removed or started.
+      expect(docker).toEqual([]);
+      expect(ran.stdout).toBe('');
+    });
+
+    it('holds the `docker run` for Traefik in one place', () => {
+      expect(code().match(/\bdocker run\b/g)).toHaveLength(1);
+    });
+  });
+
+  /**
+   * The Firewall step, cut out of the file as written and run with ufw and
+   * sshd shimmed: what it allows, and in what order relative to enabling ufw.
+   */
+  describe('the firewall', () => {
+    /**
+     * The Firewall step as written, with `ufw` recording each rule, `sshd -T`
+     * answering as `sshd` says, and `systemctl show ssh.socket` answering
+     * with `socket` as the socket's Listen= value (none: no such unit).
+     */
+    function firewall(options: {
+      sshd: string;
+      sshConnection?: string;
+      socket?: string;
+    }) {
+      const step = code().match(
+        /\nlog "Firewall"\n[\s\S]*?\nufw --force enable\n/,
+      );
+      if (!step) throw new Error('no Firewall step in deploy/install.sh');
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(
+        path.join(bin, 'ufw'),
+        `#!/bin/sh\necho "ufw $*" >> "${calls}"\n`,
+        { mode: 0o755 },
+      );
+      fs.writeFileSync(
+        path.join(bin, 'systemctl'),
+        options.socket === undefined
+          ? '#!/bin/sh\nexit 1\n'
+          : `#!/bin/sh\n[ "$1 $2 $3 $4" = "show ssh.socket --property=Listen --value" ] || exit 1\necho '${options.socket}'\n`,
+        { mode: 0o755 },
+      );
+      fs.writeFileSync(path.join(bin, 'sshd'), `#!/bin/sh\n${options.sshd}\n`, {
+        mode: 0o755,
+      });
+      const ran = spawnSync(
+        'bash',
+        [
+          '-c',
+          `set -euo pipefail; log() { :; }; HOSTED_MODE=; CONSOLE_PORT=3000; API_PORT=4000\n${step[0]}`,
+        ],
+        {
+          env: {
+            PATH: `${bin}:${process.env.PATH}`,
+            ...(options.sshConnection
+              ? { SSH_CONNECTION: options.sshConnection }
+              : {}),
+          },
+          encoding: 'utf8',
+        },
+      );
+      return { ran, ufw: called().trim().split('\n') };
+    }
+
+    it('allows every port sshd listens on, and the one this run came in on, before it enables ufw', () => {
+      const { ran, ufw } = firewall({
+        sshd: '[ "$1" = -T ] && printf "port 2222\\nport 22\\naddressfamily any\\n"',
+        sshConnection: '198.51.100.1 50122 203.0.113.10 2200',
+      });
+
+      expect(ran.stderr).toBe('');
+      expect(ran.status).toBe(0);
+      const enabled = ufw.indexOf('ufw --force enable');
+      for (const port of ['22', '2200', '2222']) {
+        const allowed = ufw.indexOf(`ufw allow ${port}/tcp`);
+        expect({ port, allowed: allowed > -1 }).toEqual({
+          port,
+          allowed: true,
+        });
+        expect(allowed).toBeLessThan(enabled);
+      }
+      expect(ufw).toContain('ufw allow OpenSSH');
+    });
+
+    // On 24.04 and later sshd is socket-activated: ssh.socket holds the
+    // port, and a port moved there (ListenStream=) is not in `sshd -T`.
+    it('allows a port ssh.socket listens on, before it enables ufw', () => {
+      const { ran, ufw } = firewall({
+        sshd: '[ "$1" = -T ] && printf "port 22\\n"',
+        socket: '0.0.0.0:2022 (Stream) [::]:2022 (Stream)',
+      });
+
+      expect(ran.stderr).toBe('');
+      expect(ran.status).toBe(0);
+      const allowed = ufw.indexOf('ufw allow 2022/tcp');
+      expect(allowed).toBeGreaterThan(-1);
+      expect(allowed).toBeLessThan(ufw.indexOf('ufw --force enable'));
+      expect(ufw.filter((rule) => rule === 'ufw allow 2022/tcp')).toHaveLength(
+        1,
+      );
+    });
+
+    it('still allows OpenSSH and enables ufw when sshd cannot say its ports', () => {
+      const { ran, ufw } = firewall({ sshd: 'exit 255' });
+
+      expect(ran.status).toBe(0);
+      expect(ufw).toContain('ufw allow OpenSSH');
+      expect(ufw[ufw.length - 1]).toBe('ufw --force enable');
+    });
+  });
+
+  /**
+   * The Node step, cut out of the file as written and run against a scratch
+   * host: every `/usr/local` in it points under the scratch root, as
+   * `INSTALL_ROOT` does for root install.sh. `curl` serves nodejs.org from the
+   * scratch directory; `tar`, `sha256sum` and the rest are the real ones. The
+   * Node it unpacks is a stand-in whose `bin/node` prints its version.
+   */
+  describe('Node in Cloudgate’s own folder', () => {
+    const NODE_VERSION = 'v24.19.0';
+    const OURS = 'usr/local/share/cloudgate/node';
+
+    /** A file tree under the scratch root, as path → content. */
+    function tree(under: string): Record<string, string> {
+      const at = path.join(root, under);
+      if (!fs.existsSync(at)) return {};
+      return Object.fromEntries(
+        fs
+          .readdirSync(at, { recursive: true })
+          .map(String)
+          .filter((file) => fs.statSync(path.join(at, file)).isFile())
+          .sort()
+          .map((file) => [file, fs.readFileSync(path.join(at, file), 'utf8')]),
+      );
+    }
+
+    function put(file: string, content: string, mode = 0o644) {
+      const at = path.join(root, file);
+      fs.mkdirSync(path.dirname(at), { recursive: true });
+      fs.writeFileSync(at, content, { mode });
+    }
+
+    /** A Node install's layout, at `into`, whose node says `version`. */
+    function nodeLayout(into: string, version: string) {
+      put(`${into}/bin/node`, `#!/bin/sh\necho ${version}\n`, 0o755);
+      put(`${into}/lib/node_modules/npm/package.json`, `{"node":"${version}"}`);
+      put(`${into}/include/node/node.h`, `/* ${version} */`);
+    }
+
+    /** nodejs.org's tarball for NODE_VERSION and its SHASUMS256.txt. */
+    function serveNode() {
+      const name = `node-${NODE_VERSION}-linux-x64`;
+      const build = path.join(scratch, 'node-build');
+      const top = path.join(build, name);
+      fs.mkdirSync(path.join(top, 'bin'), { recursive: true });
+      fs.writeFileSync(
+        path.join(top, 'bin/node'),
+        `#!/bin/sh\necho ${NODE_VERSION}\n`,
+        { mode: 0o755 },
+      );
+      fs.mkdirSync(path.join(top, 'lib/node_modules/npm'), { recursive: true });
+      fs.writeFileSync(
+        path.join(top, 'lib/node_modules/npm/package.json'),
+        '{}',
+      );
+      fs.mkdirSync(path.join(top, 'include/node'), { recursive: true });
+      fs.writeFileSync(path.join(top, 'include/node/node.h'), '');
+      const tarball = path.join(scratch, `${name}.tar.xz`);
+      const packed = spawnSync('tar', ['-cJf', tarball, '-C', build, name]);
+      if (packed.status !== 0) throw new Error(String(packed.stderr));
+      const bytes = fs.readFileSync(tarball);
+      const sum = createHash('sha256').update(bytes).digest('hex');
+      serve(`nodejs.org/dist/${NODE_VERSION}/${name}.tar.xz`, bytes);
+      serve(
+        `nodejs.org/dist/${NODE_VERSION}/SHASUMS256.txt`,
+        `${'0'.repeat(64)}  node-${NODE_VERSION}-linux-arm64.tar.xz\n${sum}  ${name}.tar.xz\n`,
+      );
+    }
+
+    function nodeStep() {
+      const step = source().match(/\n### -+ node ---\n[\s\S]*?(?=\n### -+ )/);
+      if (!step) throw new Error('no node step in deploy/install.sh');
+      const bin = path.join(scratch, 'bin');
+      // `curl [flags] <url>`, saving the served file under its own name, as
+      // -O does, or curl's own exit code for an HTTP error under -f.
+      fs.writeFileSync(
+        path.join(bin, 'curl'),
+        `#!/bin/sh
+url=''
+for arg in "$@"; do case "$arg" in http*) url="$arg" ;; esac; done
+echo "curl $url" >> "${calls}"
+file="${served}/\${url#https://}"
+[ -f "$file" ] || exit 22
+cat "$file" > "\${url##*/}"
+`,
+        { mode: 0o755 },
+      );
+      const ran = spawnSync(
+        'bash',
+        [
+          '-c',
+          `set -euo pipefail; log() { :; }; NODE_VERSION=${NODE_VERSION}\n${step[0].replaceAll('/usr/local', `${root}/usr/local`)}`,
+        ],
+        {
+          env: { PATH: `${bin}:${process.env.PATH}`, HOME: scratch },
+          encoding: 'utf8',
+        },
+      );
+      return ran;
+    }
+
+    it('unpacks Node into /usr/local/share/cloudgate/node', () => {
+      serveNode();
+
+      const ran = nodeStep();
+
+      expect(ran.stderr).toBe('');
+      expect(ran.status).toBe(0);
+      const node = spawnSync(path.join(root, OURS, 'bin/node'), ['--version'], {
+        encoding: 'utf8',
+      });
+      expect(node.stdout.trim()).toBe(NODE_VERSION);
+      expect(Object.keys(tree(OURS))).toEqual([
+        'bin/node',
+        'include/node/node.h',
+        'lib/node_modules/npm/package.json',
+      ]);
+    });
+
+    it('downloads nothing when the Node there is already the version', () => {
+      serveNode();
+      nodeLayout(OURS, NODE_VERSION);
+
+      const ran = nodeStep();
+
+      expect(ran.status).toBe(0);
+      expect(called()).toBe('');
+    });
+
+    it('replaces an older Node in its folder whole, on an upgrade', () => {
+      serveNode();
+      nodeLayout(OURS, 'v22.11.0');
+      put(`${OURS}/lib/node_modules/corepack/package.json`, '{}');
+
+      const ran = nodeStep();
+
+      expect(ran.status).toBe(0);
+      expect(tree(OURS)['bin/node']).toBe(`#!/bin/sh\necho ${NODE_VERSION}\n`);
+      expect(Object.keys(tree(OURS))).not.toContain(
+        'lib/node_modules/corepack/package.json',
+      );
+    });
+
+    it.each([
+      ['a first install', false],
+      ['an upgrade', true],
+    ])(
+      'writes and removes nothing in /usr/local/bin, lib or include, on %s',
+      (_, upgrade) => {
+        serveNode();
+        // The operator's own Node, and what an older Cloudgate install unpacked.
+        nodeLayout('usr/local', 'v20.18.0');
+        put('usr/local/bin/their-script', '#!/bin/sh\n', 0o755);
+        if (upgrade) nodeLayout(OURS, 'v22.11.0');
+        const before = ['bin', 'lib', 'include'].map((dir) =>
+          tree(`usr/local/${dir}`),
+        );
+
+        const ran = nodeStep();
+
+        expect(ran.status).toBe(0);
+        expect(
+          ['bin', 'lib', 'include'].map((dir) => tree(`usr/local/${dir}`)),
+        ).toEqual(before);
+        expect(tree(OURS)['bin/node']).toBe(
+          `#!/bin/sh\necho ${NODE_VERSION}\n`,
+        );
+      },
+    );
+
+    it('runs as_service_user’s node from Cloudgate’s folder, not one the operator keeps in /usr/local/bin', () => {
+      const fn = source().match(/^as_service_user\(\) \{\n[\s\S]*?\n\}\n/m);
+      if (!fn) throw new Error('no as_service_user in deploy/install.sh');
+      nodeLayout('usr/local', 'v20.18.0');
+      nodeLayout(OURS, NODE_VERSION);
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(
+        path.join(bin, 'runuser'),
+        '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n',
+        { mode: 0o755 },
+      );
+
+      const ran = spawnSync(
+        'bash',
+        [
+          '-c',
+          `set -euo pipefail; SERVICE_USER=cloudgate\n${fn[0].replaceAll('/usr/local', `${root}/usr/local`)}\nas_service_user sh -c 'node --version'`,
+        ],
+        { env: { PATH: `${bin}:${process.env.PATH}` }, encoding: 'utf8' },
+      );
+
+      expect(ran.stderr).toBe('');
+      expect(ran.stdout.trim()).toBe(NODE_VERSION);
+    });
+  });
+
+  describe('ensure_packages', () => {
+    it('waits while another apt holds its lock, then installs what is missing', () => {
+      const fns = ['apt_get', 'ensure_packages']
+        .map((name) =>
+          source().match(
+            new RegExp(`^${name}\\(\\) \\{\\n[\\s\\S]*?\\n\\}\\n`, 'm'),
+          ),
+        )
+        .map((match) => match?.[0] ?? '')
+        .join('');
+      const bin = path.join(scratch, 'bin');
+      const tries = path.join(scratch, 'apt-tries');
+      // apt on a VPS's first boot: cloud-init or unattended-upgrades holds the
+      // lock for the first two tries.
+      fs.writeFileSync(
+        path.join(bin, 'apt-get'),
+        `#!/bin/sh
+echo "apt-get $*" >> "${calls}"
+echo x >> "${tries}"
+if [ "$(wc -l < "${tries}")" -le 2 ]; then
+  echo "E: Could not get lock /var/lib/apt/lists/lock. It is held by process 812 (apt-get)" >&2
+  exit 100
+fi
+`,
+        { mode: 0o755 },
+      );
+      fs.writeFileSync(path.join(bin, 'dpkg-query'), '#!/bin/sh\nexit 1\n', {
+        mode: 0o755,
+      });
+      fs.writeFileSync(path.join(bin, 'sleep'), '#!/bin/sh\n', { mode: 0o755 });
+
+      const ran = spawnSync(
+        'bash',
+        ['-c', `set -euo pipefail; ${fns} ensure_packages jq rclone`],
+        { env: { PATH: `${bin}:${process.env.PATH}` }, encoding: 'utf8' },
+      );
+
+      expect(ran.status).toBe(0);
+      expect(ran.stdout).toContain('Installed: jq rclone');
+      expect(called()).toMatch(/apt-get .*install -y -qq jq rclone/);
+    });
+
+    it('gives up on a failure that is not the lock, at once', () => {
+      const fns = ['apt_get', 'ensure_packages']
+        .map((name) =>
+          source().match(
+            new RegExp(`^${name}\\(\\) \\{\\n[\\s\\S]*?\\n\\}\\n`, 'm'),
+          ),
+        )
+        .map((match) => match?.[0] ?? '')
+        .join('');
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(
+        path.join(bin, 'apt-get'),
+        `#!/bin/sh\necho "apt-get $*" >> "${calls}"\necho "E: Unable to locate package jq" >&2\nexit 100\n`,
+        { mode: 0o755 },
+      );
+      fs.writeFileSync(path.join(bin, 'dpkg-query'), '#!/bin/sh\nexit 1\n', {
+        mode: 0o755,
+      });
+      fs.writeFileSync(path.join(bin, 'sleep'), '#!/bin/sh\n', { mode: 0o755 });
+
+      const ran = spawnSync(
+        'bash',
+        ['-c', `set -euo pipefail; ${fns} ensure_packages jq`],
+        { env: { PATH: `${bin}:${process.env.PATH}` }, encoding: 'utf8' },
+      );
+
+      expect(ran.status).not.toBe(0);
+      expect(ran.stderr).toContain('Unable to locate package jq');
+      expect(called().trim().split('\n')).toHaveLength(1);
+    });
+  });
+});
+
+/**
+ * What root install.sh does before and around its downloads: the preflight
+ * warnings and the tarball's progress bar. `curl` is wrapped so every call's
+ * arguments are kept, and a probe of `https://<host>/` answers unless
+ * UNREACHABLE names the host; anything else goes to the served shim above.
+ */
+describe('install.sh (before and while it downloads)', () => {
+  const curlArgs = () => path.join(scratch, 'curl-args');
+
+  beforeEach(() => {
+    const bin = path.join(scratch, 'bin');
+    fs.renameSync(path.join(bin, 'curl'), path.join(bin, 'curl-served'));
+    fs.writeFileSync(
+      path.join(bin, 'curl'),
+      `#!/bin/sh
+echo "$*" >> "${curlArgs()}"
+for arg in "$@"; do
+  case "$arg" in
+    https://*/*/*) ;;
+    https://*/)
+      host="\${arg#https://}"
+      host="\${host%/}"
+      case " \${UNREACHABLE:-} " in *" $host "*) exit 28 ;; esac
+      exit 0
+      ;;
+  esac
+done
+exec "${bin}/curl-served" "$@"
+`,
+      { mode: 0o755 },
+    );
+  });
+
+  /** The arguments the run gave the curl that fetched `url`. */
+  function argsFor(url: string): string {
+    const lines = fs.existsSync(curlArgs())
+      ? fs.readFileSync(curlArgs(), 'utf8').split('\n')
+      : [];
+    return lines.find((line) => line.endsWith(` ${url}`)) ?? '';
+  }
+
+  describe('the tarball download', () => {
+    const tarball = `https://${DOWNLOAD}/v0.10.0/cloudgate-0.10.0-linux-amd64.tar.gz`;
+
+    it('shows a progress bar when stderr is a terminal', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(path.join(bin, 'id'), '#!/bin/sh\necho 0\n', {
+        mode: 0o755,
+      });
+
+      // script(1) runs it on a terminal of its own.
+      const onTerminal = spawnSync(
+        'script',
+        ['-qec', `sh ${installer}`, '/dev/null'],
+        {
+          env: {
+            PATH: `${bin}:${process.env.PATH}`,
+            HOME: scratch,
+            CALLS: calls,
+            INSTALL_ROOT: root,
+            CLOUDGATE_PUBLIC_HOST: '203.0.113.10',
+            CLOUDGATE_SKIP_PREFLIGHT: '1',
+          },
+          encoding: 'utf8',
+        },
+      );
+
+      expect(onTerminal.status).toBe(0);
+      expect(argsFor(tarball)).toContain('--progress-bar');
+    });
+
+    it('stays quiet when stderr is not a terminal', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+
+      const piped = install();
+
+      expect(piped.status).toBe(0);
+      expect(piped.stderr).toBe('');
+      expect(argsFor(tarball)).not.toContain('--progress-bar');
+      expect(argsFor(tarball)).toMatch(/(^|\s)-[A-Za-z]*s[A-Za-z]*(\s|$)/);
+    });
+  });
+
+  /**
+   * The warnings before any download. `ss`, `df` and `docker` are shimmed,
+   * /proc is under INSTALL_ROOT, and the host starts healthy: nothing on the
+   * ports, 40 GB free, 8 GB of memory and every host answering.
+   */
+  describe('preflight', () => {
+    // docs/deploy.md §1's Outbound row names them; each is probed.
+    const HOSTS = [
+      'get.docker.com',
+      'nodejs.org',
+      'registry.npmjs.org',
+      'registry-1.docker.io',
+      'api.github.com',
+      'github.com',
+      'release-assets.githubusercontent.com',
+      's3.amazonaws.com',
+      'nixpacks.com',
+    ];
+
+    function shim(tool: string, body: string) {
+      fs.writeFileSync(
+        path.join(scratch, 'bin', tool),
+        `#!/bin/sh\n${body}\n`,
+        {
+          mode: 0o755,
+        },
+      );
+    }
+
+    /** `ss -Hltnp`'s lines, as Ubuntu 24.04's iproute2 prints them. */
+    function listening(...lines: string[]) {
+      fs.writeFileSync(path.join(scratch, 'ss-out'), lines.join('\n') + '\n');
+    }
+
+    /** What `df -Pk` says of /opt and of /usr/local: KiB free and the mount. */
+    function disk(opt: [number, string], usrLocal: [number, string]) {
+      const line = ([free, mount]: [number, string]) =>
+        `/dev/sda1 99999999 1 ${free} 1% ${mount}`;
+      shim(
+        'df',
+        `echo "Filesystem 1024-blocks Used Available Capacity Mounted on"
+case "$*" in
+  */opt) echo "${line(opt)}" ;;
+  */usr/local) echo "${line(usrLocal)}" ;;
+esac`,
+      );
+    }
+
+    function memory(kB: number) {
+      fs.writeFileSync(
+        path.join(root, 'proc/meminfo'),
+        `MemTotal:       ${kB} kB\nMemFree:         1000000 kB\n`,
+      );
+    }
+
+    /** A process `pid` running in systemd unit `unit`, as /proc shows it. */
+    function inUnit(pid: number, unit: string) {
+      fs.mkdirSync(path.join(root, `proc/${pid}`), { recursive: true });
+      fs.writeFileSync(
+        path.join(root, `proc/${pid}/cgroup`),
+        `0::/system.slice/${unit}\n`,
+      );
+    }
+
+    beforeEach(() => {
+      releases('v0.10.0');
+      publish('0.10.0');
+      fs.mkdirSync(path.join(root, 'proc'));
+      shim('ss', `echo "ss $*" >> "${calls}"\ncat "${scratch}/ss-out"`);
+      shim('docker', 'exit 0');
+      listening();
+      disk([40_000_000, '/'], [40_000_000, '/']);
+      memory(8_000_000);
+    });
+
+    function checked(extra: Record<string, string> = {}) {
+      return install({ CLOUDGATE_SKIP_PREFLIGHT: '', ...extra });
+    }
+
+    function handedOver(): boolean {
+      return called().includes(
+        `deploy/install.sh 0.10.0 from ${root}/opt/cloudgate.next`,
+      );
+    }
+
+    it('warns about nothing on a platform host that is ready', () => {
+      const ready = checked();
+
+      expect(ready.status).toBe(0);
+      expect(ready.stderr).toBe('');
+      expect(handedOver()).toBe(true);
+    });
+
+    it('warns about a port another process holds, naming the process, and carries on', () => {
+      listening(
+        'LISTEN 0 511 0.0.0.0:80 0.0.0.0:* users:(("nginx",pid=812,fd=6),("nginx",pid=813,fd=6))',
+        'LISTEN 0 511 [::]:80 [::]:* users:(("nginx",pid=812,fd=7))',
+        'LISTEN 0 4096 127.0.0.1:4000 0.0.0.0:* users:(("python3",pid=990,fd=3))',
+        'LISTEN 0 128 0.0.0.0:22 0.0.0.0:* users:(("sshd",pid=700,fd=3))',
+        'LISTEN 0 4096 127.0.0.1:5432 0.0.0.0:* users:(("postgres",pid=701,fd=5))',
+      );
+
+      const busy = checked();
+
+      expect(busy.status).toBe(0);
+      expect(handedOver()).toBe(true);
+      const warnings = busy.stderr
+        .split('\n')
+        .filter((line) => line.includes('port'));
+      expect(warnings).toHaveLength(2);
+      expect(warnings[0]).toMatch(/port 80 .*nginx \(pid 812\)/);
+      expect(warnings[1]).toMatch(/port 4000 .*python3 \(pid 990\)/);
+      expect(busy.stderr).not.toMatch(/port (22|5432)/);
+    });
+
+    it('says nothing of the ports Cloudgate itself holds on a re-run', () => {
+      inUnit(900, 'cloudgate-console.service');
+      inUnit(901, 'cloudgate-backend.service');
+      listening(
+        'LISTEN 0 511 *:3000 *:* users:(("next-server (v1",pid=900,fd=20))',
+        'LISTEN 0 511 *:4000 *:* users:(("node",pid=901,fd=21))',
+        'LISTEN 0 4096 0.0.0.0:80 0.0.0.0:* users:(("docker-proxy",pid=950,fd=7))',
+        'LISTEN 0 4096 0.0.0.0:443 0.0.0.0:* users:(("docker-proxy",pid=951,fd=7))',
+      );
+      // Cloudgate's Traefik is the container docker-proxy holds 80 and 443 for.
+      shim('docker', `case "$*" in *cloudgate-traefik*) echo 3f2a9c1b ;; esac`);
+
+      const rerun = checked();
+
+      expect(rerun.status).toBe(0);
+      expect(rerun.stderr).toBe('');
+    });
+
+    it('warns about docker-proxy on 80 when it is not Cloudgate’s Traefik', () => {
+      listening(
+        'LISTEN 0 4096 0.0.0.0:80 0.0.0.0:* users:(("docker-proxy",pid=950,fd=7))',
+      );
+
+      const other = checked();
+
+      expect(other.status).toBe(0);
+      expect(other.stderr).toMatch(/port 80 .*docker-proxy \(pid 950\)/);
+    });
+
+    // docker-proxy holds a port for whichever container publishes it; while
+    // Cloudgate's Traefik runs, only 80 and 443 are its.
+    it('warns about docker-proxy on 3000 or 4000 while Cloudgate’s Traefik runs, since Traefik publishes only 80 and 443', () => {
+      listening(
+        'LISTEN 0 4096 0.0.0.0:80 0.0.0.0:* users:(("docker-proxy",pid=950,fd=7))',
+        'LISTEN 0 4096 0.0.0.0:443 0.0.0.0:* users:(("docker-proxy",pid=951,fd=7))',
+        'LISTEN 0 4096 0.0.0.0:3000 0.0.0.0:* users:(("docker-proxy",pid=960,fd=7))',
+        'LISTEN 0 4096 0.0.0.0:4000 0.0.0.0:* users:(("docker-proxy",pid=961,fd=7))',
+      );
+      shim('docker', `case "$*" in *cloudgate-traefik*) echo 3f2a9c1b ;; esac`);
+
+      const published = checked();
+
+      expect(published.status).toBe(0);
+      const warnings = published.stderr
+        .split('\n')
+        .filter((line) => line.includes('docker-proxy'));
+      expect(warnings).toHaveLength(2);
+      expect(warnings[0]).toMatch(/port 3000 .*docker-proxy \(pid 960\)/);
+      expect(warnings[1]).toMatch(/port 4000 .*docker-proxy \(pid 961\)/);
+    });
+
+    it('warns when less than 15 GB is free where /opt and /usr/local live, naming each mount once', () => {
+      // 12 GB on /, which holds both.
+      disk([11_718_750, '/'], [11_718_750, '/']);
+
+      const low = checked();
+
+      expect(low.status).toBe(0);
+      expect(handedOver()).toBe(true);
+      const warnings = low.stderr
+        .split('\n')
+        .filter((line) => line.includes('free'));
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain('12');
+      expect(warnings[0]).toContain(' / ');
+      expect(warnings[0]).toContain('/opt and /usr/local');
+      expect(warnings[0]).toContain('15 GB');
+    });
+
+    it('warns about only the mount that is short when /opt and /usr/local are on two', () => {
+      disk([40_000_000, '/opt'], [4_882_813, '/']);
+
+      const split = checked();
+
+      expect(split.status).toBe(0);
+      const warnings = split.stderr
+        .split('\n')
+        .filter((line) => line.includes('free'));
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain('/usr/local');
+      expect(warnings[0]).not.toContain('/opt');
+    });
+
+    it('warns when MemTotal is under 4 GB', () => {
+      memory(2_000_000);
+
+      const small = checked();
+
+      expect(small.status).toBe(0);
+      expect(handedOver()).toBe(true);
+      expect(small.stderr).toMatch(/memory.*4 GB/);
+    });
+
+    it('warns about each host that does not answer within 5 seconds, naming it', () => {
+      const offline = checked({
+        UNREACHABLE: 'nodejs.org release-assets.githubusercontent.com',
+      });
+
+      expect(offline.status).toBe(0);
+      expect(handedOver()).toBe(true);
+      const warnings = offline.stderr
+        .split('\n')
+        .filter((line) => line.includes('did not answer'));
+      expect(warnings).toHaveLength(2);
+      expect(warnings.join('\n')).toContain('nodejs.org');
+      expect(warnings.join('\n')).toContain(
+        'release-assets.githubusercontent.com',
+      );
+      for (const host of HOSTS) {
+        expect({ host, probe: argsFor(`https://${host}/`) }).toEqual({
+          host,
+          probe: expect.stringContaining('--max-time 5') as string,
+        });
+      }
+    });
+
+    it('probes exactly the hosts docs/deploy.md §1 lists as outbound', () => {
+      const docs = fs.readFileSync(
+        path.join(repoRoot, 'docs/deploy.md'),
+        'utf8',
+      );
+      const outbound = docs
+        .split('\n')
+        .find((line) => line.startsWith('| Outbound |'));
+      const listed = [...(outbound ?? '').matchAll(/`([a-z0-9.-]+\.[a-z]+)`/g)]
+        .map((match) => match[1])
+        .sort();
+
+      const offline = checked({ UNREACHABLE: listed.join(' ') });
+
+      const warned = offline.stderr
+        .split('\n')
+        .filter((line) => line.includes('did not answer'))
+        .map((line) => listed.find((host) => line.includes(` ${host} `)))
+        .sort();
+      expect(listed).toEqual([...HOSTS].sort());
+      expect(warned).toEqual(listed);
+    });
+
+    it('carries on through every warning at once', () => {
+      listening(
+        'LISTEN 0 511 0.0.0.0:443 0.0.0.0:* users:(("apache2",pid=640,fd=4))',
+      );
+      disk([1_000_000, '/'], [1_000_000, '/']);
+      memory(1_000_000);
+
+      const everything = checked({ UNREACHABLE: HOSTS.join(' ') });
+
+      expect(everything.status).toBe(0);
+      expect(handedOver()).toBe(true);
+      expect(everything.stderr).toMatch(/port 443 .*apache2/);
+      expect(everything.stderr).toContain('free on /');
+      expect(everything.stderr).toContain('memory');
+      expect(everything.stderr.match(/did not answer/g)).toHaveLength(
+        HOSTS.length,
+      );
+      expect(everything.stderr).toContain('CLOUDGATE_SKIP_PREFLIGHT=1');
+    });
+
+    it('checks nothing and warns about nothing under CLOUDGATE_SKIP_PREFLIGHT=1', () => {
+      listening(
+        'LISTEN 0 511 0.0.0.0:443 0.0.0.0:* users:(("apache2",pid=640,fd=4))',
+      );
+      disk([1_000_000, '/'], [1_000_000, '/']);
+      memory(1_000_000);
+
+      const skipped = checked({
+        CLOUDGATE_SKIP_PREFLIGHT: '1',
+        UNREACHABLE: HOSTS.join(' '),
+      });
+
+      expect(skipped.status).toBe(0);
+      expect(skipped.stderr).toBe('');
+      expect(handedOver()).toBe(true);
+      expect(called()).not.toContain('ss ');
+      for (const host of HOSTS) expect(argsFor(`https://${host}/`)).toBe('');
+    });
+  });
+});
+
+/**
+ * The log every run of deploy/install.sh leaves: start_install_log cut out of
+ * the file and run under bash with the log directory in scratch. The clock is
+ * the one boundary: `date` says 2026-11-14 12:00:00.
+ */
+describe('deploy/install.sh (its log)', () => {
+  const script = path.join(repoRoot, 'deploy/install.sh');
+  const source = () => fs.readFileSync(script, 'utf8');
+  const logs = () => path.join(scratch, 'var/log/cloudgate');
+  const NEW_LOG = 'install-20261114-120000.log';
+
+  /** Runs start_install_log, then `then`, as the rest of a run. */
+  function logged(then: string) {
+    const fns = ['start_install_log', 'install_log_exit']
+      .map((name) => {
+        const fn = source().match(
+          new RegExp(`^${name}\\(\\) \\{\\n[\\s\\S]*?\\n\\}\\n`, 'm'),
+        );
+        if (!fn) throw new Error(`no ${name} in deploy/install.sh`);
+        return fn[0];
+      })
+      .join('');
+    const bin = path.join(scratch, 'bin');
+    fs.writeFileSync(
+      path.join(bin, 'date'),
+      '#!/bin/sh\n[ "$1" = +%Y%m%d-%H%M%S ] && echo 20261114-120000\n',
+      { mode: 0o755 },
+    );
+    return spawnSync(
+      'bash',
+      [
+        '-c',
+        `set -euo pipefail; INSTALL_LOG_DIR="$1"\n${fns}start_install_log\n${then}`,
+        'bash',
+        logs(),
+      ],
+      {
+        env: { PATH: `${bin}:${process.env.PATH}` },
+        encoding: 'utf8',
+      },
+    );
+  }
+
+  it('copies the run’s stdout and stderr to install-<YYYYmmdd-HHMMSS>.log, readable by root alone', () => {
+    const ran = logged('echo "==> Docker"; echo "E: a failure" >&2');
+
+    expect(ran.status).toBe(0);
+    expect(ran.stdout).toContain('==> Docker');
+    expect(ran.stderr).toContain('E: a failure');
+    const log = path.join(logs(), NEW_LOG);
+    expect(fs.readFileSync(log, 'utf8')).toContain('==> Docker\n');
+    expect(fs.readFileSync(log, 'utf8')).toContain('E: a failure\n');
+    expect(fs.statSync(log).mode & 0o777).toBe(0o600);
+  });
+
+  it('keeps the newest 10 logs, this run’s among them', () => {
+    fs.mkdirSync(logs(), { recursive: true });
+    for (let day = 1; day <= 12; day++) {
+      const date = `202611${String(day).padStart(2, '0')}`;
+      fs.writeFileSync(path.join(logs(), `install-${date}-090000.log`), '');
+    }
+    fs.writeFileSync(path.join(logs(), 'notes.txt'), 'mine');
+
+    const ran = logged('true');
+
+    expect(ran.status).toBe(0);
+    expect(fs.readdirSync(logs()).sort()).toEqual([
+      'install-20261104-090000.log',
+      'install-20261105-090000.log',
+      'install-20261106-090000.log',
+      'install-20261107-090000.log',
+      'install-20261108-090000.log',
+      'install-20261109-090000.log',
+      'install-20261110-090000.log',
+      'install-20261111-090000.log',
+      'install-20261112-090000.log',
+      NEW_LOG,
+      'notes.txt',
+    ]);
+  });
+
+  it('names the log and the backend’s journal when the run fails', () => {
+    const failed = logged('echo "==> Database migrations"; exit 3');
+
+    expect(failed.status).toBe(3);
+    expect(failed.stderr).toContain(path.join(logs(), NEW_LOG));
+    expect(failed.stderr).toContain('journalctl -u cloudgate-backend -n 50');
+  });
+
+  it('names neither when the run succeeds', () => {
+    const done = logged('echo "==> Done."');
+
+    expect(done.status).toBe(0);
+    expect(done.stderr).not.toContain('journalctl');
+    expect(done.stderr).not.toContain(NEW_LOG);
+  });
+
+  it('starts logging once the run is root’s and before anything changes the box', () => {
+    const lines = source()
+      .split('\n')
+      .filter((line) => !/^\s*#/.test(line))
+      .join('\n');
+    const root = lines.indexOf('[ "$(id -u)" -eq 0 ] ||');
+    const started = lines.indexOf('\nstart_install_log\n');
+    const packages = lines.indexOf('\nlog "Packages"\n');
+
+    expect(root).toBeGreaterThan(-1);
+    expect(started).toBeGreaterThan(root);
+    expect(packages).toBeGreaterThan(started);
   });
 });

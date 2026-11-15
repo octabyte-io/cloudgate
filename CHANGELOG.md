@@ -2,6 +2,48 @@
 
 ## Unreleased
 
+### Cloudgate can be uninstalled, keeping the instance unless purged
+
+`deploy/uninstall.sh`, in every version from this one, takes Cloudgate off the platform host as root: it stops, disables and removes `cloudgate-backend` and `cloudgate-console` (and the Hosted backup timers and a running `cloudgate-update`), the `cloudgate-traefik` container, `/opt/cloudgate` with its `.previous` and `.next`, and `/usr/local/share/cloudgate`. On the Hosted instance it also removes the remote updater, `/usr/local/sbin/cloudgate-update`, `/etc/sudoers.d/cloudgate-deploy` and the `cloudgate-deploy` user with its home, so the next version tag's deploy cannot install Cloudgate again. It keeps the instance, naming each path: the `cloudgate` database and its roles, `/etc/default/cloudgate-*`, `/etc/cloudgate` and `/var/backups/cloudgate`, so a later install, or a restore on another platform host, is the same instance; it keeps the install logs in `/var/log/cloudgate` too. `--purge` removes those as well, and `/root/cloudgate-live-test/env.migrated` when an earlier install left it, only after you type the instance's public host; any other answer changes nothing. Docker, Postgres, the swarm, `cloudgate-network`, ufw, the `cloudgate` user and a git checkout at `/opt/cloudgate.checkout-<date>` are left in place, and the run says so (`docs/deploy.md` §10, "Uninstalling").
+
+**What to do on upgrade**: nothing.
+
+### A re-run of the install brings Traefik to its version
+
+A run of the one command, or of `deploy/install.sh`, now recreates `cloudgate-traefik` when the container runs any image but `traefik:v<TRAEFIK_VERSION>`, so the Traefik drift the console reports clears with the upgrade that caused it. The run pulls the new image first, then removes the container and starts it again with the same name, network, binds, ports and log cap, and prints that ports 80 and 443 drop for a few seconds. A failed pull leaves the old container serving, and a container already at its version is left running. Before, an existing container was always skipped, so a version that moved `TRAEFIK_VERSION` never reached a running host (ADR-0086, `docs/deploy.md` §6 and §7).
+
+**What to do on upgrade**: nothing. Expect ports 80 and 443 to drop for a few seconds during the run when the version moves Traefik.
+
+### An upgrade dumps the database first and keeps the old version until the new one is healthy
+
+A Self-hosted run of the install that changes the version, from another version or from a git checkout, now dumps the database with `pg_dump -Fc` to `/var/backups/cloudgate/pre-<version>-<time>.dump` (mode 0600, root's) before it puts the new version in place, and keeps the newest 3 dumps, so `/var/backups` holds up to three copies of the database. A dump that fails stops the run with nothing moved. `CLOUDGATE_SKIP_BACKUP=1` skips the dump and the run says so; a reinstall after `deploy/uninstall.sh`, which kept the database, takes one too; a run on the version already installed takes none, and neither does the Hosted instance, whose updater backs up to B2 first. The old version stays at `/opt/cloudgate.previous` until the backend answers `/settings/health`, not only until both units restart. When it never answers, the run exits non-zero, keeps `.previous`, and prints the dump, the old version's path, `journalctl -u cloudgate-backend` and the steps to go back by hand, which are never run for you: drop and create the `cloudgate` database again, restore the dump into it, then put the old version and its two units back (`docs/deploy.md` §7, ADR-0084).
+
+**What to do on upgrade**: nothing.
+
+### Cloudgate runs Node from its own folder
+
+The install unpacks Node into `/usr/local/share/cloudgate/node` instead of over `/usr/local`, and both units, the migrations and the Hosted commands run it from there. Node writes and removes nothing in `/usr/local/bin`, `/usr/local/lib` or `/usr/local/include`, on a first install or an upgrade, so a Node of your own in `/usr/local` is left alone (`docs/deploy.md` §2). nixpacks' installer still writes `/usr/local/bin/nixpacks` until nixpacks is pinned (#56).
+
+**What to do on upgrade**: nothing. The Node an older install unpacked into `/usr/local` (`node`, `npm`, `npx` and `corepack` in `/usr/local/bin`, `lib/node_modules`, `include/node`) is no longer used and is left in place; remove it by hand if nothing else on the platform host uses it. To run a command from `/opt/cloudgate/backend/dist/commands/` by hand, use `/usr/local/share/cloudgate/node/bin/node`.
+
+### The install accepts Ubuntu 26.04
+
+The one-command install now runs on Ubuntu 26.04 as well as 24.04, on amd64, with the same Cloudgate version tarball, which is built on 24.04 (ADR-0085). Any other release, 22.04 or Debian among them, is refused before anything is downloaded, by a message naming both supported releases. A version is published only once its tarball has unpacked, migrated and booted on a 24.04 runner and on a 26.04 one (`docs/deploy.md` §1, §2).
+
+**What to do on upgrade**: nothing.
+
+### The install warns before it downloads, retries its downloads, and logs every run
+
+Before downloading anything, the one-command install warns about what is likely to fail later: a process that is not Cloudgate's on port 80, 443, 3000 or 4000 (named, with its pid), less than 15 GB free where `/opt` or `/usr/local` live, less than 4 GB of memory, and each host `docs/deploy.md` §1 lists that does not answer within 5 seconds. No warning stops the run, and `CLOUDGATE_SKIP_PREFLIGHT=1` skips the checks. Every download in `install.sh` and `deploy/install.sh` tries again up to 3 times when its connection drops or is refused, and the Cloudgate tarball shows a progress bar on a terminal. `deploy/install.sh` copies everything it prints to `/var/log/cloudgate/install-<YYYYmmdd-HHMMSS>.log` (root only), keeps the newest 10, and a failed run ends by naming its log and `journalctl -u cloudgate-backend -n 50` (`docs/deploy.md` §2).
+
+**What to do on upgrade**: nothing.
+
+### The install keeps SSH open on any port, waits for apt, and runs one at a time
+
+The firewall step allowed only OpenSSH's port 22 before it enabled ufw, so a host whose sshd listens on another port lost SSH at the end of the install. It now also allows every port `sshd -T` and `ssh.socket` name, and the port the install's own SSH session came in on. Every `apt-get` in `install.sh` and `deploy/install.sh` waits, for up to 10 minutes, while another apt holds its lock, instead of failing at once with "Could not get lock" on a fresh VPS where cloud-init or unattended-upgrades is still running. A second run of the one command started while one is under way stops before it changes anything. A run stopped mid-download by Ctrl-C, a kill or a dropped SSH session removes its download directory, and the next run sweeps away one a killed run left. `CLOUDGATE_PUBLIC_HOST` must be the host alone: a value with a scheme, port or path is refused before anything changes, and an IPv6 address, with or without brackets, is written into the console and API origins in the brackets a URL needs. A re-run of the one command on the Hosted instance reuses the public host its backend was given instead of looking one up (`docs/deploy.md` §2, §7).
+
+**What to do on upgrade**: nothing.
+
 ## 0.3.1 (2026-11-14)
 
 ### A release's E2E run passes when every suite it failed passes alone

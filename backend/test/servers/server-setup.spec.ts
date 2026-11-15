@@ -701,7 +701,7 @@ describe('deploy/install.sh', () => {
      */
     it('starts the console through the server that forwards the browser', () => {
       expect(read('deploy/systemd/cloudgate-console.service')).toContain(
-        'ExecStart=/usr/local/bin/node /opt/cloudgate/frontend/server.mjs',
+        'ExecStart=/usr/local/share/cloudgate/node/bin/node /opt/cloudgate/frontend/server.mjs',
       );
     });
 
@@ -818,7 +818,7 @@ describe('deploy/install.sh', () => {
     });
 
     it('installs only the subset that is missing', () => {
-      expect(guard()).toContain('apt-get install -y -qq $missing');
+      expect(guard()).toContain('apt_get install -y -qq $missing');
     });
 
     it('routes both apt-using steps through the guard', () => {

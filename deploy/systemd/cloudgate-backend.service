@@ -29,11 +29,13 @@ WorkingDirectory=/opt/cloudgate/backend
 EnvironmentFile=/etc/default/cloudgate-backend
 
 # RemoteExecService.execAsync inherits this unit's environment. Without
-# /usr/local/bin, `nixpacks` and `node` are simply not found, and the failure
-# surfaces as `nixpacks: not found` inside a deployment log rather than here.
-Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# /usr/local/bin, `nixpacks` is simply not found, and the failure surfaces as
+# `nixpacks: not found` inside a deployment log rather than here. Cloudgate's
+# own Node comes first, so `node` is the one ExecStart runs, never one the
+# operator keeps in /usr/local/bin.
+Environment=PATH=/usr/local/share/cloudgate/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-ExecStart=/usr/local/bin/node dist/main
+ExecStart=/usr/local/share/cloudgate/node/bin/node dist/main
 
 # `always`, not `on-failure`. `on-failure` was chosen only because
 # `always` papered over the in-memory build queue orphaning a build; start-up

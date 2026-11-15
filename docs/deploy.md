@@ -1,6 +1,6 @@
 # Deploying Cloudgate on a server
 
-Cloudgate installs **natively** on one Ubuntu 24.04 host: Node processes under systemd, Postgres on the box, Docker and a Swarm of one, and a Traefik container it owns. There is no Dockerfile for Cloudgate itself and no compose file — it deploys containers, it does not ship as one.
+Cloudgate installs **natively** on one Ubuntu 24.04 or 26.04 amd64 machine, its platform host: Node processes under systemd, Postgres on the box, Docker and a Swarm of one, and a Traefik container it owns. There is no Dockerfile for Cloudgate itself and no compose file — it deploys containers, it does not ship as one.
 
 What broke on a real install is written down here as well as what worked: see [Known broken on a native install](#5-known-broken-on-a-native-install) and [Traps that cost real time](#9-traps-that-cost-real-time).
 
@@ -10,11 +10,11 @@ What broke on a real install is written down here as well as what worked: see [K
 
 | | |
 |---|---|
-| Host | Ubuntu 24.04, **2 vCPU / 4 GB / 40 GB** is enough and was what this was proved on |
+| Host | Ubuntu 24.04 or 26.04 on amd64 (one version tarball serves both; anything else is refused by name), **2 vCPU / 4 GB / 40 GB** is enough and was what this was proved on |
 | Access | root over SSH |
 | Ports open inbound | 22, 80, 443, 3000, 4000 |
 | DNS | none required — `sslip.io` resolves `<name>.<ip>.sslip.io` to `<ip>`, which is how deployed apps were reached |
-| Outbound | `get.docker.com`, `nodejs.org`, the npm registry, Docker Hub, `api.github.com` (which Cloudgate version is the latest), `github.com` (the Cloudgate version itself, the OpenTofu and provider releases, [§7](#opentofu-and-the-providers), and the Template catalogue, [below](#the-template-catalogue)), and GitHub's release-download host, `release-assets.githubusercontent.com`, which a release download redirects to |
+| Outbound | `get.docker.com`, `nodejs.org`, the npm registry (`registry.npmjs.org`), Docker Hub (`registry-1.docker.io`), `api.github.com` (which Cloudgate version is the latest), `github.com` (the Cloudgate version itself, the OpenTofu and provider releases, [§7](#opentofu-and-the-providers), and the Template catalogue, [below](#the-template-catalogue)), GitHub's release-download host, `release-assets.githubusercontent.com`, which a release download redirects to, `s3.amazonaws.com` (the Session Manager plugin) and `nixpacks.com` (nixpacks' installer) |
 
 Check the host has no cloud firewall in front of it before you start. A provider-level block on 3000/4000 looks exactly like a broken install:
 
@@ -34,7 +34,8 @@ That is the repository's root `install.sh`. It installs a **Cloudgate version** 
 tested version of Cloudgate, `vX.Y.Z`, published as a prebuilt tarball on the GitHub Release for
 its tag once its E2E run was green. Nothing is cloned and nothing is built on the host. The script:
 
-1. checks the host is Ubuntu 24.04 on amd64;
+1. checks the platform host is Ubuntu 24.04 or 26.04 on amd64 (ADR-0085), and stops, naming both, on any
+   other;
 2. finds the version: the one `CLOUDGATE_VERSION` names, or else the latest one published (the
    highest `vX.Y.Z` among the repository's releases; the CLI's `cli-v*` releases are never one);
 3. downloads `cloudgate-<X.Y.Z>-linux-amd64.tar.gz` and its `.sha256`, and stops, having changed
@@ -51,8 +52,10 @@ curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.
 ```
 
 The public host is, in order: `CLOUDGATE_PUBLIC_HOST` if you set it, the one the last install on
-this host was given, and on a first install the host's public IPv4 address as `api.ipify.org`
-sees it. To name it:
+this platform host was given, and on a first install its public IPv4 address as `api.ipify.org`
+sees it. It is the host alone: an IPv4 address, an IPv6 address (with or without brackets) or a
+hostname. A value with a scheme, port or path, such as `https://cloud.example.com`, is refused
+before anything changes. To name it:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh \
@@ -63,6 +66,37 @@ Every other variable in the environment, `HOSTED_MODE` and its inputs included, 
 `deploy/install.sh` as it was. `CLOUDGATE_REF` is refused: the install never installs a branch.
 `API_PORT` must stay 4000, because a version's console was built to reach its API there; the
 install refuses any other value before it changes anything.
+
+The one command takes a lock, so one run of it goes at a time: a second run started while one is
+under way stops before it changes anything and says so. A by-hand `deploy/install.sh` takes no
+lock, so do not start one while the one command is running. apt calls wait, for up to 10 minutes, while another apt holds its lock, as
+cloud-init and unattended-upgrades do for the first minutes of a fresh VPS.
+
+Before it downloads anything, the install checks the platform host and warns about what is likely to fail
+later. Each warning names what it found, and **none of them stops the run**:
+
+- a process that is not Cloudgate's listening on port 80, 443, 3000 or 4000 (from `ss -ltnp`,
+  naming the process and its pid); the units and Traefik of an earlier install are Cloudgate's;
+- less than 15 GB free on the filesystem that holds `/opt` or `/usr/local`;
+- less than 4 GB of memory (`MemTotal` in `/proc/meminfo`);
+- each host in the Outbound row of [§1](#1-what-you-need) that does not answer within 5 seconds.
+
+A GB here is 1,000,000,000 bytes. `CLOUDGATE_SKIP_PREFLIGHT=1` skips every check:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh \
+  | sudo CLOUDGATE_SKIP_PREFLIGHT=1 sh
+```
+
+Every download (the Cloudgate version, Node, Docker's installer, nixpacks, OpenTofu, its
+providers and the Session Manager plugin) is tried again up to 3 times when the connection drops
+or is refused, and gives up on a download that has not connected in 15 seconds. The Cloudgate tarball
+shows a progress bar when the install runs on a terminal.
+
+**Every run leaves a log.** `deploy/install.sh` copies everything it prints, errors included, to
+`/var/log/cloudgate/install-<YYYYmmdd-HHMMSS>.log`, readable by root alone, and keeps the newest
+10. A run that fails ends by naming its log and the command for the backend's last lines,
+`journalctl -u cloudgate-backend -n 50`.
 
 The same install by hand, which is all the one command does:
 
@@ -85,7 +119,9 @@ install made before versions were published, is switched over: the checkout is m
 
 `CLOUDGATE_PUBLIC_HOST` is the only required input. It becomes the API address both env files carry (`CLOUDGATE_API_URL`), which the console reads when it starts; changing it later is an edit to those files and a restart ([§3](#3-why-the-console-and-the-api-share-one-hostname)).
 
-`deploy/install.sh` is one file, and it does the whole thing: base packages, Node from `nodejs.org` (checksum-verified), Docker, `swarm init`, the `cloudgate-network` overlay, Postgres with a generated role, nixpacks, OpenTofu and its providers, the Session Manager plugin, the `cloudgate` service user, `/etc/cloudgate`, the env files, the version put in place, migrations, `traefik.yml`, the Traefik container, two systemd units, and ufw. It needs no `build-essential`, no `python3`, no pnpm and no swap file: the version arrives with the backend and console built and node-pty compiled.
+`deploy/install.sh` is one file, and it does the whole thing: base packages, Node from `nodejs.org` (checksum-verified, into `/usr/local/share/cloudgate/node`), Docker, `swarm init`, the `cloudgate-network` overlay, Postgres with a generated role, nixpacks, OpenTofu and its providers, the Session Manager plugin, the `cloudgate` service user, `/etc/cloudgate`, the env files, the version put in place, migrations, `traefik.yml`, the Traefik container, two systemd units, and ufw. It needs no `build-essential`, no `python3`, no pnpm and no swap file: the version arrives with the backend and console built and node-pty compiled.
+
+Node is Cloudgate's own, as OpenTofu is: both units run `/usr/local/share/cloudgate/node/bin/node`, never `/usr/local/bin/node`, and the Node step writes and removes nothing in `/usr/local/bin`, `/usr/local/lib` or `/usr/local/include`, so a Node of your own there is left alone. The install as a whole still writes one file there: nixpacks' installer puts `/usr/local/bin/nixpacks` in place, until ticket #56 pins nixpacks. A command from `/opt/cloudgate/backend/dist/commands/` run by hand takes that path too.
 
 **It takes no subcommands.** `install.sh install` and `install.sh update` do not exist — it is one idempotent script, and re-running it is the update path (see [Upgrades](#7-upgrades)).
 
@@ -130,7 +166,8 @@ Two things to know:
 
 The install only installs a published Cloudgate version. To run a branch or an unreleased fix on
 a host, build a version tarball from it yourself and install that by hand. Build on an Ubuntu
-24.04 amd64 machine with Node 24.19.0 (the one `deploy/install.sh` installs) and pnpm, in a fresh
+24.04 amd64 machine, even for a 26.04 platform host (node-pty built there loads on both; one built on 26.04
+may not load on 24.04), with Node 24.19.0 (the one `deploy/install.sh` installs) and pnpm, in a fresh
 clone made for it: `deploy/version-tarball.sh` replaces every `node_modules` in the tree.
 
 ```bash
@@ -212,7 +249,7 @@ Three facts, plainly. None is a misconfiguration you can correct in the install;
 
 **The backend runs as root, and root is the honest choice.** It shells out to `docker`, `git`, `ssh`, `nixpacks`, `rclone` and `tail`, writes `/etc/cloudgate`, and forks ptys. A service user in the `docker` group would gain nothing — **membership of the `docker` group is equivalent to root**, because you can mount the host filesystem into a container you control. Running as a non-root user in the `docker` group is the same power with more `EACCES` on container-written files.
 
-**The firewall the install turns on does not cover anything Cloudgate publishes later.** The last thing `install.sh` does before it verifies is enable ufw with OpenSSH, 80, 443, 3000 and 4000 allowed and Swarm's cluster ports denied, which reads as a backstop for every other port on the box. It is not one. ufw is not in the path of a Docker publish: Docker writes its own `iptables` rules and they are evaluated first, so a container port Docker publishes is reachable from the internet while `ufw status` still shows the port is not allowed. That is not a theory about the ruleset — on the verified run a Postgres service was given `externalPort: 5433` from the console and, from a laptop across the internet, `nc -z <host> 5433` connected and an authenticated `psql -h <host> -p 5433` query returned, while `ufw status` listed nothing for 5433 and `ss -ltn` on the host reported `0.0.0.0:5433` and `[::]:5433`. What the console tells you when you set that field is the accurate account: Cloudgate adds no allowlist and no firewall rule, and the password is the only protection. ufw does not quietly supply the missing one.
+**The firewall the install turns on does not cover anything Cloudgate publishes later.** The last thing `install.sh` does before it verifies is enable ufw with OpenSSH (port 22, and every other port sshd listens on), 80, 443, 3000 and 4000 allowed and Swarm's cluster ports denied, which reads as a backstop for every other port on the box. It is not one. ufw is not in the path of a Docker publish: Docker writes its own `iptables` rules and they are evaluated first, so a container port Docker publishes is reachable from the internet while `ufw status` still shows the port is not allowed. That is not a theory about the ruleset — on the verified run a Postgres service was given `externalPort: 5433` from the console and, from a laptop across the internet, `nc -z <host> 5433` connected and an authenticated `psql -h <host> -p 5433` query returned, while `ufw status` listed nothing for 5433 and `ss -ltn` on the host reported `0.0.0.0:5433` and `[::]:5433`. What the console tells you when you set that field is the accurate account: Cloudgate adds no allowlist and no firewall rule, and the password is the only protection. ufw does not quietly supply the missing one.
 
 So giving a database an external port is a decision to put it on the internet, and it has to be made on those terms. If one genuinely must be reachable from off the host, the restriction has to go somewhere Docker's rules do not precede: the `DOCKER-USER` chain, which Docker consults before its own published-port rules and never rewrites,
 
@@ -286,7 +323,9 @@ Two ways a domain reaches an application, and they behave differently:
 - **Docker Compose stacks** are routed by **container labels** instead, injected into the converted compose file. Nothing appears in `dynamic/` for them, and the labels only take effect on a redeploy — so the Converted tab shows the new labels while the hostname still 404s until you deploy.
 - **Swarm stacks** get a file in `dynamic/` like an Application, named `compose+<appName>.yml`, rewritten when a domain is saved and again on every deploy. Swarm keeps `deploy.labels` on the service rather than its containers, and Traefik's `docker` provider reads containers only, so the labels earlier versions wrote there never routed anything; a deploy now takes them out of the converted file. A Swarm stack last deployed before this change is routed from its next domain edit or deploy.
 
-Pin the version anyway. Both provisioning paths now read one exported `TRAEFIK_VERSION`, defaulting to 3.6.7, so they can no longer disagree the way they did — registering a Server used to install 3.5.0 and any later settings change silently recreated the same container at 3.6.7. Setting `TRAEFIK_VERSION` in `/etc/default/cloudgate-backend` is still what pins the running container across all three.
+Pin the version anyway. Both provisioning paths now read one exported `TRAEFIK_VERSION`, defaulting to 3.6.7, so they can no longer disagree the way they did — registering a Server used to install 3.5.0 and any later settings change silently recreated the same container at 3.6.7. To pin it, pass `TRAEFIK_VERSION` to the install (`curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo TRAEFIK_VERSION=3.6.7 sh`): the install writes it into `/etc/default/cloudgate-backend`, which the backend reads for all three. Setting it in that file by hand does not last, since every run of the install rewrites the file and recreates Traefik at the installer's `TRAEFIK_VERSION`, so a re-run without it moves Traefik to the version's default.
+
+**A re-run of `install.sh` brings `cloudgate-traefik` to its `TRAEFIK_VERSION`** ([ADR-0086](adr/0086-a-re-run-of-the-install-recreates-traefik-when-its-version-is-behind.md)). When the container runs any other image, the run pulls `traefik:v<TRAEFIK_VERSION>` first, then removes the container and starts it again with the same name, network, binds, ports and log cap, printing that ports 80 and 443 drop for a few seconds. A failed pull leaves the old container serving. A container already at its version is left running. The running product still never restarts Traefik on your behalf; running the install is you choosing to change the box.
 
 ### Request metrics, and why they are on loopback
 
@@ -309,7 +348,7 @@ docker logs cloudgate-traefik | head    # non-empty from here on
 
 `INFO`, not `DEBUG`: `INFO` is where lego's `Obtaining bundled SAN certificate` and `Testing certificate renew` lines are, at startup-and-events volume rather than per-request volume.
 
-**Every container Cloudgate creates is capped at 30 MB of logs** — the `json-file` driver, `max-size=10m`, `max-file=3`. That is Traefik, every deployed Application, every managed database, the forward-auth proxy, **and now the containers a Compose stack creates**. Those last were the gap, and they are the ones an Organization controls the log volume of: `docker compose up` creates them from that Organization's own file, so the cap's enumeration — a `grep` over `backend/src` for `createService|createContainer` — could not see them and they ran on Docker's stock unbounded driver. Measured on a live host before the fix: three compose containers at `"Config":{}` beside an Application container and Traefik at `10m` × `3`. They are capped now by a `logging:` block Cloudgate writes into the **converted** compose file — the copy it owns, visible on the stack's Converted tab — for both `docker-compose` and `stack` rows; your own compose file is never rewritten. One residual is deliberate: **a service that declares its own `logging:` block keeps it whole, an unbounded one included**, because the key being there is your statement about it, and a merge would half-override a driver you chose on purpose. Nothing set a ceiling before, and an ACME retry loop against a misconfigured domain is exactly the shape that fills a disk once the log above is on — as is a database refusing one authentication per retry, or a misconfigured oauth2-proxy in a Swarm restart loop. Override with `CONTAINER_LOG_MAX_SIZE` and `CONTAINER_LOG_MAX_FILE` in `/etc/default/cloudgate-backend` (and in the installer's environment, which writes those same two keys into that file); a new value applies to the **next** container created, so changing Traefik's takes `docker rm -f cloudgate-traefik` and a re-run of `install.sh`, and changing a compose stack's takes the next deploy of that stack. The cap is set per container on purpose — rewriting the operator's `/etc/docker/daemon.json` is not the installer's business, and reversing that was considered and rejected.
+**Every container Cloudgate creates is capped at 30 MB of logs** — the `json-file` driver, `max-size=10m`, `max-file=3`. That is Traefik, every deployed Application, every managed database, the forward-auth proxy, **and now the containers a Compose stack creates**. Those last were the gap, and they are the ones an Organization controls the log volume of: `docker compose up` creates them from that Organization's own file, so the cap's enumeration — a `grep` over `backend/src` for `createService|createContainer` — could not see them and they ran on Docker's stock unbounded driver. Measured on a live host before the fix: three compose containers at `"Config":{}` beside an Application container and Traefik at `10m` × `3`. They are capped now by a `logging:` block Cloudgate writes into the **converted** compose file — the copy it owns, visible on the stack's Converted tab — for both `docker-compose` and `stack` rows; your own compose file is never rewritten. One residual is deliberate: **a service that declares its own `logging:` block keeps it whole, an unbounded one included**, because the key being there is your statement about it, and a merge would half-override a driver you chose on purpose. Nothing set a ceiling before, and an ACME retry loop against a misconfigured domain is exactly the shape that fills a disk once the log above is on — as is a database refusing one authentication per retry, or a misconfigured oauth2-proxy in a Swarm restart loop. Override with `CONTAINER_LOG_MAX_SIZE` and `CONTAINER_LOG_MAX_FILE` in `/etc/default/cloudgate-backend` (and in the installer's environment, which writes those same two keys into that file); a new value applies to the **next** container created, so Traefik takes a new cap when a re-run of `install.sh` recreates it for a new `TRAEFIK_VERSION`, and otherwise only after `docker rm -f cloudgate-traefik` and a re-run, and changing a compose stack's takes the next deploy of that stack. The cap is set per container on purpose — rewriting the operator's `/etc/docker/daemon.json` is not the installer's business, and reversing that was considered and rejected.
 
 ---
 
@@ -328,19 +367,56 @@ The one-command install is the upgrade too. It installs the latest Cloudgate ver
 1. It downloads the version and checks its sha256, changing nothing if it does not match.
 2. It unpacks it into `/opt/cloudgate.next` and re-runs the install from there. Every step is
    guarded, so on an upgraded host they find their work done and move on.
-3. Just before the migrations, the version is put in place: the old `/opt/cloudgate` is moved
-   aside, the new one renamed into its place, and the old one deleted. The units run the old
+3. When the version changes and the `cloudgate` database was there before the run (a reinstall
+   after the uninstall in [§10](#10-operating-it) included), it dumps the database with `pg_dump -Fc` to
+   `/var/backups/cloudgate/pre-<version>-<time>.dump` (mode 0600, root's), and keeps the newest
+   3 dumps there. A dump that fails stops the run with nothing moved. `CLOUDGATE_SKIP_BACKUP=1`
+   skips it, for a database too large to dump on every upgrade, and the run says it did.
+4. Just before the migrations, the version is put in place: the old `/opt/cloudgate` is moved
+   to `/opt/cloudgate.previous`, and the new one renamed into its place. The units run the old
    version until then, and a run that stops before this point leaves the installed version whole.
-4. It migrates the database with the version's own `drizzle-kit`, and restarts both units.
+5. It migrates the database with the version's own `drizzle-kit`, and restarts both units.
+6. The old version is deleted once the backend answers `/settings/health`. A run that stops
+   before then leaves it at `.previous`, and the next run removes it before it moves anything.
+
+**A version that moves `TRAEFIK_VERSION` recreates `cloudgate-traefik` at it**, between the
+migrations and the restart, so ports 80 and 443 drop for a few seconds
+([§6](#6-the-traefik-contract)).
 
 **A run on the version already installed downloads nothing**: it re-runs the installed version's
-own `deploy/install.sh`, which moves nothing, applies no migration and restarts both units. That
-is the way to repair a host whose packages or files someone changed.
+own `deploy/install.sh`, which takes no dump, moves nothing, applies no migration and restarts
+both units. That is the way to repair a platform host whose packages or files someone changed.
+
+**Going back, by hand.** When the backend never answers its health check, the run exits non-zero
+and keeps `/opt/cloudgate.previous`. It prints the dump it took, the old version's path,
+`journalctl -u cloudgate-backend` to read why, and these steps, which are never run for you:
+
+```bash
+systemctl stop cloudgate-backend cloudgate-console
+su - postgres -c "dropdb --if-exists cloudgate"
+su - postgres -c "createdb -O cloudgate cloudgate"
+su - postgres -c "pg_restore --exit-on-error --single-transaction -d cloudgate" < /var/backups/cloudgate/pre-<version>-<time>.dump
+rm -rf /opt/cloudgate && mv /opt/cloudgate.previous /opt/cloudgate
+install -m 0644 /opt/cloudgate/deploy/systemd/cloudgate-backend.service /opt/cloudgate/deploy/systemd/cloudgate-console.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl start cloudgate-backend cloudgate-console
+```
+
+Restore the dump together with the old version: the new version's migrations have already run
+against the database, and the old version does not know their tables. The database is dropped and
+created again, owned by `cloudgate`, before the dump goes into it: `pg_restore --clean` would drop
+only what the dump holds, leave what the migrations added, and can stop halfway on what depends on
+it. When the run took no dump (`CLOUDGATE_SKIP_BACKUP=1`), it says so and prints no database steps:
+the old version would then run against a database the new one migrated. Going back leaves Node in
+`/usr/local/share/cloudgate/node`, Traefik and `/etc/default/cloudgate-*` as the run left them.
+Or fix what the journal names and re-run the install, which finishes the upgrade and deletes
+`.previous`. The Hosted
+instance takes no dump here, since its updater backs up to B2 before it runs the install (§11).
 
 Read the version's "What to do on upgrade" lines in `CHANGELOG.md` before you upgrade. Versions
 only move forward: a version's migrations cannot be undone, so a `CLOUDGATE_VERSION` older than the
-installed one is refused, naming both, before anything changes, and the install does not keep the
-previous version once both units run the new one.
+installed one is refused, naming both, before anything changes. The previous version is kept only
+until the new one is healthy, and going back to it is by hand, above.
 
 By hand, the same thing is the by-hand install in [§2](#2-install) with the new version's
 tarball, and `CLOUDGATE_PUBLIC_HOST` set to the value the install was given.
@@ -349,7 +425,7 @@ tarball, and `CLOUDGATE_PUBLIC_HOST` set to the value the install was given.
 
 Secrets are read back from `/etc/default/cloudgate-secrets` rather than regenerated, which is exactly right for an upgrade: a new `APP_ENCRYPTION_SECRET` would make every encrypted column permanently unreadable, and a new `PGPW` would leave `DATABASE_URL` disagreeing with a Postgres role the script will not touch. The Packages and Postgres steps hand apt only the packages actually missing, print `Required packages are installed ✅` when none are, and so cannot upgrade `curl`, `git` or `openssl` on the way past. An older install kept its secrets in `/root/cloudgate-live-test/env`, a verification run's scratch directory; the first run after that fix migrates the three keys to `/etc/default/cloudgate-secrets`, renames the old file `.migrated`, and prints that it did. **The rule this establishes is worth stating on its own: the instance's identity is `/etc/default/cloudgate-*`.** Keep those files and a reinstall is the same instance, with the same signing secrets and the same session cookies still valid. To reinstall as a genuinely *new* instance, remove `/etc/default/cloudgate-backend`, `/etc/default/cloudgate-console` and `/etc/default/cloudgate-secrets` **and** drop the `cloudgate` database — the secrets and the rows they key have to go together, and keeping either one alone gets you a half-migrated instance rather than a fresh one.
 
-**A host installed from a git checkout.** Until versions were published, the install cloned the repository into `/opt/cloudgate` and built it there. The next run of the one command switches such a host over by itself. The checkout holds no `VERSION`, so the run installs the latest version (or the one `CLOUDGATE_VERSION` names) as on a new host, reusing the public host from `/etc/default/cloudgate-console`. Where step 3 above would delete the old `/opt/cloudgate`, it moves the checkout to `/opt/cloudgate.checkout-<date>` instead (`.checkout-<date>.2` if one was moved there already that day) and keeps it, `node_modules` and `.next` included. `/etc/default/cloudgate-*` and the database are the instance's identity and are kept, so sessions and encrypted values still work after the switch. The run prints where the checkout went and that it can be deleted: nothing runs from it any more, so once anything of yours in it (changes nobody pushed, say) is kept elsewhere, `rm -rf` it. A `/opt/cloudgate` that is neither a checkout nor a Cloudgate version is refused, with nothing changed: move it aside yourself. A host from then also keeps the `/swapfile`, `build-essential` and `python3` the build needed; the install no longer creates or uses any of them and leaves them as they are.
+**A host installed from a git checkout.** Until versions were published, the install cloned the repository into `/opt/cloudgate` and built it there. The next run of the one command switches such a host over by itself. The checkout holds no `VERSION`, so the run installs the latest version (or the one `CLOUDGATE_VERSION` names) as on a new host, reusing the public host from `/etc/default/cloudgate-console`, and dumps the database first as step 3 says. Where step 4 above would move the old `/opt/cloudgate` to `.previous`, it moves the checkout to `/opt/cloudgate.checkout-<date>` instead (`.checkout-<date>.2` if one was moved there already that day) and keeps it, `node_modules` and `.next` included. `/etc/default/cloudgate-*` and the database are the instance's identity and are kept, so sessions and encrypted values still work after the switch. The run prints where the checkout went and that it can be deleted: nothing runs from it any more, so once anything of yours in it (changes nobody pushed, say) is kept elsewhere, `rm -rf` it. A `/opt/cloudgate` that is neither a checkout nor a Cloudgate version is refused, with nothing changed: move it aside yourself. A host from then also keeps the `/swapfile`, `build-essential` and `python3` the build needed; the install no longer creates or uses any of them and leaves them as they are.
 
 A queued deployment survives a restart, as a Cloud run does. The build queue is in memory, so the Deployment rows are what survive, and start-up settles them: a build still `pending` is queued again, oldest first, and Cancel reaches it as it reaches any waiting build, but one that cannot show what it was queued as (a build of a preview deleted in the meantime, or one recorded before Cloudgate kept that) ends `error` rather than being built as a guess; a build still `running` was cut off part-way, ends `error` with "Cut off by a Cloudgate restart before this build finished", and is never run again by itself — deploy it again; a build `held` for a plan stays held. That is why both units are `Restart=always`: `on-failure` was chosen only because `always` would have papered over the queue orphaning a build, and a restart no longer orphans one. A `systemctl stop` still stops the service.
 
@@ -463,7 +539,7 @@ Both units are `Restart=always`, so a crash restarts and so does an exit nobody 
 
 **A `docker-compose` stack now comes back by itself after `systemctl restart docker` or a host reboot**. It did not before, and the asymmetry was the finding: on a rebooted host all six Swarm services reconverged with fresh task ids and all four non-Swarm containers stayed `exited` carrying `RestartPolicy=no` — the container count went 11 before, 5 at 15 s, 7 at 75 s, and stayed at 7 until they were started by hand. Cloudgate injected no `restart:` key, so a compose container inherited whatever the author's file said, which was usually nothing. It now writes `restart: unless-stopped` into the **converted** compose file — the copy Cloudgate owns, visible on the stack's Converted tab — for every service that does not declare a `restart:` of its own; your own compose file is never rewritten. Three things follow, all deliberate: a service that declares `restart:` keeps it and is your business, `restart: no` included; `unless-stopped` and not `always`, so a stack you press **Stop** on stays stopped across a daemon restart instead of coming back while Cloudgate still reads it as stopped; and a `stack`-type row gets nothing, because `docker stack deploy` ignores `restart:` and warns about it on every deploy while Swarm already reconciles its own tasks from `deploy.restart_policy`'s default `condition: any`.
 
-**Which command demonstrates that, and which one proves nothing.** Use `systemctl stop postgresql` — the meta unit that both `After=` and `Wants=` name. On Ubuntu 24.04 `postgresql@16-main.service` carries `PartOf=postgresql.service`, and `PartOf=` propagates a stop *downward* only: stopping the meta unit stops the cluster with it, while stopping the *instance* unit leaves the meta unit `active` and reaches no dependent of it at all. So `systemctl stop postgresql@16-main` would not have taken the API down even before the unit change, and a passing result there says nothing about the fix. It is still the right command for the other half — the cluster really stops and the pool's connection really dies, which is the pool listener's path and why it is the command named in the paragraph above.
+**Which command demonstrates that, and which one proves nothing.** Use `systemctl stop postgresql` — the meta unit that both `After=` and `Wants=` name. The cluster's own unit is `postgresql@<major>-main.service`, where the number is the Postgres major version: `postgresql@16-main` on Ubuntu 24.04, and `postgresql@18-main` on 26.04, whose archive's `postgresql` is PostgreSQL 18. It carries `PartOf=postgresql.service`, and `PartOf=` propagates a stop *downward* only: stopping the meta unit stops the cluster with it, while stopping the *instance* unit leaves the meta unit `active` and reaches no dependent of it at all. So `systemctl stop postgresql@16-main` (on 24.04) would not have taken the API down even before the unit change, and a passing result there says nothing about the fix. It is still the right command for the other half — the cluster really stops and the pool's connection really dies, which is the pool listener's path and why it is the command named in the paragraph above.
 
 ```bash
 systemctl show cloudgate-backend -p NRestarts   # NRestarts=2 at the end of the run
@@ -526,6 +602,64 @@ SQL
 
 The next sign-in with that email and password goes straight in, and the person can turn two-factor on again from Settings → Account.
 
+### Uninstalling
+
+Every Cloudgate version carries its own uninstall. As root:
+
+```bash
+bash /opt/cloudgate/deploy/uninstall.sh
+```
+
+It stops and disables `cloudgate-backend` and `cloudgate-console` (on the Hosted instance also its
+backup timers and a running `cloudgate-update`), removes their unit files and reloads systemd, then
+removes the `cloudgate-traefik` container, `/opt/cloudgate` with its `.previous` and `.next`, and
+`/usr/local/share/cloudgate` (Node, OpenTofu and its providers, the Session Manager plugin). On the
+Hosted instance it first removes what `deploy/hosted-update-access.sh` made, so the next deploy of
+a version tag cannot install Cloudgate again: `/usr/local/sbin/cloudgate-update`,
+`/etc/sudoers.d/cloudgate-deploy`, and the `cloudgate-deploy` user with its home
+`/var/lib/cloudgate-deploy` and the deploy key in it. Services deployed on the platform host stop
+being routed when Traefik goes; their Swarm services and containers are left to you.
+
+**It keeps the instance**, and says so with each path: the `cloudgate` database and its roles
+`cloudgate` and `cloudgate_state`, `/etc/default/cloudgate-*`, `/etc/cloudgate` and the dumps in
+`/var/backups/cloudgate`. It keeps the install logs in `/var/log/cloudgate` too, and names them. A
+later install on the same platform host with these in place is the same instance, with its
+sessions and encrypted values, and dumps the kept database before it migrates it
+([§7](#7-upgrades)); to move to another platform host, take the backup in
+[§8](#8-backing-up-the-instance-itself) first and restore it there as that section says.
+
+**`--purge` removes the instance too**, and cannot be undone:
+
+```bash
+bash /opt/cloudgate/deploy/uninstall.sh --purge
+```
+
+Before it changes anything it asks you to type the instance's public host, the one the install was
+given (read from `/etc/default/cloudgate-backend` or `-console`). On an exact match it uninstalls
+as above, drops the `cloudgate` database and both roles, and then removes
+`/etc/default/cloudgate-*`, `/etc/cloudgate`, `/var/backups/cloudgate`, `/var/log/cloudgate` and,
+when an earlier install left it, `/root/cloudgate-live-test/env.migrated` (old secrets the install
+moved aside and no longer reads). Any other answer, or none, changes nothing. If the drop fails, the files are kept, since without the secrets the
+database cannot be read.
+
+The script is removed with `/opt/cloudgate`, so to remove a kept instance afterwards, do it by hand:
+
+```bash
+su - postgres -c "psql -v ON_ERROR_STOP=1" <<'SQL'
+DROP DATABASE IF EXISTS cloudgate WITH (FORCE);
+DROP ROLE IF EXISTS cloudgate_state;
+DROP ROLE IF EXISTS cloudgate;
+SQL
+rm -rf /etc/default/cloudgate-* /etc/cloudgate /var/backups/cloudgate /var/log/cloudgate
+rm -f /root/cloudgate-live-test/env.migrated
+```
+
+**Left in place either way**, because they may serve more than Cloudgate: Docker, Postgres, the
+swarm, `cloudgate-network`, ufw and its rules, and the `cloudgate` user with its home
+`/var/lib/cloudgate`. Remove them by hand if nothing else on the platform host uses them. A git
+checkout an earlier install moved to `/opt/cloudgate.checkout-<date>` ([§7](#7-upgrades)) is left
+too, and named: it may hold changes of yours, so delete it once you have kept them.
+
 ## 11. The Hosted instance
 
 ### The Stripe webhook endpoint
@@ -573,7 +707,7 @@ Once the box has `cloudgate-update` (a Hosted install writes it), `sudo cloudgat
 Each Cloudgate version reaches the Hosted instance by itself once it is published ([ADR-0081](adr/0081-the-hosted-instance-is-upgraded-by-a-green-version-tag-over-a-key-that-can-run-only-the-updater.md), [ADR-0082](adr/0082-the-install-downloads-a-prebuilt-release-tarball-published-only-after-a-green-e2e-run-and-runs-it-natively.md)):
 
 1. `git tag v0.3.0 && git push origin v0.3.0` starts `E2E (release)`.
-2. When that run ends green, **Publish Cloudgate version** (`.github/workflows/publish-version.yml`) builds the version's tarball, boots it, and puts it and its `.sha256` on the tag's GitHub Release.
+2. When that run ends green, **Publish Cloudgate version** (`.github/workflows/publish-version.yml`) builds the version's tarball on Ubuntu 24.04, boots it on 24.04 and 26.04, and puts it and its `.sha256` on the tag's GitHub Release.
 3. Its last job starts `.github/workflows/deploy-hosted.yml` on `main`, passing the tag and the commit E2E tested. That run checks the tag is on `main` and still names that commit, then checks the version with `deploy/hosted-release-gate.sh`: the tag must be `backend/package.json`'s version, and every "What to do on upgrade" line in its `CHANGELOG.md` section must read "nothing.". Anything else stops the run and names the lines.
 4. It SSHes to the box as `cloudgate-deploy`, whose key runs only `/usr/local/sbin/cloudgate-update` (`deploy/hosted-update.sh`). In its own unit, `cloudgate-update.service`, so a dropped connection cannot cut it off, that refuses a tag with no published release, takes a B2 backup, installs the published tarball with the tag's own `install.sh`, and checks `/opt/cloudgate/VERSION` is the tag.
 5. It waits until `https://<hostname>/backend/settings/about` reports the new version in hosted mode.

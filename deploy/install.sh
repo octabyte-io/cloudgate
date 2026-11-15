@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Cloudgate — native install on a bare Ubuntu 24.04 host.
+# Cloudgate — native install on a bare Ubuntu 24.04 or 26.04 amd64 platform host.
 #
 # This is the record of the install that was actually performed and verified on
 # a 2 vCPU / 3.7 GB / 38 GB VPS (run log: .project/vps-deploy/RUN-LOG.md, L01,
@@ -55,6 +55,26 @@ set -euo pipefail
 # Both env files below carry it as CLOUDGATE_API_URL, which the console reads
 # when it starts, so changing it later is a restart (docs/deploy.md §3).
 : "${CLOUDGATE_PUBLIC_HOST:?set it to the public IP or hostname of this host}"
+# The host alone: an IPv4 address, a hostname, or an IPv6 address, which may
+# come in the brackets a URL gives it and is kept without them. A scheme, port
+# or path would end up inside every origin below, as http://https://host:3000.
+# Refused before anything is touched, as root install.sh refuses it.
+CLOUDGATE_PUBLIC_HOST="${CLOUDGATE_PUBLIC_HOST#\[}"
+CLOUDGATE_PUBLIC_HOST="${CLOUDGATE_PUBLIC_HOST%\]}"
+public_host_ok() {
+  case "$1" in
+    '' | *[!0-9A-Za-z.:-]*) return 1 ;;
+    *:*:*)
+      case "$1" in *[!0-9A-Fa-f:.]*) return 1 ;; esac
+      ;;
+    *:*) return 1 ;;
+  esac
+}
+if ! public_host_ok "$CLOUDGATE_PUBLIC_HOST"; then
+  echo "CLOUDGATE_PUBLIC_HOST is the public IP address or hostname alone, such as 203.0.113.10," >&2
+  echo "2001:db8::10 or cloud.example.com, not \"$CLOUDGATE_PUBLIC_HOST\": no scheme, port or path." >&2
+  exit 1
+fi
 
 CONSOLE_PORT="${CONSOLE_PORT:-3000}"
 API_PORT="${API_PORT:-4000}"
@@ -179,6 +199,8 @@ CLOUDGATE_DIR=/etc/cloudgate
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # The committed unit files hardcode /opt/cloudgate so they need no templating.
 INSTALL_DIR=/opt/cloudgate
+# Where dump_database puts the dump it takes before an upgrade (ADR-0084).
+BACKUP_DIR=/var/backups/cloudgate
 # The generated secrets. NOT under CLOUDGATE_DIRECTORY, for the reason
 # docs/deploy.md §4 gives for /etc/default/cloudgate-backend: this file holds the
 # database password and both signing secrets, and the platform directory is where
@@ -194,8 +216,16 @@ SECRETS_FILE=/etc/default/cloudgate-secrets
 LEGACY_SECRETS_FILE=/root/cloudgate-live-test/env
 SERVICE_USER=cloudgate
 
-CONSOLE_ORIGIN="http://${CLOUDGATE_PUBLIC_HOST}:${CONSOLE_PORT}"
-API_ORIGIN="http://${CLOUDGATE_PUBLIC_HOST}:${API_PORT}"
+# A host as a URL writes it: an IPv6 address in brackets, which
+# http://2001:db8::10:3000 lacks and no browser can open.
+url_host() {
+  case "$1" in
+    *:*) printf '[%s]' "$1" ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+CONSOLE_ORIGIN="http://$(url_host "$CLOUDGATE_PUBLIC_HOST"):${CONSOLE_PORT}"
+API_ORIGIN="http://$(url_host "$CLOUDGATE_PUBLIC_HOST"):${API_PORT}"
 
 log() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 
@@ -246,6 +276,34 @@ fi
 # sequence for an operator who wants one, and a knob nobody sets is a branch
 # nobody tests. `set -euo pipefail` is safe across the pipeline below because it
 # is the condition of a `||`.
+#
+# Every apt-get goes through apt_get, which waits out the lock another apt
+# holds. On a VPS's first boot cloud-init and unattended-upgrades hold it for
+# minutes, and a bare apt-get failed the install at once with "Could not get
+# lock". DPkg::Lock::Timeout has apt wait for dpkg's lock itself; a refusal
+# that still names a lock (update's lists lock among them) is tried again,
+# every 10 seconds for 10 minutes. Any other failure is apt's answer, and is
+# returned at once. backend/test/coding-standards/apt-lock.spec.ts fails on a
+# bare apt-get in this file or in root install.sh.
+apt_get() {
+  local tries=0 errors
+  errors="$(mktemp)"
+  while :; do
+    if DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=600 "$@" 2>"$errors"; then
+      cat "$errors" >&2
+      rm -f "$errors"
+      return 0
+    fi
+    cat "$errors" >&2
+    tries=$((tries + 1))
+    if ! grep -q 'Could not get lock' "$errors" || [ "$tries" -ge 60 ]; then
+      rm -f "$errors"
+      return 1
+    fi
+    echo "Another apt is running; waiting for it to finish (try $tries of 60)." >&2
+    sleep 10
+  done
+}
 ensure_packages() {
   local missing=""
   for pkg in "$@"; do
@@ -257,13 +315,37 @@ ensure_packages() {
     return
   fi
   export DEBIAN_FRONTEND=noninteractive
-  apt-get update -qq
+  apt_get update -qq
   # shellcheck disable=SC2086
-  apt-get install -y -qq $missing
+  apt_get install -y -qq $missing
   echo "Installed:$missing ✅"
 }
 
 [ "$(id -u)" -eq 0 ] || { echo "must run as root" >&2; exit 1; }
+
+# Every run's output, stdout and stderr both, is copied to its own log, so a
+# failure can be read after the terminal that watched it is gone. Root's
+# alone (0600), as /etc/default/cloudgate-* are: a failing command can print
+# what it was handed. The newest 10 are kept; the names sort by time.
+# A failing exit ends by naming the log and the backend's journal.
+INSTALL_LOG_DIR=/var/log/cloudgate
+start_install_log() {
+  mkdir -p "$INSTALL_LOG_DIR"
+  INSTALL_LOG="$INSTALL_LOG_DIR/install-$(date +%Y%m%d-%H%M%S).log"
+  (umask 077 && : >>"$INSTALL_LOG")
+  chmod 0600 "$INSTALL_LOG"
+  find "$INSTALL_LOG_DIR" -maxdepth 1 -type f -name 'install-*.log' | sort | head -n -10 |
+    while read -r old; do rm -f -- "$old"; done
+  exec > >(tee -a "$INSTALL_LOG") 2> >(tee -a "$INSTALL_LOG" >&2)
+  trap 'install_log_exit $?' EXIT
+}
+install_log_exit() {
+  [ "$1" -ne 0 ] || return 0
+  echo "" >&2
+  echo "The install stopped (exit code $1). Everything it printed is in $INSTALL_LOG." >&2
+  echo "What the backend logged last: journalctl -u cloudgate-backend -n 50" >&2
+}
+start_install_log
 
 # A Cloudgate version carries VERSION at its top level; a git checkout or a
 # copy of the repository does not, and has nothing built to run.
@@ -308,21 +390,30 @@ if [ -n "$HOSTED_MODE" ]; then
 fi
 
 ### ------------------------------------------------------------------ node ---
-# Installed to /usr/local so /usr/local/bin/node is a stable path the committed
-# unit files can hardcode. No pnpm: nothing is installed or built with it here,
-# and the migrations run the version's own drizzle-kit.
+# Cloudgate's own, as OpenTofu is: unpacked into its own folder, never over
+# /usr/local, whose bin, lib and include may hold the operator's own Node. The
+# committed unit files and as_service_user's PATH name this folder. An older
+# Node a previous install left in /usr/local is not touched (CHANGELOG). No
+# pnpm: nothing is installed or built with it here, and the migrations run the
+# version's own drizzle-kit.
+NODE_DIR=/usr/local/share/cloudgate/node
 
 log "Node ${NODE_VERSION}"
-if [ "$(/usr/local/bin/node --version 2>/dev/null || true)" != "$NODE_VERSION" ]; then
+if [ "$("$NODE_DIR/bin/node" --version 2>/dev/null || true)" != "$NODE_VERSION" ]; then
   tarball="node-${NODE_VERSION}-linux-x64.tar.xz"
   tmp="$(mktemp -d)"
   (
     cd "$tmp"
-    curl -fsSLO "https://nodejs.org/dist/${NODE_VERSION}/${tarball}"
-    curl -fsSLO "https://nodejs.org/dist/${NODE_VERSION}/SHASUMS256.txt"
+    curl -fsSLO --retry 3 --retry-connrefused --connect-timeout 15 "https://nodejs.org/dist/${NODE_VERSION}/${tarball}"
+    curl -fsSLO --retry 3 --retry-connrefused --connect-timeout 15 "https://nodejs.org/dist/${NODE_VERSION}/SHASUMS256.txt"
     grep " ${tarball}\$" SHASUMS256.txt | sha256sum -c -
-    tar -xJf "$tarball" -C /usr/local --strip-components=1 --no-same-owner
+    mkdir node
+    tar -xJf "$tarball" -C node --strip-components=1 --no-same-owner
   )
+  # Whole, so nothing of an older Node is left beside the new one.
+  mkdir -p "$(dirname "$NODE_DIR")"
+  rm -rf "$NODE_DIR"
+  mv "$tmp/node" "$NODE_DIR"
   rm -rf "$tmp"
 fi
 
@@ -334,7 +425,7 @@ fi
 
 log "Docker"
 if ! command -v docker >/dev/null; then
-  curl -fsSL https://get.docker.com | sh      # brings the compose + buildx plugins
+  curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 https://get.docker.com | sh      # brings the compose + buildx plugins
 fi
 systemctl enable --now docker
 
@@ -462,7 +553,7 @@ fi
 # (backend/src/builders/pack-install.ts).
 
 log "nixpacks"
-command -v nixpacks >/dev/null || curl -sSL https://nixpacks.com/install.sh | bash
+command -v nixpacks >/dev/null || curl -sSL --retry 3 --retry-connrefused --connect-timeout 15 https://nixpacks.com/install.sh | bash
 
 ### -------------------------------------------------------------- opentofu ---
 # OpenTofu and the providers, all pinned above, all checked, all into
@@ -502,7 +593,7 @@ if [ "$("$OPENTOFU_BINARY" version -json 2>/dev/null | jq -r .terraform_version 
   tmp="$(mktemp -d)"
   (
     cd "$tmp"
-    curl -fsSLO "https://github.com/opentofu/opentofu/releases/download/v${OPENTOFU_VERSION}/${tarball}"
+    curl -fsSLO --retry 3 --retry-connrefused --connect-timeout 15 "https://github.com/opentofu/opentofu/releases/download/v${OPENTOFU_VERSION}/${tarball}"
     echo "${OPENTOFU_SHA256}  ${tarball}" | sha256sum -c -
     mkdir unpacked
     tar -xzf "$tarball" -C unpacked --no-same-owner
@@ -539,7 +630,7 @@ install_provider() {
   tmp="$(mktemp -d "$OPENTOFU_DIR/.download.XXXXXX")"
   (
     cd "$tmp"
-    curl -fsSLO "https://github.com/opentofu/terraform-provider-${type}/releases/download/v${version}/${zip}"
+    curl -fsSLO --retry 3 --retry-connrefused --connect-timeout 15 "https://github.com/opentofu/terraform-provider-${type}/releases/download/v${version}/${zip}"
     sum="$(sha256sum "$zip" | cut -d' ' -f1)"
     if ! grep -qx "    \"zh:${sum}\"," <<<"$block"; then
       echo "$zip (sha256 $sum) is not a checksum $opentofu_lock pins." >&2
@@ -575,7 +666,7 @@ if [ "$("$SESSION_MANAGER_PLUGIN" --version 2>/dev/null || true)" != "$SESSION_M
   tmp="$(mktemp -d)"
   (
     cd "$tmp"
-    curl -fsSLo session-manager-plugin.deb "https://s3.amazonaws.com/session-manager-downloads/plugin/${SESSION_MANAGER_PLUGIN_VERSION}/ubuntu_64bit/session-manager-plugin.deb"
+    curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 -o session-manager-plugin.deb "https://s3.amazonaws.com/session-manager-downloads/plugin/${SESSION_MANAGER_PLUGIN_VERSION}/ubuntu_64bit/session-manager-plugin.deb"
     echo "${SESSION_MANAGER_PLUGIN_SHA256}  session-manager-plugin.deb" | sha256sum -c -
     dpkg-deb -x session-manager-plugin.deb unpacked
     install -D -m 0755 unpacked/usr/local/sessionmanagerplugin/bin/session-manager-plugin "$SESSION_MANAGER_PLUGIN"
@@ -711,7 +802,7 @@ umask 022
 
 as_service_user() {
   runuser -u "$SERVICE_USER" -- env \
-    PATH=/usr/local/bin:/usr/bin:/bin \
+    PATH=/usr/local/share/cloudgate/node/bin:/usr/local/bin:/usr/bin:/bin \
     HOME=/var/lib/cloudgate \
     "$@"
 }
@@ -730,11 +821,13 @@ as_service_user() {
 # chunks when a page first asks for them) is now the new version's. Deleting
 # .previous here would take the rest from under them too, so
 # drop_previous_version deletes it only once both units have restarted onto
-# the new version. A run that stops in between, at a failed migration say,
-# leaves the new version at $INSTALL_DIR and the old one at .previous; re-run
-# the install to finish, which removes that .previous before it moves anything. Rolling back is not offered,
-# because migrations only go forward. Run from $INSTALL_DIR itself, a re-run
-# of the installed version, it moves nothing.
+# the new version and the backend answers its health check (ADR-0084). A run
+# that stops in between, at a failed migration or a failed health check say,
+# leaves the new version at $INSTALL_DIR and the old one at .previous, and a
+# failed health check prints how to go back to it with the dump dump_database
+# took; re-run the install to finish instead, which removes that .previous
+# before it moves anything. Going back is never automatic. Run from
+# $INSTALL_DIR itself, a re-run of the installed version, it moves nothing.
 #
 # A git checkout there, from an install made before versions (ADR-0082), is
 # moved to $INSTALL_DIR.checkout-<date> and kept rather than deleted: it is
@@ -771,10 +864,59 @@ place_version() {
   fi
 }
 
-# The version place_version moved aside, once nothing runs from it.
+# The version place_version moved aside, once the new one is healthy.
 drop_previous_version() {
   rm -rf "$INSTALL_DIR.previous"
 }
+
+# A dump of the database before a run that changes the version, because the
+# migrations after place_version only go forward (ADR-0084). Taken when the
+# cloudgate database was there before this run (have_db, Postgres's answer
+# before the guard above created it) and what is at $INSTALL_DIR is another
+# version, a git checkout or nothing: a reinstall after deploy/uninstall.sh
+# finds no $INSTALL_DIR but the database it kept. A re-run of the installed
+# version migrates nothing and a first install has no database to keep.
+# A .partial left by a run killed mid-dump is swept away first.
+# The Hosted instance's updater backs up to B2 before it runs the install
+# (ADR-0081), so it takes none here. Written by root under umask 077, so the
+# dump, which holds every secret the database does, is root's alone; the
+# newest 3 are kept. A failed dump stops the run here, with nothing moved.
+# CLOUDGATE_SKIP_BACKUP=1 skips it, for a database too large to dump on every
+# upgrade. Sets DATABASE_DUMP to the file, or to nothing.
+DATABASE_DUMP=''
+dump_database() {
+  local installed='' partial
+  DATABASE_DUMP=''
+  rm -f -- "$BACKUP_DIR"/pre-*.dump.partial
+  [ -n "${HOSTED_MODE:-}" ] && return 0
+  [ "${have_db:-}" = 1 ] || return 0
+  [ -f "$INSTALL_DIR/VERSION" ] && installed="$(cat "$INSTALL_DIR/VERSION")"
+  [ "$installed" = "$VERSION" ] && return 0
+  if [ "${CLOUDGATE_SKIP_BACKUP:-}" = 1 ]; then
+    echo "CLOUDGATE_SKIP_BACKUP=1: no dump of the database before Cloudgate ${VERSION}."
+    return 0
+  fi
+  mkdir -p "$BACKUP_DIR" && chmod 0700 "$BACKUP_DIR" || return 1
+  DATABASE_DUMP="$BACKUP_DIR/pre-${VERSION}-$(date -u +%Y%m%dT%H%M%SZ).dump"
+  partial="$DATABASE_DUMP.partial"
+  if ! (umask 077 && su - postgres -c "pg_dump -Fc cloudgate" > "$partial"); then
+    rm -f "$partial"
+    DATABASE_DUMP=''
+    echo "The dump of the database before Cloudgate ${VERSION} failed. Nothing was changed:" >&2
+    echo "the installed version is still in place. Fix what pg_dump says above and re-run," >&2
+    echo "or re-run with CLOUDGATE_SKIP_BACKUP=1 to upgrade without a dump." >&2
+    return 1
+  fi
+  mv "$partial" "$DATABASE_DUMP" || return 1
+  # Newest first by when each was taken; the names sort by version first.
+  ls -1t "$BACKUP_DIR"/pre-*.dump | tail -n +4 | while read -r old; do
+    rm -f -- "$old"
+  done
+  echo "Dumped the database to $DATABASE_DUMP"
+}
+
+log "Database dump"
+dump_database || exit 1
 
 log "Cloudgate ${VERSION}"
 place_version
@@ -939,20 +1081,21 @@ if [ -n "$HOSTED_MODE" ]; then
   mv "$CLOUDGATE_DIR/traefik/dynamic/hosted.yml.tmp" "$CLOUDGATE_DIR/traefik/dynamic/hosted.yml"
 fi
 
-if ! docker inspect cloudgate-traefik >/dev/null 2>&1; then
-  docker pull -q "traefik:v${TRAEFIK_VERSION}"
-  # Shape matches TraefikSetupService.initializeStandaloneTraefik — and, since
-  # both paths share one set of constants, setupTraefikInstance in
-  # server-setup.ts as well: same name, same network, same three binds,
-  # 80 + 443/tcp + 443/udp, restart always.
-  # The dynamic dir's bind *target* is /etc/cloudgate/traefik/dynamic because
-  # that is the path inside the container the file provider watches.
-  #
-  # The --log-opt flags are what bounds Traefik's now-chatty application log.
-  # Same driver as the stock default, so `docker logs cloudgate-traefik` still
-  # reads it; the cap is 30 MB, and re-running this script does NOT apply a
-  # changed cap, because the guard above skips an existing container. Changing it
-  # on a running host is `docker rm -f cloudgate-traefik` and a re-run.
+# Shape matches TraefikSetupService.initializeStandaloneTraefik — and, since
+# both paths share one set of constants, setupTraefikInstance in
+# server-setup.ts as well: same name, same network, same three binds,
+# 80 + 443/tcp + 443/udp, restart always.
+# The dynamic dir's bind *target* is /etc/cloudgate/traefik/dynamic because
+# that is the path inside the container the file provider watches.
+#
+# The --log-opt flags are what bounds Traefik's now-chatty application log.
+# Same driver as the stock default, so `docker logs cloudgate-traefik` still
+# reads it; the cap is 30 MB.
+#
+# The first start and the recreate below both go through this one function, so
+# a recreated Traefik cannot come back with a bind, port or cap the first start
+# would not have given it.
+run_traefik() {
   docker run -d \
     --name cloudgate-traefik \
     --restart always \
@@ -965,6 +1108,28 @@ if ! docker inspect cloudgate-traefik >/dev/null 2>&1; then
     -v /var/run/docker.sock:/var/run/docker.sock \
     -p 80:80 -p 443:443 -p 443:443/udp \
     "traefik:v${TRAEFIK_VERSION}"
+}
+
+# A container on another image is recreated at TRAEFIK_VERSION (ADR-0086).
+# Before, an existing container was always skipped, so an upgrade that moved
+# TRAEFIK_VERSION wrote the new value into /etc/default/cloudgate-backend while
+# Traefik kept the old image, and the console showed the drift. The pull comes
+# before the rm, so a pull that fails leaves the old Traefik serving. The product
+# never restarts Traefik on its own; running this script is the operator choosing
+# to change the box. A container already at its version is left running: a
+# changed log cap alone does not recreate it, and applying one is still
+# `docker rm -f cloudgate-traefik` and a re-run.
+if ! docker inspect cloudgate-traefik >/dev/null 2>&1; then
+  docker pull -q "traefik:v${TRAEFIK_VERSION}"
+  run_traefik
+else
+  running_traefik_image=$(docker inspect -f '{{.Config.Image}}' cloudgate-traefik)
+  if [ "$running_traefik_image" != "traefik:v${TRAEFIK_VERSION}" ]; then
+    echo "Traefik runs ${running_traefik_image}; recreating it at traefik:v${TRAEFIK_VERSION}. Ports 80 and 443 drop for a few seconds."
+    docker pull -q "traefik:v${TRAEFIK_VERSION}"
+    docker rm -f cloudgate-traefik
+    run_traefik
+  fi
 fi
 
 ### ------------------------------------------------------------------ units ---
@@ -978,8 +1143,8 @@ systemctl enable cloudgate-backend cloudgate-console
 # place_version has just put another version where they run from.
 systemctl restart cloudgate-backend
 systemctl restart cloudgate-console
-# Both run from $INSTALL_DIR now, so the old version has no reader left.
-drop_previous_version
+# The old version stays at .previous until the backend answers its health
+# check, below (ADR-0084).
 
 # The Hosted instance's hourly backup to B2 and the hourly check that mails
 # BACKUP_ALERT_EMAIL once none has succeeded for 3 hours
@@ -1023,6 +1188,22 @@ fi
 
 log "Firewall"
 ufw allow OpenSSH
+# `OpenSSH` is port 22 alone. A box whose sshd listens on another port, a
+# common hardening, lost SSH the moment ufw was enabled below. So every port
+# sshd's configuration names is allowed too, every port ssh.socket listens on
+# (Ubuntu 24.04 and 26.04 both start sshd from it), and the port this run's
+# own SSH session came in on, which sudo may have left out of the environment.
+ssh_ports() {
+  {
+    sshd -T 2>/dev/null | awk '$1 == "port" { print $2 }' || true
+    systemctl show ssh.socket --property=Listen --value 2>/dev/null |
+      grep -oE ':[0-9]+ \(Stream\)' | tr -dc '0-9\n' || true
+    printf '%s\n' "${SSH_CONNECTION:-}" | awk 'NF == 4 { print $4 }'
+  } | grep -xE '[0-9]+' | sort -un || true
+}
+for port in $(ssh_ports); do
+  ufw allow "$port/tcp"
+done
 if [ -n "$HOSTED_MODE" ]; then
   ufw default deny incoming
   ufw delete allow "$CONSOLE_PORT" >/dev/null 2>&1 || true
@@ -1048,12 +1229,64 @@ echo "      \`ufw status\` says. See docs/deploy.md, \"Security posture\"."
 
 log "Verification"
 
+# How to go back by hand to the version place_version moved aside, printed
+# when the new one never answers its health check. Never done for the
+# operator: going back is by hand (ADR-0084). The database is dropped and
+# created again before the dump is restored, not restored over with
+# `pg_restore --clean`: that drops only what the dump holds, so it leaves the
+# tables and types the new version's migrations added, and can stop halfway on
+# what depends on them. Only the old version's two units go back with it: a
+# glob would also catch the Hosted instance's cloudgate-backup units.
+way_back() {
+  local previous="$INSTALL_DIR.previous" old units
+  echo "The backend did not answer http://127.0.0.1:${API_PORT}/settings/health."
+  echo "journalctl -u cloudgate-backend says why."
+  [ -d "$previous" ] || return 0
+  old="Cloudgate $(cat "$previous/VERSION" 2>/dev/null || echo '(a checkout)')"
+  units="$INSTALL_DIR/deploy/systemd"
+  echo
+  echo "$old is kept at $previous."
+  if [ -n "$DATABASE_DUMP" ]; then
+    echo "The database as it was before this run is dumped at $DATABASE_DUMP."
+  else
+    echo "No dump of the database was taken before this run. Going back puts the old"
+    echo "version's files back, and nothing else:"
+    echo "$old would run against a database Cloudgate $(cat "$INSTALL_DIR/VERSION" 2>/dev/null) has migrated."
+  fi
+  echo "To go back to it by hand, as root:"
+  echo
+  echo "    systemctl stop cloudgate-backend cloudgate-console"
+  if [ -n "$DATABASE_DUMP" ]; then
+    echo "    su - postgres -c \"dropdb --if-exists cloudgate\""
+    echo "    su - postgres -c \"createdb -O cloudgate cloudgate\""
+    echo "    su - postgres -c \"pg_restore --exit-on-error --single-transaction -d cloudgate\" < $DATABASE_DUMP"
+  fi
+  echo "    rm -rf $INSTALL_DIR && mv $previous $INSTALL_DIR"
+  echo "    install -m 0644 $units/cloudgate-backend.service $units/cloudgate-console.service /etc/systemd/system/"
+  echo "    systemctl daemon-reload"
+  echo "    systemctl start cloudgate-backend cloudgate-console"
+  echo
+  echo "Going back leaves Node in /usr/local/share/cloudgate/node, Traefik and"
+  echo "/etc/default/cloudgate-* as this run left them."
+  echo "Re-running the install instead finishes the upgrade, and removes $previous."
+}
+
 # The backend maps its routes before it listens, which takes ~15s on two slow
-# cores. Poll rather than sleeping a guessed interval.
+# cores. Poll rather than sleeping a guessed interval. Only once it answers is
+# the old version deleted; until then it is the way back.
+healthy=''
 for _ in $(seq 1 60); do
-  curl -fsS -o /dev/null "http://127.0.0.1:${API_PORT}/settings/health" 2>/dev/null && break
+  if curl -fsS -o /dev/null "http://127.0.0.1:${API_PORT}/settings/health" 2>/dev/null; then
+    healthy=1
+    break
+  fi
   sleep 2
 done
+if [ -z "$healthy" ]; then
+  way_back >&2
+  exit 1
+fi
+drop_previous_version
 
 curl -fsS "http://127.0.0.1:${API_PORT}/settings/health"; echo
 curl -fsS "http://127.0.0.1:${API_PORT}/auth/sign-up-open"; echo

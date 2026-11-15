@@ -246,6 +246,7 @@ describe('deploy/version-tarball.sh', () => {
         'deploy/hosted.sh',
         'deploy/hosted-update.sh',
         'deploy/hosted-backup.sh',
+        'deploy/uninstall.sh',
         'deploy/systemd/cloudgate-backend.service',
         'deploy/systemd/cloudgate-console.service',
         'deploy/traefik/traefik.yml.example',
