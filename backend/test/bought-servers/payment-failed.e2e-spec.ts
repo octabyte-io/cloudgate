@@ -553,6 +553,11 @@ describe('Bought Servers deleted after a failed payment (e2e)', () => {
         status = 'active';
         await subscriptionUpdated();
         await postWebhook('invoice.payment_succeeded', paid());
+        // Stripe delivers the paid invoice twice more, and the subscription
+        // event again: nothing more.
+        await postWebhook('invoice.payment_succeeded', paid());
+        await postWebhook('invoice.payment_succeeded', paid());
+        await subscriptionUpdated();
 
         expect(subjects('grace@example.com')).toEqual([
           'Payment received for Hopper Labs',
