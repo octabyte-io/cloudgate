@@ -688,7 +688,7 @@ describe('Volume backups (e2e)', () => {
      *
      * **This fixture is bound to the rclone `deploy/install.sh` installs, and the
      * version is already load-bearing in this module.** The shape it asserts was
-     * read off `rclone v1.60.1-DEV` — apt's, `install.sh:144` — whose S3 backend
+     * read off `rclone v1.60.1-DEV` — apt's, `ensure_packages` — whose S3 backend
      * is aws-sdk-go **v1**. rclone later moved that backend to aws-sdk-go v2,
      * which rebuilds the request URL from the resolved endpoint and drops its
      * userinfo, so on 1.75.0 the dialled URL reaches stderr with no key and no

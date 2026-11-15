@@ -1127,7 +1127,7 @@ describe('Backups (e2e)', () => {
      *
      * **This fixture is bound to the rclone `deploy/install.sh` installs, and the
      * version is already load-bearing in this module.** The shape above was read
-     * off `rclone v1.60.1-DEV` — apt's, `install.sh:144` — whose S3 backend is
+     * off `rclone v1.60.1-DEV` — apt's, `ensure_packages` — whose S3 backend is
      * aws-sdk-go **v1**, and which produces `RequestError: send request failed` /
      * `caused by: Get "https://KEY:***@host/…"` verbatim. rclone later moved that
      * backend to aws-sdk-go v2, which rebuilds the request URL from the resolved
