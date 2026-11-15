@@ -17,6 +17,10 @@ import {
   renderVerificationEmail,
 } from '../../src/mail/templates';
 import type { RenderedEmail } from '../../src/mail/templates';
+import {
+  renderPlanCarriesOnEmail,
+  renderPlanEndsEmail,
+} from '../../src/mail/templates/plan-cancel';
 import { renderServerReadyEmail } from '../../src/mail/templates/server-ready';
 import { renderServerChangedEmail } from '../../src/mail/templates/server-changed';
 import { renderEventEmail } from '../../src/notifications/events/event-emails';
@@ -886,6 +890,97 @@ describe('mail templates', () => {
       expect(text(first.html)).toContain('Your free trial has ended');
       const later = await renderInvoiceNotificationEmail(invoice);
       expect(text(later.html)).not.toContain('free trial');
+    });
+  });
+
+  // A plan cancelled, and the cancel taken back (spec #69, #72).
+  describe('the plan cancel and taken-back emails', () => {
+    const text = (html: string) =>
+      html
+        .replace(/<!-- -->/g, '')
+        .replace(/&#x27;|&#39;/g, "'")
+        .replace(/&gt;/g, '>');
+    const facts = {
+      userName: 'Grace',
+      organizationName: 'Hopper Labs',
+      planLabel: 'Business',
+      billingUrl: 'https://console.example.com/settings/billing',
+    };
+
+    it('"ends on" names the date and the Bought Servers deleted that day, with their data and backups', async () => {
+      const rendered = await renderPlanEndsEmail({
+        ...facts,
+        endsOn: 'Dec 05, 2026',
+        serverNames: ['web-1', 'db-1'],
+      });
+
+      expect(rendered.subject).toBe('Your plan ends on Dec 05, 2026');
+      const body = text(rendered.html);
+      expect(body).toMatch(/Hello (<!-- -->)?Grace/);
+      expect(body).toContain(
+        'The Business plan for Hopper Labs is cancelled and ends on Dec 05, 2026. Until then, everything works as it does now.',
+      );
+      expect(body).toContain(
+        'The Servers you bought for Hopper Labs are deleted that day, and their data and backups go with them: web-1, db-1.',
+      );
+      expect(body).toContain(
+        'To keep the plan, resume it under Settings > Billing before then.',
+      );
+      expect(rendered.html).toContain(facts.billingUrl);
+      expect(rendered.inlineImages).toHaveLength(1);
+    });
+
+    it('"ends on" names one Bought Server in the singular, and none when there are none', async () => {
+      const one = text(
+        (
+          await renderPlanEndsEmail({
+            ...facts,
+            endsOn: 'Dec 05, 2026',
+            serverNames: ['web-1'],
+          })
+        ).html,
+      );
+      expect(one).toContain(
+        'The Server you bought for Hopper Labs is deleted that day, and its data and backups go with it: web-1.',
+      );
+
+      const none = text(
+        (
+          await renderPlanEndsEmail({
+            ...facts,
+            endsOn: 'Dec 05, 2026',
+            serverNames: [],
+          })
+        ).html,
+      );
+      expect(none).not.toContain('deleted that day');
+    });
+
+    it('"will carry on" says the cancel was taken back', async () => {
+      const rendered = await renderPlanCarriesOnEmail(facts);
+
+      expect(rendered.subject).toBe('Your plan will carry on');
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'The cancel of the Business plan for Hopper Labs was taken back: the plan no longer ends, and carries on as before.',
+      );
+      expect(rendered.html).toContain(facts.billingUrl);
+    });
+
+    it('both go to every owner and admin, and never name the provider', async () => {
+      for (const rendered of [
+        await renderPlanEndsEmail({
+          ...facts,
+          endsOn: 'Dec 05, 2026',
+          serverNames: ['web-1'],
+        }),
+        await renderPlanCarriesOnEmail(facts),
+      ]) {
+        expect(text(rendered.html)).toContain(
+          'It goes to every owner and admin, and cannot be turned off.',
+        );
+        expect(rendered.html).not.toMatch(/hetzner|stripe/i);
+      }
     });
   });
 
