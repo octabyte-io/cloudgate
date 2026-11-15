@@ -6,9 +6,10 @@ import {
   HttpStatus,
   Inject,
   Injectable,
+  Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { withCheckoutOutcome } from 'api-schemas';
 import type Stripe from 'stripe';
 import { user } from '../../auth/auth.schema';
@@ -50,6 +51,7 @@ import {
   trialCheckoutParams,
   trialEmailKey,
   trialEndsAtOf,
+  trialFactsOf,
 } from './free-trial';
 import {
   daysLeftOf,
@@ -67,6 +69,7 @@ import {
   scheduledMoveOf,
 } from './plan-downgrade';
 import type { ScheduledMove } from './plan-downgrade';
+import { forgetKeptSchedule } from './keep-business';
 import {
   customerIdOf,
   firstChargePreviewParams,
@@ -78,6 +81,8 @@ import {
 } from './plan-trial';
 import type { TrialView } from './plan-trial';
 import { LapseNotifications } from './lapse-notifications.service';
+import { PlanChangeNotifications } from './plan-change-notifications.service';
+import type { PlanChange } from './plan-change-notifications.service';
 import {
   assertNothingAttached,
   assertNotPaidByAnother,
@@ -329,6 +334,8 @@ interface UpgradeTarget {
  */
 @Injectable()
 export class BillingService {
+  private readonly logger = new Logger(BillingService.name);
+
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     @Inject(STRIPE_API) private readonly stripe: StripeApi,
@@ -336,6 +343,7 @@ export class BillingService {
     private readonly config: BillingConfig,
     private readonly instanceMode: InstanceMode,
     private readonly notifications: LapseNotifications,
+    private readonly planChanges: PlanChangeNotifications,
   ) {}
 
   /**
@@ -770,9 +778,73 @@ export class BillingService {
           proration_behavior: 'create_prorations',
         });
       }
+      // Stripe holds the new count now: an email that cannot be sent is
+      // logged, never answered as a failed change.
+      await this.sendAddOnsChanged(organizationId, row, current, prices, {
+        was: item?.quantity ?? 0,
+        addOns,
+      }).catch((error: unknown) =>
+        this.logger.warn(
+          `Could not send the Add-ons-changed email: ${String(error)}`,
+        ),
+      );
     }
 
     return { addOns };
+  }
+
+  /**
+   * "Your Add-ons changed", once Stripe accepted a new count. Sent from here
+   * alone: the webhook's sync only stores the count it reads, so a retried or
+   * late event never sends it again. While a move to Starter waits, the
+   * facts are Starter's from the move, which the count carries across to.
+   */
+  private async sendAddOnsChanged(
+    organizationId: string,
+    row: Subscription | null,
+    current: Stripe.Subscription,
+    prices: CompleteCatalogue,
+    count: { was: number; addOns: number },
+  ): Promise<void> {
+    const businessItem = itemCarrying(current, prices.businessPriceId);
+    const planItem =
+      businessItem ?? itemCarrying(current, prices.starterPriceId);
+    const held: PlanName | null = businessItem
+      ? 'business'
+      : planItem
+        ? 'starter'
+        : (row?.plan ?? null);
+    if (!held) return;
+    const periodEnd = planItem
+      ? new Date(planItem.current_period_end * 1000)
+      : new Date();
+    const movesOn = row?.stripeScheduleId ? row.downgradeAt : null;
+    if (movesOn) {
+      await this.planChanges.sendAddOnsChanged(
+        organizationId,
+        { kind: 'move-waiting', was: count.was, from: movesOn, movesOn },
+        'starter',
+        count.addOns,
+      );
+    } else if (isTrialStatus(current.status)) {
+      await this.planChanges.sendAddOnsChanged(
+        organizationId,
+        {
+          kind: 'trial',
+          was: count.was,
+          from: trialFactsOf(current).trialEndsAt ?? periodEnd,
+        },
+        held,
+        count.addOns,
+      );
+    } else {
+      await this.planChanges.sendAddOnsChanged(
+        organizationId,
+        { kind: 'prorated', was: count.was, from: periodEnd },
+        held,
+        count.addOns,
+      );
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -832,9 +904,11 @@ export class BillingService {
         target.subscriptionId,
         trialSwitchUpdate(target.planItem, target.businessPriceId),
       );
-      await this.storePlan(ctx.session.activeOrganizationId, {
-        plan: 'business',
-        status: updated.status,
+      await this.storeUpgrade(ctx.session.activeOrganizationId, updated, {
+        kind: 'trial-switch',
+        to: 'business',
+        // The trial keeps its end.
+        trialEndsOn: trialFactsOf(target.current).trialEndsAt ?? new Date(),
       });
       return { plan: 'business' };
     }
@@ -860,22 +934,45 @@ export class BillingService {
     }
     if (updated.pending_update) throw upgradePaymentFailed();
 
-    await this.storePlan(ctx.session.activeOrganizationId, {
-      plan: 'business',
-      status: updated.status,
+    await this.storeUpgrade(ctx.session.activeOrganizationId, updated, {
+      kind: 'upgraded',
+      chargedToday: await this.planChanges.chargedTodayOf(updated),
+      from: new Date(target.planItem.current_period_end * 1000),
     });
     return { plan: 'business' };
   }
 
-  /** Writes a switched plan onto the row, ahead of the webhook's sync. */
-  private async storePlan(
+  /**
+   * Writes Business onto the row, ahead of the webhook's sync, in one
+   * conditional write on Starter: whichever of this and the sync records
+   * the change sends "your plan changed" (`change`), once.
+   */
+  private async storeUpgrade(
     organizationId: string,
-    values: { plan: PlanName; status: string },
+    updated: Stripe.Subscription,
+    change: PlanChange,
   ): Promise<void> {
-    await this.db
+    const stored = await this.db
       .update(subscription)
-      .set(values)
-      .where(eq(subscription.organizationId, organizationId));
+      .set({ plan: 'business', status: updated.status })
+      .where(
+        and(
+          eq(subscription.organizationId, organizationId),
+          eq(subscription.plan, 'starter'),
+        ),
+      )
+      .returning({ addOns: subscription.addOns });
+    if (stored.length === 0) return;
+    const addOns = itemCarrying(
+      updated,
+      this.completeCatalogue().addOnPriceId,
+    )?.quantity;
+    await this.planChanges.sendPlanChanged(
+      organizationId,
+      change,
+      'business',
+      addOns ?? stored[0].addOns,
+    );
   }
 
   /**
@@ -1012,10 +1109,24 @@ export class BillingService {
     );
 
     const scheduledAt = downgradeDateOf(created);
-    await this.db
+    const stored = await this.db
       .update(subscription)
       .set({ stripeScheduleId: created.id, downgradeAt: scheduledAt })
-      .where(eq(subscription.organizationId, organizationId));
+      .where(
+        and(
+          eq(subscription.organizationId, organizationId),
+          isNull(subscription.stripeScheduleId),
+        ),
+      )
+      .returning({ id: subscription.id });
+    if (stored.length > 0) {
+      await this.planChanges.sendPlanChanged(
+        organizationId,
+        { kind: 'move-scheduled', movesOn: scheduledAt },
+        'starter',
+        addOnItem?.quantity ?? 0,
+      );
+    }
     return { scheduledPlan: 'starter', scheduledAt };
   }
 
@@ -1023,8 +1134,8 @@ export class BillingService {
    * Business → Starter during a free trial: the plan item's price
    * swapped at once, nothing prorated or charged, the trial keeping its end.
    * Starter is written onto the row straight away, so the paid features stop
-   * now; the custom-role email goes from here, since the webhook's
-   * sync then finds Starter already stored. The conditional write sends it
+   * now; the custom-role email and "your plan changed" go from here, since
+   * the webhook's sync then finds Starter already stored. The conditional write sends it
    * once, whichever of the two stores Starter first.
    */
   private async downgradeDuringTrial(
@@ -1052,11 +1163,28 @@ export class BillingService {
           eq(subscription.plan, 'business'),
         ),
       )
-      .returning({ organizationId: subscription.organizationId });
+      .returning({ addOns: subscription.addOns });
     if (stored.length > 0) {
-      await this.notifications.sendCustomRolesStopped(
+      // Stripe made the switch and Starter is stored: an email that cannot
+      // be sent is logged, never answered as a failed switch.
+      await this.notifications
+        .sendCustomRolesStopped(organizationId, 'starter')
+        .catch((error: unknown) =>
+          this.logger.error(
+            `Could not send the custom-roles-stopped email: ${String(error)}`,
+          ),
+        );
+      await this.planChanges.sendPlanChanged(
         organizationId,
+        {
+          kind: 'trial-switch',
+          to: 'starter',
+          // The trial keeps its end.
+          trialEndsOn: trialFactsOf(current).trialEndsAt ?? new Date(),
+        },
         'starter',
+        itemCarrying(current, prices.addOnPriceId)?.quantity ??
+          stored[0].addOns,
       );
     }
     return { plan: 'starter' };
@@ -1148,6 +1276,13 @@ export class BillingService {
    * "Keep Business": releases the waiting downgrade's schedule, which leaves
    * the subscription on Business as it is, with nothing charged, and forgets
    * the schedule. Refused when no downgrade waits.
+   *
+   * Released at Stripe first, then forgotten: forgetting first would leave
+   * the row saying no move waits while Stripe still moves to Starter, should
+   * anything stop between the two. The release's own
+   * `subscription_schedule.released` may get there before this forgets it;
+   * whichever conditional clear of the schedule wins sends "you stay on
+   * Business" (`forgetKeptSchedule`), once.
    */
   async keepBusiness(ctx: PermissionCtx): Promise<{ plan: PlanName }> {
     this.assertCloud();
@@ -1163,10 +1298,19 @@ export class BillingService {
       });
     }
     await this.stripe.releaseSubscriptionSchedule(row.stripeScheduleId);
-    await this.db
-      .update(subscription)
-      .set({ stripeScheduleId: null, downgradeAt: null })
-      .where(eq(subscription.organizationId, organizationId));
+    const kept = await forgetKeptSchedule(
+      this.db,
+      organizationId,
+      row.stripeScheduleId,
+    );
+    if (kept) {
+      await this.planChanges.sendPlanChanged(
+        organizationId,
+        { kind: 'kept-business', from: kept.movesOn ?? new Date() },
+        'business',
+        kept.addOns,
+      );
+    }
     return { plan: 'business' };
   }
 

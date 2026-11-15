@@ -16,6 +16,7 @@ import type {
 } from '../cloud/billing/bought-server-clock-steps';
 import { isRetrying } from '../cloud/billing/lapse-clock';
 import { payingOrganizationIdSql } from '../cloud/billing/paying-organization';
+import { PaymentReceived } from '../cloud/billing/payment-received.service';
 import { PurchasePayments } from '../cloud/billing/purchase-payments';
 import { STRIPE_API } from '../cloud/billing/stripe-api';
 import type { StripeApi } from '../cloud/billing/stripe-api';
@@ -40,7 +41,7 @@ import { invoicePriceIds } from './purchase-payment';
  * what a deletion date is about, and what the deletion deletes. Creating is
  * one too, but Delete waits for its machine to answer.
  */
-const LIVE_STAGES: readonly BoughtServerStage[] = [
+export const LIVE_STAGES: readonly BoughtServerStage[] = [
   'creating',
   'setting_up',
   'ready',
@@ -90,6 +91,7 @@ export class BoughtServerClock
     private readonly stages: BoughtServerStages,
     private readonly notifications: BoughtServerNotifications,
     private readonly deletion: BoughtServerDeletion,
+    private readonly paymentReceived: PaymentReceived,
   ) {}
 
   onModuleInit(): void {
@@ -176,21 +178,35 @@ export class BoughtServerClock
     }
   }
 
-  /** Paying the invoice that started the clock ends it. */
+  /**
+   * Paying the invoice that started the clock ends it, and is a payment
+   * received (#71). The subscription is `active` again when this payment
+   * also paid the plan's own failure, which is then cleared with it, so
+   * one email covers both.
+   */
   async invoicePaid(invoice: Stripe.Invoice): Promise<void> {
     if (!invoice.id) return;
-    const cleared = await this.db
-      .update(subscription)
-      .set({
-        boughtServersPaymentFailedAt: null,
-        boughtServersFailedInvoiceId: null,
+    const owing = await this.db
+      .select({
+        organizationId: subscription.organizationId,
+        stripeSubscriptionId: subscription.stripeSubscriptionId,
       })
-      .where(eq(subscription.boughtServersFailedInvoiceId, invoice.id))
-      .returning({ organizationId: subscription.organizationId });
-    for (const { organizationId } of cleared) {
-      this.logger.log(
-        `Organization ${organizationId} paid invoice ${invoice.id}: its Bought Servers are no longer due for deletion`,
-      );
+      .from(subscription)
+      .where(eq(subscription.boughtServersFailedInvoiceId, invoice.id));
+    for (const { organizationId, stripeSubscriptionId } of owing) {
+      const subscriptionId = subscriptionIdOf(invoice) ?? stripeSubscriptionId;
+      const current = subscriptionId
+        ? await this.stripe.retrieveSubscription(subscriptionId)
+        : null;
+      const lifted = await this.paymentReceived.paid(organizationId, {
+        plan: current?.status === 'active',
+        boughtServersInvoiceId: invoice.id,
+      });
+      if (lifted?.boughtServers) {
+        this.logger.log(
+          `Organization ${organizationId} paid invoice ${invoice.id}: its Bought Servers are no longer due for deletion`,
+        );
+      }
     }
   }
 

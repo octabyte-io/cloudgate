@@ -17,6 +17,7 @@ import {
   openHostedSignUp,
   signUpHostedCustomer,
 } from '../../utils/hosted-sign-up';
+import { signUpMember } from '../../utils/test-auth';
 import { createTestApp, TestAppContext } from '../../utils/test-app';
 
 jest.setTimeout(120_000);
@@ -39,12 +40,14 @@ const previewInvoice = jest.fn<
   [Stripe.InvoiceCreatePreviewParams]
 >();
 const constructEvent = jest.fn<Stripe.Event, [Buffer | string, string]>();
+const retrievePrice = jest.fn<Promise<Stripe.Price>, [string]>();
 const schedules = fakeSubscriptionSchedules();
 const stripe = fakeStripe({
   retrieveSubscription,
   updateSubscription,
   previewInvoice,
   constructEvent,
+  retrievePrice,
   ...schedules.methods,
 });
 
@@ -87,6 +90,7 @@ describe('Downgrading Business to Starter (e2e)', () => {
   beforeEach(async () => {
     await ctx.resetDb();
     jest.resetAllMocks();
+    recorder.clear();
     atStripe = businessAtStripe();
     retrieveSubscription.mockImplementation(() => Promise.resolve(atStripe));
     schedules.reset(() => atStripe);
@@ -577,5 +581,329 @@ describe('Downgrading Business to Starter (e2e)', () => {
     expect(
       schedules.methods.releaseSubscriptionSchedule,
     ).not.toHaveBeenCalled();
+  });
+
+  // The confirmation emails' cast and catalogue (spec #69).
+  const OWNER = 'grace@example.com';
+  const ADMIN = 'ada@example.com';
+  const MEMBER = 'edsger@example.com';
+
+  /** Hopper Labs on Business, with an admin and a member; the catalogue at 15, 35 and 5 USD. */
+  async function givenBusinessWithAdmin() {
+    const owner = await givenOwnerOn('business');
+    await signUpMember(http, owner.cookie, {
+      email: ADMIN,
+      name: 'Ada Lovelace',
+      role: 'admin',
+    });
+    await signUpMember(http, owner.cookie, {
+      email: MEMBER,
+      name: 'Edsger Dijkstra',
+      role: 'member',
+    });
+    const amounts: Record<string, number> = {
+      [STARTER_PRICE]: 1500,
+      [BUSINESS_PRICE]: 3500,
+      [ADD_ON_PRICE]: 500,
+    };
+    retrievePrice.mockImplementation((id) =>
+      Promise.resolve({
+        id,
+        unit_amount: amounts[id],
+        currency: 'usd',
+      } as unknown as Stripe.Price),
+    );
+    recorder.clear();
+    return owner;
+  }
+
+  /** The end of the paid month as the emails print it, worked out apart from the code. */
+  const monthEnd = new Date(periodEnd * 1000).toLocaleDateString('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+  });
+
+  describe('the "your plan changed" email', () => {
+    const planChanged = (address: string) =>
+      recorder
+        .to(address)
+        .filter((sent) => sent.email.subject.startsWith('Your plan changed'))
+        .map((sent) => ({
+          subject: sent.email.subject,
+          html: sent.email.html.replace(/<!-- -->/g, ''),
+        }));
+
+    it('scheduling the move to Starter emails every owner and admin its date, and the move taking effect emails them again, once', async () => {
+      const owner = await givenBusinessWithAdmin();
+
+      expect((await downgrade(owner.cookie)).status).toBe(200);
+
+      for (const address of [OWNER, ADMIN]) {
+        const sent = planChanged(address);
+        expect(sent).toHaveLength(1);
+        expect(sent[0].subject).toBe(
+          `Your plan changed: Hopper Labs moves to Starter on ${monthEnd}`,
+        );
+        expect(sent[0].html).toContain(
+          'Plan: Starter with 2 Add-ons, for 5 Servers and 5 Cloud Environments.',
+        );
+        expect(sent[0].html).toContain(
+          `Charged: $25.00 per month, from ${monthEnd}.`,
+        );
+      }
+
+      const [scheduleId] = schedules.ids();
+      await renewal(scheduleId);
+      // Stripe delivers the renewal again, and the release's own event
+      // twice: nothing more, and never "stays on Business".
+      expect(
+        (await postWebhook('customer.subscription.updated', atStripe)).status,
+      ).toBe(200);
+      for (let i = 0; i < 2; i++) {
+        expect(
+          (
+            await postWebhook(
+              'subscription_schedule.released',
+              schedules.get(scheduleId),
+            )
+          ).status,
+        ).toBe(200);
+      }
+
+      for (const address of [OWNER, ADMIN]) {
+        const sent = planChanged(address);
+        expect(sent).toHaveLength(2);
+        expect(sent[1].subject).toBe(
+          'Your plan changed: Hopper Labs is now on Starter',
+        );
+        expect(sent[1].html).toContain(
+          'Hopper Labs moved from Business to Starter today.',
+        );
+        expect(sent[1].html).toContain(
+          `Charged: $25.00 per month, from ${monthEnd}.`,
+        );
+      }
+      expect(planChanged(MEMBER)).toEqual([]);
+    });
+
+    it('Keep Business emails every owner and admin that it stays on Business, and the schedule’s release sends nothing more', async () => {
+      const owner = await givenBusinessWithAdmin();
+      expect((await downgrade(owner.cookie)).status).toBe(200);
+      const [scheduleId] = schedules.ids();
+      recorder.clear();
+
+      expect((await keepBusiness(owner.cookie)).status).toBe(200);
+      // The release's own event, after Keep Business forgot the schedule,
+      // and delivered again.
+      for (let i = 0; i < 2; i++) {
+        expect(
+          (
+            await postWebhook(
+              'subscription_schedule.released',
+              schedules.get(scheduleId),
+            )
+          ).status,
+        ).toBe(200);
+      }
+
+      for (const address of [OWNER, ADMIN]) {
+        const sent = planChanged(address);
+        expect(sent).toHaveLength(1);
+        expect(sent[0].subject).toBe(
+          'Your plan changed: Hopper Labs stays on Business',
+        );
+        expect(sent[0].html).toContain(
+          'Plan: Business with 2 Add-ons, for 5 Servers and 5 Cloud Environments.',
+        );
+        expect(sent[0].html).toContain(
+          `Charged: $45.00 per month, from ${monthEnd}.`,
+        );
+      }
+      expect(planChanged(MEMBER)).toEqual([]);
+    });
+
+    it('Keep Business emails "stays on Business" once when subscription_schedule.released gets there before Keep Business forgets the schedule', async () => {
+      const owner = await givenBusinessWithAdmin();
+      expect((await downgrade(owner.cookie)).status).toBe(200);
+      const [scheduleId] = schedules.ids();
+      // Stripe delivers `subscription_schedule.released` before its answer
+      // to the release reaches Keep Business.
+      const release = schedules.methods.releaseSubscriptionSchedule;
+      const released = release.getMockImplementation()!;
+      release.mockImplementation(async (id) => {
+        const schedule = await released(id);
+        expect(
+          (await postWebhook('subscription_schedule.released', schedule))
+            .status,
+        ).toBe(200);
+        return schedule;
+      });
+      recorder.clear();
+
+      expect((await keepBusiness(owner.cookie)).status).toBe(200);
+      // Delivered again.
+      expect(
+        (
+          await postWebhook(
+            'subscription_schedule.released',
+            schedules.get(scheduleId),
+          )
+        ).status,
+      ).toBe(200);
+
+      for (const address of [OWNER, ADMIN]) {
+        expect(planChanged(address).map((one) => one.subject)).toEqual([
+          'Your plan changed: Hopper Labs stays on Business',
+        ]);
+      }
+      expect(await storedRow(owner.organizationId)).toEqual(
+        expect.objectContaining({
+          plan: 'business',
+          stripeScheduleId: null,
+          downgradeAt: null,
+        }),
+      );
+    });
+
+    it('Keep Business that Stripe refuses leaves the move waiting and sends nothing', async () => {
+      const owner = await givenBusinessWithAdmin();
+      expect((await downgrade(owner.cookie)).status).toBe(200);
+      const [scheduleId] = schedules.ids();
+      schedules.methods.releaseSubscriptionSchedule.mockRejectedValueOnce(
+        new Error('Stripe is down'),
+      );
+      recorder.clear();
+
+      expect((await keepBusiness(owner.cookie)).status).toBe(500);
+
+      expect(await storedRow(owner.organizationId)).toEqual(
+        expect.objectContaining({ stripeScheduleId: scheduleId }),
+      );
+      expect(planChanged(OWNER)).toEqual([]);
+    });
+
+    it('a schedule released after its move to Starter took effect at Stripe never sends "stays on Business", even before the move’s own event', async () => {
+      const owner = await givenBusinessWithAdmin();
+      expect((await downgrade(owner.cookie)).status).toBe(200);
+      const [scheduleId] = schedules.ids();
+      recorder.clear();
+
+      // Stripe is in the Starter phase, and lets the schedule go, before
+      // `customer.subscription.updated` for the move arrives.
+      atStripe = schedules.advance(scheduleId);
+      await schedules.methods.releaseSubscriptionSchedule(scheduleId);
+      expect(
+        (
+          await postWebhook(
+            'subscription_schedule.released',
+            schedules.get(scheduleId),
+          )
+        ).status,
+      ).toBe(200);
+      expect(
+        (await postWebhook('customer.subscription.updated', atStripe)).status,
+      ).toBe(200);
+
+      for (const address of [OWNER, ADMIN]) {
+        expect(planChanged(address).map((one) => one.subject)).toEqual([
+          'Your plan changed: Hopper Labs is now on Starter',
+        ]);
+      }
+    });
+
+    it('sends nothing for a move refused while one already waits', async () => {
+      const owner = await givenBusinessWithAdmin();
+      expect((await downgrade(owner.cookie)).status).toBe(200);
+
+      expect((await downgrade(owner.cookie)).status).toBe(409);
+
+      expect(planChanged(OWNER)).toHaveLength(1);
+    });
+  });
+
+  describe('the "your Add-ons changed" email', () => {
+    const addOnsChanged = (address: string) =>
+      recorder
+        .to(address)
+        .filter((sent) => sent.email.subject.startsWith('Your Add-ons changed'))
+        .map((sent) => ({
+          subject: sent.email.subject,
+          html: sent.email.html.replace(/<!-- -->/g, ''),
+        }));
+
+    it('changing the count emails every owner and admin once, with the new count and monthly amount, and the webhook carrying it twice sends nothing more', async () => {
+      const owner = await givenBusinessWithAdmin();
+
+      expect((await setAddOns(owner.cookie, 4)).status).toBe(200);
+      expect(updateSubscription).toHaveBeenCalledTimes(1);
+      atStripe = businessAtStripe({ addOns: 4 });
+      for (let delivery = 0; delivery < 2; delivery++) {
+        expect(
+          (await postWebhook('customer.subscription.updated', atStripe)).status,
+        ).toBe(200);
+      }
+
+      for (const address of [OWNER, ADMIN]) {
+        const sent = addOnsChanged(address);
+        expect(sent).toHaveLength(1);
+        expect(sent[0].subject).toBe(
+          'Your Add-ons changed: Hopper Labs now has 4 Add-ons',
+        );
+        expect(sent[0].html).toContain(
+          'Hopper Labs went from 2 Add-ons to 4 Add-ons today.',
+        );
+        expect(sent[0].html).toContain(
+          'Plan: Business with 4 Add-ons, for 7 Servers and 7 Cloud Environments.',
+        );
+        expect(sent[0].html).toContain(
+          `Charged: $55.00 per month, from ${monthEnd}.`,
+        );
+      }
+      expect(addOnsChanged(MEMBER)).toEqual([]);
+    });
+
+    it('a change while the move to Starter waits emails once, with Business’s monthly amount until the move and Starter’s from it, and the move sends no more of it', async () => {
+      const owner = await givenBusinessWithAdmin();
+      expect((await downgrade(owner.cookie)).status).toBe(200);
+      const [scheduleId] = schedules.ids();
+
+      expect((await setAddOns(owner.cookie, 4)).status).toBe(200);
+      await renewal(scheduleId);
+
+      for (const address of [OWNER, ADMIN]) {
+        const sent = addOnsChanged(address);
+        expect(sent).toHaveLength(1);
+        expect(sent[0].subject).toBe(
+          'Your Add-ons changed: Hopper Labs now has 4 Add-ons',
+        );
+        expect(sent[0].html).toContain(
+          `Hopper Labs keeps Business until ${monthEnd}, then moves to Starter with 4 Add-ons.`,
+        );
+        // This month's Business amount with the new count, as the plain
+        // change on Business above prints it.
+        expect(sent[0].html).toContain(
+          'Until then, Business with 4 Add-ons costs $55.00 per month.',
+        );
+        expect(sent[0].html).toContain(
+          'Plan: Starter with 4 Add-ons, for 7 Servers and 7 Cloud Environments.',
+        );
+        expect(sent[0].html).toContain(
+          `Charged: $35.00 per month, from ${monthEnd}.`,
+        );
+      }
+      expect(addOnsChanged(MEMBER)).toEqual([]);
+    });
+
+    it('setting the same count sends nothing', async () => {
+      const owner = await givenBusinessWithAdmin();
+
+      const res = await setAddOns(owner.cookie, 2);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ addOns: 2 });
+      expect(addOnsChanged(OWNER)).toEqual([]);
+      expect(addOnsChanged(ADMIN)).toEqual([]);
+    });
   });
 });

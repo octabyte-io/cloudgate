@@ -17,6 +17,15 @@ import {
   renderVerificationEmail,
 } from '../../src/mail/templates';
 import type { RenderedEmail } from '../../src/mail/templates';
+import {
+  renderPlanCarriesOnEmail,
+  renderPlanEndsEmail,
+} from '../../src/mail/templates/plan-cancel';
+import { renderServerReadyEmail } from '../../src/mail/templates/server-ready';
+import { renderServerChangedEmail } from '../../src/mail/templates/server-changed';
+import { renderPaymentReceivedEmail } from '../../src/mail/templates/payment-received';
+import { renderPlanChangedEmail } from '../../src/mail/templates/plan-changed';
+import { renderAddOnsChangedEmail } from '../../src/mail/templates/add-ons-changed';
 import { renderEventEmail } from '../../src/notifications/events/event-emails';
 
 // React Email templates rendered to { subject, html } — the pure half of the
@@ -199,6 +208,187 @@ describe('mail templates', () => {
         'This is an automated email to the Operators of this Cloudgate instance',
       );
       expect(body).not.toContain('every owner and admin, and');
+    });
+  });
+
+  describe('renderServerReadyEmail', () => {
+    const text = (html: string) =>
+      html.replace(/<!-- -->/g, '').replace(/&#x27;|&#39;/g, "'");
+    const props = {
+      userName: 'Grace',
+      organizationName: 'Hopper Labs',
+      serverName: 'web-1',
+      serverUrl: 'https://console.example.com/servers/abc123',
+    };
+
+    it('says the Server is Ready to deploy to, and links to it', async () => {
+      const rendered = await renderServerReadyEmail({
+        ...props,
+        firstSetup: 'finished',
+      });
+
+      expect(rendered.subject).toBe('Your Server web-1 is ready');
+      const body = text(rendered.html);
+      expect(body).toMatch(/Hello (<!-- -->)?Grace/);
+      expect(body).toContain(
+        'The Server web-1 bought for Hopper Labs is set up and Ready. You can deploy to it now.',
+      );
+      expect(body).not.toContain('Run setup');
+      expect(rendered.html).toContain(
+        'https://console.example.com/servers/abc123',
+      );
+      expect(rendered.inlineImages).toHaveLength(1);
+    });
+
+    it('says the first setup failed and names Run setup', async () => {
+      const rendered = await renderServerReadyEmail({
+        ...props,
+        firstSetup: 'failed',
+      });
+
+      expect(rendered.subject).toBe(
+        'Your Server web-1 is ready, but its first setup failed',
+      );
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'The Server web-1 bought for Hopper Labs is Ready, but its first setup failed.',
+      );
+      expect(body).toContain(
+        'Open the Server and press Run setup to try again: its Setup card shows what went wrong. You can deploy to it once a setup finishes.',
+      );
+      expect(rendered.html).toContain(
+        'https://console.example.com/servers/abc123',
+      );
+    });
+
+    it('goes to every owner and admin, as its footer says', async () => {
+      const rendered = await renderServerReadyEmail({
+        ...props,
+        firstSetup: 'finished',
+      });
+
+      expect(text(rendered.html)).toContain(
+        'It goes to every owner and admin, and cannot be turned off.',
+      );
+    });
+
+    it.each(['finished', 'failed'] as const)(
+      'never names the provider when the first setup %s',
+      async (firstSetup) => {
+        const rendered = await renderServerReadyEmail({
+          ...props,
+          firstSetup,
+        });
+
+        expect(rendered.subject).not.toMatch(/hetzner/i);
+        expect(rendered.html).not.toMatch(/hetzner/i);
+      },
+    );
+  });
+
+  describe('renderServerChangedEmail', () => {
+    const text = (html: string) =>
+      html.replace(/<!-- -->/g, '').replace(/&#x27;|&#39;/g, "'");
+    const props = {
+      userName: 'Grace',
+      organizationName: 'Hopper Labs',
+      serverName: 'web-1',
+      monthlyPrice: '$30.00',
+      serverUrl: 'https://console.example.com/servers/abc123/settings',
+    };
+
+    it('says backups are on, what the Server now costs, and links to it', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: { kind: 'backups', on: true },
+      });
+
+      expect(rendered.subject).toBe('Backups are on for your Server web-1');
+      const body = text(rendered.html);
+      expect(body).toMatch(/Hello (<!-- -->)?Grace/);
+      expect(body).toContain(
+        'Backups are now on for the Server web-1 in Hopper Labs.',
+      );
+      expect(body).toContain('web-1 now costs $30.00 a month.');
+      expect(rendered.html).toContain(
+        'https://console.example.com/servers/abc123/settings',
+      );
+      expect(rendered.inlineImages).toHaveLength(1);
+    });
+
+    it('says backups are off and their backups deleted', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        monthlyPrice: '$25.00',
+        change: { kind: 'backups', on: false },
+      });
+
+      expect(rendered.subject).toBe('Backups are off for your Server web-1');
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Backups are now off for the Server web-1 in Hopper Labs, and its backups were deleted.',
+      );
+      expect(body).toContain('web-1 now costs $25.00 a month.');
+    });
+
+    it('says how much extra storage the Server now has', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: { kind: 'storage', storageGb: 250 },
+      });
+
+      expect(rendered.subject).toBe(
+        'Your Server web-1 now has 250 GB of extra storage',
+      );
+      expect(text(rendered.html)).toContain(
+        'The extra storage of the Server web-1 in Hopper Labs is now 250 GB.',
+      );
+    });
+
+    it('says what size the Server now runs on', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: { kind: 'size', size: '3 vCPU · 4 GB RAM' },
+      });
+
+      expect(rendered.subject).toBe('Your Server web-1 has a new size');
+      expect(text(rendered.html)).toContain(
+        'The Server web-1 in Hopper Labs now runs on 3 vCPU · 4 GB RAM.',
+      );
+    });
+
+    it('still says the size changed when the size cannot be described', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: { kind: 'size', size: null },
+      });
+
+      expect(text(rendered.html)).toContain(
+        'The Server web-1 in Hopper Labs now runs on its new size.',
+      );
+    });
+
+    it('goes to every owner and admin, as its footer says', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: { kind: 'backups', on: true },
+      });
+
+      expect(text(rendered.html)).toContain(
+        'It goes to every owner and admin, and cannot be turned off.',
+      );
+    });
+
+    it.each([
+      { kind: 'backups', on: true },
+      { kind: 'backups', on: false },
+      { kind: 'storage', storageGb: 250 },
+      { kind: 'size', size: '3 vCPU · 4 GB RAM' },
+    ] as const)('never names the provider for %j', async (change) => {
+      const rendered = await renderServerChangedEmail({ ...props, change });
+
+      expect(rendered.subject).not.toMatch(/hetzner/i);
+      expect(rendered.html).not.toMatch(/hetzner/i);
     });
   });
 
@@ -706,6 +896,252 @@ describe('mail templates', () => {
     });
   });
 
+  // A plan cancelled, and the cancel taken back (spec #69, #72).
+  describe('the plan cancel and taken-back emails', () => {
+    const text = (html: string) =>
+      html
+        .replace(/<!-- -->/g, '')
+        .replace(/&#x27;|&#39;/g, "'")
+        .replace(/&gt;/g, '>');
+    const facts = {
+      userName: 'Grace',
+      organizationName: 'Hopper Labs',
+      planLabel: 'Business',
+      billingUrl: 'https://console.example.com/settings/billing',
+    };
+
+    it('"ends on" names the date and the Bought Servers deleted that day, with their data and backups, for good', async () => {
+      const rendered = await renderPlanEndsEmail({
+        ...facts,
+        endsOn: 'Dec 05, 2026',
+        serverNames: ['web-1', 'db-1'],
+        inTrial: false,
+      });
+
+      expect(rendered.subject).toBe('Your plan ends on Dec 05, 2026');
+      const body = text(rendered.html);
+      expect(body).toMatch(/Hello (<!-- -->)?Grace/);
+      expect(body).toContain(
+        'The Business plan for Hopper Labs is cancelled and ends on Dec 05, 2026. Until then, everything works as it does now.',
+      );
+      expect(body).toContain(
+        'The Servers you bought for Hopper Labs are deleted that day, and their data and backups go with them: web-1, db-1. This cannot be undone.',
+      );
+      // A paid plan was cancelled at Stripe, and is renewed there.
+      expect(body).toContain(
+        'To keep the plan, choose Manage billing at Stripe under Settings > Billing and renew it there before then.',
+      );
+      expect(body).not.toContain('resume');
+      expect(rendered.html).toContain(facts.billingUrl);
+      expect(rendered.inlineImages).toHaveLength(1);
+    });
+
+    it('"ends on" names one Bought Server in the singular, and none when there are none', async () => {
+      const one = text(
+        (
+          await renderPlanEndsEmail({
+            ...facts,
+            endsOn: 'Dec 05, 2026',
+            serverNames: ['web-1'],
+            inTrial: false,
+          })
+        ).html,
+      );
+      expect(one).toContain(
+        'The Server you bought for Hopper Labs is deleted that day, and its data and backups go with it: web-1. This cannot be undone.',
+      );
+
+      const none = text(
+        (
+          await renderPlanEndsEmail({
+            ...facts,
+            endsOn: 'Dec 05, 2026',
+            serverNames: [],
+            inTrial: false,
+          })
+        ).html,
+      );
+      expect(none).not.toContain('deleted that day');
+      expect(none).not.toContain('cannot be undone');
+    });
+
+    it('"ends on" during the Free trial names Keep <plan>, the control that takes the cancel back', async () => {
+      const body = text(
+        (
+          await renderPlanEndsEmail({
+            ...facts,
+            endsOn: 'Dec 05, 2026',
+            serverNames: [],
+            inTrial: true,
+          })
+        ).html,
+      );
+      expect(body).toContain(
+        'To keep the plan, choose Keep Business under Settings > Billing before then.',
+      );
+      expect(body).not.toMatch(/resume|stripe/i);
+    });
+
+    it('"will carry on" says the cancel was taken back', async () => {
+      const rendered = await renderPlanCarriesOnEmail(facts);
+
+      expect(rendered.subject).toBe('Your plan will carry on');
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'The cancel of the Business plan for Hopper Labs was taken back: the plan no longer ends, and carries on as before.',
+      );
+      expect(rendered.html).toContain(facts.billingUrl);
+    });
+
+    it('both go to every owner and admin, and never name the provider', async () => {
+      for (const rendered of [
+        await renderPlanEndsEmail({
+          ...facts,
+          endsOn: 'Dec 05, 2026',
+          serverNames: ['web-1'],
+          inTrial: true,
+        }),
+        await renderPlanCarriesOnEmail(facts),
+      ]) {
+        expect(text(rendered.html)).toContain(
+          'It goes to every owner and admin, and cannot be turned off.',
+        );
+        // The provider of the Bought Servers' machines (ADR-0071). Stripe,
+        // the provider of payments, is named only where a control is.
+        expect(rendered.html).not.toMatch(/hetzner/i);
+      }
+    });
+  });
+
+  // A failed payment paid after all (spec #69, #71).
+  describe('renderPaymentReceivedEmail', () => {
+    const text = (html: string) =>
+      html.replace(/<!-- -->/g, '').replace(/&#x27;|&#39;/g, "'");
+    const base = {
+      userName: 'Grace',
+      organizationName: 'Hopper Labs',
+      billingUrl: 'https://console.example.com/settings/billing',
+      lifted: { lapse: false, boughtServers: false },
+      stillSuspended: false,
+    };
+
+    it('says a payment that failed before any freeze is paid, and links to Billing', async () => {
+      const rendered = await renderPaymentReceivedEmail(base);
+
+      expect(rendered.subject).toBe('Payment received for Hopper Labs');
+      const body = text(rendered.html);
+      expect(body).toMatch(/Hello (<!-- -->)?Grace/);
+      expect(body).toContain(
+        'The Cloudgate payment for Hopper Labs that failed has now been paid.',
+      );
+      expect(body).toContain(
+        'Hopper Labs was never frozen, and its plan carries on as before.',
+      );
+      expect(body).not.toContain('no longer frozen');
+      expect(body).not.toContain('deletion');
+      expect(rendered.html).toContain(
+        'https://console.example.com/settings/billing',
+      );
+      expect(body).toContain(
+        'It goes to every owner and admin, and cannot be turned off.',
+      );
+    });
+
+    it('says a lapsed Organization is no longer frozen', async () => {
+      const rendered = await renderPaymentReceivedEmail({
+        ...base,
+        lifted: { lapse: true, boughtServers: false },
+      });
+
+      expect(rendered.subject).toBe('Payment received for Hopper Labs');
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Hopper Labs is no longer frozen: Cloudgate starts deploys, Cron service runs, backups, Uptime checks and cloud runs for it again, and it is no longer due for deletion.',
+      );
+      expect(body).not.toContain('never frozen');
+    });
+
+    it('says the Bought Servers are no longer due for deletion', async () => {
+      const rendered = await renderPaymentReceivedEmail({
+        ...base,
+        lifted: { lapse: false, boughtServers: true },
+      });
+
+      expect(text(rendered.html)).toContain(
+        'The Servers bought for Hopper Labs are no longer due for deletion, and keep running as before.',
+      );
+    });
+
+    it('says a suspended Organization is still suspended, and stays frozen', async () => {
+      const lapsed = await renderPaymentReceivedEmail({
+        ...base,
+        lifted: { lapse: true, boughtServers: false },
+        stillSuspended: true,
+      });
+      const pastDue = await renderPaymentReceivedEmail({
+        ...base,
+        stillSuspended: true,
+      });
+
+      expect(text(lapsed.html)).toContain(
+        'Hopper Labs is no longer lapsed, but it is still suspended, so it stays frozen. A payment does not lift a suspension: contact Octabyte about it.',
+      );
+      expect(text(lapsed.html)).not.toContain('no longer frozen');
+      expect(text(pastDue.html)).toContain(
+        'Hopper Labs is still suspended, so it stays frozen. A payment does not lift a suspension: contact Octabyte about it.',
+      );
+      expect(text(pastDue.html)).not.toContain('never frozen');
+    });
+
+    it("tells an Attached Organization's people it is no longer frozen because its Paying Organization paid", async () => {
+      const rendered = await renderPaymentReceivedEmail({
+        ...base,
+        organizationName: 'Lovelace Ltd',
+        payingOrganizationName: 'Hopper Labs',
+        lifted: { lapse: true, boughtServers: false },
+      });
+
+      expect(rendered.subject).toBe(
+        'Lovelace Ltd is no longer frozen: Hopper Labs has paid',
+      );
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Hopper Labs has paid for the plan it pays for Lovelace Ltd with, which had lapsed.',
+      );
+      expect(body).toContain(
+        'Lovelace Ltd is no longer frozen: Cloudgate starts deploys, Cron service runs, backups, Uptime checks and cloud runs for it again, and it is no longer due for deletion.',
+      );
+      expect(body).not.toContain('payment for Lovelace Ltd that failed');
+    });
+
+    it('tells a suspended Attached Organization it is still suspended', async () => {
+      const rendered = await renderPaymentReceivedEmail({
+        ...base,
+        organizationName: 'Lovelace Ltd',
+        payingOrganizationName: 'Hopper Labs',
+        lifted: { lapse: true, boughtServers: false },
+        stillSuspended: true,
+      });
+
+      expect(rendered.subject).toBe(
+        'Hopper Labs has paid, but Lovelace Ltd is still suspended',
+      );
+      expect(text(rendered.html)).toContain(
+        'Lovelace Ltd is no longer lapsed, but it is still suspended, so it stays frozen.',
+      );
+    });
+
+    it('never names the provider', async () => {
+      const rendered = await renderPaymentReceivedEmail({
+        ...base,
+        lifted: { lapse: true, boughtServers: true },
+      });
+
+      expect(rendered.subject).not.toMatch(/hetzner|stripe/i);
+      expect(rendered.html).not.toMatch(/hetzner|stripe/i);
+    });
+  });
+
   // The owner email 14 and 3 days before a Self-hosted license expires.
   describe('renderLicenseExpiringEmail', () => {
     const input = {
@@ -794,6 +1230,303 @@ describe('mail templates', () => {
       });
       expect(text(enterprise.html)).toContain(
         'Acme&#x27;s Enterprise agreement with Octabyte has ended.',
+      );
+    });
+  });
+
+  describe('renderPlanChangedEmail', () => {
+    const text = (html: string) =>
+      html.replace(/<!-- -->/g, '').replace(/&#x27;|&#39;/g, "'");
+    const props = {
+      userName: 'Grace',
+      organizationName: 'Hopper Labs',
+      billingUrl: 'https://cloudgate.example.com/settings/billing',
+    };
+    const business = {
+      planLabel: 'Business',
+      addOns: 2,
+      monthly: '$45.00',
+      from: 'Dec 15, 2026',
+    };
+    const starter = { ...business, planLabel: 'Starter', monthly: '$25.00' };
+
+    it('an upgrade gives the amount charged today, the plan, the Add-ons and the monthly amount from the renewal', async () => {
+      const rendered = await renderPlanChangedEmail({
+        ...props,
+        change: { kind: 'upgraded', chargedToday: '$15.33' },
+        plan: business,
+      });
+
+      expect(rendered.subject).toBe(
+        'Your plan changed: Hopper Labs is now on Business',
+      );
+      const body = text(rendered.html);
+      expect(body).toMatch(/Hello (<!-- -->)?Grace/);
+      expect(body).toContain(
+        'Hopper Labs moved from Starter to Business today. SSO, SCIM, custom roles and forward auth work now.',
+      );
+      expect(body).toContain(
+        'Charged today: $15.33, for the rest of this month on Business, less what was left of Starter.',
+      );
+      expect(body).toContain(
+        'Plan: Business with 2 Add-ons, for 5 Servers and 5 Cloud Environments.',
+      );
+      expect(body).toContain('Charged: $45.00 per month, from Dec 15, 2026.');
+      expect(rendered.html).toContain(
+        'https://cloudgate.example.com/settings/billing',
+      );
+      expect(body).toContain(
+        'It goes to every owner and admin, and cannot be turned off.',
+      );
+    });
+
+    it('points at the Billing page when an amount is not known', async () => {
+      const rendered = await renderPlanChangedEmail({
+        ...props,
+        change: { kind: 'upgraded', chargedToday: null },
+        plan: { ...business, addOns: 0, monthly: null },
+      });
+
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Charged today: the rest of this month on Business, less what was left of Starter. The Billing page has the invoice.',
+      );
+      expect(body).toContain(
+        'Plan: Business, for 3 Servers and 3 Cloud Environments.',
+      );
+      expect(body).toContain(
+        'Charged: monthly, from Dec 15, 2026. The Billing page shows the amount.',
+      );
+    });
+
+    it('a move to Starter being scheduled gives its date and how to stay on Business', async () => {
+      const rendered = await renderPlanChangedEmail({
+        ...props,
+        change: { kind: 'move-scheduled', movesOn: 'Dec 15, 2026' },
+        plan: starter,
+      });
+
+      expect(rendered.subject).toBe(
+        'Your plan changed: Hopper Labs moves to Starter on Dec 15, 2026',
+      );
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Hopper Labs keeps Business, with SSO, SCIM, custom roles and forward auth, until Dec 15, 2026, then moves to Starter. Nothing is charged for the move.',
+      );
+      expect(body).toContain(
+        'Plan: Starter with 2 Add-ons, for 5 Servers and 5 Cloud Environments.',
+      );
+      expect(body).toContain('Charged: $25.00 per month, from Dec 15, 2026.');
+      expect(body).toContain(
+        'To stay on Business, open Billing and choose Keep Business before then.',
+      );
+    });
+
+    it('the move to Starter taking effect says the paid features stopped', async () => {
+      const rendered = await renderPlanChangedEmail({
+        ...props,
+        change: { kind: 'moved' },
+        plan: starter,
+      });
+
+      expect(rendered.subject).toBe(
+        'Your plan changed: Hopper Labs is now on Starter',
+      );
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Hopper Labs moved from Business to Starter today. SSO, SCIM, custom roles and forward auth no longer work; their settings are kept.',
+      );
+      expect(body).toContain('Charged: $25.00 per month, from Dec 15, 2026.');
+    });
+
+    it('Keep Business says it stays on Business', async () => {
+      const rendered = await renderPlanChangedEmail({
+        ...props,
+        change: { kind: 'kept-business' },
+        plan: business,
+      });
+
+      expect(rendered.subject).toBe(
+        'Your plan changed: Hopper Labs stays on Business',
+      );
+      const body = text(rendered.html);
+      expect(body).toContain('You stay on Business');
+      expect(body).toContain(
+        'The move of Hopper Labs to Starter was taken back: it stays on Business, with SSO, SCIM, custom roles and forward auth. Nothing is charged for the change.',
+      );
+      expect(body).toContain('Charged: $45.00 per month, from Dec 15, 2026.');
+    });
+
+    it('a switch during the Free trial says nothing is charged for the plan until the trial ends, either way', async () => {
+      const up = await renderPlanChangedEmail({
+        ...props,
+        change: {
+          kind: 'trial-switch',
+          to: 'business',
+          trialEndsOn: 'Dec 15, 2026',
+        },
+        plan: business,
+      });
+      expect(up.subject).toBe(
+        'Your plan changed: Hopper Labs is now on Business',
+      );
+      expect(text(up.html)).toContain(
+        'Hopper Labs switched to Business during its free trial. SSO, SCIM, custom roles and forward auth work now. Nothing is charged for the plan until the trial ends on Dec 15, 2026.',
+      );
+      expect(text(up.html)).toContain(
+        'Charged: $45.00 per month, from Dec 15, 2026.',
+      );
+
+      const down = await renderPlanChangedEmail({
+        ...props,
+        change: {
+          kind: 'trial-switch',
+          to: 'starter',
+          trialEndsOn: 'Dec 15, 2026',
+        },
+        plan: starter,
+      });
+      expect(down.subject).toBe(
+        'Your plan changed: Hopper Labs is now on Starter',
+      );
+      expect(text(down.html)).toContain(
+        'Hopper Labs switched to Starter during its free trial. SSO, SCIM, custom roles and forward auth no longer work; their settings are kept. Nothing is charged for the plan until the trial ends on Dec 15, 2026.',
+      );
+    });
+  });
+
+  describe('renderAddOnsChangedEmail', () => {
+    const text = (html: string) =>
+      html.replace(/<!-- -->/g, '').replace(/&#x27;|&#39;/g, "'");
+    const props = {
+      userName: 'Grace',
+      organizationName: 'Hopper Labs',
+      billingUrl: 'https://cloudgate.example.com/settings/billing',
+    };
+    const business = {
+      planLabel: 'Business',
+      addOns: 4,
+      monthly: '$55.00',
+      from: 'Dec 15, 2026',
+    };
+
+    it('gives the new count, the counts it gives, the prorated difference and the new monthly amount', async () => {
+      const rendered = await renderAddOnsChangedEmail({
+        ...props,
+        was: 2,
+        change: { kind: 'prorated' },
+        plan: business,
+      });
+
+      expect(rendered.subject).toBe(
+        'Your Add-ons changed: Hopper Labs now has 4 Add-ons',
+      );
+      const body = text(rendered.html);
+      expect(body).toMatch(/Hello (<!-- -->)?Grace/);
+      expect(body).toContain('Hopper Labs now has 4 Add-ons');
+      expect(body).toContain(
+        'Hopper Labs went from 2 Add-ons to 4 Add-ons today. The rest of this month is prorated: the difference is on the next invoice.',
+      );
+      expect(body).toContain(
+        'Plan: Business with 4 Add-ons, for 7 Servers and 7 Cloud Environments.',
+      );
+      expect(body).toContain('Charged: $55.00 per month, from Dec 15, 2026.');
+      expect(rendered.html).toContain(
+        'https://cloudgate.example.com/settings/billing',
+      );
+      expect(body).toContain(
+        'It goes to every owner and admin, and cannot be turned off.',
+      );
+    });
+
+    it('says no Add-ons and one Add-on as a sentence says them', async () => {
+      const none = await renderAddOnsChangedEmail({
+        ...props,
+        was: 1,
+        change: { kind: 'prorated' },
+        plan: { ...business, addOns: 0, monthly: '$35.00' },
+      });
+      expect(none.subject).toBe(
+        'Your Add-ons changed: Hopper Labs now has no Add-ons',
+      );
+      expect(text(none.html)).toContain(
+        'Hopper Labs went from 1 Add-on to no Add-ons today.',
+      );
+      expect(text(none.html)).toContain(
+        'Plan: Business, for 3 Servers and 3 Cloud Environments.',
+      );
+    });
+
+    it('while a move to Starter waits, says the count carries across and gives Starter’s monthly amount from the move', async () => {
+      const rendered = await renderAddOnsChangedEmail({
+        ...props,
+        was: 2,
+        change: {
+          kind: 'move-waiting',
+          movesOn: 'Dec 15, 2026',
+          businessMonthly: '$55.00',
+        },
+        plan: { ...business, planLabel: 'Starter', monthly: '$35.00' },
+      });
+
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Hopper Labs keeps Business until Dec 15, 2026, then moves to Starter with 4 Add-ons.',
+      );
+      expect(body).toContain(
+        'Until then, Business with 4 Add-ons costs $55.00 per month.',
+      );
+      expect(body).toContain(
+        'Plan: Starter with 4 Add-ons, for 7 Servers and 7 Cloud Environments.',
+      );
+      expect(body).toContain('Charged: $35.00 per month, from Dec 15, 2026.');
+    });
+
+    it('while a move to Starter waits and Business’s amount cannot be read, leaves that sentence out', async () => {
+      const rendered = await renderAddOnsChangedEmail({
+        ...props,
+        was: 2,
+        change: {
+          kind: 'move-waiting',
+          movesOn: 'Dec 15, 2026',
+          businessMonthly: null,
+        },
+        plan: { ...business, planLabel: 'Starter', monthly: '$35.00' },
+      });
+
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Hopper Labs keeps Business until Dec 15, 2026, then moves to Starter with 4 Add-ons.',
+      );
+      expect(body).not.toContain('Until then');
+    });
+
+    it('during the Free trial says nothing is charged for the Add-ons until it ends', async () => {
+      const rendered = await renderAddOnsChangedEmail({
+        ...props,
+        was: 2,
+        change: { kind: 'trial' },
+        plan: business,
+      });
+
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Hopper Labs went from 2 Add-ons to 4 Add-ons today. Add-ons cost nothing during the free trial: nothing is charged for them until it ends.',
+      );
+      expect(body).not.toContain('prorated');
+      expect(body).toContain('Charged: $55.00 per month, from Dec 15, 2026.');
+    });
+
+    it('points at the Billing page when the monthly amount is not known', async () => {
+      const rendered = await renderAddOnsChangedEmail({
+        ...props,
+        was: 2,
+        change: { kind: 'prorated' },
+        plan: { ...business, monthly: null },
+      });
+
+      expect(text(rendered.html)).toContain(
+        'Charged: monthly, from Dec 15, 2026. The Billing page shows the amount.',
       );
     });
   });
@@ -961,6 +1694,29 @@ describe('mail templates', () => {
       ],
       ['trial started', () => renderTrialStartedEmail(trial)],
       ['trial ending', () => renderTrialEndingEmail(trial)],
+      [
+        'server ready',
+        () =>
+          renderServerReadyEmail({
+            userName: 'Grace',
+            organizationName: org,
+            serverName: 'web-1',
+            serverUrl: url,
+            firstSetup: 'finished',
+          }),
+      ],
+      [
+        'server changed',
+        () =>
+          renderServerChangedEmail({
+            userName: 'Grace',
+            organizationName: org,
+            serverName: 'web-1',
+            change: { kind: 'backups', on: true },
+            monthlyPrice: '$30.00',
+            serverUrl: url,
+          }),
+      ],
       [
         'notification',
         () =>

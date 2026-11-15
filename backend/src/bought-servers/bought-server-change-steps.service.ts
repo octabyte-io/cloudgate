@@ -12,11 +12,14 @@ import { MailService } from '../mail/mail.service';
 import { RemoteExecService } from '../remote/remote-exec.service';
 import { renderBoughtServerChangeRefundedEmail } from '../mail/templates';
 import type { RefundedTo } from '../mail/templates';
+import { renderServerChangedEmail } from '../mail/templates/server-changed';
+import type { ServerChange } from '../mail/templates/server-changed';
 import { boughtServer, boughtServerLine } from './bought-server.schema';
 import type {
   BoughtServer,
   BoughtServerChangeTarget,
 } from './bought-server.schema';
+import { BoughtServersService } from './bought-servers.service';
 import { HETZNER_MACHINES } from './hetzner/hetzner-cloud.port';
 import type {
   HetznerAction,
@@ -68,7 +71,9 @@ export function attemptedOf(
  *   asked. A refusal leaves the next step to decide: once more, or give up.
  * - *Finish*: a change that costs less is credited on the next invoice now,
  *   after the provider made it; then the lines and the row are written, and
- *   the Server is Ready.
+ *   the Server is Ready. The owners and admins are told what changed and
+ *   what it now costs, once: only the write that moved it back to Ready
+ *   sends.
  * - *Give up*, after the second refusal: a paid change is refunded in full,
  *   its lines taken back off the subscription, the Server kept as it was,
  *   and the owners emailed. A change that costs less charged nothing, so
@@ -92,6 +97,7 @@ export class BoughtServerChangeSteps {
     private readonly mail: MailService,
     private readonly billingConfig: BillingConfig,
     private readonly remoteExec: RemoteExecService,
+    private readonly catalogue: BoughtServersService,
   ) {}
 
   /** One try at the change, or its finish when the machine already shows it. */
@@ -208,7 +214,8 @@ export class BoughtServerChangeSteps {
 
   /**
    * The change is made on the machine: a cheaper one is credited now, and
-   * the lines and the row are written in one go, back to Ready.
+   * the lines and the row are written in one go, back to Ready. Whoever
+   * made that write emails the owners and admins.
    */
   private async finish(row: BoughtServer): Promise<boolean> {
     const target = row.changeTarget!;
@@ -254,7 +261,7 @@ export class BoughtServerChangeSteps {
     );
 
     const now = new Date();
-    await this.db.transaction(async (tx) => {
+    const finished = await this.db.transaction(async (tx) => {
       const [done] = await tx
         .update(boughtServer)
         .set({
@@ -274,7 +281,7 @@ export class BoughtServerChangeSteps {
           and(eq(boughtServer.id, row.id), eq(boughtServer.stage, 'changing')),
         )
         .returning({ id: boughtServer.id });
-      if (!done) return;
+      if (!done) return false;
       for (const line of target.lines) {
         if (line.stripePriceId === null) {
           await tx
@@ -303,8 +310,70 @@ export class BoughtServerChangeSteps {
             set: values,
           });
       }
+      return true;
     });
+    if (finished) await this.sendChanged(row, target);
     return false;
+  }
+
+  /** To every owner and admin (spec #69): what the change made, and what the Server now costs a month. */
+  private async sendChanged(
+    row: BoughtServer,
+    target: BoughtServerChangeTarget,
+  ): Promise<void> {
+    try {
+      const lines = await this.db
+        .select({ monthlyCents: boughtServerLine.monthlyCents })
+        .from(boughtServerLine)
+        .where(eq(boughtServerLine.boughtServerId, row.id));
+      const monthlyPrice = formatAmount(
+        lines.reduce((sum, line) => sum + line.monthlyCents, 0),
+        'usd',
+      );
+      const change = await this.changeOf(target);
+      const serverUrl = `${this.billingConfig.siteUrl}/servers/${row.id}/settings`;
+      await this.notifications.sendToOwnersAndAdmins(
+        row.organizationId,
+        'Bought Server changed',
+        (recipient, organizationName) =>
+          renderServerChangedEmail({
+            userName: recipient.name,
+            organizationName,
+            serverName: row.name,
+            change,
+            monthlyPrice,
+            serverUrl,
+          }),
+      );
+    } catch (error) {
+      this.logger.error(
+        `Bought Server ${row.id}: could not email that its change finished: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  /** The change as the email says it: a new size by what it is, from the catalogue, never its code. */
+  private async changeOf(
+    target: BoughtServerChangeTarget,
+  ): Promise<ServerChange> {
+    if (target.backups !== undefined) {
+      return { kind: 'backups', on: target.backups };
+    }
+    if (target.storageGb !== undefined) {
+      return { kind: 'storage', storageGb: target.storageGb };
+    }
+    let size: string | null = null;
+    try {
+      const found = (await this.catalogue.catalogue()).sizes.find(
+        (entry) => entry.id === target.serverType,
+      );
+      if (found) size = `${found.vcpus} vCPU · ${found.memoryGb} GB RAM`;
+    } catch (error) {
+      this.logger.warn(
+        `The catalogue could not describe size ${target.serverType} for the change email: ${(error as Error).message}`,
+      );
+    }
+    return { kind: 'size', size };
   }
 
   /** The change's payment, given back in full; the amount, formatted, for the email. */

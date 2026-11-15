@@ -16,6 +16,7 @@ import {
 } from '../../src/bought-servers/bought-server.schema';
 import { subscription } from '../../src/cloud/billing/billing.schema';
 import { BoughtServersHourly } from '../../src/bought-servers/bought-servers-hourly.service';
+import { BoughtServerChangeSteps } from '../../src/bought-servers/bought-server-change-steps.service';
 import { STRIPE_API } from '../../src/cloud/billing/stripe-api';
 import type { StripeApi } from '../../src/cloud/billing/stripe-api';
 import { MailService } from '../../src/mail/mail.service';
@@ -742,6 +743,125 @@ describe('Backups on a Bought Server (e2e)', () => {
         'backups',
         'server',
       ]);
+    });
+  });
+
+  describe('the "your Server changed" email', () => {
+    const ADMIN = 'ada@example.com';
+    const MEMBER = 'edsger@example.com';
+
+    beforeEach(async () => {
+      await signUpMember(http, owner.cookie, {
+        email: ADMIN,
+        name: 'Ada Lovelace',
+        role: 'admin',
+      });
+      await signUpMember(http, owner.cookie, {
+        email: MEMBER,
+        name: 'Edsger Dijkstra',
+        role: 'member',
+      });
+    });
+
+    const changedEmails = () =>
+      mail.sent.filter((sent) =>
+        /^Backups are (on|off) for/.test(sent.email.subject),
+      );
+
+    it('goes once to every owner and admin when backups are turned on, with the new monthly price', async () => {
+      const id = await readyServer();
+      mail.clear();
+
+      const res = await setBackups(id, true);
+
+      expect(res.status).toBe(200);
+      expect(
+        changedEmails()
+          .map((sent) => sent.to)
+          .sort(),
+      ).toEqual([ADMIN, 'grace@example.com']);
+      expect(mail.to(MEMBER)).toEqual([]);
+      for (const sent of changedEmails()) {
+        expect(sent.email.subject).toBe('Backups are on for your Server web-1');
+        // The Server's $25 and its backups' $5.
+        expect(sent.email.html).toContain('$30.00 a month');
+        expect(sent.email.html).toContain(`/servers/${id}`);
+        expect(sent.email.html).not.toMatch(/hetzner/i);
+      }
+    });
+
+    it('goes once to every owner and admin when backups are turned off, with the new monthly price', async () => {
+      const id = await readyServer({ backups: true });
+      mail.clear();
+
+      const res = await setBackups(id, false);
+
+      expect(res.status).toBe(200);
+      expect(
+        changedEmails()
+          .map((sent) => sent.to)
+          .sort(),
+      ).toEqual([ADMIN, 'grace@example.com']);
+      for (const sent of changedEmails()) {
+        expect(sent.email.subject).toBe(
+          'Backups are off for your Server web-1',
+        );
+        expect(sent.email.html).toContain('$25.00 a month');
+        expect(sent.email.html).not.toMatch(/hetzner/i);
+      }
+    });
+
+    it('sends nothing more when a resume reaches the finished change again', async () => {
+      const id = await readyServer();
+      await setBackups(id, true);
+      const finished = await row(id);
+      const backups = (await lines(id)).find((line) => line.kind === 'backups');
+      mail.clear();
+
+      // The row as a resume read it while the change was still running.
+      await ctx.app.get(BoughtServerChangeSteps).apply({
+        ...finished,
+        stage: 'changing',
+        backups: false,
+        changeTarget: {
+          backups: true,
+          charged: true,
+          lines: [
+            {
+              kind: 'backups',
+              stripePriceId: backups!.stripePriceId,
+              monthlyCents: 500,
+            },
+          ],
+        },
+        changeTries: 1,
+      });
+
+      expect(mail.sent).toEqual([]);
+    });
+
+    it('sends only the refund email for a change refunded after two refusals', async () => {
+      const id = await readyServer();
+      ctx.hetzner.machines.refuse('enableBackup', 'locked', 2);
+      mail.clear();
+
+      const res = await setBackups(id, true);
+
+      expect(res.status).toBe(409);
+      expect(mail.sent.map((sent) => sent.email.subject)).toEqual([
+        "We couldn't turn on backups for web-1, so the payment was refunded",
+      ]);
+    });
+
+    it('sends nothing when backups could not be turned off', async () => {
+      const id = await readyServer({ backups: true });
+      ctx.hetzner.machines.refuse('disableBackup', 'locked', 2);
+      mail.clear();
+
+      const res = await setBackups(id, false);
+
+      expect(res.status).toBe(409);
+      expect(mail.sent).toEqual([]);
     });
   });
 

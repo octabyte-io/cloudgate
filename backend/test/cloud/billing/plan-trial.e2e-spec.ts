@@ -7,6 +7,7 @@ import type Stripe from 'stripe';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { eq } from 'drizzle-orm';
+import { boughtServer } from '../../../src/bought-servers/bought-server.schema';
 import { subscription } from '../../../src/cloud/billing/billing.schema';
 import { STRIPE_API } from '../../../src/cloud/billing/stripe-api';
 import { MailService } from '../../../src/mail/mail.service';
@@ -18,6 +19,7 @@ import {
   signUpHostedCustomer,
 } from '../../utils/hosted-sign-up';
 import { createTestApp, TestAppContext } from '../../utils/test-app';
+import { signUpMember } from '../../utils/test-auth';
 
 jest.setTimeout(120_000);
 
@@ -42,12 +44,16 @@ const previewInvoice = jest.fn<
   Promise<Stripe.Invoice>,
   [Stripe.InvoiceCreatePreviewParams]
 >();
+const retrievePrice = jest.fn<Promise<Stripe.Price>, [string]>();
+const constructEvent = jest.fn<Stripe.Event, [Buffer | string, string]>();
 const schedules = fakeSubscriptionSchedules();
 const stripe = fakeStripe({
+  constructEvent,
   retrieveSubscription,
   retrieveCustomer,
   updateSubscription,
   previewInvoice,
+  retrievePrice,
   ...schedules.methods,
 });
 
@@ -97,6 +103,7 @@ describe('Billing during a free trial (e2e)', () => {
   beforeEach(async () => {
     await ctx.resetDb();
     jest.resetAllMocks();
+    recorder.clear();
     atStripe = trialAtStripe();
     retrieveSubscription.mockImplementation(() => Promise.resolve(atStripe));
     retrieveCustomer.mockResolvedValue({
@@ -493,5 +500,335 @@ describe('Billing during a free trial (e2e)', () => {
     expect(standing.body).toEqual(
       expect.objectContaining({ frozen: false, paymentFailed: false }),
     );
+  });
+
+  // "Your plan ends on <date>" and "Your plan will carry on" (spec #69,
+  // #72): read off the webhook sync's cancel date, so the trial's buttons and
+  // Stripe's own billing page both send them, each once.
+  describe('the cancel and taken-back emails', () => {
+    const OWNER = 'grace@example.com';
+    const ADMIN = 'ada@example.com';
+    const MEMBER = 'edsger@example.com';
+
+    /** The day as the emails print it, worked out apart from the code. */
+    const printed = (seconds: number) =>
+      new Date(seconds * 1000).toLocaleDateString('en-US', {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+      });
+
+    function deliver(object: Stripe.Subscription) {
+      const event = {
+        type: 'customer.subscription.updated',
+        data: { object },
+      } as unknown as Stripe.Event;
+      constructEvent.mockReturnValue(event);
+      return request(http)
+        .post('/billing/webhook')
+        .set('stripe-signature', 't=1,v1=valid')
+        .set('Content-Type', 'application/json')
+        .send(JSON.stringify(event))
+        .expect(200);
+    }
+
+    /** The plan emails `address` was sent, by subject, oldest first. */
+    const planEmails = (address: string) =>
+      recorder
+        .to(address)
+        .filter((sent) => /^Your plan /.test(sent.email.subject));
+
+    /** Hopper Labs in its trial on Business, with an admin and a member. */
+    async function givenTeamInTrial() {
+      const owner = await givenTrialOn('business');
+      await signUpMember(http, owner.cookie, {
+        email: ADMIN,
+        name: 'Ada Lovelace',
+        role: 'admin',
+      });
+      await signUpMember(http, owner.cookie, {
+        email: MEMBER,
+        name: 'Edsger Dijkstra',
+        role: 'member',
+      });
+      recorder.clear();
+      return owner;
+    }
+
+    /** Arrangement only: Bought Server rows at `stage`, oldest first. */
+    async function givenBoughtServers(
+      organizationId: string,
+      ownerId: string,
+      servers: Array<[string, 'ready' | 'setting_up' | 'deleted']>,
+    ) {
+      let at = Date.now() - servers.length * 60_000;
+      for (const [name, stage] of servers) {
+        await ctx.db.insert(boughtServer).values({
+          organizationId,
+          name,
+          stage,
+          serverType: 'cpx22',
+          location: 'hel1',
+          termsAcceptedBy: ownerId,
+          termsAcceptedAt: new Date(at),
+          createdAt: new Date((at += 60_000)),
+        });
+      }
+    }
+
+    it('Cancel trial emails "Your plan ends on <date>" to the owner and every admin, once, naming the Bought Servers deleted that day', async () => {
+      const owner = await givenTeamInTrial();
+      await givenBoughtServers(owner.organizationId, owner.id, [
+        ['old-1', 'deleted'],
+        ['web-1', 'ready'],
+        ['db-1', 'setting_up'],
+      ]);
+
+      await request(http)
+        .post('/billing/cancel-trial')
+        .set('Cookie', owner.cookie)
+        .expect(200);
+      await deliver(atStripe);
+      // Stripe delivers it again.
+      await deliver(atStripe);
+
+      const subject = `Your plan ends on ${printed(trialEnd)}`;
+      for (const address of [OWNER, ADMIN]) {
+        const sent = planEmails(address);
+        expect(sent.map((one) => one.email.subject)).toEqual([subject]);
+        const html = sent[0].email.html.replace(/<!-- -->/g, '');
+        expect(html).toContain(
+          'The Servers you bought for Hopper Labs are deleted that day, and their data and backups go with them: web-1, db-1. This cannot be undone.',
+        );
+        // During the trial the control that takes it back is Keep <plan>.
+        expect(html).toContain(
+          'To keep the plan, choose Keep Business under Settings &gt; Billing before then.',
+        );
+        expect(html).not.toContain('old-1');
+      }
+      expect(planEmails(MEMBER)).toEqual([]);
+    });
+
+    it('Keep emails "Your plan will carry on", once', async () => {
+      const owner = await givenTeamInTrial();
+
+      await request(http)
+        .post('/billing/cancel-trial')
+        .set('Cookie', owner.cookie)
+        .expect(200);
+      await deliver(atStripe);
+      await request(http)
+        .delete('/billing/cancel-trial')
+        .set('Cookie', owner.cookie)
+        .expect(200);
+      await deliver(atStripe);
+      await deliver(atStripe);
+
+      for (const address of [OWNER, ADMIN]) {
+        expect(planEmails(address).map((one) => one.email.subject)).toEqual([
+          `Your plan ends on ${printed(trialEnd)}`,
+          'Your plan will carry on',
+        ]);
+      }
+      expect(planEmails(MEMBER)).toEqual([]);
+    });
+
+    it('a paid plan cancelled at Stripe’s billing page, and the cancel taken back there, sends each email once', async () => {
+      const owner = await givenTeamInTrial();
+      await givenPlan(ctx, owner.organizationId, 'business', 'active', {
+        stripeCustomerId: 'cus_1',
+        stripeSubscriptionId: 'sub_1',
+        trialEndsAt: null,
+      });
+      const endsAt = trialEnd + 40 * DAY;
+      const paid = {
+        ...trialAtStripe({ plan: BUSINESS_PRICE }),
+        status: 'active',
+        trial_end: null,
+      } as unknown as Stripe.Subscription;
+
+      await deliver({ ...paid, cancel_at: endsAt });
+      await deliver({ ...paid, cancel_at: endsAt });
+      expect(planEmails(OWNER).map((one) => one.email.subject)).toEqual([
+        `Your plan ends on ${printed(endsAt)}`,
+      ]);
+      // A paid plan is renewed where it was cancelled.
+      expect(
+        planEmails(OWNER)[0].email.html.replace(/<!-- -->/g, ''),
+      ).toContain(
+        'To keep the plan, choose Manage billing at Stripe under Settings &gt; Billing and renew it there before then.',
+      );
+
+      await deliver(paid);
+      await deliver(paid);
+      expect(planEmails(OWNER).map((one) => one.email.subject)).toEqual([
+        `Your plan ends on ${printed(endsAt)}`,
+        'Your plan will carry on',
+      ]);
+      expect(planEmails(ADMIN)).toHaveLength(2);
+    });
+
+    it('a sync with an unchanged cancel date sends nothing', async () => {
+      await givenTeamInTrial();
+
+      await deliver(atStripe);
+      await deliver(atStripe);
+
+      expect(planEmails(OWNER)).toEqual([]);
+      expect(planEmails(ADMIN)).toEqual([]);
+    });
+
+    it('a new subscription after a cancelled one ended sends no "will carry on"', async () => {
+      const owner = await givenTeamInTrial();
+      await givenPlan(ctx, owner.organizationId, 'business', 'trialing', {
+        stripeCustomerId: 'cus_1',
+        stripeSubscriptionId: null,
+        cancelAt: new Date(trialEnd * 1000),
+      });
+
+      await deliver(atStripe);
+
+      expect(planEmails(OWNER)).toEqual([]);
+    });
+  });
+
+  describe('the "your plan changed" email', () => {
+    const OWNER = 'grace@example.com';
+    const ADMIN = 'ada@example.com';
+    const MEMBER = 'edsger@example.com';
+
+    /** The trial's end as the emails print it, worked out apart from the code. */
+    const trialEndPrinted = new Date(trialEnd * 1000).toLocaleDateString(
+      'en-US',
+      { month: 'short', day: '2-digit', year: 'numeric' },
+    );
+
+    /** In its trial on `plan`, with an admin and a member; the catalogue at 15, 35 and 5 USD. */
+    async function givenTrialWithAdmin(plan: 'starter' | 'business') {
+      const owner = await givenTrialOn(plan);
+      await signUpMember(http, owner.cookie, {
+        email: ADMIN,
+        name: 'Ada Lovelace',
+        role: 'admin',
+      });
+      await signUpMember(http, owner.cookie, {
+        email: MEMBER,
+        name: 'Edsger Dijkstra',
+        role: 'member',
+      });
+      const amounts: Record<string, number> = {
+        [STARTER_PRICE]: 1500,
+        [BUSINESS_PRICE]: 3500,
+        [ADD_ON_PRICE]: 500,
+      };
+      retrievePrice.mockImplementation((id) =>
+        Promise.resolve({
+          id,
+          unit_amount: amounts[id],
+          currency: 'usd',
+        } as unknown as Stripe.Price),
+      );
+      recorder.clear();
+      return owner;
+    }
+
+    /** Stripe's event for the subscription as it now holds it. */
+    function subscriptionUpdated() {
+      const event = {
+        type: 'customer.subscription.updated',
+        data: { object: atStripe },
+      } as unknown as Stripe.Event;
+      constructEvent.mockReturnValue(event);
+      return request(http)
+        .post('/billing/webhook')
+        .set('stripe-signature', 't=1,v1=valid')
+        .set('Content-Type', 'application/json')
+        .send(JSON.stringify(event))
+        .expect(200);
+    }
+
+    const planChanged = (address: string) =>
+      recorder
+        .to(address)
+        .filter((sent) => sent.email.subject.startsWith('Your plan changed'))
+        .map((sent) => ({
+          subject: sent.email.subject,
+          html: sent.email.html.replace(/<!-- -->/g, ''),
+        }));
+
+    it('a switch up to Business emails every owner and admin once, saying nothing is charged for the plan until the trial ends', async () => {
+      const owner = await givenTrialWithAdmin('starter');
+
+      const res = await request(http)
+        .post('/billing/upgrade')
+        .set('Cookie', owner.cookie)
+        .send({ prorationDate: Math.floor(Date.now() / 1000) });
+      expect(res.status).toBe(200);
+      await subscriptionUpdated();
+      await subscriptionUpdated();
+
+      for (const address of [OWNER, ADMIN]) {
+        const sent = planChanged(address);
+        expect(sent).toHaveLength(1);
+        expect(sent[0].subject).toBe(
+          'Your plan changed: Hopper Labs is now on Business',
+        );
+        expect(sent[0].html).toContain(
+          `Hopper Labs switched to Business during its free trial. SSO, SCIM, custom roles and forward auth work now. Nothing is charged for the plan until the trial ends on ${trialEndPrinted}.`,
+        );
+        expect(sent[0].html).toContain(
+          `Charged: $45.00 per month, from ${trialEndPrinted}.`,
+        );
+      }
+      expect(planChanged(MEMBER)).toEqual([]);
+    });
+
+    it('a switch down to Starter emails every owner and admin once', async () => {
+      const owner = await givenTrialWithAdmin('business');
+
+      const res = await request(http)
+        .post('/billing/downgrade')
+        .set('Cookie', owner.cookie);
+      expect(res.status).toBe(200);
+      await subscriptionUpdated();
+      await subscriptionUpdated();
+
+      for (const address of [OWNER, ADMIN]) {
+        const sent = planChanged(address);
+        expect(sent).toHaveLength(1);
+        expect(sent[0].subject).toBe(
+          'Your plan changed: Hopper Labs is now on Starter',
+        );
+        expect(sent[0].html).toContain(
+          `Hopper Labs switched to Starter during its free trial. SSO, SCIM, custom roles and forward auth no longer work; their settings are kept. Nothing is charged for the plan until the trial ends on ${trialEndPrinted}.`,
+        );
+        expect(sent[0].html).toContain(
+          `Charged: $25.00 per month, from ${trialEndPrinted}.`,
+        );
+      }
+      expect(planChanged(MEMBER)).toEqual([]);
+    });
+
+    it('a switch down is sent once by the webhook when its sync records Starter first', async () => {
+      const owner = await givenTrialWithAdmin('business');
+      // Stripe's event reaches the webhook while the switch still waits on
+      // Stripe's answer.
+      updateSubscription.mockImplementation(async (_id, params) => {
+        atStripe = applied(atStripe, params);
+        await subscriptionUpdated();
+        return atStripe;
+      });
+
+      const res = await request(http)
+        .post('/billing/downgrade')
+        .set('Cookie', owner.cookie);
+
+      expect(res.status).toBe(200);
+      const sent = planChanged(OWNER);
+      expect(sent).toHaveLength(1);
+      expect(sent[0].subject).toBe(
+        'Your plan changed: Hopper Labs is now on Starter',
+      );
+    });
   });
 });

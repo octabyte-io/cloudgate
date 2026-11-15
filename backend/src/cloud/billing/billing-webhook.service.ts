@@ -9,13 +9,13 @@ import type Stripe from 'stripe';
 import { user } from '../../auth/auth.schema';
 import { DRIZZLE } from '../../db/drizzle.module';
 import type { DrizzleDB } from '../../db/drizzle.module';
+import type { DrizzleTx } from '../../environments/config-name';
 import {
   AuditLogService,
   PLATFORM_ACTOR,
 } from '../../enterprise/audit-logs/audit-log.service';
 import { organization } from '../../organizations/organizations.schema';
 import { BillingNotificationsService } from './billing-notifications.service';
-import { isPaidStatus } from './billing-allowance';
 import { BillingConfig } from './billing.config';
 import { isEnterprise } from './enterprise';
 import {
@@ -35,11 +35,15 @@ import { subscription } from './billing.schema';
 import { DELETION_AFTER_DAYS, isRetrying, lapseNoticeOf } from './lapse-clock';
 import { LapseNotifications } from './lapse-notifications.service';
 import { endLinkPaidForItself } from './paying-for-itself';
+import { claimCancelChange, notifyCancelChange } from './plan-cancel';
 import { STRIPE_API } from './stripe-api';
 import type { StripeApi } from './stripe-api';
 import { PaymentDisputes } from './payment-disputes.service';
+import { PaymentReceived } from './payment-received.service';
+import { PlanChangeNotifications } from './plan-change-notifications.service';
 import { BoughtServerClockSteps } from './bought-server-clock-steps';
 import { PurchasePayments } from './purchase-payments';
+import { forgetKeptSchedule } from './keep-business';
 import { scheduleFollowingSubscription } from './plan-downgrade';
 import type { HandledEvent, HandledEventType } from './stripe-webhook-events';
 
@@ -109,6 +113,8 @@ export class BillingWebhookService {
     private readonly purchasePayments: PurchasePayments,
     private readonly disputes: PaymentDisputes,
     private readonly boughtServerSteps: BoughtServerClockSteps,
+    private readonly paymentReceived: PaymentReceived,
+    private readonly planChanges: PlanChangeNotifications,
   ) {}
 
   /**
@@ -138,7 +144,7 @@ export class BillingWebhookService {
       'customer.subscription.pending_update_expired': (sub) =>
         this.purchasePayments.pendingUpdateExpired(sub),
       'subscription_schedule.released': (schedule) =>
-        this.onScheduleEnded(schedule),
+        this.onScheduleReleased(schedule),
       'subscription_schedule.completed': (schedule) =>
         this.onScheduleEnded(schedule),
       'subscription_schedule.canceled': (schedule) =>
@@ -260,12 +266,64 @@ export class BillingWebhookService {
   }
 
   /**
-   * `subscription_schedule.released`, `.completed`, `.canceled` and
-   * `.aborted`: the schedule no longer manages the subscription, so no
-   * downgrade waits on it. The Organization that stored it forgets it; one
-   * that stores no such schedule (Keep Business already forgot it, or it was
-   * never a downgrade's) changes nothing. The plan itself is the subscription
-   * events' to record.
+   * `subscription_schedule.released`: a Keep Business whose release got here
+   * before `BillingService.keepBusiness` forgot the schedule, or any other
+   * release of a schedule still stored. The schedule is forgotten either way;
+   * the clear that finds it sends "you stay on Business" when the release
+   * was a Keep Business (`forgetKeptSchedule`), once.
+   *
+   * Telling the two apart: the move taking effect is never a Keep Business.
+   * `settleDowngrade` forgets the schedule before it releases it, so that
+   * release finds nothing stored; and a release that still finds one is a
+   * Keep Business only while the subscription it let go is on Business at
+   * Stripe, read before the clear, so a Stripe failure leaves the clear to
+   * the retry. A schedule `.completed`, `.canceled` or `.aborted` never is.
+   */
+  private async onScheduleReleased(
+    schedule: Stripe.SubscriptionSchedule,
+  ): Promise<void> {
+    const [stored] = await this.db
+      .select({ id: subscription.id })
+      .from(subscription)
+      .where(
+        and(
+          eq(subscription.stripeScheduleId, schedule.id),
+          eq(subscription.enterprise, false),
+        ),
+      )
+      .limit(1);
+    if (!stored) return;
+    const keptBusiness = await this.releasedOnBusiness(schedule);
+    const kept = await forgetKeptSchedule(this.db, null, schedule.id);
+    if (!kept || !keptBusiness) return;
+    await this.planChanges.sendPlanChanged(
+      kept.organizationId,
+      { kind: 'kept-business', from: kept.movesOn ?? new Date() },
+      'business',
+      kept.addOns,
+    );
+  }
+
+  /** Whether the subscription a released schedule let go carries Business at Stripe. */
+  private async releasedOnBusiness(
+    schedule: Stripe.SubscriptionSchedule,
+  ): Promise<boolean> {
+    const subscriptionId = schedule.released_subscription;
+    if (!subscriptionId) return false;
+    const current = await this.stripe.retrieveSubscription(subscriptionId);
+    const items = (current.items?.data ?? []).map((item) => ({
+      priceId: item.price.id,
+      quantity: item.quantity,
+    }));
+    return purchasedItems(this.config.prices, items).plan === 'business';
+  }
+
+  /**
+   * `subscription_schedule.completed`, `.canceled` and `.aborted`: the
+   * schedule no longer manages the subscription, so no downgrade waits on
+   * it. The Organization that stored it forgets it, and hears nothing: none
+   * of these is a Keep Business. One that stores no such schedule changes
+   * nothing. The plan itself is the subscription events' to record.
    */
   private async onScheduleEnded(
     schedule: Stripe.SubscriptionSchedule,
@@ -746,7 +804,13 @@ export class BillingWebhookService {
    * (billing-allowance.ts), so it is stored verbatim.
    *
    * A plan that changes from Business to anything else — a downgrade to
-   * Starter taking effect — sends the custom-role email.
+   * Starter taking effect — sends the custom-role email. A cancel date set
+   * or cleared sends "Your plan ends on <date>" or "Your plan will carry on"
+   * (`plan-cancel.ts`).
+   *
+   * A plan that changes from one Hosted plan to the other sends "your plan
+   * changed" (`notifyPlanChanged`), when this sync's own write is the one
+   * that changed it.
    */
   private async syncFromSubscription(
     organizationId: string,
@@ -758,8 +822,6 @@ export class BillingWebhookService {
       quantity: item.quantity,
     }));
     const { plan, addOns } = purchasedItems(this.config.prices, items);
-    const planBefore = await this.storedPlan(organizationId);
-
     const values = {
       stripeSubscriptionId: stripeSubscription.id,
       plan,
@@ -770,37 +832,179 @@ export class BillingWebhookService {
         : {}),
       trialEndsAt: trialFactsOf(stripeSubscription).trialEndsAt,
       cancelAt: cancelAtOf(stripeSubscription),
-      // Paying again clears the lapse and the deletion clock's marks, and
-      // only those: a suspension is an Operator's to lift (ADR-0052).
-      ...(isPaidStatus(stripeSubscription.status)
-        ? {
-            lapsedAt: null,
-            paymentFailedAt: null,
-            lapseWarnedAt: null,
-            deletionWarnedAt: null,
-          }
-        : {}),
     };
-
     const begun = trialFactsOf(stripeSubscription).begun;
-    await this.db
-      .insert(subscription)
-      .values({
+
+    // The claims and the write they claim for commit together, or not at
+    // all: a claim taken by a write that then failed would leave the retry
+    // nothing to claim, and its email unsent. The row is locked first, so
+    // two syncs at once read the plan before one after the other.
+    const { planBefore, planChanged, cancelChange } = await this.db.transaction(
+      async (tx) => {
+        const [row] = await tx
+          .select({ plan: subscription.plan })
+          .from(subscription)
+          .where(eq(subscription.organizationId, organizationId))
+          .for('update');
+        const before = row?.plan ?? null;
+        const changed =
+          !!before &&
+          !!plan &&
+          before !== plan &&
+          (await this.claimPlanChange(tx, organizationId, before, plan));
+        const cancel = await claimCancelChange(
+          tx,
+          organizationId,
+          stripeSubscription,
+        );
+        await tx
+          .insert(subscription)
+          .values({
+            organizationId,
+            ...values,
+            ...(begun ? { firstSubscribedAt: new Date() } : {}),
+          })
+          .onConflictDoUpdate({
+            target: subscription.organizationId,
+            set: { ...values, ...(begun ? firstSubscribedNow() : {}) },
+          });
+        return {
+          planBefore: before,
+          planChanged: changed,
+          cancelChange: cancel,
+        };
+      },
+    );
+
+    // Right after the commit, and never throwing: the claims are taken, so
+    // a send that failed the webhook would be lost to its retry
+    // (CODING_STANDARDS §2.3).
+    await this.sendClaimed('plan cancel', () =>
+      notifyCancelChange(
+        this.db,
+        this.lapseNotifications,
+        `${this.config.siteUrl}/settings/billing`,
         organizationId,
-        ...values,
-        ...(begun ? { firstSubscribedAt: new Date() } : {}),
-      })
-      .onConflictDoUpdate({
-        target: subscription.organizationId,
-        set: { ...values, ...(begun ? firstSubscribedNow() : {}) },
-      });
+        plan,
+        cancelChange,
+        isTrialStatus(stripeSubscription.status),
+      ),
+    );
+    if (planBefore === 'business' && plan !== 'business') {
+      await this.sendClaimed('custom-roles-stopped', () =>
+        this.lapseNotifications.sendCustomRolesStopped(
+          organizationId,
+          plan === 'starter' ? 'starter' : 'ended',
+        ),
+      );
+    }
+    if (planChanged && plan) {
+      await this.sendClaimed('plan-changed', () =>
+        this.notifyPlanChanged(
+          organizationId,
+          stripeSubscription,
+          plan,
+          addOns,
+        ),
+      );
+    }
+
+    // Paying again clears the lapse and the deletion clock's marks, and
+    // only those: a suspension is an Operator's to lift (ADR-0052). Whoever
+    // clears a recorded failure says "payment received", once (#71).
+    await this.paymentReceived.paid(
+      organizationId,
+      PaymentReceived.of(stripeSubscription),
+    );
     await this.endLinkOnceActive(organizationId, stripeSubscription);
     await this.recordTrialStart(stripeSubscription);
     await this.notifyTrialStarted(organizationId, stripeSubscription);
-    if (planBefore === 'business' && plan !== 'business') {
-      await this.lapseNotifications.sendCustomRolesStopped(
+  }
+
+  /**
+   * An email whose conditional write already committed: a failure is logged
+   * and the webhook goes on, since a retry would find nothing left to claim.
+   */
+  private async sendClaimed(
+    kind: string,
+    send: () => Promise<void>,
+  ): Promise<void> {
+    try {
+      await send();
+    } catch (error) {
+      this.logger.error(
+        `Could not send the ${kind} email: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  /**
+   * Moves the stored plan from `before` to `after` in one conditional write,
+   * true when it was this write that did: the upgrade (`BillingService`)
+   * writes Business itself and a webhook retry carries the same plan again,
+   * so whichever records the change first sends its email, once.
+   */
+  private async claimPlanChange(
+    tx: DrizzleTx,
+    organizationId: string,
+    before: PlanName,
+    after: PlanName,
+  ): Promise<boolean> {
+    const [claimed] = await tx
+      .update(subscription)
+      .set({ plan: after })
+      .where(
+        and(
+          eq(subscription.organizationId, organizationId),
+          eq(subscription.plan, before),
+        ),
+      )
+      .returning({ id: subscription.id });
+    return !!claimed;
+  }
+
+  /**
+   * "Your plan changed", for a change the sync recorded: a switch during the
+   * Free trial, either way; an upgrade, with what its invoice charged today
+   * and the month from the renewal; or the scheduled move to Starter taking
+   * effect at the renewal.
+   */
+  private async notifyPlanChanged(
+    organizationId: string,
+    stripeSubscription: Stripe.Subscription,
+    plan: PlanName,
+    addOns: number,
+  ): Promise<void> {
+    const [planItem] = stripeSubscription.items?.data ?? [];
+    const at = (seconds: number | undefined) =>
+      typeof seconds === 'number' ? new Date(seconds * 1000) : new Date();
+    if (isTrialStatus(stripeSubscription.status)) {
+      const trialEndsOn =
+        trialFactsOf(stripeSubscription).trialEndsAt ?? new Date();
+      await this.planChanges.sendPlanChanged(
         organizationId,
-        plan === 'starter' ? 'starter' : 'ended',
+        { kind: 'trial-switch', to: plan, trialEndsOn },
+        plan,
+        addOns,
+      );
+    } else if (plan === 'business') {
+      await this.planChanges.sendPlanChanged(
+        organizationId,
+        {
+          kind: 'upgraded',
+          chargedToday:
+            await this.planChanges.chargedTodayOf(stripeSubscription),
+          from: at(planItem?.current_period_end),
+        },
+        plan,
+        addOns,
+      );
+    } else {
+      await this.planChanges.sendPlanChanged(
+        organizationId,
+        { kind: 'moved', from: at(planItem?.current_period_start) },
+        plan,
+        addOns,
       );
     }
   }
@@ -963,16 +1167,6 @@ export class BillingWebhookService {
    */
   private isBilledOutsideStripe(organizationId: string): Promise<boolean> {
     return isEnterprise(this.db, organizationId);
-  }
-
-  /** The plan the organization's row holds, before a write changes it. */
-  private async storedPlan(organizationId: string): Promise<PlanName | null> {
-    const [row] = await this.db
-      .select({ plan: subscription.plan })
-      .from(subscription)
-      .where(eq(subscription.organizationId, organizationId))
-      .limit(1);
-    return row?.plan ?? null;
   }
 
   private async organizationExists(organizationId: string): Promise<boolean> {

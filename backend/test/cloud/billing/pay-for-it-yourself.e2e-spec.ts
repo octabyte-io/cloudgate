@@ -327,6 +327,23 @@ describe('Pay for it yourself (e2e)', () => {
       ]);
     });
 
+    it('sends no "your plan changed" when the link ends: it is not a plan change', async () => {
+      mail.clear();
+
+      await postWebhook(
+        stripeEvent(
+          'customer.subscription.updated',
+          alansSubscription('active'),
+        ),
+      ).expect(200);
+
+      expect(
+        mail.sent.filter((sent) =>
+          sent.email.subject.startsWith('Your plan changed'),
+        ),
+      ).toEqual([]);
+    });
+
     it('ends the link once, however many events carry the active subscription', async () => {
       const active = alansSubscription('active');
       retrieveSubscription.mockResolvedValue(active);

@@ -17,6 +17,8 @@ import { FrozenGuard } from './frozen.guard';
 import { LapseClockService } from './lapse-clock.service';
 import { LapseNotifications } from './lapse-notifications.service';
 import { PaymentDisputes } from './payment-disputes.service';
+import { PaymentReceived } from './payment-received.service';
+import { PlanChangeNotifications } from './plan-change-notifications.service';
 import { STRIPE_API } from './stripe-api';
 import { StripeApiClient } from './stripe-api.client';
 import { StopPaying } from './stop-paying.service';
@@ -50,6 +52,8 @@ import { PurchasePayments } from './purchase-payments';
     LapseClockService,
     LapseNotifications,
     PaymentDisputes,
+    PaymentReceived,
+    PlanChangeNotifications,
     PurchasePayments,
     StopPaying,
     StripeWebhookEndpointCheck,
@@ -65,6 +69,8 @@ import { PurchasePayments } from './purchase-payments';
     LapseNotifications,
     PurchasePayments,
     BoughtServerClockSteps,
+    // Paying a Bought Server's failed invoice is a payment received (#71).
+    PaymentReceived,
     // A Bought Server is charged on the Hosted plan's subscription (ADR-0071).
     STRIPE_API,
   ],

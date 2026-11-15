@@ -14,6 +14,7 @@ import {
   boughtServer,
   boughtServerLine,
 } from '../../src/bought-servers/bought-server.schema';
+import { BoughtServerChangeSteps } from '../../src/bought-servers/bought-server-change-steps.service';
 import { BoughtServerStages } from '../../src/bought-servers/bought-server-stages.service';
 import { storageCommand } from '../../src/bought-servers/storage';
 import { STRIPE_API } from '../../src/cloud/billing/stripe-api';
@@ -508,6 +509,56 @@ describe('Extra storage on a Bought Server (e2e)', () => {
       });
     });
 
+    it('emails the owners once that the storage grew, with the new monthly price', async () => {
+      const id = await readyServer({ storageGb: 100 });
+      mail.clear();
+
+      const res = await grow(id, 250);
+
+      expect(res.status).toBe(200);
+      const sent = mail.to('grace@example.com');
+      expect(sent.map((one) => one.email.subject)).toEqual([
+        'Your Server web-1 now has 250 GB of extra storage',
+      ]);
+      // The Server's $25 and 250 GB of storage's $24.
+      expect(sent[0].email.html).toContain('$49.00 a month');
+      expect(sent[0].email.html).toContain(`/servers/${id}`);
+      expect(sent[0].email.html).not.toMatch(/hetzner/i);
+    });
+
+    it('sends nothing more when a resume reaches the finished change again', async () => {
+      const id = await readyServer({ storageGb: 100 });
+      expect((await grow(id, 250)).status).toBe(200);
+      const finished = await row(id);
+      const storage = (await lines(id)).find((line) => line.kind === 'storage');
+      mail.clear();
+      retrieveSubscription.mockClear();
+
+      // The row as a resume read it while the change was still running.
+      await ctx.app.get(BoughtServerChangeSteps).apply({
+        ...finished,
+        stage: 'changing',
+        storageGb: 100,
+        changeTarget: {
+          storageGb: 250,
+          charged: true,
+          lines: [
+            {
+              kind: 'storage',
+              stripePriceId: storage!.stripePriceId,
+              monthlyCents: 2400,
+            },
+          ],
+        },
+        changeTries: 1,
+      });
+
+      // It reached the finish, which reads the subscription, and lost the
+      // write that sends.
+      expect(retrieveSubscription).toHaveBeenCalled();
+      expect(mail.sent).toEqual([]);
+    });
+
     it('refuses a smaller size, or the same, before anything is charged', async () => {
       const id = await readyServer({ storageGb: 100 });
 
@@ -582,6 +633,10 @@ describe('Extra storage on a Bought Server (e2e)', () => {
         "We couldn't grow the extra storage of web-1 to 250 GB, so the payment was refunded",
       );
       expect(sent.email.html).not.toMatch(/hetzner/i);
+      // Its refund email only: the change was not made.
+      expect(
+        mail.sent.filter(({ email }) => email.subject.includes('now has')),
+      ).toEqual([]);
     });
 
     it('is Ready with the storage grown when the machine cannot be reached, for the next setup to grow', async () => {

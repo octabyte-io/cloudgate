@@ -14,6 +14,7 @@ import type {
   RenderedEmail,
 } from '../mail/templates';
 import { renderBoughtServerPriceChangeEmail } from '../mail/templates/bought-server-price-change';
+import { renderServerReadyEmail } from '../mail/templates/server-ready';
 import type { RefundedTo } from '../mail/templates';
 import type { BoughtServerOrphan } from './orphan-machine.schema';
 
@@ -116,6 +117,32 @@ export class BoughtServerNotifications {
         );
       }
     }
+  }
+
+  /**
+   * To every owner and admin (spec #69): the Bought Server reached Ready
+   * once its first setup ended, finished or failed. Sent once, by the write
+   * that moved it out of Setting up.
+   */
+  async sendReady(ready: {
+    organizationId: string;
+    serverId: string;
+    serverName: string;
+    firstSetup: 'finished' | 'failed';
+  }): Promise<void> {
+    const serverUrl = `${this.billing.siteUrl}/servers/${ready.serverId}`;
+    await this.audiences.sendToOwnersAndAdmins(
+      ready.organizationId,
+      'Bought Server ready',
+      (recipient, organizationName) =>
+        renderServerReadyEmail({
+          userName: recipient.name,
+          organizationName,
+          serverName: ready.serverName,
+          serverUrl,
+          firstSetup: ready.firstSetup,
+        }),
+    );
   }
 
   /** To the Organization's owner: the Server could not be made, and its payment was refunded in full. */
