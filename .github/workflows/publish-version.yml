@@ -1,20 +1,23 @@
 # Publishes a Cloudgate version (ADR-0082; CONTEXT.md, Cloudgate version):
-# the tarball the install downloads, on the GitHub Release for its tag, once
-# that tag's `E2E (release)` run is green.
+# the two tarballs the install downloads, linux-amd64 and linux-arm64, on the
+# GitHub Release for its tag, once that tag's `E2E (release)` run is green.
 #
 #   1. `git tag v0.3.0 && git push origin v0.3.0` starts `E2E (release)`;
 #   2. when that run ends green, this one checks the tag with
-#      deploy/version-gate.sh, builds the tarball with deploy/version-tarball.sh
-#      on ubuntu-24.04 (node-pty is compiled there, against the older of the
-#      two releases the install accepts), with the Node the install puts on a
-#      box;
-#   3. two clean runners, ubuntu-24.04 and ubuntu-26.04, each check the
-#      tarball's checksum, unpack it, migrate an empty Postgres from it and
-#      boot the backend and the console from it (deploy/version-smoke.sh), so
-#      the one tarball is proved on both releases the install accepts
-#      (ADR-0085);
-#   4. only then deploy/version-publish.sh creates the GitHub Release for the
-#      tag with the tarball and its .sha256;
+#      deploy/version-gate.sh and builds a tarball with
+#      deploy/version-tarball.sh on each CPU, ubuntu-24.04 and
+#      ubuntu-24.04-arm (node-pty is compiled natively there, against the
+#      older of the two releases the install accepts), with the Node the
+#      install puts on a box. The amd64 E2E run gates both: the code is the
+#      same, only the compiled module differs (ADR-0088);
+#   3. four clean runs, amd64 and arm64 on each of Ubuntu 24.04 and 26.04,
+#      each check their CPU's tarball checksum, unpack it, migrate an empty
+#      Postgres from it and boot the backend and the console from it
+#      (deploy/version-smoke.sh), so each tarball is proved on both releases
+#      the install accepts (ADR-0085). GitHub has no 26.04 Arm runner, so the
+#      arm64 26.04 run is an `ubuntu:26.04` container on the Arm runner;
+#   4. only when all four pass, deploy/version-publish.sh creates the GitHub
+#      Release for the tag with both tarballs and their .sha256, together;
 #   5. and it dispatches `Deploy the Hosted instance` (deploy-hosted.yml) with
 #      the tag and the commit E2E tested. That workflow cannot start from this
 #      one's `workflow_run`: this run was itself started by `workflow_run`, so
@@ -22,9 +25,9 @@
 #
 # A red E2E run, a tag moved since the commit E2E tested, a tag that is not on
 # main, or a tag that is not backend/package.json's version publishes nothing; so does a tarball that does
-# not boot on one of the two releases. Re-running this workflow on a tag whose release already has its
-# tarball leaves that release as it is: a published version is never replaced.
-# A release made by hand on github.com before this run gets the two files added.
+# not boot on one of the four runs. Re-running this workflow on a tag whose release already has its
+# tarballs leaves that release as it is: a published version is never replaced.
+# A release made by hand on github.com before this run gets the four files added.
 #
 # There is no workflow_dispatch: a version is published only from a green E2E
 # run of its tag. To publish again after a failure, re-run this workflow's run.
@@ -52,17 +55,25 @@ env:
 
 jobs:
   build:
-    name: Build the tarball
+    name: Build the ${{ matrix.cpu }} tarball
     # From E2E: only a green run on a pushed tag. deploy/version-gate.sh checks
     # the conclusion again, beside the tag.
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
       startsWith(github.event.workflow_run.head_branch, 'v')
-    runs-on: ubuntu-24.04
+    # Natively on each CPU: pty.node runs only on the CPU it was compiled for.
+    strategy:
+      matrix:
+        include:
+          - cpu: amd64
+            runner: ubuntu-24.04
+          - cpu: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     outputs:
-      tarball: ${{ steps.tarball.outputs.name }}
+      # The same on both: it is read from deploy/install.sh at the tag.
       node: ${{ steps.node.outputs.version }}
     steps:
       # Before the tag is used anywhere.
@@ -101,15 +112,15 @@ jobs:
           TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: bash deploy/version-gate.sh "$TAG"
 
-      - name: Build the tarball
-        id: tarball
+      - name: Build the ${{ matrix.cpu }} tarball
         run: |
           bash deploy/version-tarball.sh "$RUNNER_TEMP/version"
-          echo "name=cloudgate-${TAG#v}-linux-amd64.tar.gz" | tee -a "$GITHUB_OUTPUT"
+          # The script names it for the CPU it ran on; this is that CPU.
+          test -f "$RUNNER_TEMP/version/cloudgate-${TAG#v}-linux-${{ matrix.cpu }}.tar.gz"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: cloudgate-version
+          name: cloudgate-version-${{ matrix.cpu }}
           path: ${{ runner.temp }}/version/
           if-no-files-found: error
           retention-days: 7
@@ -117,16 +128,34 @@ jobs:
           compression-level: 0
 
   smoke:
-    name: Unpack, migrate and boot it on ${{ matrix.runner }}
+    name: Unpack, migrate and boot the ${{ matrix.cpu }} tarball on Ubuntu ${{ matrix.release }}
     needs: build
     # A runner with nothing installed from the repository: only the tarball,
     # Node and an empty Postgres, as on a box after the install's other steps.
-    # One per Ubuntu release the install accepts (ADR-0085); publish needs
-    # every one of them green.
+    # Each CPU on each Ubuntu release the install accepts (ADR-0085, ADR-0088);
+    # publish needs every one of them green. GitHub has no 26.04 Arm runner, so
+    # that one boots in an ubuntu:26.04 container on the 24.04 Arm runner, and
+    # reaches Postgres by its service name rather than the runner's loopback.
     strategy:
+      fail-fast: false
       matrix:
-        runner: [ubuntu-24.04, ubuntu-26.04]
+        include:
+          - cpu: amd64
+            release: '24.04'
+            runner: ubuntu-24.04
+          - cpu: amd64
+            release: '26.04'
+            runner: ubuntu-26.04
+          - cpu: arm64
+            release: '24.04'
+            runner: ubuntu-24.04-arm
+          - cpu: arm64
+            release: '26.04'
+            runner: ubuntu-24.04-arm
+            container: ubuntu:26.04
     runs-on: ${{ matrix.runner }}
+    # An empty image runs the job on the runner itself.
+    container: ${{ matrix.container || '' }}
     timeout-minutes: 15
     services:
       postgres:
@@ -140,6 +169,14 @@ jobs:
           --health-cmd "pg_isready -U cloudgate"
           --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
+      # A bare ubuntu:26.04 image has neither curl, which the smoke script
+      # asks the backend with, nor git, which a sparse checkout needs.
+      - name: curl and git in the ubuntu:26.04 container
+        if: matrix.container
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl git
+
       # The smoke script alone, not the tree: nothing else from the
       # repository is on this runner.
       - uses: actions/checkout@v4
@@ -155,16 +192,18 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: cloudgate-version
-          path: ${{ runner.temp }}/version
+          name: cloudgate-version-${{ matrix.cpu }}
+          # In the workspace rather than runner.temp, whose expression names
+          # the runner's path even inside the container.
+          path: version
 
-      - name: Unpack, migrate and boot ${{ needs.build.outputs.tarball }}
+      - name: Unpack, migrate and boot the ${{ matrix.cpu }} tarball
         env:
-          DATABASE_URL: postgresql://cloudgate:cloudgate@127.0.0.1:5432/cloudgate
+          DATABASE_URL: postgresql://cloudgate:cloudgate@${{ matrix.container && 'postgres' || '127.0.0.1' }}:5432/cloudgate
         run: |
           bash repository/deploy/version-smoke.sh \
-            "$RUNNER_TEMP/version/${{ needs.build.outputs.tarball }}" \
-            "$RUNNER_TEMP/cloudgate"
+            "$GITHUB_WORKSPACE/version/cloudgate-${TAG#v}-linux-${{ matrix.cpu }}.tar.gz" \
+            "$GITHUB_WORKSPACE/cloudgate"
 
   publish:
     name: Publish the GitHub Release
@@ -178,12 +217,14 @@ jobs:
         with:
           ref: refs/tags/${{ env.TAG }}
 
+      # Both CPUs' tarballs and checksums, side by side in one directory.
       - uses: actions/download-artifact@v4
         with:
-          name: cloudgate-version
+          pattern: cloudgate-version-*
+          merge-multiple: true
           path: ${{ runner.temp }}/version
 
-      - name: The release for ${{ env.TAG }}, with the tarball and its checksum
+      - name: The release for ${{ env.TAG }}, with both tarballs and their checksums
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash deploy/version-publish.sh "$TAG" "$RUNNER_TEMP/version"

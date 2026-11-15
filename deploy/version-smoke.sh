@@ -4,7 +4,7 @@
 # .github/workflows/publish-version.yml publishes it (ADR-0082):
 #
 #     DATABASE_URL=postgresql://…/empty bash deploy/version-smoke.sh \
-#       <dir>/cloudgate-<version>-linux-amd64.tar.gz <empty-dir>
+#       <dir>/cloudgate-<version>-linux-<cpu>.tar.gz <empty-dir>
 #
 # It checks the tarball against its .sha256, unpacks it into <empty-dir>,
 # migrates the empty database at DATABASE_URL with the tarball's own

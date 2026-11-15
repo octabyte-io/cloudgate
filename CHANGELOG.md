@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Every Cloudgate version is published for arm64 too
+
+A version tag now publishes two tarballs, `cloudgate-X.Y.Z-linux-amd64.tar.gz` and `cloudgate-X.Y.Z-linux-arm64.tar.gz`, each with its `.sha256`. Each is built natively, on an Ubuntu 24.04 amd64 runner and an Ubuntu 24.04 Arm runner, because node-pty's `pty.node` runs only on the CPU it was compiled for. Each tarball is unpacked, migrated and booted on Ubuntu 24.04 and 26.04 (the arm64 26.04 boot in an `ubuntu:26.04` container on the Arm runner), and the release is published only when all four boots pass, with all four files attached together: a published version always has both tarballs. The amd64 `E2E (release)` run still gates both (ADR-0088).
+
+**What to do on upgrade**: nothing.
+
 ### The platform host's Docker is the Servers' version, and nixpacks is pinned
 
 The install now installs the platform host's Docker with `get.docker.com --version 29.9.3`, the version the Server setup gives every Server, which moves from 28.5.0 to 29.9.3 because Docker builds no 28.5.0 for Ubuntu 26.04. A fresh platform host therefore runs the Docker version its Servers get, and two installs a week apart get the same Docker and nixpacks. nixpacks comes from its GitHub release, version 1.41.0, checked against a pinned sha256 before it is installed to `/usr/local/bin/nixpacks`; a tarball that does not match stops the run. The install no longer runs `https://nixpacks.com/install.sh`, and the preflight no longer probes `nixpacks.com` (`docs/deploy.md` §7, "Docker and nixpacks").
