@@ -43,6 +43,7 @@ import { PaymentReceived } from './payment-received.service';
 import { PlanChangeNotifications } from './plan-change-notifications.service';
 import { BoughtServerClockSteps } from './bought-server-clock-steps';
 import { PurchasePayments } from './purchase-payments';
+import { forgetKeptSchedule } from './keep-business';
 import { scheduleFollowingSubscription } from './plan-downgrade';
 import type { HandledEvent, HandledEventType } from './stripe-webhook-events';
 
@@ -143,7 +144,7 @@ export class BillingWebhookService {
       'customer.subscription.pending_update_expired': (sub) =>
         this.purchasePayments.pendingUpdateExpired(sub),
       'subscription_schedule.released': (schedule) =>
-        this.onScheduleEnded(schedule),
+        this.onScheduleReleased(schedule),
       'subscription_schedule.completed': (schedule) =>
         this.onScheduleEnded(schedule),
       'subscription_schedule.canceled': (schedule) =>
@@ -265,12 +266,64 @@ export class BillingWebhookService {
   }
 
   /**
-   * `subscription_schedule.released`, `.completed`, `.canceled` and
-   * `.aborted`: the schedule no longer manages the subscription, so no
-   * downgrade waits on it. The Organization that stored it forgets it; one
-   * that stores no such schedule (Keep Business already forgot it, or it was
-   * never a downgrade's) changes nothing. The plan itself is the subscription
-   * events' to record.
+   * `subscription_schedule.released`: a Keep Business whose release got here
+   * before `BillingService.keepBusiness` forgot the schedule, or any other
+   * release of a schedule still stored. The schedule is forgotten either way;
+   * the clear that finds it sends "you stay on Business" when the release
+   * was a Keep Business (`forgetKeptSchedule`), once.
+   *
+   * Telling the two apart: the move taking effect is never a Keep Business.
+   * `settleDowngrade` forgets the schedule before it releases it, so that
+   * release finds nothing stored; and a release that still finds one is a
+   * Keep Business only while the subscription it let go is on Business at
+   * Stripe, read before the clear, so a Stripe failure leaves the clear to
+   * the retry. A schedule `.completed`, `.canceled` or `.aborted` never is.
+   */
+  private async onScheduleReleased(
+    schedule: Stripe.SubscriptionSchedule,
+  ): Promise<void> {
+    const [stored] = await this.db
+      .select({ id: subscription.id })
+      .from(subscription)
+      .where(
+        and(
+          eq(subscription.stripeScheduleId, schedule.id),
+          eq(subscription.enterprise, false),
+        ),
+      )
+      .limit(1);
+    if (!stored) return;
+    const keptBusiness = await this.releasedOnBusiness(schedule);
+    const kept = await forgetKeptSchedule(this.db, null, schedule.id);
+    if (!kept || !keptBusiness) return;
+    await this.planChanges.sendPlanChanged(
+      kept.organizationId,
+      { kind: 'kept-business', from: kept.movesOn ?? new Date() },
+      'business',
+      kept.addOns,
+    );
+  }
+
+  /** Whether the subscription a released schedule let go carries Business at Stripe. */
+  private async releasedOnBusiness(
+    schedule: Stripe.SubscriptionSchedule,
+  ): Promise<boolean> {
+    const subscriptionId = schedule.released_subscription;
+    if (!subscriptionId) return false;
+    const current = await this.stripe.retrieveSubscription(subscriptionId);
+    const items = (current.items?.data ?? []).map((item) => ({
+      priceId: item.price.id,
+      quantity: item.quantity,
+    }));
+    return purchasedItems(this.config.prices, items).plan === 'business';
+  }
+
+  /**
+   * `subscription_schedule.completed`, `.canceled` and `.aborted`: the
+   * schedule no longer manages the subscription, so no downgrade waits on
+   * it. The Organization that stored it forgets it, and hears nothing: none
+   * of these is a Keep Business. One that stores no such schedule changes
+   * nothing. The plan itself is the subscription events' to record.
    */
   private async onScheduleEnded(
     schedule: Stripe.SubscriptionSchedule,

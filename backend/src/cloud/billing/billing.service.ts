@@ -69,6 +69,7 @@ import {
   scheduledMoveOf,
 } from './plan-downgrade';
 import type { ScheduledMove } from './plan-downgrade';
+import { forgetKeptSchedule } from './keep-business';
 import {
   customerIdOf,
   firstChargePreviewParams,
@@ -1276,10 +1277,12 @@ export class BillingService {
    * the subscription on Business as it is, with nothing charged, and forgets
    * the schedule. Refused when no downgrade waits.
    *
-   * The schedule is forgotten first, in one conditional write, so the
-   * release's own `subscription_schedule.released` finds nothing to clear
-   * and the write that took the move back sends "you stay on Business",
-   * once. A release Stripe refuses puts the schedule back.
+   * Released at Stripe first, then forgotten: forgetting first would leave
+   * the row saying no move waits while Stripe still moves to Starter, should
+   * anything stop between the two. The release's own
+   * `subscription_schedule.released` may get there before this forgets it;
+   * whichever conditional clear of the schedule wins sends "you stay on
+   * Business" (`forgetKeptSchedule`), once.
    */
   async keepBusiness(ctx: PermissionCtx): Promise<{ plan: PlanName }> {
     this.assertCloud();
@@ -1294,39 +1297,18 @@ export class BillingService {
         code: 'NO_DOWNGRADE_WAITING',
       });
     }
-    const { stripeScheduleId, downgradeAt } = row;
-    const forgotten = await this.db
-      .update(subscription)
-      .set({ stripeScheduleId: null, downgradeAt: null })
-      .where(
-        and(
-          eq(subscription.organizationId, organizationId),
-          eq(subscription.stripeScheduleId, stripeScheduleId),
-        ),
-      )
-      .returning({ addOns: subscription.addOns });
-    try {
-      await this.stripe.releaseSubscriptionSchedule(stripeScheduleId);
-    } catch (error) {
-      if (forgotten.length > 0) {
-        await this.db
-          .update(subscription)
-          .set({ stripeScheduleId, downgradeAt })
-          .where(
-            and(
-              eq(subscription.organizationId, organizationId),
-              isNull(subscription.stripeScheduleId),
-            ),
-          );
-      }
-      throw error;
-    }
-    if (forgotten.length > 0) {
+    await this.stripe.releaseSubscriptionSchedule(row.stripeScheduleId);
+    const kept = await forgetKeptSchedule(
+      this.db,
+      organizationId,
+      row.stripeScheduleId,
+    );
+    if (kept) {
       await this.planChanges.sendPlanChanged(
         organizationId,
-        { kind: 'kept-business', from: downgradeAt ?? new Date() },
+        { kind: 'kept-business', from: kept.movesOn ?? new Date() },
         'business',
-        forgotten[0].addOns,
+        kept.addOns,
       );
     }
     return { plan: 'business' };

@@ -655,10 +655,21 @@ describe('Downgrading Business to Starter (e2e)', () => {
 
       const [scheduleId] = schedules.ids();
       await renewal(scheduleId);
-      // Stripe delivers the renewal again: nothing more.
+      // Stripe delivers the renewal again, and the release's own event
+      // twice: nothing more, and never "stays on Business".
       expect(
         (await postWebhook('customer.subscription.updated', atStripe)).status,
       ).toBe(200);
+      for (let i = 0; i < 2; i++) {
+        expect(
+          (
+            await postWebhook(
+              'subscription_schedule.released',
+              schedules.get(scheduleId),
+            )
+          ).status,
+        ).toBe(200);
+      }
 
       for (const address of [OWNER, ADMIN]) {
         const sent = planChanged(address);
@@ -683,14 +694,18 @@ describe('Downgrading Business to Starter (e2e)', () => {
       recorder.clear();
 
       expect((await keepBusiness(owner.cookie)).status).toBe(200);
-      expect(
-        (
-          await postWebhook(
-            'subscription_schedule.released',
-            schedules.get(scheduleId),
-          )
-        ).status,
-      ).toBe(200);
+      // The release's own event, after Keep Business forgot the schedule,
+      // and delivered again.
+      for (let i = 0; i < 2; i++) {
+        expect(
+          (
+            await postWebhook(
+              'subscription_schedule.released',
+              schedules.get(scheduleId),
+            )
+          ).status,
+        ).toBe(200);
+      }
 
       for (const address of [OWNER, ADMIN]) {
         const sent = planChanged(address);
@@ -706,6 +721,95 @@ describe('Downgrading Business to Starter (e2e)', () => {
         );
       }
       expect(planChanged(MEMBER)).toEqual([]);
+    });
+
+    it('Keep Business emails "stays on Business" once when subscription_schedule.released gets there before Keep Business forgets the schedule', async () => {
+      const owner = await givenBusinessWithAdmin();
+      expect((await downgrade(owner.cookie)).status).toBe(200);
+      const [scheduleId] = schedules.ids();
+      // Stripe delivers `subscription_schedule.released` before its answer
+      // to the release reaches Keep Business.
+      const release = schedules.methods.releaseSubscriptionSchedule;
+      const released = release.getMockImplementation()!;
+      release.mockImplementation(async (id) => {
+        const schedule = await released(id);
+        expect(
+          (await postWebhook('subscription_schedule.released', schedule))
+            .status,
+        ).toBe(200);
+        return schedule;
+      });
+      recorder.clear();
+
+      expect((await keepBusiness(owner.cookie)).status).toBe(200);
+      // Delivered again.
+      expect(
+        (
+          await postWebhook(
+            'subscription_schedule.released',
+            schedules.get(scheduleId),
+          )
+        ).status,
+      ).toBe(200);
+
+      for (const address of [OWNER, ADMIN]) {
+        expect(planChanged(address).map((one) => one.subject)).toEqual([
+          'Your plan changed: Hopper Labs stays on Business',
+        ]);
+      }
+      expect(await storedRow(owner.organizationId)).toEqual(
+        expect.objectContaining({
+          plan: 'business',
+          stripeScheduleId: null,
+          downgradeAt: null,
+        }),
+      );
+    });
+
+    it('Keep Business that Stripe refuses leaves the move waiting and sends nothing', async () => {
+      const owner = await givenBusinessWithAdmin();
+      expect((await downgrade(owner.cookie)).status).toBe(200);
+      const [scheduleId] = schedules.ids();
+      schedules.methods.releaseSubscriptionSchedule.mockRejectedValueOnce(
+        new Error('Stripe is down'),
+      );
+      recorder.clear();
+
+      expect((await keepBusiness(owner.cookie)).status).toBe(500);
+
+      expect(await storedRow(owner.organizationId)).toEqual(
+        expect.objectContaining({ stripeScheduleId: scheduleId }),
+      );
+      expect(planChanged(OWNER)).toEqual([]);
+    });
+
+    it('a schedule released after its move to Starter took effect at Stripe never sends "stays on Business", even before the move’s own event', async () => {
+      const owner = await givenBusinessWithAdmin();
+      expect((await downgrade(owner.cookie)).status).toBe(200);
+      const [scheduleId] = schedules.ids();
+      recorder.clear();
+
+      // Stripe is in the Starter phase, and lets the schedule go, before
+      // `customer.subscription.updated` for the move arrives.
+      atStripe = schedules.advance(scheduleId);
+      await schedules.methods.releaseSubscriptionSchedule(scheduleId);
+      expect(
+        (
+          await postWebhook(
+            'subscription_schedule.released',
+            schedules.get(scheduleId),
+          )
+        ).status,
+      ).toBe(200);
+      expect(
+        (await postWebhook('customer.subscription.updated', atStripe)).status,
+      ).toBe(200);
+
+      for (const address of [OWNER, ADMIN]) {
+        expect(planChanged(address).map((one) => one.subject)).toEqual([
+          'Your plan changed: Hopper Labs is now on Starter',
+        ]);
+      }
     });
 
     it('sends nothing for a move refused while one already waits', async () => {
