@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { parse } from 'yaml';
 
 /**
  * The Hosted instance's updater, `deploy/hosted-update.sh`, as
@@ -10,7 +11,8 @@ import * as path from 'node:path';
  * otherwise, and the tag's raw `install.sh` is a stand-in that records what it
  * was run with and writes the install directory's VERSION as the real one
  * does. `id`, `sudo`, `systemd-run`, `journalctl` and `systemctl` are stubbed
- * too; the systemd-run stub runs the unit's command in place.
+ * too; the systemd-run stub runs the unit's command in place. `uname -m`
+ * answers UNAME_M, x86_64 unless a test says otherwise.
  */
 const repoRoot = path.resolve(__dirname, '../../..');
 const updater = path.join(repoRoot, 'deploy/hosted-update.sh');
@@ -51,6 +53,10 @@ echo "systemctl $*" >> "$STUB_LOG/order"
 `,
   sleep: `#!/usr/bin/env bash
 true
+`,
+  uname: `#!/usr/bin/env bash
+[ "$1" = -m ] && { echo "\${UNAME_M:-x86_64}"; exit 0; }
+exec /usr/bin/uname "$@"
 `,
   // GitHub. A missing release is curl -f's exit 22, no network is 6.
   curl: `#!/usr/bin/env bash
@@ -208,6 +214,44 @@ describe('deploy/hosted-update.sh (cloudgate-update)', () => {
     );
   });
 
+  // ADR-0088: an Arm Hosted box installs the arm64 tarball, so that is the
+  // one whose publication it asks about.
+  it('on an arm64 box, asks for the arm64 tarball’s .sha256, then backs up and installs', () => {
+    const upgraded = run(['v0.3.0'], { UNAME_M: 'aarch64' });
+
+    expect(upgraded.stderr).toBe('');
+    expect(upgraded.status).toBe(0);
+    expect(log('calls')).toContain(
+      `curl ${RELEASES}/v0.3.0/cloudgate-0.3.0-linux-arm64.tar.gz.sha256\n`,
+    );
+    expect(log('calls')).not.toContain('linux-amd64');
+    expect(log('order')).toBe(
+      'systemctl start cloudgate-backup.service\ninstall\n',
+    );
+  });
+
+  it('on an arm64 box, refuses a tag whose arm64 tarball is not published, before the backup', () => {
+    const refused = run(['v0.3.0'], {
+      UNAME_M: 'aarch64',
+      CURL_SHA256_EXIT: '22',
+    });
+
+    expect(refused.status).not.toBe(0);
+    expect(refused.stderr).toContain(
+      `v0.3.0 has no published release (${RELEASES}/v0.3.0/cloudgate-0.3.0-linux-arm64.tar.gz.sha256)`,
+    );
+    expect(log('order')).toBe('');
+  });
+
+  it('refuses a box whose CPU no version is built for, before the backup', () => {
+    const refused = run(['v0.3.0'], { UNAME_M: 'riscv64' });
+
+    expect(refused.status).not.toBe(0);
+    expect(refused.stderr).toContain("this box's CPU, riscv64");
+    expect(log('calls')).not.toContain('curl');
+    expect(log('order')).toBe('');
+  });
+
   it('says GitHub could not be asked, rather than that the tag is unpublished, before the backup', () => {
     const refused = run(['v0.3.0'], { CURL_SHA256_EXIT: '6' });
 
@@ -253,5 +297,86 @@ describe('deploy/hosted-update.sh (cloudgate-update)', () => {
     expect(refused.status).toBe(1);
     expect(refused.stderr).toContain('--apply runs as root');
     expect(log('calls')).toBe('');
+  });
+});
+
+/**
+ * `.github/workflows/deploy-hosted.yml`'s by-hand check, run with no tested
+ * commit, that the tag is a published version before the gate and the SSH. A
+ * box may be either CPU (ADR-0088), so the release must carry both tarballs.
+ * The step's script runs here as written, with `gh` a stub that lists the
+ * release's assets.
+ */
+describe('.github/workflows/deploy-hosted.yml by hand checks the tag’s Cloudgate version is published', () => {
+  function step(): string {
+    const workflow = parse(
+      fs.readFileSync(
+        path.join(repoRoot, '.github/workflows/deploy-hosted.yml'),
+        'utf8',
+      ),
+      { logLevel: 'error' },
+    ) as {
+      jobs: Record<string, { steps: { name?: string; run?: string }[] }>;
+    };
+    const found = Object.values(workflow.jobs)
+      .flatMap((job) => job.steps)
+      .find((s) => s.name === "The tag's Cloudgate version is published");
+    if (!found?.run) throw new Error('no published-version step');
+    return found.run;
+  }
+
+  function check(assets: string[] | 'not found') {
+    const ghBin = path.join(scratch, 'gh-bin');
+    fs.mkdirSync(ghBin, { recursive: true });
+    fs.writeFileSync(
+      path.join(ghBin, 'gh'),
+      assets === 'not found'
+        ? '#!/usr/bin/env bash\necho "release not found" >&2\nexit 1\n'
+        : `#!/usr/bin/env bash\nprintf '%s\\n' ${assets.map((a) => `'${a}'`).join(' ')}\n`,
+      { mode: 0o755 },
+    );
+    return spawnSync('bash', ['-eo', 'pipefail', '-c', step()], {
+      env: {
+        PATH: `${ghBin}:${process.env.PATH}`,
+        TAG: 'v0.3.0',
+        GITHUB_REPOSITORY: 'octabyte-io/cloudgate',
+      },
+      encoding: 'utf8',
+    });
+  }
+
+  const BOTH = ['amd64', 'arm64'].flatMap((cpu) => [
+    `cloudgate-0.3.0-linux-${cpu}.tar.gz`,
+    `cloudgate-0.3.0-linux-${cpu}.tar.gz.sha256`,
+  ]);
+
+  // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
+  it('passes a release that carries both tarballs', () => {
+    const passed = check(BOTH);
+
+    expect(passed.stdout + passed.stderr).toBe('');
+    expect(passed.status).toBe(0);
+  });
+
+  it.each(['amd64', 'arm64'])(
+    // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
+    'stops a release without its %s tarball, naming it',
+    (cpu) => {
+      const stopped = check(
+        BOTH.filter((name) => name !== `cloudgate-0.3.0-linux-${cpu}.tar.gz`),
+      );
+
+      expect(stopped.status).toBe(1);
+      expect(stopped.stdout).toContain(
+        `v0.3.0 has no published release with cloudgate-0.3.0-linux-${cpu}.tar.gz`,
+      );
+    },
+  );
+
+  it('stops a tag with no release', () => {
+    const stopped = check('not found');
+
+    expect(stopped.status).toBe(1);
+    expect(stopped.stdout).toContain('v0.3.0 has no published release.');
   });
 });

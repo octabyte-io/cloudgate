@@ -11,7 +11,8 @@ import { checkInstanceModeBoot } from '../../src/instance-mode/instance-mode';
  *
  * Every run of install.sh here has `id` shimmed to answer a non-root uid, so a
  * script that got past the input check would stop at "must run as root" rather
- * than touch this machine.
+ * than touch this machine. `uname -m` answers `UNAME_M` (x86_64 unless a test
+ * says otherwise), so the CPU is the test's, not this machine's.
  */
 const repoRoot = path.resolve(__dirname, '../../..');
 const installer = path.join(repoRoot, 'deploy/install.sh');
@@ -52,6 +53,11 @@ beforeAll(() => {
   fs.writeFileSync(path.join(bin, 'id'), '#!/bin/sh\necho 1000\n', {
     mode: 0o755,
   });
+  fs.writeFileSync(
+    path.join(bin, 'uname'),
+    '#!/bin/sh\n[ "$1" = -m ] && echo "${UNAME_M:-x86_64}" || echo Linux\n',
+    { mode: 0o755 },
+  );
   shimPath = `${bin}:${process.env.PATH}`;
 });
 
@@ -153,6 +159,47 @@ describe('deploy/install.sh', () => {
 
     expect(run.stderr).not.toContain('cannot continue without');
     expect(run.stderr).toContain('must run as root');
+  });
+
+  // ADR-0088: Arm for the Hosted instance only.
+  describe('on an arm64 box', () => {
+    it('goes on to the install proper with HOSTED_MODE=true', () => {
+      if (fs.existsSync('/etc/default/cloudgate-hosted')) return;
+      const run = install({
+        HOSTED_MODE: 'true',
+        UNAME_M: 'aarch64',
+        ...INPUTS,
+      });
+
+      expect(run.stderr).not.toContain('Arm for the Hosted instance only');
+      expect(run.stderr).toContain('must run as root');
+    });
+
+    it.each<Record<string, string>>([{}, { HOSTED_MODE: 'false' }])(
+      'refuses the Self-hosted install before touching the box, naming the CPU, with %j',
+      (extra) => {
+        if (fs.existsSync('/etc/default/cloudgate-hosted')) return;
+        const run = install({ UNAME_M: 'aarch64', ...extra });
+
+        expect(run.status).toBe(1);
+        expect(run.stderr).toContain(
+          'This platform host is arm64 (aarch64). Cloudgate supports Arm for the Hosted instance only',
+        );
+        expect(run.stderr).toContain('Nothing was changed.');
+        expect(run.stderr).not.toContain('must run as root');
+        expect(run.stdout).not.toContain('==>');
+      },
+    );
+  });
+
+  it('refuses a CPU that is neither amd64 nor arm64, even for the Hosted instance', () => {
+    const run = install({ HOSTED_MODE: 'true', UNAME_M: 'riscv64', ...INPUTS });
+
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain(
+      'this platform host is riscv64. Nothing was changed.',
+    );
+    expect(run.stderr).not.toContain('must run as root');
   });
 });
 

@@ -6,7 +6,8 @@ import { parse } from 'yaml';
 
 /**
  * `deploy/version-publish.sh`, the last step of publish-version.yml: it puts
- * the Cloudgate version tarball and its checksum on the tag's GitHub Release.
+ * the Cloudgate version's two tarballs, linux-amd64 and linux-arm64, and their
+ * checksums on the tag's GitHub Release, all four or none (ADR-0088).
  * `gh` is a shim that answers `release view` as the test says GitHub would and
  * records every other call, so nothing reaches GitHub.
  */
@@ -15,6 +16,9 @@ const script = path.join(repoRoot, 'deploy/version-publish.sh');
 
 const TARBALL = 'cloudgate-0.3.0-linux-amd64.tar.gz';
 const CHECKSUM = `${TARBALL}.sha256`;
+const ARM64_TARBALL = 'cloudgate-0.3.0-linux-arm64.tar.gz';
+const ARM64_CHECKSUM = `${ARM64_TARBALL}.sha256`;
+const FILES = [TARBALL, CHECKSUM, ARM64_TARBALL, ARM64_CHECKSUM];
 
 let scratch: string;
 let tree: string;
@@ -28,8 +32,10 @@ beforeEach(() => {
   calls = path.join(scratch, 'calls');
   fs.mkdirSync(tree);
   fs.mkdirSync(dist);
-  fs.writeFileSync(path.join(dist, TARBALL), 'tarball');
-  fs.writeFileSync(path.join(dist, CHECKSUM), `abc  ${TARBALL}\n`);
+  for (const tarball of [TARBALL, ARM64_TARBALL]) {
+    fs.writeFileSync(path.join(dist, tarball), 'tarball');
+    fs.writeFileSync(path.join(dist, `${tarball}.sha256`), `abc  ${tarball}\n`);
+  }
   fs.writeFileSync(
     path.join(tree, 'CHANGELOG.md'),
     `# Changelog
@@ -98,7 +104,7 @@ function called(): string[] {
 
 describe('deploy/version-publish.sh', () => {
   // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
-  it('creates the release for the tag with the tarball and its checksum, its notes the version CHANGELOG section', () => {
+  it('creates the release for the tag with both tarballs and their checksums, its notes the version CHANGELOG section', () => {
     const published = run('not found');
 
     expect(published.stderr).toBe('');
@@ -106,7 +112,7 @@ describe('deploy/version-publish.sh', () => {
     const [create, ...rest] = called();
     expect(rest).toEqual([]);
     expect(create.replace(/--notes-file \S+$/, '--notes-file <notes>')).toBe(
-      `gh release create v0.3.0 ${dist}/${TARBALL} ${dist}/${CHECKSUM} --verify-tag --title Cloudgate 0.3.0 --notes-file <notes>`,
+      `gh release create v0.3.0 ${FILES.map((file) => `${dist}/${file}`).join(' ')} --verify-tag --title Cloudgate 0.3.0 --notes-file <notes>`,
     );
     const notes = fs.readFileSync(path.join(scratch, 'notes'), 'utf8');
     expect(notes).toContain('### Install a Cloudgate version');
@@ -115,27 +121,27 @@ describe('deploy/version-publish.sh', () => {
   });
 
   // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
-  it('adds both files to a release made by hand that has neither', () => {
+  it('adds all four files to a release made by hand that has none of them', () => {
     const published = run({ assets: ['notes.pdf'] });
 
     expect(published.status).toBe(0);
     expect(called()).toEqual([
-      `gh release upload v0.3.0 ${dist}/${TARBALL} ${dist}/${CHECKSUM}`,
+      `gh release upload v0.3.0 ${FILES.map((file) => `${dist}/${file}`).join(' ')}`,
     ]);
   });
 
   // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
-  it('leaves a release that already has both files as it is', () => {
-    const rerun = run({ assets: [TARBALL, CHECKSUM] });
+  it('leaves a release that already has all four files as it is', () => {
+    const rerun = run({ assets: FILES });
 
     expect(rerun.status).toBe(0);
     expect(rerun.stdout).toContain(
-      'v0.3.0 already has its tarball and checksum',
+      'v0.3.0 already has its tarballs and checksums',
     );
     expect(called()).toEqual([]);
   });
 
-  it.each([[TARBALL], [CHECKSUM]])(
+  it.each(FILES.map((file) => [file]))(
     // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
     'replaces nothing on a release that holds only %s',
     (held) => {
@@ -143,6 +149,28 @@ describe('deploy/version-publish.sh', () => {
 
       expect(refused.status).toBe(1);
       expect(refused.stderr).toContain(`v0.3.0 already holds ${held}`);
+      expect(called()).toEqual([]);
+    },
+  );
+
+  // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
+  it('replaces nothing on a release that holds only the amd64 tarball and checksum', () => {
+    const refused = run({ assets: [TARBALL, CHECKSUM] });
+
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain('but not all four files');
+    expect(called()).toEqual([]);
+  });
+
+  it.each(FILES.map((file) => [file]))(
+    'publishes nothing when %s was not built',
+    (missing) => {
+      fs.rmSync(path.join(dist, missing));
+      const refused = run('not found');
+
+      expect(refused.status).toBe(1);
+      expect(refused.stderr).toContain(`${dist}/${missing} is not there`);
+      expect(refused.stderr).toContain('nothing was published');
       expect(called()).toEqual([]);
     },
   );
@@ -158,16 +186,21 @@ describe('deploy/version-publish.sh', () => {
 });
 
 /**
- * `.github/workflows/publish-version.yml` itself: the tarball is built on
- * Ubuntu 24.04 and booted by the smoke check on 24.04 and 26.04, the two
- * releases the install accepts (ADR-0085), before anything is published.
+ * `.github/workflows/publish-version.yml` itself: a tarball is built natively
+ * on each CPU on Ubuntu 24.04, and each is booted by the smoke check on 24.04
+ * and 26.04, the two releases the install accepts (ADR-0085, ADR-0088),
+ * before anything is published.
  */
 describe('.github/workflows/publish-version.yml', () => {
   interface Job {
     'runs-on': string;
+    container?: string;
     needs?: string | string[];
     if?: string;
-    strategy?: { matrix?: Record<string, unknown> };
+    strategy?: {
+      'fail-fast'?: boolean;
+      matrix?: { include?: Record<string, string>[] };
+    };
   }
 
   function jobs(): Record<string, Job> {
@@ -181,27 +214,43 @@ describe('.github/workflows/publish-version.yml', () => {
     return workflow.jobs;
   }
 
-  /** Every runner a job runs on, its matrix expanded. */
-  function runners(job: Job): string[] {
-    const fromMatrix = /^\$\{\{\s*matrix\.(\w+)\s*\}\}$/.exec(job['runs-on']);
-    if (!fromMatrix) return [job['runs-on']];
-    const values = job.strategy?.matrix?.[fromMatrix[1]];
-    if (!Array.isArray(values)) throw new Error(`no matrix.${fromMatrix[1]}`);
-    return values.map(String);
+  /** A job's matrix entries. */
+  function include(job: Job): Record<string, string>[] {
+    const entries = job.strategy?.matrix?.include;
+    if (!Array.isArray(entries)) throw new Error('no matrix.include');
+    return entries;
   }
 
-  it('builds the tarball on Ubuntu 24.04', () => {
-    expect(runners(jobs().build)).toEqual(['ubuntu-24.04']);
+  it('builds a tarball on each CPU, natively, on Ubuntu 24.04', () => {
+    const build = jobs().build;
+
+    expect(build['runs-on']).toBe('${{ matrix.runner }}');
+    expect(include(build).map(({ cpu, runner }) => `${cpu} ${runner}`)).toEqual(
+      ['amd64 ubuntu-24.04', 'arm64 ubuntu-24.04-arm'],
+    );
   });
 
-  it('runs the smoke check on Ubuntu 24.04 and 26.04', () => {
-    expect(runners(jobs().smoke).sort()).toEqual([
-      'ubuntu-24.04',
-      'ubuntu-26.04',
+  it('boots each tarball on Ubuntu 24.04 and 26.04, the arm64 26.04 one in a 26.04 container on the Arm runner', () => {
+    const smoke = jobs().smoke;
+
+    expect(smoke['runs-on']).toBe('${{ matrix.runner }}');
+    expect(smoke.container).toBe("${{ matrix.container || '' }}");
+    expect(
+      include(smoke)
+        .map(
+          ({ cpu, release, runner, container }) =>
+            `${cpu} ${release} ${runner} ${container ?? '-'}`,
+        )
+        .sort(),
+    ).toEqual([
+      'amd64 24.04 ubuntu-24.04 -',
+      'amd64 26.04 ubuntu-26.04 -',
+      'arm64 24.04 ubuntu-24.04-arm -',
+      'arm64 26.04 ubuntu-24.04-arm ubuntu:26.04',
     ]);
   });
 
-  it('publishes only once the smoke check has passed on both', () => {
+  it('publishes only once the smoke check has passed on all four', () => {
     const publish = jobs().publish;
 
     expect([publish.needs].flat()).toContain('smoke');

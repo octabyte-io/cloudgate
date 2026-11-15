@@ -5,18 +5,22 @@
 #
 #     bash deploy/version-publish.sh v0.3.0 <dir>
 #
-# <dir> holds what deploy/version-tarball.sh wrote. .github/workflows/
-# publish-version.yml runs it last, after the tarball has been smoke-booted.
+# <dir> holds what deploy/version-tarball.sh wrote on each CPU: the
+# linux-amd64 and linux-arm64 tarballs, each with its .sha256 (ADR-0088).
+# .github/workflows/publish-version.yml runs it last, after every tarball has
+# been smoke-booted. A version always has both tarballs: with any of the four
+# files missing from <dir>, nothing is published.
 #
-#   no release for the tag     creates it, the tarball and checksum attached
-#                              and CHANGELOG.md's section for the version as
-#                              its notes
-#   a release with neither     attaches both (one made by hand on github.com)
-#   a release with both        leaves it as it is: a re-run never replaces a
+#   no release for the tag     creates it, the four files attached and
+#                              CHANGELOG.md's section for the version as its
+#                              notes
+#   a release with none        attaches all four (one made by hand on
+#                              github.com)
+#   a release with all four    leaves it as it is: a re-run never replaces a
 #                              version someone may have installed
-#   a release with one         refuses, replacing nothing; a person looks
+#   a release with some        refuses, replacing nothing; a person looks
 #
-# Exit 0 when the release has both files, 1 otherwise.
+# Exit 0 when the release has all four files, 1 otherwise.
 #
 # backend/test/deploy/version-publish.spec.ts runs it with gh shimmed.
 
@@ -32,10 +36,16 @@ dir="${2:-}"
 [[ "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]] ||
   fail "A Cloudgate version tag is vX.Y.Z, not \"$tag\"."
 version="${BASH_REMATCH[1]}"
-tarball="cloudgate-$version-linux-amd64.tar.gz"
-checksum="$tarball.sha256"
-for file in "$tarball" "$checksum"; do
-  [ -f "$dir/$file" ] || fail "$dir/$file is not there; build it with deploy/version-tarball.sh."
+files=()
+for cpu in amd64 arm64; do
+  files+=("cloudgate-$version-linux-$cpu.tar.gz" "cloudgate-$version-linux-$cpu.tar.gz.sha256")
+done
+paths=()
+for file in "${files[@]}"; do
+  [ -f "$dir/$file" ] ||
+    fail "$dir/$file is not there; build it with deploy/version-tarball.sh on its CPU." \
+      "A version is published with both tarballs or not at all, so nothing was published."
+  paths+=("$dir/$file")
 done
 
 # "release not found" is the one failure that means there is none; any other
@@ -66,22 +76,24 @@ if [ "$exists" = false ]; then
     inside { print }
   ' CHANGELOG.md > "$notes"
   [ -s "$notes" ] || echo "Cloudgate $version." > "$notes"
-  gh release create "$tag" "$dir/$tarball" "$dir/$checksum" \
+  gh release create "$tag" "${paths[@]}" \
     --verify-tag --title "Cloudgate $version" --notes-file "$notes"
-  echo "Published $tag with $tarball ✅"
+  echo "Published $tag with its amd64 and arm64 tarballs ✅"
   exit 0
 fi
 
 has() { grep -qxF "$1" <<<"$held"; }
-if has "$tarball" && has "$checksum"; then
-  echo "$tag already has its tarball and checksum; they are left as they are."
+held_files=()
+for file in "${files[@]}"; do
+  if has "$file"; then held_files+=("$file"); fi
+done
+if [ "${#held_files[@]}" -eq "${#files[@]}" ]; then
+  echo "$tag already has its tarballs and checksums; they are left as they are."
   exit 0
 fi
-for file in "$tarball" "$checksum"; do
-  if has "$file"; then
-    fail "The release $tag already holds $file but not both files, and a published file is never replaced." \
-      "Look at it on GitHub: delete what it holds of the two and run this again, or attach the other by hand."
-  fi
-done
-gh release upload "$tag" "$dir/$tarball" "$dir/$checksum"
-echo "Attached $tarball to the existing release $tag ✅"
+if [ "${#held_files[@]}" -gt 0 ]; then
+  fail "The release $tag already holds ${held_files[*]} but not all four files, and a published file is never replaced." \
+    "Look at it on GitHub: delete what it holds of the four and run this again, or attach the others by hand."
+fi
+gh release upload "$tag" "${paths[@]}"
+echo "Attached the amd64 and arm64 tarballs to the existing release $tag ✅"

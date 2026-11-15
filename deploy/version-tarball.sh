@@ -5,13 +5,16 @@
 #
 #     bash deploy/version-tarball.sh <out-dir>
 #
-#     <out-dir>/cloudgate-<version>-linux-amd64.tar.gz
-#     <out-dir>/cloudgate-<version>-linux-amd64.tar.gz.sha256   (sha256sum -c reads it)
+#     <out-dir>/cloudgate-<version>-linux-<cpu>.tar.gz
+#     <out-dir>/cloudgate-<version>-linux-<cpu>.tar.gz.sha256   (sha256sum -c reads it)
 #
 # <version> is backend/package.json's, which deploy/version-gate.sh has already
-# matched to the tag. .github/workflows/publish-version.yml runs it on
-# ubuntu-24.04, the only platform the install accepts, because node-pty's
-# pty.node is compiled here and runs only where it was compiled.
+# matched to the tag. <cpu> is the CPU it runs on, amd64 or arm64 (`uname -m`
+# x86_64 or aarch64; any other is refused), because node-pty's pty.node is
+# compiled here and runs only on the CPU it was compiled for.
+# .github/workflows/publish-version.yml runs it twice, on ubuntu-24.04 and
+# ubuntu-24.04-arm, the older of the two releases the install accepts, so every
+# version has both tarballs (ADR-0085, ADR-0088).
 #
 # The tarball's top level is what goes at /opt/cloudgate, with no directory of
 # its own around it: unpack it into an empty directory.
@@ -49,10 +52,12 @@
 # a checkout made for it, never a working copy.
 #
 #   0  built
-#   1  refused: node-pty did not compile, or production node_modules cannot run
-#      the migrations. Nothing is written to <out-dir>.
+#   1  refused: a CPU that is neither amd64 nor arm64, node-pty did not
+#      compile, or production node_modules cannot run the migrations. Nothing
+#      is written to <out-dir>.
 #
-# backend/test/deploy/version-tarball.spec.ts runs it with pnpm shimmed.
+# backend/test/deploy/version-tarball.spec.ts runs it with pnpm and uname
+# shimmed.
 
 set -euo pipefail
 
@@ -66,8 +71,14 @@ log() { printf '\n==> %s\n' "$*"; }
 out="${1:-}"
 [ -n "$out" ] || fail "Usage: bash deploy/version-tarball.sh <out-dir>"
 
+machine="$(uname -m)"
+case "$machine" in
+  x86_64) cpu=amd64 ;;
+  aarch64) cpu=arm64 ;;
+  *) fail "A Cloudgate version is built for amd64 or arm64, not $machine. Nothing was packed." ;;
+esac
 version="$(node -p "require('./backend/package.json').version")"
-name="cloudgate-$version-linux-amd64"
+name="cloudgate-$version-linux-$cpu"
 # Where the install's console reaches its backend (deploy/install.sh writes the
 # same value): fixed into the console's rewrites by its build.
 BACKEND_INTERNAL_ORIGIN=http://127.0.0.1:4000

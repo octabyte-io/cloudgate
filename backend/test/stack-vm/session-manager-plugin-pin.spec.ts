@@ -39,7 +39,24 @@ describe('deploy/install.sh', () => {
       /^[0-9a-f]{64}$/,
     );
     expect(installer).toContain(
-      'echo "${SESSION_MANAGER_PLUGIN_SHA256}  session-manager-plugin.deb" | sha256sum -c -',
+      'echo "${pin}  session-manager-plugin.deb" | sha256sum -c -',
+    );
+  });
+
+  it("pins the arm64 Hosted instance's ubuntu_arm64 .deb beside the ubuntu_64bit one, each checked against its own sha256", () => {
+    const arm64 = assigned(installer, 'SESSION_MANAGER_PLUGIN_ARM64_SHA256');
+    expect(arm64).toMatch(/^[0-9a-f]{64}$/);
+    expect(arm64).not.toBe(
+      assigned(installer, 'SESSION_MANAGER_PLUGIN_SHA256'),
+    );
+    expect(installer).toContain(
+      'amd64) build=ubuntu_64bit pin="$SESSION_MANAGER_PLUGIN_SHA256" ;;',
+    );
+    expect(installer).toContain(
+      'arm64) build=ubuntu_arm64 pin="$SESSION_MANAGER_PLUGIN_ARM64_SHA256" ;;',
+    );
+    expect(installer).toContain(
+      '/plugin/${SESSION_MANAGER_PLUGIN_VERSION}/${build}/session-manager-plugin.deb',
     );
   });
 

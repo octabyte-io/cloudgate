@@ -12,7 +12,8 @@ import * as path from 'node:path';
  * copied from this repository, so the list is checked against the real files.
  * What it builds is not: `pnpm` is a shim that records how it was called and
  * leaves behind the files a real install and build would, so the test checks
- * what is packed and in what order, never that Next or Nest can build.
+ * what is packed and in what order, never that Next or Nest can build. `uname`
+ * is a shim too, so the CPU the tarball is named for is the test's to choose.
  */
 const repoRoot = path.resolve(__dirname, '../../..');
 const script = path.join(repoRoot, 'deploy/version-tarball.sh');
@@ -141,7 +142,16 @@ afterEach(() => {
   fs.rmSync(scratch, { recursive: true, force: true });
 });
 
-function run(bin: string) {
+/** Runs the script on a box whose `uname -m` answers `machine`. */
+function run(bin: string, machine = 'x86_64') {
+  fs.writeFileSync(
+    path.join(bin, 'uname'),
+    `#!/usr/bin/env bash
+[ "$*" = "-m" ] || { echo "unexpected uname $*" >&2; exit 2; }
+echo ${machine}
+`,
+    { mode: 0o755 },
+  );
   // Not jest's NODE_ENV=test: the script sets NODE_ENV where it means to.
   const env = { ...process.env };
   delete env.NODE_ENV;
@@ -153,6 +163,7 @@ function run(bin: string) {
 }
 
 const TARBALL = 'cloudgate-0.3.0-linux-amd64.tar.gz';
+const ARM64_TARBALL = 'cloudgate-0.3.0-linux-arm64.tar.gz';
 
 /**
  * What `server.mjs`'s `next({ dev: false })` does at start: load
@@ -205,6 +216,31 @@ describe('deploy/version-tarball.sh', () => {
     expect(fs.readFileSync(path.join(out, `${TARBALL}.sha256`), 'utf8')).toBe(
       `${sha256}  ${TARBALL}\n`,
     );
+  });
+
+  it('names the tarball for arm64 when it is built on an aarch64 box', () => {
+    const built = run(shimPnpm(), 'aarch64');
+
+    expect(built.stderr).toBe('');
+    expect(built.status).toBe(0);
+    expect(fs.readdirSync(out).sort()).toEqual([
+      ARM64_TARBALL,
+      `${ARM64_TARBALL}.sha256`,
+    ]);
+    expect(
+      fs.readFileSync(path.join(out, `${ARM64_TARBALL}.sha256`), 'utf8'),
+    ).toMatch(/^[0-9a-f]{64} {2}cloudgate-0\.3\.0-linux-arm64\.tar\.gz\n$/);
+  });
+
+  it('builds nothing on a CPU that is neither amd64 nor arm64', () => {
+    const refused = run(shimPnpm(), 'riscv64');
+
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain(
+      'A Cloudgate version is built for amd64 or arm64, not riscv64',
+    );
+    expect(fs.existsSync(calls)).toBe(false);
+    expect(fs.existsSync(out)).toBe(false);
   });
 
   it('holds a VERSION file and the tree /opt/cloudgate runs, at the top of the tarball', () => {

@@ -38,13 +38,14 @@ const CLOUDGATE_VERSION_TAG = /^v\d+\.\d+\.\d+$/;
 const CLOUDGATE_IMAGE = 'cloudgate/cloudgate';
 
 /**
- * The tarball publish-version.yml attaches to a Cloudgate version's release.
- * A release without it is not one yet: made by hand, or still being
- * published, and the install would refuse it (root `install.sh` asks for the
- * same name).
+ * The tarball publish-version.yml attaches to a Cloudgate version's release
+ * for the CPU this backend runs on: `linux-amd64`, or `linux-arm64` on an Arm
+ * Hosted instance (ADR-0088). A release without it is not a version this host
+ * can install yet: made by hand, or still being published, and the install
+ * would refuse it (root `install.sh` asks for the same name).
  */
 const tarballName = (tag: string): string =>
-  `cloudgate-${tag.replace(/^v/, '')}-linux-amd64.tar.gz`;
+  `cloudgate-${tag.replace(/^v/, '')}-linux-${process.arch === 'arm64' ? 'arm64' : 'amd64'}.tar.gz`;
 
 /**
  * What `POST /settings/update-server` answers on an instance that is not the
@@ -131,7 +132,7 @@ export class UpdatesService {
 
   /**
    * The tags of this repository's releases that carry their Cloudgate version
-   * tarball, or a thrown error that says what went wrong.
+   * tarball for this host's CPU, or a thrown error that says what went wrong.
    */
   private async fetchReleaseTags(): Promise<string[]> {
     let response: Response;

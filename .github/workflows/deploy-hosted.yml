@@ -3,13 +3,13 @@
 #
 #   1. `git tag v0.3.0 && git push origin v0.3.0` starts `E2E (release)`;
 #   2. when that run ends green, `Publish Cloudgate version`
-#      (publish-version.yml) builds the version's tarball and puts it on the
-#      tag's GitHub Release;
+#      (publish-version.yml) builds the version's amd64 and arm64 tarballs and
+#      puts both on the tag's GitHub Release;
 #   3. its last job dispatches this workflow with the tag and the commit E2E
 #      tested; this one checks the tag still names that commit and is on main,
 #      checks the version with deploy/hosted-release-gate.sh, SSHes to the box
 #      as cloudgate-deploy and runs deploy/hosted-update.sh there with the tag,
-#      which installs the published tarball;
+#      which installs the published tarball for the box's CPU;
 #   4. then it waits for https://<hostname>/backend/settings/about to report
 #      the new version in hosted mode.
 #
@@ -17,8 +17,8 @@
 # section asks for something on upgrade stops at the gate, naming it; do it,
 # then run this workflow by hand with the tag and `manual_steps_done` ticked.
 # Running it by hand is also how a version is deployed again: leave
-# `tested_sha` empty, and the run checks instead that the tag's release has its
-# tarball. The box installs only a published version, so a tag with no release
+# `tested_sha` empty, and the run checks instead that the tag's release has
+# both its tarballs. The box installs only a published version, so a tag with no release
 # is refused there too, before its backup, by hand or not.
 #
 # Why a dispatch and not `workflow_run` on the publish workflow: that workflow
@@ -114,18 +114,26 @@ jobs:
           fi
 
       # By hand, with no commit passed: the tag's release must already carry
-      # its tarball, which only a green publish run puts there. The box refuses
-      # a tag without one anyway; this says so before the gate and the SSH.
+      # both its tarballs, amd64 and arm64, which only a green publish run puts
+      # there together (ADR-0088), so the box is upgraded whichever CPU it is.
+      # The box refuses a tag without its own anyway; this says so before the
+      # gate and the SSH.
       - name: The tag's Cloudgate version is published
         if: env.TESTED_SHA == ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tarball="cloudgate-${TAG#v}-linux-amd64.tar.gz"
-          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | grep -qxF "$tarball"; then
-            echo "::error::$TAG has no published release with $tarball. Only a version Publish Cloudgate version has published is deployed."
+          assets="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')" || {
+            echo "::error::$TAG has no published release. Only a version Publish Cloudgate version has published is deployed."
             exit 1
-          fi
+          }
+          for cpu in amd64 arm64; do
+            tarball="cloudgate-${TAG#v}-linux-$cpu.tar.gz"
+            if ! grep -qxF "$tarball" <<<"$assets"; then
+              echo "::error::$TAG has no published release with $tarball. Only a version Publish Cloudgate version has published, with both its tarballs, is deployed."
+              exit 1
+            fi
+          done
 
       - uses: actions/setup-node@v4
         with:

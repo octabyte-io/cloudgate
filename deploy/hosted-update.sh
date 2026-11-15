@@ -12,8 +12,9 @@
 #
 #     cloudgate-update v0.3.0
 #
-# The tag must be vX.Y.Z and a published Cloudgate version: its tarball's
-# .sha256 is on the tag's GitHub Release, which publish-version.yml puts there
+# The tag must be vX.Y.Z and a published Cloudgate version: the .sha256 of its
+# tarball for this box's CPU (linux-amd64, or linux-arm64 on an Arm box,
+# ADR-0088) is on the tag's GitHub Release, which publish-version.yml puts there
 # only after the tag's E2E (release) run is green (ADR-0082). A run takes a
 # backup to B2 first and then runs the tag's own one-command install with
 # CLOUDGATE_VERSION=<tag> and HOSTED_MODE=true, which is the upgrade
@@ -28,8 +29,8 @@
 # refused, because the unit already exists.
 #
 # backend/test/deploy/hosted-update.spec.ts runs this with sudo, systemd-run,
-# journalctl, systemctl and curl (GitHub) stubbed; the UPDATE_* overrides below
-# are for it.
+# journalctl, systemctl, uname and curl (GitHub) stubbed; the UPDATE_*
+# overrides below are for it.
 
 set -euo pipefail
 
@@ -64,13 +65,27 @@ previous_public_host() {
   sed -n "s/^CLOUDGATE_PUBLIC_HOST='\(.*\)'\$/\1/p" "$BACKEND_ENV_FILE" | tail -n 1
 }
 
-# A tag is a Cloudgate version once publish-version.yml has put its tarball's
+# The box's CPU as a Cloudgate version's tarball names it: the one the tag's
+# install.sh will download.
+box_cpu() {
+  local machine
+  machine="$(uname -m)"
+  case "$machine" in
+    x86_64) echo amd64 ;;
+    aarch64) echo arm64 ;;
+    *) fail "No Cloudgate version is built for this box's CPU, $machine, so nothing was backed up or upgraded." ;;
+  esac
+}
+
+# A tag is a Cloudgate version once publish-version.yml has put its tarballs'
 # .sha256 on the tag's GitHub Release, which it does only after the tag's
-# E2E (release) run is green (ADR-0082). Asked before the backup, so a tag
-# that was never published costs nothing.
+# E2E (release) run is green (ADR-0082). This box's own CPU's is the one
+# asked for (ADR-0088). Asked before the backup, so a tag that was never
+# published costs nothing.
 published_version() {
-  local tag="$1" url status=0
-  url="$RELEASES_DOWNLOAD/$tag/cloudgate-${tag#v}-linux-amd64.tar.gz.sha256"
+  local tag="$1" cpu url status=0
+  cpu="$(box_cpu)"
+  url="$RELEASES_DOWNLOAD/$tag/cloudgate-${tag#v}-linux-$cpu.tar.gz.sha256"
   curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 --max-time 30 -o /dev/null "$url" || status=$?
   case "$status" in
     0) ;;

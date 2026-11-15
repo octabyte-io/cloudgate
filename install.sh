@@ -4,9 +4,10 @@
 #
 #     curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo sh
 #
-# On a bare Ubuntu 24.04 or 26.04 amd64 platform host (ADR-0085) it downloads a
-# Cloudgate version (ADR-0082): the tarball on the GitHub Release for its tag,
-# checked against the sha256
+# On a bare Ubuntu 24.04 or 26.04 amd64 platform host (ADR-0085), or an arm64
+# one with HOSTED_MODE=true for the Hosted instance only (ADR-0088), it
+# downloads a Cloudgate version (ADR-0082): the tarball for the host's CPU on
+# the GitHub Release for its tag, checked against the sha256
 # published beside it and unpacked into /opt/cloudgate.next. Then it hands over
 # to that version's deploy/install.sh, which does the install itself and puts
 # the version in place at /opt/cloudgate. Nothing is cloned or built. Running it
@@ -31,7 +32,8 @@
 #                          hosts that do not answer, and never stop the run.
 #
 # Everything else in the environment (HOSTED_MODE and its inputs, CONSOLE_PORT,
-# ...) reaches deploy/install.sh unchanged.
+# ...) reaches deploy/install.sh unchanged. HOSTED_MODE is read here only to
+# accept an arm64 host.
 #
 # INSTALL_ROOT is for backend/test/deploy/one-command-install.spec.ts only: a
 # directory the run treats as /, so the test can drive it off a real box.
@@ -168,9 +170,9 @@ refuse_older() {
     "Nothing was changed. The versions are listed at $RELEASES_PAGE."
 }
 
-# The highest vX.Y.Z among the repository's releases that carries its
-# tarball, as X.Y.Z, compared as numbers (0.10.0 is after 0.9.0). A release
-# without cloudgate-X.Y.Z-linux-amd64.tar.gz, made by hand or still being
+# The highest vX.Y.Z among the repository's releases that carries the
+# tarball for this host's CPU, as X.Y.Z, compared as numbers (0.10.0 is after
+# 0.9.0). A release without cloudgate-X.Y.Z-linux-<cpu>.tar.gz, made by hand or still being
 # published, is not a version yet: its download would fail. One page of 100,
 # newest first, as the console's update notice reads it. Empty when there is
 # none.
@@ -186,24 +188,24 @@ latest_version() {
     "    curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo CLOUDGATE_VERSION=v<X.Y.Z> sh"
   printf '%s\n' "$releases" |
     grep -oE '"(tag_name|name)": *"[^"]*"' |
-    awk -F '"' '
+    awk -F '"' -v cpu="$cpu" '
       $2 == "tag_name" {
         tag = ($4 ~ /^v[0-9]+\.[0-9]+\.[0-9]+$/) ? substr($4, 2) : ""
       }
-      $2 == "name" && tag != "" && $4 == "cloudgate-" tag "-linux-amd64.tar.gz" {
+      $2 == "name" && tag != "" && $4 == "cloudgate-" tag "-linux-" cpu ".tar.gz" {
         print tag
       }' |
     sort -t . -k 1,1n -k 2,2n -k 3,3n |
     tail -n 1
 }
 
-# download_version <X.Y.Z>: the version's tarball, checked against its
+# download_version <X.Y.Z>: the version's tarball for this host's CPU, checked against its
 # published sha256 before anything is unpacked, unpacked into $STAGING_DIR.
 # Nothing outside a download directory beside the install is written until the
 # checksum matches, and that directory is removed whatever happens.
 download_version() {
   version="$1"
-  name="cloudgate-$version-linux-amd64.tar.gz"
+  name="cloudgate-$version-linux-$cpu.tar.gz"
   url="$RELEASES_DOWNLOAD/v$version/$name"
 
   # A run killed outright (SIGKILL, a power cut) can leave one; under the
@@ -373,15 +375,28 @@ main() {
     os_id="$(. "$OS_RELEASE" && printf '%s' "${ID:-}")"
     os_version="$(. "$OS_RELEASE" && printf '%s' "${VERSION_ID:-}")"
   fi
-  # One tarball, built on 24.04, runs on both (ADR-0085).
+  # Each CPU's tarball, built on 24.04, runs on both (ADR-0085).
   case "$os_id $os_version" in
     'ubuntu 24.04' | 'ubuntu 26.04') ;;
     *) fail \
       "Cloudgate installs on Ubuntu 24.04 or 26.04; this platform host is ${os_id:-unknown} ${os_version:-unknown}." \
       "docs/deploy.md §1 lists what the platform host needs." ;;
   esac
-  [ "$(uname -m)" = x86_64 ] || fail \
-    "Cloudgate installs on amd64 (x86_64); this platform host is $(uname -m)."
+  # amd64 everywhere; arm64 on the Hosted instance only (ADR-0088), which
+  # builds nothing on its platform host. Each CPU has its own tarball.
+  machine="$(uname -m)"
+  case "$machine" in
+    x86_64) cpu=amd64 ;;
+    aarch64)
+      [ "${HOSTED_MODE:-}" = true ] || fail \
+        "This platform host is arm64 ($machine). Cloudgate supports Arm for the Hosted instance only" \
+        "(HOSTED_MODE=true); a Self-hosted install needs an amd64 (x86_64) host. Nothing was changed."
+      cpu=arm64
+      ;;
+    *) fail \
+      "Cloudgate installs on amd64 (x86_64), and on arm64 (aarch64) for the Hosted instance only;" \
+      "this platform host is $machine. Nothing was changed." ;;
+  esac
 
   # A branch was what the install built before it installed versions. Refused
   # rather than ignored: a run asked for one thing must not install another.

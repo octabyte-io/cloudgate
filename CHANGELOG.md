@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### A green tag upgrades an arm64 Hosted box
+
+`cloudgate-update` now asks whether the `.sha256` of the tarball for the box's own CPU is published before it takes the backup, so a green version tag upgrades an arm64 Hosted box through **Deploy the Hosted instance** exactly as it does an amd64 one. A by-hand run of that workflow, with no tested commit, now needs both tarballs on the tag's release. The console's update notice counts a release as a Cloudgate version only once it carries the tarball for the host's own CPU (ADR-0088, `docs/deploy.md` §11).
+
+**What to do on upgrade**: nothing.
+
+### The Hosted instance installs on an arm64 box
+
+The one command with `HOSTED_MODE=true` now installs on an arm64 Ubuntu 24.04 or 26.04 box: it downloads the version's `linux-arm64` tarball (and, with no `CLOUDGATE_VERSION`, picks the latest release that carries one), and `deploy/install.sh` installs Node, OpenTofu, the AWS and Google providers, the Session Manager plugin and nixpacks for arm64, each checked against an arm64 pin kept beside its amd64 one. The OpenTofu provider mirror is laid out under the host's own platform, `linux_amd64` or `linux_arm64`, and the backend looks for its providers there. Without `HOSTED_MODE=true`, root `install.sh` and `deploy/install.sh` refuse an arm64 box before anything changes, naming its CPU and saying Arm is supported for the Hosted instance only; any CPU other than amd64 and arm64 is refused the same way (ADR-0088, `docs/deploy.md` §1, §11).
+
+**What to do on upgrade**: nothing.
+
+### Every Cloudgate version is published for arm64 too
+
+A version tag now publishes two tarballs, `cloudgate-X.Y.Z-linux-amd64.tar.gz` and `cloudgate-X.Y.Z-linux-arm64.tar.gz`, each with its `.sha256`. Each is built natively, on an Ubuntu 24.04 amd64 runner and an Ubuntu 24.04 Arm runner, because node-pty's `pty.node` runs only on the CPU it was compiled for. Each tarball is unpacked, migrated and booted on Ubuntu 24.04 and 26.04 (the arm64 26.04 boot in an `ubuntu:26.04` container on the Arm runner), and the release is published only when all four boots pass, with all four files attached together: a published version always has both tarballs. The amd64 `E2E (release)` run still gates both (ADR-0088).
+
+**What to do on upgrade**: nothing.
+
 ### The platform host's Docker is the Servers' version, and nixpacks is pinned
 
 The install now installs the platform host's Docker with `get.docker.com --version 29.9.3`, the version the Server setup gives every Server, which moves from 28.5.0 to 29.9.3 because Docker builds no 28.5.0 for Ubuntu 26.04. A fresh platform host therefore runs the Docker version its Servers get, and two installs a week apart get the same Docker and nixpacks. nixpacks comes from its GitHub release, version 1.41.0, checked against a pinned sha256 before it is installed to `/usr/local/bin/nixpacks`; a tarball that does not match stops the run. The install no longer runs `https://nixpacks.com/install.sh`, and the preflight no longer probes `nixpacks.com` (`docs/deploy.md` §7, "Docker and nixpacks").
