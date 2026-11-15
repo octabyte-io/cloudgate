@@ -789,7 +789,7 @@ describe('Frozen Organization: lapse emails and the 30-day deletion (e2e)', () =
       for (const address of [OWNER, ADMIN]) {
         expect(subjects(address)).toEqual(['Payment received for Hopper Labs']);
         expect(bodyTo(address)).toContain(
-          'Hopper Labs is no longer frozen: Cloudgate starts deploys, Cron runs, backups, Uptime checks and cloud runs for it again, and it is no longer due for deletion.',
+          'Hopper Labs is no longer frozen: Cloudgate starts deploys, Cron service runs, backups, Uptime checks and cloud runs for it again, and it is no longer due for deletion.',
         );
       }
       expect(mail.to(MEMBER)).toEqual([]);

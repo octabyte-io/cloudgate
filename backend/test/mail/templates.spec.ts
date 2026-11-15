@@ -1030,7 +1030,7 @@ describe('mail templates', () => {
       expect(rendered.subject).toBe('Payment received for Hopper Labs');
       const body = text(rendered.html);
       expect(body).toContain(
-        'Hopper Labs is no longer frozen: Cloudgate starts deploys, Cron runs, backups, Uptime checks and cloud runs for it again, and it is no longer due for deletion.',
+        'Hopper Labs is no longer frozen: Cloudgate starts deploys, Cron service runs, backups, Uptime checks and cloud runs for it again, and it is no longer due for deletion.',
       );
       expect(body).not.toContain('never frozen');
     });
@@ -1083,7 +1083,7 @@ describe('mail templates', () => {
         'Hopper Labs has paid for the plan it pays for Lovelace Ltd with, which had lapsed.',
       );
       expect(body).toContain(
-        'Lovelace Ltd is no longer frozen: Cloudgate starts deploys, Cron runs, backups, Uptime checks and cloud runs for it again, and it is no longer due for deletion.',
+        'Lovelace Ltd is no longer frozen: Cloudgate starts deploys, Cron service runs, backups, Uptime checks and cloud runs for it again, and it is no longer due for deletion.',
       );
       expect(body).not.toContain('payment for Lovelace Ltd that failed');
     });

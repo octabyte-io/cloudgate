@@ -42,7 +42,7 @@ export async function renderPaymentReceivedEmail({
       ? `${org} is no longer lapsed, but it is still suspended, so it stays frozen. ${suspended}`
       : `${org} is still suspended, so it stays frozen. ${suspended}`
     : lifted.lapse
-      ? `${org} is no longer frozen: Cloudgate starts deploys, Cron runs, backups, Uptime checks and cloud runs for it again, and it is no longer due for deletion.`
+      ? `${org} is no longer frozen: Cloudgate starts deploys, Cron service runs, backups, Uptime checks and cloud runs for it again, and it is no longer due for deletion.`
       : `${org} was never frozen, and its plan carries on as before.`;
   const boughtServers = lifted.boughtServers
     ? [
