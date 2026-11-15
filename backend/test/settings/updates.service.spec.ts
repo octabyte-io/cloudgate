@@ -127,6 +127,56 @@ describe('UpdatesService.getUpdateData', () => {
     });
   });
 
+  // ADR-0088: an arm64 Hosted instance installs the arm64 tarball, so a
+  // release is a version it can upgrade to only once that one is attached.
+  describe('on an arm64 host', () => {
+    // process.arch is read-only, so jest.replaceProperty cannot put it back.
+    const arch = Object.getOwnPropertyDescriptor(process, 'arch')!;
+    beforeEach(() => {
+      Object.defineProperty(process, 'arch', { ...arch, value: 'arm64' });
+    });
+
+    afterEach(() => {
+      Object.defineProperty(process, 'arch', arch);
+    });
+
+    const armRelease = (tag: string, cpus: string[]) =>
+      release(
+        tag,
+        cpus.flatMap((cpu) => {
+          const tarball = `cloudgate-${tag.replace(/^v/, '')}-linux-${cpu}.tar.gz`;
+          return [tarball, `${tarball}.sha256`];
+        }),
+      );
+
+    it('looks for the arm64 tarball, never counting a release that carries only the amd64 one', async () => {
+      const fetchClient = jest.fn(() =>
+        githubResponse(200, [
+          armRelease('v0.5.0', ['amd64']),
+          armRelease('v0.4.0', ['amd64', 'arm64']),
+        ]),
+      );
+
+      const data = await service(fetchClient).getUpdateData('0.3.0');
+
+      expect(data).toMatchObject({
+        latestVersion: 'v0.4.0',
+        updateAvailable: true,
+        error: null,
+      });
+    });
+
+    it('counts a release that carries the arm64 tarball alone', async () => {
+      const fetchClient = jest.fn(() =>
+        githubResponse(200, [armRelease('v0.4.0', ['arm64'])]),
+      );
+
+      const data = await service(fetchClient).getUpdateData('0.3.0');
+
+      expect(data).toMatchObject({ latestVersion: 'v0.4.0', error: null });
+    });
+  });
+
   it('never counts a tag whose tarball has not been attached as a Cloudgate version', async () => {
     const fetchClient = jest.fn(() =>
       githubResponse(200, [
