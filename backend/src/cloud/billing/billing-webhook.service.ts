@@ -39,6 +39,7 @@ import { claimCancelChange, notifyCancelChange } from './plan-cancel';
 import { STRIPE_API } from './stripe-api';
 import type { StripeApi } from './stripe-api';
 import { PaymentDisputes } from './payment-disputes.service';
+import { PaymentReceived } from './payment-received.service';
 import { BoughtServerClockSteps } from './bought-server-clock-steps';
 import { PurchasePayments } from './purchase-payments';
 import { scheduleFollowingSubscription } from './plan-downgrade';
@@ -110,6 +111,7 @@ export class BillingWebhookService {
     private readonly purchasePayments: PurchasePayments,
     private readonly disputes: PaymentDisputes,
     private readonly boughtServerSteps: BoughtServerClockSteps,
+    private readonly paymentReceived: PaymentReceived,
   ) {}
 
   /**
@@ -773,16 +775,6 @@ export class BillingWebhookService {
         : {}),
       trialEndsAt: trialFactsOf(stripeSubscription).trialEndsAt,
       cancelAt: cancelAtOf(stripeSubscription),
-      // Paying again clears the lapse and the deletion clock's marks, and
-      // only those: a suspension is an Operator's to lift (ADR-0052).
-      ...(isPaidStatus(stripeSubscription.status)
-        ? {
-            lapsedAt: null,
-            paymentFailedAt: null,
-            lapseWarnedAt: null,
-            deletionWarnedAt: null,
-          }
-        : {}),
     };
 
     const cancelChange = await claimCancelChange(
@@ -802,6 +794,13 @@ export class BillingWebhookService {
         target: subscription.organizationId,
         set: { ...values, ...(begun ? firstSubscribedNow() : {}) },
       });
+    // Paying again clears the lapse and the deletion clock's marks, and
+    // only those: a suspension is an Operator's to lift (ADR-0052). Whoever
+    // clears a recorded failure says "payment received", once (#71).
+    await this.paymentReceived.paid(
+      organizationId,
+      PaymentReceived.of(stripeSubscription),
+    );
     await this.endLinkOnceActive(organizationId, stripeSubscription);
     await this.recordTrialStart(stripeSubscription);
     await this.notifyTrialStarted(organizationId, stripeSubscription);

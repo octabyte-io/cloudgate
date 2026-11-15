@@ -722,6 +722,137 @@ describe('Frozen Organization: lapse emails and the 30-day deletion (e2e)', () =
     });
   });
 
+  describe('payment received (#71)', () => {
+    const paidInvoice = { ...failedInvoice, amount_paid: 1500, status: 'paid' };
+    const bodyTo = (address: string) =>
+      mail
+        .to(address)
+        .map((sent) => sent.email.html.replace(/<!-- -->/g, ''))
+        .join('\n');
+
+    /** Stripe takes the payment it was retrying: both of its events, as Stripe sends them. */
+    async function paymentTaken() {
+      retrieveSubscription.mockResolvedValue(stripeSubscription('active'));
+      await postWebhook(
+        stripeEvent(
+          'customer.subscription.updated',
+          stripeSubscription('active'),
+        ),
+      );
+      await postWebhook(stripeEvent('invoice.payment_succeeded', paidInvoice));
+    }
+
+    it('a payment that clears past_due before any freeze sends it once, to the owner and admin', async () => {
+      await paymentFails();
+      mail.clear();
+
+      await paymentTaken();
+      // Stripe delivers both events again.
+      await paymentTaken();
+
+      for (const address of [OWNER, ADMIN]) {
+        expect(subjects(address)).toEqual(['Payment received for Hopper Labs']);
+        expect(bodyTo(address)).toContain(
+          'Hopper Labs was never frozen, and its plan carries on as before.',
+        );
+      }
+      expect(mail.to(MEMBER)).toEqual([]);
+      expect((await marks()).paymentFailedAt).toBeNull();
+    });
+
+    it('an ordinary renewal sends nothing', async () => {
+      await paymentTaken();
+
+      expect(mail.sent).toEqual([]);
+    });
+
+    it('paying a lapsed Organization again through a new Checkout sends it, saying it is no longer frozen', async () => {
+      await paymentFails();
+      await subscriptionEnds('payment_failed');
+      mail.clear();
+
+      const checkout = stripeEvent('checkout.session.completed', {
+        id: 'cs_again',
+        customer: 'cus_1',
+        subscription: 'sub_2',
+        metadata: { organizationId },
+      });
+      retrieveSubscription.mockResolvedValue(
+        stripeSubscription('active', { id: 'sub_2' }),
+      );
+      await postWebhook(checkout);
+      await postWebhook(checkout);
+
+      for (const address of [OWNER, ADMIN]) {
+        expect(subjects(address)).toEqual(['Payment received for Hopper Labs']);
+        expect(bodyTo(address)).toContain(
+          'Hopper Labs is no longer frozen: Cloudgate starts deploys, Cron runs, backups, Uptime checks and cloud runs for it again, and it is no longer due for deletion.',
+        );
+      }
+      expect(mail.to(MEMBER)).toEqual([]);
+      expect(await marks()).toEqual(
+        expect.objectContaining({ lapsedAt: null, paymentFailedAt: null }),
+      );
+    });
+
+    it("each Attached Organization's people get the unfrozen wording", async () => {
+      await ctx.db
+        .update(subscription)
+        .set({ plan: 'business' })
+        .where(eq(subscription.organizationId, organizationId));
+      const attached = await signUpHostedCustomer(http, mail, {
+        name: 'Ada Lovelace',
+        email: 'ada@example.com',
+        password: 'super-secret-password',
+        organizationName: 'Lovelace Ltd',
+      });
+      await ctx.db
+        .update(organization)
+        .set({ paidByOrganizationId: organizationId })
+        .where(eq(organization.id, attached.organizationId));
+      await subscriptionEnds('payment_failed');
+      mail.clear();
+
+      await postWebhook(
+        stripeEvent(
+          'customer.subscription.updated',
+          stripeSubscription('active'),
+        ),
+      );
+
+      expect(subjects('ada@example.com')).toEqual([
+        'Lovelace Ltd is no longer frozen: Hopper Labs has paid',
+      ]);
+      expect(bodyTo('ada@example.com')).toContain(
+        'Lovelace Ltd is no longer frozen: Cloudgate starts deploys',
+      );
+      expect(subjects(OWNER)).toEqual(['Payment received for Hopper Labs']);
+    });
+
+    it('a suspended Organization is told it is still suspended', async () => {
+      await subscriptionEnds('payment_failed');
+      await ctx.db
+        .update(subscription)
+        .set({ suspendedAt: new Date(), suspendedReason: 'Abuse' })
+        .where(eq(subscription.organizationId, organizationId));
+      mail.clear();
+
+      await postWebhook(
+        stripeEvent(
+          'customer.subscription.updated',
+          stripeSubscription('active'),
+        ),
+      );
+
+      expect(subjects(OWNER)).toEqual(['Payment received for Hopper Labs']);
+      const body = bodyTo(OWNER);
+      expect(body).toContain(
+        'Hopper Labs is no longer lapsed, but it is still suspended, so it stays frozen.',
+      );
+      expect(body).not.toContain('no longer frozen');
+    });
+  });
+
   describe('the owner deleting it', () => {
     it('may delete a Frozen Organization that is their only one', async () => {
       await subscriptionEnds('cancellation_requested');
