@@ -1980,8 +1980,70 @@ cat "$file" > "\${url##*/}"
   });
 
   /**
+   * The Docker step, cut out of the file as written and run with `curl`
+   * serving a stand-in for get.docker.com's script that records its
+   * arguments, and `systemctl` recording that it was called. Its PATH holds
+   * only those two shims, `sh`, `cat` and, when the test puts one there,
+   * `docker`, so a Docker on the machine running the test is never the one the
+   * step finds. The pin itself, and that it is the Server setup's, is
+   * `test/servers/docker-pin.spec.ts`'s.
+   */
+  describe('Docker at its pin', () => {
+    const DOCKER_VERSION = '29.9.3';
+
+    function dockerStep(dockerThere: boolean) {
+      const step = source().match(
+        /\nlog "Docker"\n[\s\S]*?\nsystemctl enable --now docker\n/,
+      );
+      if (!step) throw new Error('no Docker step in deploy/install.sh');
+      serve('get.docker.com', `echo "get.docker.com $*" >> "${calls}"\n`);
+      const bin = path.join(scratch, 'bin');
+      const only = path.join(scratch, 'docker-step-bin');
+      fs.mkdirSync(only);
+      fs.symlinkSync(path.join(bin, 'curl'), path.join(only, 'curl'));
+      fs.symlinkSync(path.join(bin, 'systemctl'), path.join(only, 'systemctl'));
+      fs.symlinkSync('/bin/sh', path.join(only, 'sh'));
+      fs.symlinkSync('/bin/cat', path.join(only, 'cat'));
+      if (dockerThere) {
+        fs.writeFileSync(path.join(only, 'docker'), '#!/bin/sh\n', {
+          mode: 0o755,
+        });
+      }
+      return spawnSync(
+        '/bin/bash',
+        [
+          '-c',
+          `set -euo pipefail; log() { :; }; DOCKER_VERSION=${DOCKER_VERSION}\n${step[0]}`,
+        ],
+        { env: { PATH: only }, encoding: 'utf8' },
+      );
+    }
+
+    it('installs Docker with get.docker.com at DOCKER_VERSION', () => {
+      const ran = dockerStep(false);
+
+      expect(ran.stderr).toBe('');
+      expect(ran.status).toBe(0);
+      expect(called().split('\n')).toEqual([
+        'curl https://get.docker.com',
+        `get.docker.com --version ${DOCKER_VERSION}`,
+        'systemctl enable --now docker',
+        '',
+      ]);
+    });
+
+    it('leaves a Docker already on the platform host as it is', () => {
+      const ran = dockerStep(true);
+
+      expect(ran.status).toBe(0);
+      // Nothing was downloaded or installed.
+      expect(called()).toBe('systemctl enable --now docker\n');
+    });
+  });
+
+  /**
    * The nixpacks step, cut out of the file as written and run against a
-   * scratch host, as the Node step is: every `/usr/local` in it points under
+   * scratch root, as the Node step is: every `/usr/local` in it points under
    * the scratch root, and `curl` serves GitHub's release download from the
    * scratch directory; `tar`, `sha256sum` and `install` are the real ones. The
    * release tarball holds a stand-in `nixpacks` at its root that prints its

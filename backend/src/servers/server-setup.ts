@@ -21,8 +21,10 @@ import { joinAiNetworkProgram } from '../ai-models/ai-network';
 
 /**
  * The Docker every Server gets, and the platform host too: `deploy/install.sh`
- * pins its own `DOCKER_VERSION` to this one and installs it the same way.
- * Move both together; `test/servers/docker-pin.spec.ts` fails until they agree.
+ * pins its own `DOCKER_VERSION` to this one and installs it the same way, and
+ * the console's "Install Docker" setup step (`STEPS` in the frontend's
+ * `setup-steps.ts`) names it. Move all three together;
+ * `test/servers/docker-pin.spec.ts` fails until they agree.
  */
 export const DOCKER_VERSION = '29.9.3';
 
