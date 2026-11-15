@@ -50,6 +50,7 @@ import {
   trialCheckoutParams,
   trialEmailKey,
   trialEndsAtOf,
+  trialFactsOf,
 } from './free-trial';
 import {
   daysLeftOf,
@@ -78,6 +79,8 @@ import {
 } from './plan-trial';
 import type { TrialView } from './plan-trial';
 import { LapseNotifications } from './lapse-notifications.service';
+import { PlanChangeNotifications } from './plan-change-notifications.service';
+import type { PlanChange } from './plan-change-notifications.service';
 import {
   assertNothingAttached,
   assertNotPaidByAnother,
@@ -336,6 +339,7 @@ export class BillingService {
     private readonly config: BillingConfig,
     private readonly instanceMode: InstanceMode,
     private readonly notifications: LapseNotifications,
+    private readonly planChanges: PlanChangeNotifications,
   ) {}
 
   /**
@@ -832,9 +836,11 @@ export class BillingService {
         target.subscriptionId,
         trialSwitchUpdate(target.planItem, target.businessPriceId),
       );
-      await this.storePlan(ctx.session.activeOrganizationId, {
-        plan: 'business',
-        status: updated.status,
+      await this.storeUpgrade(ctx.session.activeOrganizationId, updated, {
+        kind: 'trial-switch',
+        to: 'business',
+        // The trial keeps its end.
+        trialEndsOn: trialFactsOf(target.current).trialEndsAt ?? new Date(),
       });
       return { plan: 'business' };
     }
@@ -860,22 +866,45 @@ export class BillingService {
     }
     if (updated.pending_update) throw upgradePaymentFailed();
 
-    await this.storePlan(ctx.session.activeOrganizationId, {
-      plan: 'business',
-      status: updated.status,
+    await this.storeUpgrade(ctx.session.activeOrganizationId, updated, {
+      kind: 'upgraded',
+      chargedToday: await this.planChanges.chargedTodayOf(updated),
+      from: new Date(target.planItem.current_period_end * 1000),
     });
     return { plan: 'business' };
   }
 
-  /** Writes a switched plan onto the row, ahead of the webhook's sync. */
-  private async storePlan(
+  /**
+   * Writes Business onto the row, ahead of the webhook's sync, in one
+   * conditional write on Starter: whichever of this and the sync records
+   * the change sends "your plan changed" (`change`), once.
+   */
+  private async storeUpgrade(
     organizationId: string,
-    values: { plan: PlanName; status: string },
+    updated: Stripe.Subscription,
+    change: PlanChange,
   ): Promise<void> {
-    await this.db
+    const stored = await this.db
       .update(subscription)
-      .set(values)
-      .where(eq(subscription.organizationId, organizationId));
+      .set({ plan: 'business', status: updated.status })
+      .where(
+        and(
+          eq(subscription.organizationId, organizationId),
+          eq(subscription.plan, 'starter'),
+        ),
+      )
+      .returning({ addOns: subscription.addOns });
+    if (stored.length === 0) return;
+    const addOns = itemCarrying(
+      updated,
+      this.completeCatalogue().addOnPriceId,
+    )?.quantity;
+    await this.planChanges.sendPlanChanged(
+      organizationId,
+      change,
+      'business',
+      addOns ?? stored[0].addOns,
+    );
   }
 
   /**

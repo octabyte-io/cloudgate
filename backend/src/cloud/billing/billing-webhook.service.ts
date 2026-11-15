@@ -39,6 +39,7 @@ import { STRIPE_API } from './stripe-api';
 import type { StripeApi } from './stripe-api';
 import { PaymentDisputes } from './payment-disputes.service';
 import { PaymentReceived } from './payment-received.service';
+import { PlanChangeNotifications } from './plan-change-notifications.service';
 import { BoughtServerClockSteps } from './bought-server-clock-steps';
 import { PurchasePayments } from './purchase-payments';
 import { scheduleFollowingSubscription } from './plan-downgrade';
@@ -111,6 +112,7 @@ export class BillingWebhookService {
     private readonly disputes: PaymentDisputes,
     private readonly boughtServerSteps: BoughtServerClockSteps,
     private readonly paymentReceived: PaymentReceived,
+    private readonly planChanges: PlanChangeNotifications,
   ) {}
 
   /**
@@ -751,6 +753,10 @@ export class BillingWebhookService {
    * Starter taking effect — sends the custom-role email. A cancel date set
    * or cleared sends "Your plan ends on <date>" or "Your plan will carry on"
    * (`plan-cancel.ts`).
+   *
+   * A plan that changes from one Hosted plan to the other sends "your plan
+   * changed" (`notifyPlanChanged`), when this sync's own write is the one
+   * that changed it.
    */
   private async syncFromSubscription(
     organizationId: string,
@@ -763,6 +769,11 @@ export class BillingWebhookService {
     }));
     const { plan, addOns } = purchasedItems(this.config.prices, items);
     const planBefore = await this.storedPlan(organizationId);
+    const planChanged =
+      !!planBefore &&
+      !!plan &&
+      planBefore !== plan &&
+      (await this.claimPlanChange(organizationId, planBefore, plan));
 
     const values = {
       stripeSubscriptionId: stripeSubscription.id,
@@ -815,6 +826,84 @@ export class BillingWebhookService {
       await this.lapseNotifications.sendCustomRolesStopped(
         organizationId,
         plan === 'starter' ? 'starter' : 'ended',
+      );
+    }
+    if (planChanged && plan) {
+      await this.notifyPlanChanged(
+        organizationId,
+        stripeSubscription,
+        plan,
+        addOns,
+      );
+    }
+  }
+
+  /**
+   * Moves the stored plan from `before` to `after` in one conditional write,
+   * true when it was this write that did: the upgrade (`BillingService`)
+   * writes Business itself and a webhook retry carries the same plan again,
+   * so whichever records the change first sends its email, once.
+   */
+  private async claimPlanChange(
+    organizationId: string,
+    before: PlanName,
+    after: PlanName,
+  ): Promise<boolean> {
+    const [claimed] = await this.db
+      .update(subscription)
+      .set({ plan: after })
+      .where(
+        and(
+          eq(subscription.organizationId, organizationId),
+          eq(subscription.plan, before),
+        ),
+      )
+      .returning({ id: subscription.id });
+    return !!claimed;
+  }
+
+  /**
+   * "Your plan changed", for a change the sync recorded: a switch during the
+   * Free trial, either way; an upgrade, with what its invoice charged today
+   * and the month from the renewal; or the scheduled move to Starter taking
+   * effect at the renewal.
+   */
+  private async notifyPlanChanged(
+    organizationId: string,
+    stripeSubscription: Stripe.Subscription,
+    plan: PlanName,
+    addOns: number,
+  ): Promise<void> {
+    const [planItem] = stripeSubscription.items?.data ?? [];
+    const at = (seconds: number | undefined) =>
+      typeof seconds === 'number' ? new Date(seconds * 1000) : new Date();
+    if (isTrialStatus(stripeSubscription.status)) {
+      const trialEndsOn =
+        trialFactsOf(stripeSubscription).trialEndsAt ?? new Date();
+      await this.planChanges.sendPlanChanged(
+        organizationId,
+        { kind: 'trial-switch', to: plan, trialEndsOn },
+        plan,
+        addOns,
+      );
+    } else if (plan === 'business') {
+      await this.planChanges.sendPlanChanged(
+        organizationId,
+        {
+          kind: 'upgraded',
+          chargedToday:
+            await this.planChanges.chargedTodayOf(stripeSubscription),
+          from: at(planItem?.current_period_end),
+        },
+        plan,
+        addOns,
+      );
+    } else {
+      await this.planChanges.sendPlanChanged(
+        organizationId,
+        { kind: 'moved', from: at(planItem?.current_period_start) },
+        plan,
+        addOns,
       );
     }
   }

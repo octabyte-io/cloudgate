@@ -38,10 +38,16 @@ const previewInvoice = jest.fn<
   Promise<Stripe.Invoice>,
   [Stripe.InvoiceCreatePreviewParams]
 >();
+const retrievePrice = jest.fn<Promise<Stripe.Price>, [string]>();
+const retrieveInvoice = jest.fn<Promise<Stripe.Invoice>, [string]>();
+const constructEvent = jest.fn<Stripe.Event, [Buffer | string, string]>();
 const stripe = fakeStripe({
   retrieveSubscription,
   updateSubscription,
   previewInvoice,
+  retrievePrice,
+  retrieveInvoice,
+  constructEvent,
 });
 
 const recorder = new MailRecorder();
@@ -76,6 +82,7 @@ describe('Upgrading Starter to Business (e2e)', () => {
   beforeEach(async () => {
     await ctx.resetDb();
     jest.resetAllMocks();
+    recorder.clear();
   });
 
   /** The subscription at Stripe: Starter's item and `addOns` Add-ons. */
@@ -343,5 +350,139 @@ describe('Upgrading Starter to Business (e2e)', () => {
       expect(res.status).toBe(400);
     }
     expect(updateSubscription).not.toHaveBeenCalled();
+  });
+
+  describe('the "your plan changed" email', () => {
+    /** The catalogue as Stripe prices it: 15, 35 and 5 USD a month. */
+    function givenCatalogue() {
+      const amounts: Record<string, number> = {
+        [STARTER_PRICE]: 1500,
+        [BUSINESS_PRICE]: 3500,
+        [ADD_ON_PRICE]: 500,
+      };
+      retrievePrice.mockImplementation((id) =>
+        Promise.resolve({
+          id,
+          unit_amount: amounts[id],
+          currency: 'usd',
+        } as unknown as Stripe.Price),
+      );
+    }
+
+    /** Posts an event Stripe has already verified. */
+    function postWebhook(type: string, object: unknown) {
+      const event = { type, data: { object } } as unknown as Stripe.Event;
+      constructEvent.mockReturnValue(event);
+      return request(http)
+        .post('/billing/webhook')
+        .set('stripe-signature', 't=1,v1=valid')
+        .set('Content-Type', 'application/json')
+        .send(JSON.stringify(event))
+        .expect(200);
+    }
+
+    const planChanged = (address: string) =>
+      recorder
+        .to(address)
+        .filter((sent) => sent.email.subject.startsWith('Your plan changed'))
+        .map((sent) => ({
+          subject: sent.email.subject,
+          html: sent.email.html.replace(/<!-- -->/g, ''),
+        }));
+
+    /** A day as the emails print it, worked out apart from the code. */
+    const printed = (seconds: number) =>
+      new Date(seconds * 1000).toLocaleDateString('en-US', {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+      });
+
+    it('an upgrade emails every owner and admin once, with the amount charged today and the monthly amount from the renewal', async () => {
+      const owner = await givenStarterOwner();
+      await givenInvitee(owner, 'admin');
+      await givenInvitee(owner, 'member');
+      givenCatalogue();
+      const periodEnd = Math.floor(Date.now() / 1000) + 23 * DAY - 60;
+      retrieveSubscription.mockResolvedValue(starterAtStripe({ periodEnd }));
+      const onBusiness = {
+        ...starterAtStripe({ plan: BUSINESS_PRICE, periodEnd }),
+        latest_invoice: 'in_upgrade',
+      } as Stripe.Subscription;
+      updateSubscription.mockResolvedValue(onBusiness);
+      retrieveInvoice.mockResolvedValue({
+        id: 'in_upgrade',
+        amount_paid: 1533,
+        currency: 'usd',
+      } as Stripe.Invoice);
+
+      const res = await upgrade(owner.cookie, Math.floor(Date.now() / 1000));
+      expect(res.status).toBe(200);
+      // Stripe's own events for the change, delivered twice, send nothing more.
+      await postWebhook('customer.subscription.updated', onBusiness);
+      await postWebhook('customer.subscription.updated', onBusiness);
+
+      for (const address of ['grace@example.com', 'admin@example.com']) {
+        const sent = planChanged(address);
+        expect(sent).toHaveLength(1);
+        expect(sent[0].subject).toBe(
+          'Your plan changed: Hopper Labs is now on Business',
+        );
+        expect(sent[0].html).toContain(
+          'Charged today: $15.33, for the rest of this month on Business',
+        );
+        expect(sent[0].html).toContain(
+          'Plan: Business with 2 Add-ons, for 5 Servers and 5 Cloud Environments.',
+        );
+        expect(sent[0].html).toContain(
+          `Charged: $45.00 per month, from ${printed(periodEnd)}.`,
+        );
+      }
+      expect(planChanged('member@example.com')).toEqual([]);
+    });
+
+    it('is sent once by the webhook when its sync records Business before the upgrade does', async () => {
+      const owner = await givenStarterOwner();
+      givenCatalogue();
+      retrieveSubscription.mockResolvedValue(starterAtStripe());
+      const onBusiness = {
+        ...starterAtStripe({ plan: BUSINESS_PRICE }),
+        latest_invoice: {
+          id: 'in_upgrade',
+          amount_paid: 1533,
+          currency: 'usd',
+        },
+      } as unknown as Stripe.Subscription;
+      // Stripe's event reaches the webhook while the upgrade still waits on
+      // Stripe's answer.
+      updateSubscription.mockImplementation(async () => {
+        await postWebhook('customer.subscription.updated', onBusiness);
+        return onBusiness;
+      });
+
+      const res = await upgrade(owner.cookie, Math.floor(Date.now() / 1000));
+
+      expect(res.status).toBe(200);
+      const sent = planChanged('grace@example.com');
+      expect(sent).toHaveLength(1);
+      expect(sent[0].html).toContain('Charged today: $15.33');
+    });
+
+    it('sends nothing when the charge does not go through', async () => {
+      const owner = await givenStarterOwner();
+      givenCatalogue();
+      retrieveSubscription.mockResolvedValue(starterAtStripe());
+      updateSubscription.mockResolvedValue({
+        ...starterAtStripe(),
+        pending_update: { subscription_items: [] },
+      } as unknown as Stripe.Subscription);
+
+      expect(
+        (await upgrade(owner.cookie, Math.floor(Date.now() / 1000))).status,
+      ).toBe(402);
+      await postWebhook('customer.subscription.updated', starterAtStripe());
+
+      expect(planChanged('grace@example.com')).toEqual([]);
+    });
   });
 });

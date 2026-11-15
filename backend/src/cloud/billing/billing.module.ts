@@ -18,6 +18,7 @@ import { LapseClockService } from './lapse-clock.service';
 import { LapseNotifications } from './lapse-notifications.service';
 import { PaymentDisputes } from './payment-disputes.service';
 import { PaymentReceived } from './payment-received.service';
+import { PlanChangeNotifications } from './plan-change-notifications.service';
 import { STRIPE_API } from './stripe-api';
 import { StripeApiClient } from './stripe-api.client';
 import { StopPaying } from './stop-paying.service';
@@ -52,6 +53,7 @@ import { PurchasePayments } from './purchase-payments';
     LapseNotifications,
     PaymentDisputes,
     PaymentReceived,
+    PlanChangeNotifications,
     PurchasePayments,
     StopPaying,
     StripeWebhookEndpointCheck,
