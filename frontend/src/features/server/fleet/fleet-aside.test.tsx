@@ -87,9 +87,9 @@ function said(
  */
 describe("FleetAside — what setup installs", () => {
   it("reads both pinned versions off the instance rather than a literal", () => {
-    const text = said(answered("28.5.0", "3.6.7"));
+    const text = said(answered("29.9.3", "3.6.7"));
 
-    expect(text).toContain("28.5.0");
+    expect(text).toContain("29.9.3");
     expect(text).toContain("Traefik 3.6.7");
     // Declared only: nothing on this card claims to have looked at a machine.
     expect(text).toContain("not a reading off any machine");
@@ -127,9 +127,9 @@ describe("FleetAside — what setup installs", () => {
     // `docker.drift` is true on virtually every instance and says nothing about
     // what setup will do to a Server. This card must never grow the drift idiom
     // `IngressRow` uses.
-    const text = said(answered("28.5.0", "3.6.7", { docker: "29.7.2" }));
+    const text = said(answered("29.9.3", "3.6.7", { docker: "29.7.2" }));
 
-    expect(text).toContain("28.5.0");
+    expect(text).toContain("29.9.3");
     expect(text).not.toContain("29.7.2");
     expect(text).not.toContain("declared");
   });
@@ -145,7 +145,7 @@ describe("FleetAside — what setup installs", () => {
  */
 describe("FleetAside — where a reading off a real machine comes from", () => {
   it("sends a reader to a Server's Infrastructure tab only when a Server exists", () => {
-    const text = said(answered("28.5.0", "3.6.7"), {
+    const text = said(answered("29.9.3", "3.6.7"), {
       servers: [],
       pending: false,
     });
@@ -155,7 +155,7 @@ describe("FleetAside — where a reading off a real machine comes from", () => {
   });
 
   it("points at the Infrastructure tab once there is a Server to open", () => {
-    const text = said(answered("28.5.0", "3.6.7"), {
+    const text = said(answered("29.9.3", "3.6.7"), {
       servers: [aServer],
       pending: false,
     });
@@ -167,7 +167,7 @@ describe("FleetAside — where a reading off a real machine comes from", () => {
   it("does not claim there are no Servers while the list is still loading", () => {
     // The F07 rule the tiles above follow, applied to copy instead of a figure:
     // an in-flight list is not an empty one.
-    const text = said(answered("28.5.0", "3.6.7"), {
+    const text = said(answered("29.9.3", "3.6.7"), {
       servers: [],
       pending: true,
     });

@@ -95,6 +95,13 @@ if [ "$API_PORT" != 4000 ]; then
   exit 1
 fi
 
+# The Docker a Server gets: backend/src/servers/server-setup.ts's DOCKER_VERSION,
+# installed the same way, so the console shows no Docker drift on a fresh
+# install. Not an input: a platform host at another version than its Servers
+# is the drift this pin exists to prevent. Move it in both files together;
+# backend/test/servers/docker-pin.spec.ts fails until they agree.
+DOCKER_VERSION=29.9.3
+
 # OpenTofu, which makes a Cloud account's resources (ADR-0030), and the
 # providers Cloud runs use: hashicorp/aws for AWS, and hashicorp/google for
 # Google Cloud. Each Cloudgate version pins exactly one version of each, with
@@ -424,8 +431,10 @@ fi
 # deploy dies at mechanizeDockerContainer and every domain 404s.
 
 log "Docker"
+# At DOCKER_VERSION, as the Server setup does. A Docker already here is left as
+# it is, as on a Server.
 if ! command -v docker >/dev/null; then
-  curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 https://get.docker.com | sh      # brings the compose + buildx plugins
+  curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 https://get.docker.com | sh -s -- --version "$DOCKER_VERSION"      # brings the compose + buildx plugins
 fi
 systemctl enable --now docker
 

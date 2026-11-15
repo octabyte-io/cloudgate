@@ -40,7 +40,7 @@ function payload(over: Partial<RuntimeInfo> = {}): RuntimeInfo {
     },
     postgres: probe("17.2", { scope: "process" }),
     traefik: probe("3.6.7", { declared: "3.6.7" }),
-    docker: probe("29.7.2", { declared: "28.5.0", drift: true }),
+    docker: probe("29.7.2", { declared: "29.9.3", drift: true }),
     swarm: probe("active"),
     operatingSystem: probe("Ubuntu 24.04.2 LTS"),
     kernel: probe("Linux 6.8.0-45-generic"),
@@ -174,7 +174,7 @@ describe("RuntimeCard", () => {
     const text = said(
       answered({
         docker: probe(null, {
-          declared: "28.5.0",
+          declared: "29.9.3",
           reason: "Cannot connect to the Docker daemon at unix:///var/run/docker.sock",
         }),
       }),
@@ -230,8 +230,8 @@ describe("RuntimeCard", () => {
     const text = said(answered());
 
     expect(text).toContain("29.7.2");
-    expect(text).not.toContain("28.5.0");
-    expect(text).not.toContain("declared 28.5.0");
+    expect(text).not.toContain("29.9.3");
+    expect(text).not.toContain("declared 29.9.3");
     // The reader is owed the reason rather than a silent omission.
     expect(text).toContain("nothing pins this machine");
   });

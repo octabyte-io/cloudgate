@@ -19,7 +19,12 @@ import { joinAiNetworkProgram } from '../ai-models/ai-network';
  * it creates there is what later commands sent to that Server expect to find.
  */
 
-export const DOCKER_VERSION = '28.5.0';
+/**
+ * The Docker every Server gets, and the platform host too: `deploy/install.sh`
+ * pins its own `DOCKER_VERSION` to this one and installs it the same way.
+ * Move both together; `test/servers/docker-pin.spec.ts` fails until they agree.
+ */
+export const DOCKER_VERSION = '29.9.3';
 
 /**
  * The one definition of the Traefik container, for both paths that create it.

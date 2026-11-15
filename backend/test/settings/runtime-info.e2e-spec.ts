@@ -26,7 +26,7 @@ delete process.env.RELEASE_TAG;
 /** `TRAEFIK_VERSION`'s default in `servers/server-setup.ts`, written out. */
 const DECLARED_TRAEFIK = '3.6.7';
 /** `DOCKER_VERSION` in `servers/server-setup.ts`, written out. */
-const DECLARED_DOCKER = '28.5.0';
+const DECLARED_DOCKER = '29.9.3';
 
 const owner = {
   name: 'Grace Hopper',
@@ -59,7 +59,7 @@ const ok = (stdout: string): ExecResult => ({
  */
 const probeDocument = (over: Partial<RuntimeProbeRaw> = {}): string =>
   JSON.stringify({
-    docker: '28.5.0',
+    docker: '29.9.3',
     swarm: 'active',
     traefik: 'traefik:v3.6.7',
     os: 'Ubuntu 24.04.1 LTS',

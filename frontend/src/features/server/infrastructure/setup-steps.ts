@@ -14,7 +14,7 @@ export const STEPS = [
       "unzip, curl, wget, git, jq and openssl, through apt-get — and only when one of the six is missing, so a re-run touches neither the apt index nor the packages. On anything that is not Debian, Ubuntu or Raspbian this step is skipped and says so.",
   },
   {
-    title: "Install Docker 28.5.0",
+    title: "Install Docker 29.9.3",
     detail:
       "Only if docker is not already on the machine. It pipes get.docker.com into sh, and stops the whole run if docker is still missing afterwards.",
   },
