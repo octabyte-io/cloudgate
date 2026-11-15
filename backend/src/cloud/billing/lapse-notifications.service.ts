@@ -384,6 +384,30 @@ export class LapseNotifications {
     );
   }
 
+  /**
+   * One email to each owner and admin of the Organization, always, never
+   * opt-in: the shared send of the confirmations of spec #69 (a Server
+   * ready, a payment received, a plan, Add-on or Bought Server change).
+   * `render` words it for one recipient, given the Organization's name. The
+   * caller sends it once, beside the conditional write that recorded the
+   * change. A send that fails is logged and the next recipient still gets
+   * theirs; nothing here throws for a failed send.
+   */
+  async sendToOwnersAndAdmins(
+    organizationId: string,
+    kind: string,
+    render: (
+      recipient: LapseRecipient,
+      organizationName: string,
+    ) => Promise<RenderedEmail>,
+  ): Promise<void> {
+    const { organizationName, recipients } =
+      await this.audienceOf(organizationId);
+    await this.deliver(kind, recipients, (recipient) =>
+      render(recipient, organizationName),
+    );
+  }
+
   /** Renders and sends one email per recipient; a failure is logged and skipped. */
   private async deliver(
     kind: string,

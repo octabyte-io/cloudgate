@@ -573,17 +573,20 @@ export class BoughtServerStages implements OnApplicationBootstrap {
   /**
    * The first run ended: Ready either way. A failure is already stored on
    * the Server by the run (`setupOk`, `setupMessage`), which is what the
-   * Setup card shows; the Operators are told.
+   * Setup card shows; the Operators are told. The owners and admins are
+   * told it is Ready, and whether to press *Run setup*, once: only the
+   * write that moved the stage sends.
    */
   private async setupEnded(
     row: BoughtServer,
     outcome: SetupRunOutcome,
   ): Promise<void> {
     try {
-      const moved = await this.markReady(row.id);
-      if (moved && !outcome.ok) {
+      if (!(await this.markReady(row.id))) return;
+      if (!outcome.ok) {
         await this.tellOperators(row, outcome.message ?? 'Setup failed');
       }
+      await this.tellReady(row, outcome.ok ? 'finished' : 'failed');
     } catch (error) {
       this.logger.error(
         `Bought Server ${row.id}: could not record how its first setup ended: ${(error as Error).message}`,
@@ -594,7 +597,7 @@ export class BoughtServerStages implements OnApplicationBootstrap {
   /**
    * Started twice and cut off by a restart both times: given up as a failed
    * run, stored on the Server as one would be, and only *Run setup* starts
-   * another.
+   * another. Told as a failed run is, to the Operators and the customer.
    */
   private async setupCutOff(row: BoughtServer): Promise<boolean> {
     if (!(await this.markReady(row.id))) return false;
@@ -612,6 +615,7 @@ export class BoughtServerStages implements OnApplicationBootstrap {
       `Bought Server ${row.id}: its first setup was cut off ${row.setupStarts} times; it is left Ready with Setup failed`,
     );
     await this.tellOperators(row, SETUP_CUT_OFF_MESSAGE);
+    await this.tellReady(row, 'failed');
     return false;
   }
 
@@ -623,6 +627,19 @@ export class BoughtServerStages implements OnApplicationBootstrap {
       .where(and(eq(boughtServer.id, id), eq(boughtServer.stage, 'setting_up')))
       .returning({ id: boughtServer.id });
     return moved !== undefined;
+  }
+
+  /** The Organization's owners and admins: it is Ready, and how its first setup ended. */
+  private async tellReady(
+    row: BoughtServer,
+    firstSetup: 'finished' | 'failed',
+  ): Promise<void> {
+    await this.notifications.sendReady({
+      organizationId: row.organizationId,
+      serverId: row.id,
+      serverName: row.name,
+      firstSetup,
+    });
   }
 
   private async tellOperators(row: BoughtServer, failure: string) {

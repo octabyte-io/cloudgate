@@ -42,6 +42,7 @@ import {
   signUpHostedCustomer,
 } from '../utils/hosted-sign-up';
 import type { HostedCustomer } from '../utils/hosted-sign-up';
+import { signUpMember } from '../utils/test-auth';
 import { createTestApp, TestAppContext } from '../utils/test-app';
 
 jest.setTimeout(180_000);
@@ -76,7 +77,8 @@ async function eventually<T>(
  * starts it with no dial and no press, runs it once more by itself only if a
  * restart cut it off, and moves the stage to Ready when it ends. Until then
  * nothing deploys to the Server. A run that fails leaves it Ready with
- * Setup failed, emails the Operators, and refunds nothing.
+ * Setup failed, emails the Operators, and refunds nothing. Either way the
+ * Organization's owners and admins are emailed once that it is Ready (#70).
  *
  * The machine is the in-memory provider fake; the run is `execAsyncRemote`,
  * held by the test until it says how the run ends.
@@ -348,10 +350,9 @@ describe('A Bought Server is set up by itself (e2e)', () => {
       expect(email.email.html).toContain(
         'E: Unable to locate package docker-ce',
       );
-      // The customer is not told by email, and the purchase stands: nothing
-      // is refunded, and the one update that carries lines is the Buy's own
-      // (the others set a first Server's 3D Secure and put it back, #1392).
-      expect(mail.to('grace@example.com')).toEqual([]);
+      // The purchase stands: nothing is refunded, and the one update that
+      // carries lines is the Buy's own (the others set a first Server's 3D
+      // Secure and put it back, #1392).
       expect(createRefund).not.toHaveBeenCalled();
       expect(
         updateSubscription.mock.calls.filter(([, params]) => params.items),
@@ -370,6 +371,133 @@ describe('A Bought Server is set up by itself (e2e)', () => {
       await restarted().resumeSetups();
 
       expect(execAsyncRemote).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('the "your Server is ready" email', () => {
+    const ADMIN = 'ada@example.com';
+    const MEMBER = 'edsger@example.com';
+    const READY = 'Your Server web-1 is ready';
+    const READY_FAILED =
+      'Your Server web-1 is ready, but its first setup failed';
+
+    beforeEach(async () => {
+      await signUpMember(http, owner.cookie, {
+        email: ADMIN,
+        name: 'Ada Lovelace',
+        role: 'admin',
+      });
+      await signUpMember(http, owner.cookie, {
+        email: MEMBER,
+        name: 'Edsger Dijkstra',
+        role: 'member',
+      });
+      mail.clear();
+    });
+
+    const readyEmails = () =>
+      mail.sent.filter((sent) =>
+        sent.email.subject.startsWith('Your Server web-1 is ready'),
+      );
+    /** Lets a send that would follow the stage's write land, if one would. */
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 200));
+
+    it('goes once to every owner and admin when the first setup finishes, naming the Server and linking to it', async () => {
+      const id = await buy();
+      await eventually(() => held.length === 1);
+
+      held[0].finish();
+      await readyRow(id);
+      await eventually(() => readyEmails().length === 2);
+      await settle();
+
+      expect(
+        readyEmails()
+          .map((sent) => sent.to)
+          .sort(),
+      ).toEqual([ADMIN, 'grace@example.com']);
+      expect(mail.to(MEMBER)).toEqual([]);
+      const [email] = mail.to(ADMIN);
+      expect(email.email.subject).toBe(READY);
+      expect(email.email.html).toContain('web-1');
+      expect(email.email.html).toContain(`/servers/${id}`);
+      expect(email.email.html).not.toContain('Run setup');
+    });
+
+    it('says the first setup failed and names Run setup, and the Operators still get their own email', async () => {
+      const id = await buy();
+      await eventually(() => held.length === 1);
+
+      held[0].fail(new Error('E: Unable to locate package docker-ce'));
+      await readyRow(id);
+      await eventually(() => readyEmails().length === 2);
+      await eventually(() => toOperators().length === 1);
+
+      for (const address of ['grace@example.com', ADMIN]) {
+        const sent = mail.to(address);
+        expect(sent).toHaveLength(1);
+        expect(sent[0].email.subject).toBe(READY_FAILED);
+        expect(sent[0].email.html).toContain('Run setup');
+        expect(sent[0].email.html).toContain(`/servers/${id}`);
+        expect(sent[0].email.html).not.toMatch(/hetzner/i);
+      }
+      expect(toOperators()[0].email.subject).toBe(
+        "First setup failed on Hopper Labs's Bought Server web-1",
+      );
+    });
+
+    it('says the first setup failed when it was cut off twice', async () => {
+      const id = await buy();
+      await eventually(() => held.length === 1);
+      await restarted().resumeSetups();
+      await eventually(() => held.length === 2);
+
+      await restarted().resumeSetups();
+      await readyRow(id);
+      await eventually(() => readyEmails().length === 2);
+      await eventually(() => toOperators().length === 1);
+
+      expect(mail.to(ADMIN).map((sent) => sent.email.subject)).toEqual([
+        READY_FAILED,
+      ]);
+      expect(
+        mail.to('grace@example.com').map((sent) => sent.email.subject),
+      ).toEqual([READY_FAILED]);
+    });
+
+    it('sends nothing for a later Run setup, or for the stages resuming', async () => {
+      const id = await buy();
+      await eventually(() => held.length === 1);
+      held[0].fail(new Error('exit 1'));
+      await readyRow(id);
+      await eventually(() => readyEmails().length === 2);
+      mail.clear();
+
+      const pressed = request(http)
+        .post(`/servers/${id}/setup`)
+        .set('Cookie', owner.cookie)
+        .then((res) => res.status);
+      await eventually(() => held.length === 2);
+      held[1].finish();
+      expect(await pressed).toBe(200);
+      await ctx.app.get(BoughtServerStages).advance(id);
+      await restarted().resumeSetups();
+      await settle();
+
+      expect(mail.sent).toEqual([]);
+    });
+
+    it('never names the provider', async () => {
+      const finished = await buy();
+      await eventually(() => held.length === 1);
+      held[0].finish();
+      await readyRow(finished);
+      await eventually(() => readyEmails().length === 2);
+
+      for (const sent of readyEmails()) {
+        expect(sent.email.subject).not.toMatch(/hetzner/i);
+        expect(sent.email.html).not.toMatch(/hetzner/i);
+      }
     });
   });
 
