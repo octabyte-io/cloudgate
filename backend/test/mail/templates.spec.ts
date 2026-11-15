@@ -17,6 +17,7 @@ import {
   renderVerificationEmail,
 } from '../../src/mail/templates';
 import type { RenderedEmail } from '../../src/mail/templates';
+import { renderServerReadyEmail } from '../../src/mail/templates/server-ready';
 import { renderEventEmail } from '../../src/notifications/events/event-emails';
 
 // React Email templates rendered to { subject, html } — the pure half of the
@@ -200,6 +201,81 @@ describe('mail templates', () => {
       );
       expect(body).not.toContain('every owner and admin, and');
     });
+  });
+
+  describe('renderServerReadyEmail', () => {
+    const text = (html: string) =>
+      html.replace(/<!-- -->/g, '').replace(/&#x27;|&#39;/g, "'");
+    const props = {
+      userName: 'Grace',
+      organizationName: 'Hopper Labs',
+      serverName: 'web-1',
+      serverUrl: 'https://console.example.com/servers/abc123',
+    };
+
+    it('says the Server is Ready to deploy to, and links to it', async () => {
+      const rendered = await renderServerReadyEmail({
+        ...props,
+        firstSetup: 'finished',
+      });
+
+      expect(rendered.subject).toBe('Your Server web-1 is ready');
+      const body = text(rendered.html);
+      expect(body).toMatch(/Hello (<!-- -->)?Grace/);
+      expect(body).toContain(
+        'The Server web-1 bought for Hopper Labs is set up and Ready. You can deploy to it now.',
+      );
+      expect(body).not.toContain('Run setup');
+      expect(rendered.html).toContain(
+        'https://console.example.com/servers/abc123',
+      );
+      expect(rendered.inlineImages).toHaveLength(1);
+    });
+
+    it('says the first setup failed and names Run setup', async () => {
+      const rendered = await renderServerReadyEmail({
+        ...props,
+        firstSetup: 'failed',
+      });
+
+      expect(rendered.subject).toBe(
+        'Your Server web-1 is ready, but its first setup failed',
+      );
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'The Server web-1 bought for Hopper Labs is Ready, but its first setup failed.',
+      );
+      expect(body).toContain(
+        'Open the Server and press Run setup to try again: its Setup card shows what went wrong. You can deploy to it once a setup finishes.',
+      );
+      expect(rendered.html).toContain(
+        'https://console.example.com/servers/abc123',
+      );
+    });
+
+    it('goes to every owner and admin, as its footer says', async () => {
+      const rendered = await renderServerReadyEmail({
+        ...props,
+        firstSetup: 'finished',
+      });
+
+      expect(text(rendered.html)).toContain(
+        'It goes to every owner and admin, and cannot be turned off.',
+      );
+    });
+
+    it.each(['finished', 'failed'] as const)(
+      'never names the provider when the first setup %s',
+      async (firstSetup) => {
+        const rendered = await renderServerReadyEmail({
+          ...props,
+          firstSetup,
+        });
+
+        expect(rendered.subject).not.toMatch(/hetzner/i);
+        expect(rendered.html).not.toMatch(/hetzner/i);
+      },
+    );
   });
 
   describe('the footer of an owner-only email', () => {
@@ -961,6 +1037,17 @@ describe('mail templates', () => {
       ],
       ['trial started', () => renderTrialStartedEmail(trial)],
       ['trial ending', () => renderTrialEndingEmail(trial)],
+      [
+        'server ready',
+        () =>
+          renderServerReadyEmail({
+            userName: 'Grace',
+            organizationName: org,
+            serverName: 'web-1',
+            serverUrl: url,
+            firstSetup: 'finished',
+          }),
+      ],
       [
         'notification',
         () =>
