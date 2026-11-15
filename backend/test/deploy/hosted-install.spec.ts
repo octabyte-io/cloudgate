@@ -165,7 +165,11 @@ describe('deploy/install.sh', () => {
   describe('on an arm64 box', () => {
     it('goes on to the install proper with HOSTED_MODE=true', () => {
       if (fs.existsSync('/etc/default/cloudgate-hosted')) return;
-      const run = install({ HOSTED_MODE: 'true', UNAME_M: 'aarch64', ...INPUTS });
+      const run = install({
+        HOSTED_MODE: 'true',
+        UNAME_M: 'aarch64',
+        ...INPUTS,
+      });
 
       expect(run.stderr).not.toContain('Arm for the Hosted instance only');
       expect(run.stderr).toContain('must run as root');
@@ -192,7 +196,9 @@ describe('deploy/install.sh', () => {
     const run = install({ HOSTED_MODE: 'true', UNAME_M: 'riscv64', ...INPUTS });
 
     expect(run.status).toBe(1);
-    expect(run.stderr).toContain('this platform host is riscv64. Nothing was changed.');
+    expect(run.stderr).toContain(
+      'this platform host is riscv64. Nothing was changed.',
+    );
     expect(run.stderr).not.toContain('must run as root');
   });
 });

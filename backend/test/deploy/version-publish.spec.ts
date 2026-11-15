@@ -225,9 +225,9 @@ describe('.github/workflows/publish-version.yml', () => {
     const build = jobs().build;
 
     expect(build['runs-on']).toBe('${{ matrix.runner }}');
-    expect(
-      include(build).map(({ cpu, runner }) => `${cpu} ${runner}`),
-    ).toEqual(['amd64 ubuntu-24.04', 'arm64 ubuntu-24.04-arm']);
+    expect(include(build).map(({ cpu, runner }) => `${cpu} ${runner}`)).toEqual(
+      ['amd64 ubuntu-24.04', 'arm64 ubuntu-24.04-arm'],
+    );
   });
 
   it('boots each tarball on Ubuntu 24.04 and 26.04, the arm64 26.04 one in a 26.04 container on the Arm runner', () => {

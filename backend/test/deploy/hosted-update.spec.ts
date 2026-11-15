@@ -307,7 +307,7 @@ describe('deploy/hosted-update.sh (cloudgate-update)', () => {
  * The step's script runs here as written, with `gh` a stub that lists the
  * release's assets.
  */
-describe('deploy-hosted.yml: the tag’s Cloudgate version is published', () => {
+describe('.github/workflows/deploy-hosted.yml by hand checks the tag’s Cloudgate version is published', () => {
   function step(): string {
     const workflow = parse(
       fs.readFileSync(
@@ -350,6 +350,7 @@ describe('deploy-hosted.yml: the tag’s Cloudgate version is published', () => 
     `cloudgate-0.3.0-linux-${cpu}.tar.gz.sha256`,
   ]);
 
+  // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
   it('passes a release that carries both tarballs', () => {
     const passed = check(BOTH);
 
@@ -358,6 +359,7 @@ describe('deploy-hosted.yml: the tag’s Cloudgate version is published', () => 
   });
 
   it.each(['amd64', 'arm64'])(
+    // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
     'stops a release without its %s tarball, naming it',
     (cpu) => {
       const stopped = check(

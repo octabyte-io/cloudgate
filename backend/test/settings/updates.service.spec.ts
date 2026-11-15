@@ -149,6 +149,7 @@ describe('UpdatesService.getUpdateData', () => {
         }),
       );
 
+    // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
     it('looks for the arm64 tarball, never counting a release that carries only the amd64 one', async () => {
       const fetchClient = jest.fn(() =>
         githubResponse(200, [
@@ -166,6 +167,7 @@ describe('UpdatesService.getUpdateData', () => {
       });
     });
 
+    // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
     it('counts a release that carries the arm64 tarball alone', async () => {
       const fetchClient = jest.fn(() =>
         githubResponse(200, [armRelease('v0.4.0', ['arm64'])]),

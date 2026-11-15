@@ -341,6 +341,7 @@ describe('install.sh (the one-command install)', () => {
       );
     });
 
+    // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
     it('counts as the latest version on arm64 only a release that carries the arm64 tarball', () => {
       releasesOf({ amd64Only: ['v0.11.0'] }, 'v0.11.0', 'v0.10.0');
       publish('0.11.0');

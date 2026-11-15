@@ -180,7 +180,9 @@ describe('deploy/opentofu/.terraform.lock.hcl', () => {
     expect(installer()).toContain(
       'local zip="terraform-provider-${type}_${version}_${PLATFORM}.zip"',
     );
-    expect(installer()).toContain('mv "$tmp/$PLATFORM" "$dir/${version}/$PLATFORM"');
+    expect(installer()).toContain(
+      'mv "$tmp/$PLATFORM" "$dir/${version}/$PLATFORM"',
+    );
     expect(installer()).not.toContain('linux_amd64/');
   });
 });
