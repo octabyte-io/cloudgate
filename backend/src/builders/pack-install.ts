@@ -39,8 +39,9 @@ const PACK_INSTALL_DOCS =
  * which Server setup will never run on again. It is also what Railpack already
  * does (`railpack.strategy.ts`), so an operator who picks either CNB builder
  * pays the download once, on the first build, and one who never does pays
- * nothing. An operator-installed `pack` is used as it is — the guard is
- * `command -v`, the same as the installer's nixpacks line.
+ * nothing. An operator-installed `pack` is used as it is, at whatever version
+ * it is — the guard is `command -v` alone. The installer's nixpacks step is
+ * stricter: it replaces a nixpacks at any version other than its pin.
  *
  * **Why not `curl … | sh` the way Railpack does.** `pack` publishes no install
  * script, only release tarballs with a `.sha256` beside each, so this downloads
