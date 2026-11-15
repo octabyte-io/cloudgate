@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.3.2 (2026-11-15)
+
+### The Moto lane's stored plans no longer change from run to run
+
+The Moto lane's check that its stored plan files are current failed on every run, because moto makes up an instance profile's lower-case `unique_id` and an EBS volume attachment's `vai-` id anew each time and the plan files kept them as printed. Both are now renumbered like moto's other ids, so the six Stack VM plans a run re-saves match the committed ones.
+
+**What to do on upgrade**: nothing.
+
 ### Cloudgate can be uninstalled, keeping the instance unless purged
 
 `deploy/uninstall.sh`, in every version from this one, takes Cloudgate off the platform host as root: it stops, disables and removes `cloudgate-backend` and `cloudgate-console` (and the Hosted backup timers and a running `cloudgate-update`), the `cloudgate-traefik` container, `/opt/cloudgate` with its `.previous` and `.next`, and `/usr/local/share/cloudgate`. On the Hosted instance it also removes the remote updater, `/usr/local/sbin/cloudgate-update`, `/etc/sudoers.d/cloudgate-deploy` and the `cloudgate-deploy` user with its home, so the next version tag's deploy cannot install Cloudgate again. It keeps the instance, naming each path: the `cloudgate` database and its roles, `/etc/default/cloudgate-*`, `/etc/cloudgate` and `/var/backups/cloudgate`, so a later install, or a restore on another platform host, is the same instance; it keeps the install logs in `/var/log/cloudgate` too. `--purge` removes those as well, and `/root/cloudgate-live-test/env.migrated` when an earlier install left it, only after you type the instance's public host; any other answer changes nothing. Docker, Postgres, the swarm, `cloudgate-network`, ufw, the `cloudgate` user and a git checkout at `/opt/cloudgate.checkout-<date>` are left in place, and the run says so (`docs/deploy.md` §10, "Uninstalling").

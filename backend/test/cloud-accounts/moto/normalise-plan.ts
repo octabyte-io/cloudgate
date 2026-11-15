@@ -68,6 +68,9 @@ export function normalisePlan(
           (n) => `${prefix}-${padded(n, id.length - prefix.length - 1, 36)}`,
         ),
       )
+      .replace(VOLUME_ATTACHMENT_ID, (id) =>
+        stable('vai', id, (n) => `vai-${padded(n, 10, 10)}`),
+      )
       .replace(HEX_ID, (id) =>
         stable(`hex${id.length}`, id, (n) => padded(n, id.length, 16)),
       )
@@ -91,9 +94,13 @@ export function normalisePlan(
 
   const walk = (value: unknown, key: string): unknown => {
     if (typeof value === 'string') {
-      return DEFAULT_CERTIFICATE_FIELDS.has(key)
-        ? value.replace(PEM, pemPlaceholder)
-        : text(value);
+      if (DEFAULT_CERTIFICATE_FIELDS.has(key)) {
+        return value.replace(PEM, pemPlaceholder);
+      }
+      if (key === 'unique_id' && MOTO_UNIQUE_ID.test(value)) {
+        return stable('unique', value, (n) => padded(n, value.length, 36));
+      }
+      return text(value);
     }
     if (Array.isArray(value)) return value.map((item) => walk(item, ''));
     if (value && typeof value === 'object') {
@@ -219,6 +226,20 @@ const TIMESTAMP =
 
 const UUID =
   /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/g;
+
+/**
+ * An EBS volume attachment's id as moto makes it up: `vai-` and a run of
+ * digits whose length changes from run to run, so it is renumbered to one
+ * width.
+ */
+const VOLUME_ATTACHMENT_ID = /(?<![0-9A-Za-z-])vai-\d{6,}(?![0-9A-Za-z])/g;
+
+/**
+ * The lower-case `unique_id` moto gives an instance profile, which
+ * {@link IAM_UNIQUE_ID} (upper case, with a prefix) does not take. Matched only
+ * as a whole `unique_id` value, never inside other text.
+ */
+const MOTO_UNIQUE_ID = /^[0-9a-z]{16,32}$/;
 
 /** IAM's role and policy ids (`AROA…`, `ANPA…`): 21 characters, upper case. */
 const IAM_UNIQUE_ID = /\b(AROA|ANPA|AIDA|AGPA)[A-Z0-9]{17}\b/g;

@@ -60,7 +60,7 @@
               "cloudgate:environment": "env_1",
               "cloudgate:state": "st_stack_1"
             },
-            "unique_id": "9a1qrpzinee1rqx9idgp"
+            "unique_id": "00000000000000000001"
           },
           "sensitive_values": {
             "tags": {},
@@ -757,7 +757,7 @@
             "cloudgate:environment": "env_1",
             "cloudgate:state": "st_stack_1"
           },
-          "unique_id": "9a1qrpzinee1rqx9idgp"
+          "unique_id": "00000000000000000001"
         },
         "after": {
           "arn": "arn:aws:iam::123456789012:instance-profile/cloudgate/stack-vm/cloudgate-stack-vm-svcxstackx1",
@@ -778,7 +778,7 @@
             "cloudgate:environment": "env_1",
             "cloudgate:state": "st_stack_1"
           },
-          "unique_id": "9a1qrpzinee1rqx9idgp"
+          "unique_id": "00000000000000000001"
         },
         "after_unknown": {},
         "before_sensitive": {
@@ -2005,7 +2005,7 @@
                 "cloudgate:environment": "env_1",
                 "cloudgate:state": "st_stack_1"
               },
-              "unique_id": "9a1qrpzinee1rqx9idgp"
+              "unique_id": "00000000000000000001"
             },
             "sensitive_values": {
               "tags": {},
@@ -2755,7 +2755,7 @@
             "values": {
               "device_name": "/dev/sdf",
               "force_detach": null,
-              "id": "vai-3052985825",
+              "id": "vai-0000000001",
               "instance_id": "i-00000000000000006",
               "region": "eu-central-1",
               "skip_destroy": null,
