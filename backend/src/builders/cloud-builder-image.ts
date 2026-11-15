@@ -20,7 +20,7 @@
  * Plain erasable TypeScript with no imports, on purpose: the workflow runs this
  * file with Node's type stripping, outside the backend's build.
  */
-export const CLOUD_BUILDER_IMAGE_VERSION = '1.2.0';
+export const CLOUD_BUILDER_IMAGE_VERSION = '1.2.1';
 
 /** Where the workflow publishes the image (GitHub Container Registry). */
 export const CLOUD_BUILDER_IMAGE_REPOSITORY =
