@@ -1,5 +1,4 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { format } from 'date-fns';
 import type Stripe from 'stripe';
 import { renderAddOnsChangedEmail } from '../../mail/templates/add-ons-changed';
 import { renderPlanChangedEmail } from '../../mail/templates/plan-changed';
@@ -10,7 +9,7 @@ import { BillingConfig } from './billing.config';
 import { PLAN_LABELS } from './billing.plans';
 import type { PlanName } from './billing.plans';
 import type { MonthlyAmount } from './free-trial';
-import { LapseNotifications } from './lapse-notifications.service';
+import { formatDate, LapseNotifications } from './lapse-notifications.service';
 import { STRIPE_API } from './stripe-api';
 import type { StripeApi } from './stripe-api';
 
@@ -228,9 +227,4 @@ function formatted(change: PlanChange): PlanChangedFacts {
     case 'kept-business':
       return { kind: change.kind };
   }
-}
-
-/** A date as the emails print it. */
-function formatDate(at: Date): string {
-  return format(at, 'MMM dd, yyyy');
 }
