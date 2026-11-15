@@ -1066,8 +1066,8 @@ export class BillingService {
    * Business → Starter during a free trial: the plan item's price
    * swapped at once, nothing prorated or charged, the trial keeping its end.
    * Starter is written onto the row straight away, so the paid features stop
-   * now; the custom-role email goes from here, since the webhook's
-   * sync then finds Starter already stored. The conditional write sends it
+   * now; the custom-role email and "your plan changed" go from here, since
+   * the webhook's sync then finds Starter already stored. The conditional write sends it
    * once, whichever of the two stores Starter first.
    */
   private async downgradeDuringTrial(
@@ -1095,11 +1095,23 @@ export class BillingService {
           eq(subscription.plan, 'business'),
         ),
       )
-      .returning({ organizationId: subscription.organizationId });
+      .returning({ addOns: subscription.addOns });
     if (stored.length > 0) {
       await this.notifications.sendCustomRolesStopped(
         organizationId,
         'starter',
+      );
+      await this.planChanges.sendPlanChanged(
+        organizationId,
+        {
+          kind: 'trial-switch',
+          to: 'starter',
+          // The trial keeps its end.
+          trialEndsOn: trialFactsOf(current).trialEndsAt ?? new Date(),
+        },
+        'starter',
+        itemCarrying(current, prices.addOnPriceId)?.quantity ??
+          stored[0].addOns,
       );
     }
     return { plan: 'starter' };
