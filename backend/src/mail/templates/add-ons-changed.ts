@@ -39,8 +39,10 @@ export async function renderAddOnsChangedEmail({
   const went = `${org} went from ${countOf(was)} to ${now} today.`;
   const opening =
     change.kind === 'trial'
-      ? [
-          `${went} Add-ons cost nothing during the free trial: nothing is charged until it ends.`,
+      ? // "for them": a Bought Server is charged at once even during the
+        // trial (ADR-0071), so only the Add-ons are promised free.
+        [
+          `${went} Add-ons cost nothing during the free trial: nothing is charged for them until it ends.`,
         ]
       : [
           `${went} The rest of this month is prorated: the difference is on the next invoice.`,

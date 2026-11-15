@@ -82,12 +82,14 @@ function wordingOf(
         ],
       };
     case 'trial-switch':
+      // "for the plan": a Bought Server is never free during the trial, it
+      // is charged at once (ADR-0071), so nothing broader is promised.
       return {
         ...nowOn,
         opening: [
           `${org} switched to ${planLabel} during its free trial. ${
             change.to === 'business' ? FEATURES_ON : FEATURES_OFF
-          } Nothing is charged until the trial ends on ${change.trialEndsOn}.`,
+          } Nothing is charged for the plan until the trial ends on ${change.trialEndsOn}.`,
         ],
       };
     case 'move-scheduled':

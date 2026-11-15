@@ -1331,7 +1331,7 @@ describe('mail templates', () => {
       expect(body).toContain('Charged: $45.00 per month, from Dec 15, 2026.');
     });
 
-    it('a switch during the Free trial says nothing is charged until the trial ends, either way', async () => {
+    it('a switch during the Free trial says nothing is charged for the plan until the trial ends, either way', async () => {
       const up = await renderPlanChangedEmail({
         ...props,
         change: {
@@ -1345,7 +1345,7 @@ describe('mail templates', () => {
         'Your plan changed: Hopper Labs is now on Business',
       );
       expect(text(up.html)).toContain(
-        'Hopper Labs switched to Business during its free trial. SSO, SCIM, custom roles and forward auth work now. Nothing is charged until the trial ends on Dec 15, 2026.',
+        'Hopper Labs switched to Business during its free trial. SSO, SCIM, custom roles and forward auth work now. Nothing is charged for the plan until the trial ends on Dec 15, 2026.',
       );
       expect(text(up.html)).toContain(
         'Charged: $45.00 per month, from Dec 15, 2026.',
@@ -1364,7 +1364,7 @@ describe('mail templates', () => {
         'Your plan changed: Hopper Labs is now on Starter',
       );
       expect(text(down.html)).toContain(
-        'Hopper Labs switched to Starter during its free trial. SSO, SCIM, custom roles and forward auth no longer work; their settings are kept. Nothing is charged until the trial ends on Dec 15, 2026.',
+        'Hopper Labs switched to Starter during its free trial. SSO, SCIM, custom roles and forward auth no longer work; their settings are kept. Nothing is charged for the plan until the trial ends on Dec 15, 2026.',
       );
     });
   });
@@ -1449,7 +1449,7 @@ describe('mail templates', () => {
       expect(body).toContain('Charged: $35.00 per month, from Dec 15, 2026.');
     });
 
-    it('during the Free trial says nothing is charged until it ends', async () => {
+    it('during the Free trial says nothing is charged for the Add-ons until it ends', async () => {
       const rendered = await renderAddOnsChangedEmail({
         ...props,
         was: 2,
@@ -1459,7 +1459,7 @@ describe('mail templates', () => {
 
       const body = text(rendered.html);
       expect(body).toContain(
-        'Hopper Labs went from 2 Add-ons to 4 Add-ons today. Add-ons cost nothing during the free trial: nothing is charged until it ends.',
+        'Hopper Labs went from 2 Add-ons to 4 Add-ons today. Add-ons cost nothing during the free trial: nothing is charged for them until it ends.',
       );
       expect(body).not.toContain('prorated');
       expect(body).toContain('Charged: $55.00 per month, from Dec 15, 2026.');

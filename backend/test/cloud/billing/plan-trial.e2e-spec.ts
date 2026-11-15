@@ -746,7 +746,7 @@ describe('Billing during a free trial (e2e)', () => {
           html: sent.email.html.replace(/<!-- -->/g, ''),
         }));
 
-    it('a switch up to Business emails every owner and admin once, saying nothing is charged until the trial ends', async () => {
+    it('a switch up to Business emails every owner and admin once, saying nothing is charged for the plan until the trial ends', async () => {
       const owner = await givenTrialWithAdmin('starter');
 
       const res = await request(http)
@@ -764,7 +764,7 @@ describe('Billing during a free trial (e2e)', () => {
           'Your plan changed: Hopper Labs is now on Business',
         );
         expect(sent[0].html).toContain(
-          `Hopper Labs switched to Business during its free trial. SSO, SCIM, custom roles and forward auth work now. Nothing is charged until the trial ends on ${trialEndPrinted}.`,
+          `Hopper Labs switched to Business during its free trial. SSO, SCIM, custom roles and forward auth work now. Nothing is charged for the plan until the trial ends on ${trialEndPrinted}.`,
         );
         expect(sent[0].html).toContain(
           `Charged: $45.00 per month, from ${trialEndPrinted}.`,
@@ -790,7 +790,7 @@ describe('Billing during a free trial (e2e)', () => {
           'Your plan changed: Hopper Labs is now on Starter',
         );
         expect(sent[0].html).toContain(
-          `Hopper Labs switched to Starter during its free trial. SSO, SCIM, custom roles and forward auth no longer work; their settings are kept. Nothing is charged until the trial ends on ${trialEndPrinted}.`,
+          `Hopper Labs switched to Starter during its free trial. SSO, SCIM, custom roles and forward auth no longer work; their settings are kept. Nothing is charged for the plan until the trial ends on ${trialEndPrinted}.`,
         );
         expect(sent[0].html).toContain(
           `Charged: $25.00 per month, from ${trialEndPrinted}.`,
