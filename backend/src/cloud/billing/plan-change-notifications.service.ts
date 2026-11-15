@@ -55,8 +55,28 @@ export class PlanChangeNotifications {
     private readonly notifications: LapseNotifications,
   ) {}
 
-  /** Sends "Your plan changed" for `change`, the plan then being `plan` with `addOns`. */
+  /**
+   * Sends "Your plan changed" for `change`, the plan then being `plan` with
+   * `addOns`. Never throws: its caller's write already committed, and Stripe
+   * already made the change, so a failure here is logged, never answered as
+   * a failed change (CODING_STANDARDS §2.3).
+   */
   async sendPlanChanged(
+    organizationId: string,
+    change: PlanChange,
+    plan: PlanName,
+    addOns: number,
+  ): Promise<void> {
+    try {
+      await this.sendPlanChangedOrThrow(organizationId, change, plan, addOns);
+    } catch (error) {
+      this.logger.error(
+        `Could not send the plan-changed email: ${String(error)}`,
+      );
+    }
+  }
+
+  private async sendPlanChangedOrThrow(
     organizationId: string,
     change: PlanChange,
     plan: PlanName,

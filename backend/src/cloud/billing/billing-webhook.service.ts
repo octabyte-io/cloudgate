@@ -9,6 +9,7 @@ import type Stripe from 'stripe';
 import { user } from '../../auth/auth.schema';
 import { DRIZZLE } from '../../db/drizzle.module';
 import type { DrizzleDB } from '../../db/drizzle.module';
+import type { DrizzleTx } from '../../environments/config-name';
 import {
   AuditLogService,
   PLATFORM_ACTOR,
@@ -768,13 +769,6 @@ export class BillingWebhookService {
       quantity: item.quantity,
     }));
     const { plan, addOns } = purchasedItems(this.config.prices, items);
-    const planBefore = await this.storedPlan(organizationId);
-    const planChanged =
-      !!planBefore &&
-      !!plan &&
-      planBefore !== plan &&
-      (await this.claimPlanChange(organizationId, planBefore, plan));
-
     const values = {
       stripeSubscriptionId: stripeSubscription.id,
       plan,
@@ -786,24 +780,82 @@ export class BillingWebhookService {
       trialEndsAt: trialFactsOf(stripeSubscription).trialEndsAt,
       cancelAt: cancelAtOf(stripeSubscription),
     };
-
-    const cancelChange = await claimCancelChange(
-      this.db,
-      organizationId,
-      stripeSubscription,
-    );
     const begun = trialFactsOf(stripeSubscription).begun;
-    await this.db
-      .insert(subscription)
-      .values({
+
+    // The claims and the write they claim for commit together, or not at
+    // all: a claim taken by a write that then failed would leave the retry
+    // nothing to claim, and its email unsent. The row is locked first, so
+    // two syncs at once read the plan before one after the other.
+    const { planBefore, planChanged, cancelChange } = await this.db.transaction(
+      async (tx) => {
+        const [row] = await tx
+          .select({ plan: subscription.plan })
+          .from(subscription)
+          .where(eq(subscription.organizationId, organizationId))
+          .for('update');
+        const before = row?.plan ?? null;
+        const changed =
+          !!before &&
+          !!plan &&
+          before !== plan &&
+          (await this.claimPlanChange(tx, organizationId, before, plan));
+        const cancel = await claimCancelChange(
+          tx,
+          organizationId,
+          stripeSubscription,
+        );
+        await tx
+          .insert(subscription)
+          .values({
+            organizationId,
+            ...values,
+            ...(begun ? { firstSubscribedAt: new Date() } : {}),
+          })
+          .onConflictDoUpdate({
+            target: subscription.organizationId,
+            set: { ...values, ...(begun ? firstSubscribedNow() : {}) },
+          });
+        return {
+          planBefore: before,
+          planChanged: changed,
+          cancelChange: cancel,
+        };
+      },
+    );
+
+    // Right after the commit, and never throwing: the claims are taken, so
+    // a send that failed the webhook would be lost to its retry
+    // (CODING_STANDARDS §2.3).
+    await this.sendClaimed('plan cancel', () =>
+      notifyCancelChange(
+        this.db,
+        this.lapseNotifications,
+        `${this.config.siteUrl}/settings/billing`,
         organizationId,
-        ...values,
-        ...(begun ? { firstSubscribedAt: new Date() } : {}),
-      })
-      .onConflictDoUpdate({
-        target: subscription.organizationId,
-        set: { ...values, ...(begun ? firstSubscribedNow() : {}) },
-      });
+        plan,
+        cancelChange,
+        isTrialStatus(stripeSubscription.status),
+      ),
+    );
+    if (planBefore === 'business' && plan !== 'business') {
+      await this.sendClaimed('custom-roles-stopped', () =>
+        this.lapseNotifications.sendCustomRolesStopped(
+          organizationId,
+          plan === 'starter' ? 'starter' : 'ended',
+        ),
+      );
+    }
+    if (planChanged && plan) {
+      await this.sendClaimed('plan-changed', () =>
+        this.notifyPlanChanged(
+          organizationId,
+          stripeSubscription,
+          plan,
+          addOns,
+        ),
+      );
+    }
+
     // Paying again clears the lapse and the deletion clock's marks, and
     // only those: a suspension is an Operator's to lift (ADR-0052). Whoever
     // clears a recorded failure says "payment received", once (#71).
@@ -814,27 +866,21 @@ export class BillingWebhookService {
     await this.endLinkOnceActive(organizationId, stripeSubscription);
     await this.recordTrialStart(stripeSubscription);
     await this.notifyTrialStarted(organizationId, stripeSubscription);
-    await notifyCancelChange(
-      this.db,
-      this.lapseNotifications,
-      `${this.config.siteUrl}/settings/billing`,
-      organizationId,
-      plan,
-      cancelChange,
-      isTrialStatus(stripeSubscription.status),
-    );
-    if (planBefore === 'business' && plan !== 'business') {
-      await this.lapseNotifications.sendCustomRolesStopped(
-        organizationId,
-        plan === 'starter' ? 'starter' : 'ended',
-      );
-    }
-    if (planChanged && plan) {
-      await this.notifyPlanChanged(
-        organizationId,
-        stripeSubscription,
-        plan,
-        addOns,
+  }
+
+  /**
+   * An email whose conditional write already committed: a failure is logged
+   * and the webhook goes on, since a retry would find nothing left to claim.
+   */
+  private async sendClaimed(
+    kind: string,
+    send: () => Promise<void>,
+  ): Promise<void> {
+    try {
+      await send();
+    } catch (error) {
+      this.logger.error(
+        `Could not send the ${kind} email: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
@@ -846,11 +892,12 @@ export class BillingWebhookService {
    * so whichever records the change first sends its email, once.
    */
   private async claimPlanChange(
+    tx: DrizzleTx,
     organizationId: string,
     before: PlanName,
     after: PlanName,
   ): Promise<boolean> {
-    const [claimed] = await this.db
+    const [claimed] = await tx
       .update(subscription)
       .set({ plan: after })
       .where(
@@ -1067,16 +1114,6 @@ export class BillingWebhookService {
    */
   private isBilledOutsideStripe(organizationId: string): Promise<boolean> {
     return isEnterprise(this.db, organizationId);
-  }
-
-  /** The plan the organization's row holds, before a write changes it. */
-  private async storedPlan(organizationId: string): Promise<PlanName | null> {
-    const [row] = await this.db
-      .select({ plan: subscription.plan })
-      .from(subscription)
-      .where(eq(subscription.organizationId, organizationId))
-      .limit(1);
-    return row?.plan ?? null;
   }
 
   private async organizationExists(organizationId: string): Promise<boolean> {

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { asc, eq } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { DRIZZLE } from '../../db/drizzle.module';
@@ -38,6 +38,8 @@ export interface Payment {
  */
 @Injectable()
 export class PaymentReceived {
+  private readonly logger = new Logger(PaymentReceived.name);
+
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly config: BillingConfig,
@@ -72,7 +74,15 @@ export class PaymentReceived {
   ): Promise<PaymentLifted | null> {
     if (!payment.plan && payment.boughtServersInvoiceId === null) return null;
     const lifted = await this.clear(organizationId, payment);
-    if (lifted) await this.send(organizationId, lifted);
+    // The clear has committed: a send that threw would fail the webhook, and
+    // its retry would find nothing left to clear (CODING_STANDARDS §2.3).
+    if (lifted) {
+      await this.send(organizationId, lifted).catch((error: unknown) =>
+        this.logger.error(
+          `Could not send the payment received email: ${String(error)}`,
+        ),
+      );
+    }
     return lifted;
   }
 

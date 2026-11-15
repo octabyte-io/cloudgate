@@ -3,6 +3,7 @@ import type Stripe from 'stripe';
 import { LIVE_STAGES } from '../../bought-servers/bought-server-clock.service';
 import { boughtServer } from '../../bought-servers/bought-server.schema';
 import type { DrizzleDB } from '../../db/drizzle.module';
+import type { DrizzleTx } from '../../environments/config-name';
 import {
   renderPlanCarriesOnEmail,
   renderPlanEndsEmail,
@@ -32,13 +33,13 @@ const ENDED_STATUSES = new Set([
 
 /**
  * Claims the change of the cancel date with one conditional write on the
- * row, before the sync writes the rest, so a webhook retry or a second event
+ * row, in the sync's transaction before it writes the rest, so a webhook retry or a second event
  * carrying the same state finds nothing to claim and sends nothing. Only the
  * subscription the row holds counts: a new one after a cancelled one ended
  * takes nothing back. Null when the cancel did not change.
  */
 export async function claimCancelChange(
-  db: DrizzleDB,
+  db: DrizzleDB | DrizzleTx,
   organizationId: string,
   stripeSubscription: Stripe.Subscription,
 ): Promise<CancelChange | null> {

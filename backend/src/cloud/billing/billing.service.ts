@@ -1164,10 +1164,15 @@ export class BillingService {
       )
       .returning({ addOns: subscription.addOns });
     if (stored.length > 0) {
-      await this.notifications.sendCustomRolesStopped(
-        organizationId,
-        'starter',
-      );
+      // Stripe made the switch and Starter is stored: an email that cannot
+      // be sent is logged, never answered as a failed switch.
+      await this.notifications
+        .sendCustomRolesStopped(organizationId, 'starter')
+        .catch((error: unknown) =>
+          this.logger.error(
+            `Could not send the custom-roles-stopped email: ${String(error)}`,
+          ),
+        );
       await this.planChanges.sendPlanChanged(
         organizationId,
         {
