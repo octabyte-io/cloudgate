@@ -15,7 +15,6 @@ import {
 } from '../../enterprise/audit-logs/audit-log.service';
 import { organization } from '../../organizations/organizations.schema';
 import { BillingNotificationsService } from './billing-notifications.service';
-import { isPaidStatus } from './billing-allowance';
 import { BillingConfig } from './billing.config';
 import { isEnterprise } from './enterprise';
 import {

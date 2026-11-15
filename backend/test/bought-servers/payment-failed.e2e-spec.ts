@@ -21,7 +21,10 @@ import { STRIPE_API } from '../../src/cloud/billing/stripe-api';
 import type { StripeApi } from '../../src/cloud/billing/stripe-api';
 import { environment } from '../../src/environments/environment.schema';
 import { MailService } from '../../src/mail/mail.service';
-import { organization } from '../../src/organizations/organizations.schema';
+import {
+  member,
+  organization,
+} from '../../src/organizations/organizations.schema';
 import { project } from '../../src/projects/project.schema';
 import { server } from '../../src/servers/server.schema';
 import { sshKey } from '../../src/ssh-keys/ssh-key.schema';
@@ -480,6 +483,87 @@ describe('Bought Servers deleted after a failed payment (e2e)', () => {
       expect(mail.sent).toEqual([]);
       const listed = await listServers();
       expect(listed.body[0].boughtServer).toMatchObject({ deletesOn: null });
+    });
+
+    describe('payment received (#71)', () => {
+      const ADMIN = 'alan@example.com';
+      const paid = () => ({
+        ...invoiceOf(owner.organizationId, ['price_si_bought0000000001']),
+        status: 'paid',
+        amount_paid: 3000,
+      });
+      const subscriptionUpdated = () =>
+        postWebhook('customer.subscription.updated', {
+          ...subscriptionNow(owner.organizationId),
+          latest_invoice: 'in_renewal',
+        });
+
+      beforeEach(async () => {
+        const admin = await signUpHostedCustomer(http, mail, {
+          name: 'Alan Turing',
+          email: ADMIN,
+          password: 'super-secret-password',
+          organizationName: "Alan's own",
+        });
+        await ctx.db.insert(member).values({
+          organizationId: owner.organizationId,
+          userId: admin.id,
+          role: 'admin',
+          createdAt: new Date(),
+        });
+        await givenBoughtServer(
+          owner.organizationId,
+          'bought0000000001',
+          'web-1',
+        );
+        // The renewal fails: the plan's failure and the Bought Servers' clock.
+        await renewalFails(owner.organizationId, [
+          'price_si_plan',
+          'price_si_bought0000000001',
+        ]);
+        mail.clear();
+      });
+
+      it('paying the failed invoice sends one email to the owner and admin, saying the Servers are no longer due for deletion', async () => {
+        status = 'active';
+        await postWebhook('invoice.payment_succeeded', paid());
+        // Then Stripe's subscription event, and both delivered again.
+        await subscriptionUpdated();
+        await postWebhook('invoice.payment_succeeded', paid());
+        await subscriptionUpdated();
+
+        for (const address of ['grace@example.com', ADMIN]) {
+          expect(subjects(address)).toEqual([
+            'Payment received for Hopper Labs',
+          ]);
+          const body = bodyOf(address, /Payment received/);
+          expect(body).toContain(
+            'The Servers bought for Hopper Labs are no longer due for deletion, and keep running as before.',
+          );
+          expect(body).toContain('Hopper Labs was never frozen');
+        }
+        expect(await marksOf(owner.organizationId)).toMatchObject({
+          paymentFailedAt: null,
+          boughtServersPaymentFailedAt: null,
+          boughtServersFailedInvoiceId: null,
+        });
+      });
+
+      it('sends one email covering both when the subscription event arrives first', async () => {
+        status = 'active';
+        await subscriptionUpdated();
+        await postWebhook('invoice.payment_succeeded', paid());
+
+        expect(subjects('grace@example.com')).toEqual([
+          'Payment received for Hopper Labs',
+        ]);
+        expect(bodyOf('grace@example.com', /Payment received/)).toContain(
+          'The Servers bought for Hopper Labs are no longer due for deletion',
+        );
+        expect(
+          (await marksOf(owner.organizationId)).boughtServersFailedInvoiceId,
+        ).toBeNull();
+      });
     });
 
     it('is not started by an invoice with no Bought Server line, nor by a failed payment the subscription stays active through', async () => {
