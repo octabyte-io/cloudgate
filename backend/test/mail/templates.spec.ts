@@ -24,6 +24,7 @@ import {
 import { renderServerReadyEmail } from '../../src/mail/templates/server-ready';
 import { renderServerChangedEmail } from '../../src/mail/templates/server-changed';
 import { renderPaymentReceivedEmail } from '../../src/mail/templates/payment-received';
+import { renderPlanChangedEmail } from '../../src/mail/templates/plan-changed';
 import { renderEventEmail } from '../../src/notifications/events/event-emails';
 
 // React Email templates rendered to { subject, html } — the pure half of the
@@ -1202,6 +1203,167 @@ describe('mail templates', () => {
       });
       expect(text(enterprise.html)).toContain(
         'Acme&#x27;s Enterprise agreement with Octabyte has ended.',
+      );
+    });
+  });
+
+  describe('renderPlanChangedEmail', () => {
+    const text = (html: string) =>
+      html.replace(/<!-- -->/g, '').replace(/&#x27;|&#39;/g, "'");
+    const props = {
+      userName: 'Grace',
+      organizationName: 'Hopper Labs',
+      billingUrl: 'https://cloudgate.example.com/settings/billing',
+    };
+    const business = {
+      planLabel: 'Business',
+      addOns: 2,
+      monthly: '$45.00',
+      from: 'Dec 15, 2026',
+    };
+    const starter = { ...business, planLabel: 'Starter', monthly: '$25.00' };
+
+    it('an upgrade gives the amount charged today, the plan, the Add-ons and the monthly amount from the renewal', async () => {
+      const rendered = await renderPlanChangedEmail({
+        ...props,
+        change: { kind: 'upgraded', chargedToday: '$15.33' },
+        plan: business,
+      });
+
+      expect(rendered.subject).toBe(
+        'Your plan changed: Hopper Labs is now on Business',
+      );
+      const body = text(rendered.html);
+      expect(body).toMatch(/Hello (<!-- -->)?Grace/);
+      expect(body).toContain(
+        'Hopper Labs moved from Starter to Business today. SSO, SCIM, custom roles and forward auth work now.',
+      );
+      expect(body).toContain(
+        'Charged today: $15.33, for the rest of this month on Business, less what was left of Starter.',
+      );
+      expect(body).toContain(
+        'Plan: Business with 2 Add-ons, for 5 Servers and 5 Cloud Environments.',
+      );
+      expect(body).toContain('Charged: $45.00 per month, from Dec 15, 2026.');
+      expect(rendered.html).toContain(
+        'https://cloudgate.example.com/settings/billing',
+      );
+      expect(body).toContain(
+        'It goes to every owner and admin, and cannot be turned off.',
+      );
+    });
+
+    it('points at the Billing page when an amount is not known', async () => {
+      const rendered = await renderPlanChangedEmail({
+        ...props,
+        change: { kind: 'upgraded', chargedToday: null },
+        plan: { ...business, addOns: 0, monthly: null },
+      });
+
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Charged today: the rest of this month on Business, less what was left of Starter. The Billing page has the invoice.',
+      );
+      expect(body).toContain(
+        'Plan: Business, for 3 Servers and 3 Cloud Environments.',
+      );
+      expect(body).toContain(
+        'Charged: monthly, from Dec 15, 2026. The Billing page shows the amount.',
+      );
+    });
+
+    it('a move to Starter being scheduled gives its date and how to stay on Business', async () => {
+      const rendered = await renderPlanChangedEmail({
+        ...props,
+        change: { kind: 'move-scheduled', movesOn: 'Dec 15, 2026' },
+        plan: starter,
+      });
+
+      expect(rendered.subject).toBe(
+        'Your plan changed: Hopper Labs moves to Starter on Dec 15, 2026',
+      );
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Hopper Labs keeps Business, with SSO, SCIM, custom roles and forward auth, until Dec 15, 2026, then moves to Starter. Nothing is charged for the move.',
+      );
+      expect(body).toContain(
+        'Plan: Starter with 2 Add-ons, for 5 Servers and 5 Cloud Environments.',
+      );
+      expect(body).toContain('Charged: $25.00 per month, from Dec 15, 2026.');
+      expect(body).toContain(
+        'To stay on Business, open Billing and choose Keep Business before then.',
+      );
+    });
+
+    it('the move to Starter taking effect says the paid features stopped', async () => {
+      const rendered = await renderPlanChangedEmail({
+        ...props,
+        change: { kind: 'moved' },
+        plan: starter,
+      });
+
+      expect(rendered.subject).toBe(
+        'Your plan changed: Hopper Labs is now on Starter',
+      );
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Hopper Labs moved from Business to Starter today. SSO, SCIM, custom roles and forward auth no longer work; their settings are kept.',
+      );
+      expect(body).toContain('Charged: $25.00 per month, from Dec 15, 2026.');
+    });
+
+    it('Keep Business says it stays on Business', async () => {
+      const rendered = await renderPlanChangedEmail({
+        ...props,
+        change: { kind: 'kept-business' },
+        plan: business,
+      });
+
+      expect(rendered.subject).toBe(
+        'Your plan changed: Hopper Labs stays on Business',
+      );
+      const body = text(rendered.html);
+      expect(body).toContain('You stay on Business');
+      expect(body).toContain(
+        'The move of Hopper Labs to Starter was taken back: it stays on Business, with SSO, SCIM, custom roles and forward auth. Nothing is charged for the change.',
+      );
+      expect(body).toContain('Charged: $45.00 per month, from Dec 15, 2026.');
+    });
+
+    it('a switch during the Free trial says nothing is charged until the trial ends, either way', async () => {
+      const up = await renderPlanChangedEmail({
+        ...props,
+        change: {
+          kind: 'trial-switch',
+          to: 'business',
+          trialEndsOn: 'Dec 15, 2026',
+        },
+        plan: business,
+      });
+      expect(up.subject).toBe(
+        'Your plan changed: Hopper Labs is now on Business',
+      );
+      expect(text(up.html)).toContain(
+        'Hopper Labs switched to Business during its free trial. SSO, SCIM, custom roles and forward auth work now. Nothing is charged until the trial ends on Dec 15, 2026.',
+      );
+      expect(text(up.html)).toContain(
+        'Charged: $45.00 per month, from Dec 15, 2026.',
+      );
+
+      const down = await renderPlanChangedEmail({
+        ...props,
+        change: {
+          kind: 'trial-switch',
+          to: 'starter',
+          trialEndsOn: 'Dec 15, 2026',
+        },
+        plan: starter,
+      });
+      expect(down.subject).toBe(
+        'Your plan changed: Hopper Labs is now on Starter',
+      );
+      expect(text(down.html)).toContain(
+        'Hopper Labs switched to Starter during its free trial. SSO, SCIM, custom roles and forward auth no longer work; their settings are kept. Nothing is charged until the trial ends on Dec 15, 2026.',
       );
     });
   });
