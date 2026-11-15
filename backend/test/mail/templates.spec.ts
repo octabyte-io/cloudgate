@@ -1461,7 +1461,11 @@ describe('mail templates', () => {
       const rendered = await renderAddOnsChangedEmail({
         ...props,
         was: 2,
-        change: { kind: 'move-waiting', movesOn: 'Dec 15, 2026' },
+        change: {
+          kind: 'move-waiting',
+          movesOn: 'Dec 15, 2026',
+          businessMonthly: '$55.00',
+        },
         plan: { ...business, planLabel: 'Starter', monthly: '$35.00' },
       });
 
@@ -1470,9 +1474,31 @@ describe('mail templates', () => {
         'Hopper Labs keeps Business until Dec 15, 2026, then moves to Starter with 4 Add-ons.',
       );
       expect(body).toContain(
+        'Until then, Business with 4 Add-ons costs $55.00 per month.',
+      );
+      expect(body).toContain(
         'Plan: Starter with 4 Add-ons, for 7 Servers and 7 Cloud Environments.',
       );
       expect(body).toContain('Charged: $35.00 per month, from Dec 15, 2026.');
+    });
+
+    it('while a move to Starter waits and Business’s amount cannot be read, leaves that sentence out', async () => {
+      const rendered = await renderAddOnsChangedEmail({
+        ...props,
+        was: 2,
+        change: {
+          kind: 'move-waiting',
+          movesOn: 'Dec 15, 2026',
+          businessMonthly: null,
+        },
+        plan: { ...business, planLabel: 'Starter', monthly: '$35.00' },
+      });
+
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Hopper Labs keeps Business until Dec 15, 2026, then moves to Starter with 4 Add-ons.',
+      );
+      expect(body).not.toContain('Until then');
     });
 
     it('during the Free trial says nothing is charged for the Add-ons until it ends', async () => {

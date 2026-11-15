@@ -6,12 +6,18 @@ import type { PlanFacts } from './plan-facts';
 /**
  * How the new count is charged: prorated over the rest of the month, free
  * during the **Free trial**, or prorated while a move to Starter waits, the
- * count then carrying across the move on `movesOn` (formatted).
+ * count then carrying across the move on `movesOn` (formatted). While the
+ * move waits, `businessMonthly` is what Business with the new count costs
+ * per month until then (formatted), or null when it cannot be read.
  */
 export type AddOnsChangeCharge =
   | { kind: 'prorated' }
   | { kind: 'trial' }
-  | { kind: 'move-waiting'; movesOn: string };
+  | {
+      kind: 'move-waiting';
+      movesOn: string;
+      businessMonthly: string | null;
+    };
 
 /**
  * "Your Add-ons changed" (spec #69, #74), to every owner and admin: the
@@ -49,6 +55,11 @@ export async function renderAddOnsChangedEmail({
           ...(change.kind === 'move-waiting'
             ? [
                 `${org} keeps Business until ${change.movesOn}, then moves to Starter with ${now}.`,
+                ...(change.businessMonthly
+                  ? [
+                      `Until then, Business with ${now} costs ${change.businessMonthly} per month.`,
+                    ]
+                  : []),
               ]
             : []),
         ];

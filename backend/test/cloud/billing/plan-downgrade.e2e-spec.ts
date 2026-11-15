@@ -863,7 +863,7 @@ describe('Downgrading Business to Starter (e2e)', () => {
       expect(addOnsChanged(MEMBER)).toEqual([]);
     });
 
-    it('a change while the move to Starter waits emails once, with Starter’s monthly amount from the move, and the move sends no more of it', async () => {
+    it('a change while the move to Starter waits emails once, with Business’s monthly amount until the move and Starter’s from it, and the move sends no more of it', async () => {
       const owner = await givenBusinessWithAdmin();
       expect((await downgrade(owner.cookie)).status).toBe(200);
       const [scheduleId] = schedules.ids();
@@ -879,6 +879,11 @@ describe('Downgrading Business to Starter (e2e)', () => {
         );
         expect(sent[0].html).toContain(
           `Hopper Labs keeps Business until ${monthEnd}, then moves to Starter with 4 Add-ons.`,
+        );
+        // This month's Business amount with the new count, as the plain
+        // change on Business above prints it.
+        expect(sent[0].html).toContain(
+          'Until then, Business with 4 Add-ons costs $55.00 per month.',
         );
         expect(sent[0].html).toContain(
           'Plan: Starter with 4 Add-ons, for 7 Servers and 7 Cloud Environments.',

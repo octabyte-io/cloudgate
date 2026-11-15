@@ -109,6 +109,12 @@ export class PlanChangeNotifications {
     addOns: number,
   ): Promise<void> {
     const facts = await this.planFactsOf(plan, addOns, change.from);
+    // While a move to Starter waits, `facts` is Starter's from the move: the
+    // email also gives what Business with the new count costs until then.
+    const businessMonthly =
+      change.kind === 'move-waiting'
+        ? (await this.planFactsOf('business', addOns, new Date())).monthly
+        : null;
     const billingUrl = `${this.config.siteUrl}/settings/billing`;
     await this.notifications.sendToOwnersAndAdmins(
       organizationId,
@@ -120,7 +126,11 @@ export class PlanChangeNotifications {
           was: change.was,
           change:
             change.kind === 'move-waiting'
-              ? { kind: 'move-waiting', movesOn: formatDate(change.movesOn) }
+              ? {
+                  kind: 'move-waiting',
+                  movesOn: formatDate(change.movesOn),
+                  businessMonthly,
+                }
               : { kind: change.kind },
           plan: facts,
           billingUrl,
