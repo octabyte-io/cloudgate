@@ -23,6 +23,7 @@ import {
 } from '../../src/mail/templates/plan-cancel';
 import { renderServerReadyEmail } from '../../src/mail/templates/server-ready';
 import { renderServerChangedEmail } from '../../src/mail/templates/server-changed';
+import { renderPaymentReceivedEmail } from '../../src/mail/templates/payment-received';
 import { renderEventEmail } from '../../src/notifications/events/event-emails';
 
 // React Email templates rendered to { subject, html } — the pure half of the
@@ -981,6 +982,135 @@ describe('mail templates', () => {
         );
         expect(rendered.html).not.toMatch(/hetzner|stripe/i);
       }
+    });
+  });
+
+  // A failed payment paid after all (spec #69, #71).
+  describe('renderPaymentReceivedEmail', () => {
+    const text = (html: string) =>
+      html.replace(/<!-- -->/g, '').replace(/&#x27;|&#39;/g, "'");
+    const base = {
+      userName: 'Grace',
+      organizationName: 'Hopper Labs',
+      billingUrl: 'https://console.example.com/settings/billing',
+      lifted: { lapse: false, boughtServers: false },
+      stillSuspended: false,
+    };
+
+    it('says a payment that failed before any freeze is paid, and links to Billing', async () => {
+      const rendered = await renderPaymentReceivedEmail(base);
+
+      expect(rendered.subject).toBe('Payment received for Hopper Labs');
+      const body = text(rendered.html);
+      expect(body).toMatch(/Hello (<!-- -->)?Grace/);
+      expect(body).toContain(
+        'The Cloudgate payment for Hopper Labs that failed has now been paid.',
+      );
+      expect(body).toContain(
+        'Hopper Labs was never frozen, and its plan carries on as before.',
+      );
+      expect(body).not.toContain('no longer frozen');
+      expect(body).not.toContain('deletion');
+      expect(rendered.html).toContain(
+        'https://console.example.com/settings/billing',
+      );
+      expect(body).toContain(
+        'It goes to every owner and admin, and cannot be turned off.',
+      );
+    });
+
+    it('says a lapsed Organization is no longer frozen', async () => {
+      const rendered = await renderPaymentReceivedEmail({
+        ...base,
+        lifted: { lapse: true, boughtServers: false },
+      });
+
+      expect(rendered.subject).toBe('Payment received for Hopper Labs');
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Hopper Labs is no longer frozen: Cloudgate starts deploys, Cron runs, backups, Uptime checks and cloud runs for it again, and it is no longer due for deletion.',
+      );
+      expect(body).not.toContain('never frozen');
+    });
+
+    it('says the Bought Servers are no longer due for deletion', async () => {
+      const rendered = await renderPaymentReceivedEmail({
+        ...base,
+        lifted: { lapse: false, boughtServers: true },
+      });
+
+      expect(text(rendered.html)).toContain(
+        'The Servers bought for Hopper Labs are no longer due for deletion, and keep running as before.',
+      );
+    });
+
+    it('says a suspended Organization is still suspended, and stays frozen', async () => {
+      const lapsed = await renderPaymentReceivedEmail({
+        ...base,
+        lifted: { lapse: true, boughtServers: false },
+        stillSuspended: true,
+      });
+      const pastDue = await renderPaymentReceivedEmail({
+        ...base,
+        stillSuspended: true,
+      });
+
+      expect(text(lapsed.html)).toContain(
+        'Hopper Labs is no longer lapsed, but it is still suspended, so it stays frozen. A payment does not lift a suspension: contact Octabyte about it.',
+      );
+      expect(text(lapsed.html)).not.toContain('no longer frozen');
+      expect(text(pastDue.html)).toContain(
+        'Hopper Labs is still suspended, so it stays frozen. A payment does not lift a suspension: contact Octabyte about it.',
+      );
+      expect(text(pastDue.html)).not.toContain('never frozen');
+    });
+
+    it("tells an Attached Organization's people it is no longer frozen because its Paying Organization paid", async () => {
+      const rendered = await renderPaymentReceivedEmail({
+        ...base,
+        organizationName: 'Lovelace Ltd',
+        payingOrganizationName: 'Hopper Labs',
+        lifted: { lapse: true, boughtServers: false },
+      });
+
+      expect(rendered.subject).toBe(
+        'Lovelace Ltd is no longer frozen: Hopper Labs has paid',
+      );
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Hopper Labs has paid for the plan it pays for Lovelace Ltd with, which had lapsed.',
+      );
+      expect(body).toContain(
+        'Lovelace Ltd is no longer frozen: Cloudgate starts deploys, Cron runs, backups, Uptime checks and cloud runs for it again, and it is no longer due for deletion.',
+      );
+      expect(body).not.toContain('payment for Lovelace Ltd that failed');
+    });
+
+    it('tells a suspended Attached Organization it is still suspended', async () => {
+      const rendered = await renderPaymentReceivedEmail({
+        ...base,
+        organizationName: 'Lovelace Ltd',
+        payingOrganizationName: 'Hopper Labs',
+        lifted: { lapse: true, boughtServers: false },
+        stillSuspended: true,
+      });
+
+      expect(rendered.subject).toBe(
+        'Hopper Labs has paid, but Lovelace Ltd is still suspended',
+      );
+      expect(text(rendered.html)).toContain(
+        'Lovelace Ltd is no longer lapsed, but it is still suspended, so it stays frozen.',
+      );
+    });
+
+    it('never names the provider', async () => {
+      const rendered = await renderPaymentReceivedEmail({
+        ...base,
+        lifted: { lapse: true, boughtServers: true },
+      });
+
+      expect(rendered.subject).not.toMatch(/hetzner|stripe/i);
+      expect(rendered.html).not.toMatch(/hetzner|stripe/i);
     });
   });
 
