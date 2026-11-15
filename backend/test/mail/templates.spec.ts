@@ -25,6 +25,7 @@ import { renderServerReadyEmail } from '../../src/mail/templates/server-ready';
 import { renderServerChangedEmail } from '../../src/mail/templates/server-changed';
 import { renderPaymentReceivedEmail } from '../../src/mail/templates/payment-received';
 import { renderPlanChangedEmail } from '../../src/mail/templates/plan-changed';
+import { renderAddOnsChangedEmail } from '../../src/mail/templates/add-ons-changed';
 import { renderEventEmail } from '../../src/notifications/events/event-emails';
 
 // React Email templates rendered to { subject, html } — the pure half of the
@@ -1364,6 +1365,116 @@ describe('mail templates', () => {
       );
       expect(text(down.html)).toContain(
         'Hopper Labs switched to Starter during its free trial. SSO, SCIM, custom roles and forward auth no longer work; their settings are kept. Nothing is charged until the trial ends on Dec 15, 2026.',
+      );
+    });
+  });
+
+  describe('renderAddOnsChangedEmail', () => {
+    const text = (html: string) =>
+      html.replace(/<!-- -->/g, '').replace(/&#x27;|&#39;/g, "'");
+    const props = {
+      userName: 'Grace',
+      organizationName: 'Hopper Labs',
+      billingUrl: 'https://cloudgate.example.com/settings/billing',
+    };
+    const business = {
+      planLabel: 'Business',
+      addOns: 4,
+      monthly: '$55.00',
+      from: 'Dec 15, 2026',
+    };
+
+    it('gives the new count, the counts it gives, the prorated difference and the new monthly amount', async () => {
+      const rendered = await renderAddOnsChangedEmail({
+        ...props,
+        was: 2,
+        change: { kind: 'prorated' },
+        plan: business,
+      });
+
+      expect(rendered.subject).toBe(
+        'Your Add-ons changed: Hopper Labs now has 4 Add-ons',
+      );
+      const body = text(rendered.html);
+      expect(body).toMatch(/Hello (<!-- -->)?Grace/);
+      expect(body).toContain('Hopper Labs now has 4 Add-ons');
+      expect(body).toContain(
+        'Hopper Labs went from 2 Add-ons to 4 Add-ons today. The rest of this month is prorated: the difference is on the next invoice.',
+      );
+      expect(body).toContain(
+        'Plan: Business with 4 Add-ons, for 7 Servers and 7 Cloud Environments.',
+      );
+      expect(body).toContain('Charged: $55.00 per month, from Dec 15, 2026.');
+      expect(rendered.html).toContain(
+        'https://cloudgate.example.com/settings/billing',
+      );
+      expect(body).toContain(
+        'It goes to every owner and admin, and cannot be turned off.',
+      );
+    });
+
+    it('says no Add-ons and one Add-on as a sentence says them', async () => {
+      const none = await renderAddOnsChangedEmail({
+        ...props,
+        was: 1,
+        change: { kind: 'prorated' },
+        plan: { ...business, addOns: 0, monthly: '$35.00' },
+      });
+      expect(none.subject).toBe(
+        'Your Add-ons changed: Hopper Labs now has no Add-ons',
+      );
+      expect(text(none.html)).toContain(
+        'Hopper Labs went from 1 Add-on to no Add-ons today.',
+      );
+      expect(text(none.html)).toContain(
+        'Plan: Business, for 3 Servers and 3 Cloud Environments.',
+      );
+    });
+
+    it('while a move to Starter waits, says the count carries across and gives Starter’s monthly amount from the move', async () => {
+      const rendered = await renderAddOnsChangedEmail({
+        ...props,
+        was: 2,
+        change: { kind: 'move-waiting', movesOn: 'Dec 15, 2026' },
+        plan: { ...business, planLabel: 'Starter', monthly: '$35.00' },
+      });
+
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Hopper Labs keeps Business until Dec 15, 2026, then moves to Starter with 4 Add-ons.',
+      );
+      expect(body).toContain(
+        'Plan: Starter with 4 Add-ons, for 7 Servers and 7 Cloud Environments.',
+      );
+      expect(body).toContain('Charged: $35.00 per month, from Dec 15, 2026.');
+    });
+
+    it('during the Free trial says nothing is charged until it ends', async () => {
+      const rendered = await renderAddOnsChangedEmail({
+        ...props,
+        was: 2,
+        change: { kind: 'trial' },
+        plan: business,
+      });
+
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Hopper Labs went from 2 Add-ons to 4 Add-ons today. Add-ons cost nothing during the free trial: nothing is charged until it ends.',
+      );
+      expect(body).not.toContain('prorated');
+      expect(body).toContain('Charged: $55.00 per month, from Dec 15, 2026.');
+    });
+
+    it('points at the Billing page when the monthly amount is not known', async () => {
+      const rendered = await renderAddOnsChangedEmail({
+        ...props,
+        was: 2,
+        change: { kind: 'prorated' },
+        plan: { ...business, monthly: null },
+      });
+
+      expect(text(rendered.html)).toContain(
+        'Charged: monthly, from Dec 15, 2026. The Billing page shows the amount.',
       );
     });
   });
