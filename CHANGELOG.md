@@ -4,7 +4,7 @@
 
 ### The platform host's Docker is the Servers' version, and nixpacks is pinned
 
-The install now installs the platform host's Docker with `get.docker.com --version 29.9.3`, the version the Server setup gives every Server, which moves from 28.5.0 to 29.9.3 because Docker builds no 28.5.0 for Ubuntu 26.04. A fresh install therefore shows no Docker drift in the console. nixpacks comes from its GitHub release, version 1.41.0, checked against a pinned sha256 before it is installed to `/usr/local/bin/nixpacks`; a tarball that does not match stops the run. The install no longer runs `https://nixpacks.com/install.sh`, and the preflight no longer probes `nixpacks.com` (`docs/deploy.md` §7, "Docker and nixpacks").
+The install now installs the platform host's Docker with `get.docker.com --version 29.9.3`, the version the Server setup gives every Server, which moves from 28.5.0 to 29.9.3 because Docker builds no 28.5.0 for Ubuntu 26.04. A fresh platform host therefore runs the Docker version its Servers get, and two installs a week apart get the same Docker and nixpacks. nixpacks comes from its GitHub release, version 1.41.0, checked against a pinned sha256 before it is installed to `/usr/local/bin/nixpacks`; a tarball that does not match stops the run. The install no longer runs `https://nixpacks.com/install.sh`, and the preflight no longer probes `nixpacks.com` (`docs/deploy.md` §7, "Docker and nixpacks").
 
 **What to do on upgrade**: nothing. A re-run replaces a nixpacks at any other version with 1.41.0. A Docker already on the platform host or on a Server is left at its version; only a new install, or a new Server's setup, gets 29.9.3.
 

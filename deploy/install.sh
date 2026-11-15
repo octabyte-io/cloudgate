@@ -96,10 +96,12 @@ if [ "$API_PORT" != 4000 ]; then
 fi
 
 # The Docker a Server gets: backend/src/servers/server-setup.ts's DOCKER_VERSION,
-# installed the same way, so the console shows no Docker drift on a fresh
-# install. Not an input: a platform host at another version than its Servers
-# is the drift this pin exists to prevent. Move it in both files together;
-# backend/test/servers/docker-pin.spec.ts fails until they agree.
+# installed the same way, so a fresh platform host runs the Docker version its
+# Servers get, and two installs a week apart get the same Docker. Not an input:
+# a platform host on a different Docker version from its Servers is what this
+# pin exists to prevent. Move it together with server-setup.ts's and the
+# console's "Install Docker" setup step (frontend setup-steps.ts);
+# backend/test/servers/docker-pin.spec.ts fails until the three agree.
 DOCKER_VERSION=29.9.3
 
 # nixpacks, the default builder, from its GitHub release at one pinned version,
@@ -568,7 +570,6 @@ fi
 # each build installs its own on whichever Server it runs on
 # (backend/src/builders/pack-install.ts).
 
-#
 # nixpacks is the release's static musl binary, checked byte for byte against
 # NIXPACKS_SHA256 before anything is installed: a tarball that does not match
 # stops the run, and the nixpacks already there stays as it was. Skipped when
