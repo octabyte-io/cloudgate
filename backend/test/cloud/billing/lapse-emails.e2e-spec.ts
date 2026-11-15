@@ -619,9 +619,12 @@ describe('Frozen Organization: lapse emails and the 30-day deletion (e2e)', () =
       await clock.tick(after(TRIAL_END, -6));
       await clock.tick(after(TRIAL_END, -1));
 
+      // The switch itself is a plan change, and says so once (spec #69,
+      // #73); the reminder is not sent again.
       for (const address of [OWNER, ADMIN]) {
         expect(subjects(address)).toEqual([
           'Your Cloudgate free trial for Hopper Labs ends in 7 days',
+          'Your plan changed: Hopper Labs is now on Business',
         ]);
         const [html] = htmlTo(address);
         expect(html).toContain('Dec 05, 2026');

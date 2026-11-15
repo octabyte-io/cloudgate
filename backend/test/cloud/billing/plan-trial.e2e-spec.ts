@@ -18,7 +18,6 @@ import {
   openHostedSignUp,
   signUpHostedCustomer,
 } from '../../utils/hosted-sign-up';
-import { signUpMember } from '../../utils/test-auth';
 import { createTestApp, TestAppContext } from '../../utils/test-app';
 import { signUpMember } from '../../utils/test-auth';
 
@@ -55,7 +54,6 @@ const stripe = fakeStripe({
   updateSubscription,
   previewInvoice,
   retrievePrice,
-  constructEvent,
   ...schedules.methods,
 });
 
