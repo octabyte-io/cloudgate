@@ -23,28 +23,30 @@ import type { Probe, RuntimeInfo } from "@/lib/api/endpoints/settings";
  * no payload to ask and the card's own layout is all that is left to lay the
  * rows out by. `read()` overwrites it the moment a document exists.
  *
- * ## `docker.drift` is true on virtually every install and means nothing
+ * ## Docker's declared version is a claim about fresh installs only
  *
- * `server-setup.ts`'s `installDocker` pins a Server's Docker with
- * `--version $DOCKER_VERSION`;
- * `deploy/install.sh:177` installs **this** machine's with a bare
- * `curl … | sh` and no `--version` at all. So `docker.declared` is not a
- * declaration about the host these rows describe, and rendering the drift the
- * payload reports would put a warning on nearly every instance that nobody can
- * act on — the fastest way to teach a reader that this card's warnings are
- * decoration.
+ * `server-setup.ts`'s `installDocker` installs a Server's Docker with
+ * `--version $DOCKER_VERSION`, and the Docker step in `deploy/install.sh`
+ * installs **this** machine's the same way at the same pin (#56). Both leave a
+ * Docker that is already there as it is, though: an install made over an
+ * existing Docker, or one from before the pin, keeps the version it had. So
+ * `docker.declared` says what a fresh install gets, not what this machine was
+ * given, and rendering the payload's `drift` would put a warning on every such
+ * instance about a version the install chose not to move — the fastest way to
+ * teach a reader that this card's warnings are decoration.
  *
  * Rejected: suppressing it silently (the reader is then owed an explanation the
  * screen never gives), and dropping the Docker row (it is the first reading
  * the shared read names). What happens instead is that Docker goes through
  * `reading` and not `compared`, so it has **no declared side at all**, and the
- * card's footer says why — the row has nothing to compare against, which is a
- * fact about the install rather than a value withheld.
+ * card's footer says why — the row has nothing it can honestly be compared
+ * against, which is a fact about the install rather than a value withheld.
  *
  * **Traefik is the opposite, and the asymmetry is the proof this is not
- * laziness.** `install.sh:33` and `server-setup.ts`'s exported
- * `TRAEFIK_VERSION` read the *same* environment variable, and `install.sh:534`
- * starts the container from it — so a Traefik drift on this host is a real,
+ * laziness.** `TRAEFIK_VERSION` in `deploy/install.sh` and `server-setup.ts`'s
+ * exported `TRAEFIK_VERSION` read the *same* environment variable, and the
+ * Traefik step in `deploy/install.sh` starts the container from it and recreates
+ * one on another image — so a Traefik mismatch on the platform host is a real,
  * actionable disagreement (the pin moved, the container was never recreated) and
  * is the one row that renders one.
  *
@@ -112,9 +114,10 @@ export const ROWS: readonly RowSpec[] = [
     label: "Docker",
     scope: "host",
     mono: true,
-    // `reading`, not `compared`: nothing declares this machine's Docker, so the
-    // payload's `drift` is not a disagreement anyone can act on. The footer is
-    // where the reader is told that, not this comment.
+    // `reading`, not `compared`: the install never moves a Docker already on
+    // this machine, so the declared version is a claim about fresh installs
+    // only and the payload's `drift` is not a disagreement with this one. The
+    // footer is where the reader is told that, not this comment.
     read: (info) => reading(info.docker, (version) => version),
   },
   {

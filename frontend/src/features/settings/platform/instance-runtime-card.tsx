@@ -36,9 +36,10 @@ import { GROUPS, ROWS, rowsOf } from "./instance-runtime-rows";
  *
  * `instance-runtime-rows.ts` holds the fold and the argument for it: every
  * probe carries `scope`, the grouping below is read out of the
- * payload rather than off a list of keys written down here, and `docker.drift`
- * — true on virtually every install and actionable by nobody — is given no
- * declared side at all rather than a warning.
+ * payload rather than off a list of keys written down here, and Docker — whose
+ * declared version is a claim about fresh installs only, since the install
+ * never moves a Docker already on the machine — is given no declared side at
+ * all rather than a warning.
  *
  * What is worth saying *here* is why the grouping is two headings rather than a
  * column of ten rows with a badge on some of them. `Up for` is **41d 6h** for
@@ -168,9 +169,9 @@ export function RuntimeCard() {
         A row that is not known was not answered — a daemon that is stopped, or
         a machine with no such binary on it — and is not a failure. Ingress
         names the pinned Traefik version beside the running one only where the
-        two differ. Docker shows what is running and nothing beside it: nothing
-        pins this machine&rsquo;s Docker, so the version setup installs on a
-        Server is not a claim about this one.
+        two differ. Docker shows what is running and nothing beside it: a fresh
+        install puts the Servers&rsquo; Docker version on this machine, but one
+        that already had Docker keeps the version it had.
       </Card.Footer>
     </Card>
   );

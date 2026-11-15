@@ -122,11 +122,11 @@ describe("FleetAside — what setup installs", () => {
   });
 
   it("renders the pin and not the platform host's own Docker, even when the two disagree", () => {
-    // The stock install: `deploy/install.sh` installs the platform host's
-    // Docker with no `--version`, while `server-setup.ts` pins a Server's — so
-    // `docker.drift` is true on virtually every instance and says nothing about
-    // what setup will do to a Server. This card must never grow the drift idiom
-    // `IngressRow` uses.
+    // An install made over an existing Docker: `deploy/install.sh` installs the
+    // platform host's Docker at `server-setup.ts`'s pin only where there is
+    // none, so that machine keeps the version it had, and its `docker.drift`
+    // says nothing about what setup will do to a Server. This card must never
+    // grow the drift idiom `IngressRow` uses.
     const text = said(answered("29.9.3", "3.6.7", { docker: "29.7.2" }));
 
     expect(text).toContain("29.9.3");

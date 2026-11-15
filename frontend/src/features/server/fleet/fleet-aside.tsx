@@ -79,9 +79,11 @@ const SETUP_NAMES = [
  * It still does not make an observed reading right here, and the reason is
  * stronger than the fleet-vs-one-host one above: on the platform host the two
  * sides are answers to different questions. `server-setup.ts`'s `installDocker`
- * pins a Server's Docker to `DOCKER_VERSION`; `deploy/install.sh:165` installs
- * the platform host's with no `--version` at all — so `docker.drift` is true on
- * virtually every install and means nothing anyone can act on. The platform
+ * installs a Server's Docker at `DOCKER_VERSION`, and the Docker step in
+ * `deploy/install.sh` installs the platform host's at the same pin, but both
+ * leave a Docker already there as it is — so the platform host's observed
+ * version is what that machine happened to have, not what setup installs, and
+ * `docker.drift` on it is not a disagreement with this card. The platform
  * host's own observed versions have no console surface today; that is a
  * Platform-screen card and its own issue, not these two rows.
  *

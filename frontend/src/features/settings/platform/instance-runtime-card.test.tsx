@@ -88,8 +88,9 @@ function group(scope: "host" | "process") {
  *
  * The two things worth breaking here are the two the issue is about: that a
  * fact about the machine and a fact about the backend process are told apart
- * rather than flattened, and that the platform host's meaningless
- * `docker.drift` is not rendered as a warning nobody can act on.
+ * rather than flattened, and that the platform host's `docker.drift`, which
+ * compares this machine with a pin the install never applies to a Docker
+ * already there, is not rendered as a warning.
  */
 describe("RuntimeCard", () => {
   it("tells a reading off the machine apart from one about the process", () => {
@@ -222,18 +223,18 @@ describe("RuntimeCard", () => {
     expect(text).not.toContain("declared 3.6.7");
   });
 
-  it("shows the platform host's Docker without a drift nobody can act on", () => {
-    // The stock install: `deploy/install.sh` installs this machine's Docker
-    // with no `--version`, while `server-setup.ts` pins a Server's — so
-    // `docker.drift` is true on virtually every instance and `docker.declared`
-    // is not a claim about this host at all.
+  it("shows the platform host's Docker as a reading, with no declared version beside it", () => {
+    // An install made over an existing Docker: `deploy/install.sh` installs
+    // Docker at `server-setup.ts`'s pin only where there is none, so this
+    // machine still runs the one it had and `docker.declared` is a claim about
+    // fresh installs, not about it.
     const text = said(answered());
 
     expect(text).toContain("29.7.2");
     expect(text).not.toContain("29.9.3");
     expect(text).not.toContain("declared 29.9.3");
     // The reader is owed the reason rather than a silent omission.
-    expect(text).toContain("nothing pins this machine");
+    expect(text).toContain("keeps the version it had");
   });
 
   it("says nothing has arrived yet while the reading is in flight", () => {
