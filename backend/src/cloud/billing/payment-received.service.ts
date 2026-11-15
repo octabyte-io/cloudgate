@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull, lte, or } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { DRIZZLE } from '../../db/drizzle.module';
 import type { DrizzleDB } from '../../db/drizzle.module';
@@ -21,6 +21,12 @@ import { LapseNotifications } from './lapse-notifications.service';
 export interface Payment {
   plan: boolean;
   boughtServersInvoiceId: string | null;
+}
+
+/** What a clear lifted, and when the Organization had lapsed, if it had. */
+interface Cleared {
+  lifted: PaymentLifted;
+  lapsedAt: Date | null;
 }
 
 /**
@@ -73,11 +79,12 @@ export class PaymentReceived {
     payment: Payment,
   ): Promise<PaymentLifted | null> {
     if (!payment.plan && payment.boughtServersInvoiceId === null) return null;
-    const lifted = await this.clear(organizationId, payment);
+    const cleared = await this.clear(organizationId, payment);
+    const lifted = cleared?.lifted ?? null;
     // The clear has committed: a send that threw would fail the webhook, and
     // its retry would find nothing left to clear (CODING_STANDARDS §2.3).
-    if (lifted) {
-      await this.send(organizationId, lifted).catch((error: unknown) =>
+    if (cleared) {
+      await this.send(organizationId, cleared).catch((error: unknown) =>
         this.logger.error(
           `Could not send the payment received email: ${String(error)}`,
         ),
@@ -94,7 +101,7 @@ export class PaymentReceived {
   private clear(
     organizationId: string,
     payment: Payment,
-  ): Promise<PaymentLifted | null> {
+  ): Promise<Cleared | null> {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
         .select({
@@ -134,19 +141,26 @@ export class PaymentReceived {
         })
         .where(eq(subscription.organizationId, organizationId));
       if (!plan && !boughtServers) return null;
-      return { lapse: plan && row.lapsedAt !== null, boughtServers };
+      return {
+        lifted: { lapse: plan && row.lapsedAt !== null, boughtServers },
+        lapsedAt: row.lapsedAt,
+      };
     });
   }
 
   /**
    * To the Organization's owners and admins; after a lapse, also to each
-   * Attached Organization's, which lapsed with it and is lifted with it
-   * (ADR-0059). Each is told whether it is still suspended: its own
-   * suspension, never its payer's.
+   * Attached Organization's that lapsed with it and is lifted with it
+   * (ADR-0059): the ones the lapse emails reached, attached when it lapsed.
+   * One attached after the lapse (`firstAttachedAt`, which is when it was
+   * made, since only new Organizations are attached) never heard it lapsed,
+   * and hears nothing now; one with no mark is taken to have been there.
+   * Each is told whether it is still suspended: its own suspension, never
+   * its payer's.
    */
   private async send(
     organizationId: string,
-    lifted: PaymentLifted,
+    { lifted, lapsedAt }: Cleared,
   ): Promise<void> {
     const billingUrl = `${this.config.siteUrl}/settings/billing`;
     const suspended = await this.isSuspended(organizationId);
@@ -173,7 +187,18 @@ export class PaymentReceived {
     const attached = await this.db
       .select({ id: organization.id })
       .from(organization)
-      .where(eq(organization.paidByOrganizationId, organizationId))
+      .leftJoin(subscription, eq(subscription.organizationId, organization.id))
+      .where(
+        and(
+          eq(organization.paidByOrganizationId, organizationId),
+          lapsedAt
+            ? or(
+                isNull(subscription.firstAttachedAt),
+                lte(subscription.firstAttachedAt, lapsedAt),
+              )
+            : undefined,
+        ),
+      )
       .orderBy(asc(organization.createdAt), asc(organization.id));
     for (const one of attached) {
       const stillSuspended = await this.isSuspended(one.id);

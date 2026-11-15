@@ -816,12 +816,9 @@ describe('Frozen Organization: lapse emails and the 30-day deletion (e2e)', () =
       await subscriptionEnds('payment_failed');
       mail.clear();
 
-      await postWebhook(
-        stripeEvent(
-          'customer.subscription.updated',
-          stripeSubscription('active'),
-        ),
-      );
+      await paymentTaken();
+      // Stripe delivers both events again: nothing more for either.
+      await paymentTaken();
 
       expect(subjects('ada@example.com')).toEqual([
         'Lovelace Ltd is no longer frozen: Hopper Labs has paid',
@@ -832,6 +829,59 @@ describe('Frozen Organization: lapse emails and the 30-day deletion (e2e)', () =
       expect(subjects(OWNER)).toEqual(['Payment received for Hopper Labs']);
     });
 
+    it('an Organization attached after its Paying Organization lapsed is not told it is no longer frozen, while one attached before is', async () => {
+      await ctx.db
+        .update(subscription)
+        .set({ plan: 'business' })
+        .where(eq(subscription.organizationId, organizationId));
+      /** An Organization attached to Hopper Labs at `attachedAt`. */
+      async function attachedAt(email: string, name: string, at: Date) {
+        const attached = await signUpHostedCustomer(http, mail, {
+          name,
+          email,
+          password: 'super-secret-password',
+          organizationName: `${name.split(' ')[1]} Ltd`,
+        });
+        await ctx.db
+          .update(organization)
+          .set({ paidByOrganizationId: organizationId })
+          .where(eq(organization.id, attached.organizationId));
+        await ctx.db
+          .insert(subscription)
+          .values({
+            organizationId: attached.organizationId,
+            firstAttachedAt: at,
+          })
+          .onConflictDoUpdate({
+            target: subscription.organizationId,
+            set: { firstAttachedAt: at },
+          });
+      }
+      await attachedAt(
+        'ada@example.com',
+        'Ada Lovelace',
+        new Date(Date.now() - 60_000),
+      );
+      await subscriptionEnds('payment_failed');
+      const { lapsedAt } = await marks();
+      // Attaching to a lapsed Organization is refused through the console;
+      // the row says when, which is what tells the two apart.
+      await attachedAt(
+        'barbara@example.com',
+        'Barbara Liskov',
+        new Date(lapsedAt!.getTime() + 1_000),
+      );
+      mail.clear();
+
+      await paymentTaken();
+
+      expect(subjects('ada@example.com')).toEqual([
+        'Lovelace Ltd is no longer frozen: Hopper Labs has paid',
+      ]);
+      // It lapsed with nothing: it heard no lapse email, and hears no lift.
+      expect(mail.to('barbara@example.com')).toEqual([]);
+    });
+
     it('a suspended Organization is told it is still suspended', async () => {
       await subscriptionEnds('payment_failed');
       await ctx.db
@@ -840,12 +890,9 @@ describe('Frozen Organization: lapse emails and the 30-day deletion (e2e)', () =
         .where(eq(subscription.organizationId, organizationId));
       mail.clear();
 
-      await postWebhook(
-        stripeEvent(
-          'customer.subscription.updated',
-          stripeSubscription('active'),
-        ),
-      );
+      await paymentTaken();
+      // Stripe delivers both events again: nothing more.
+      await paymentTaken();
 
       expect(subjects(OWNER)).toEqual(['Payment received for Hopper Labs']);
       const body = bodyTo(OWNER);
