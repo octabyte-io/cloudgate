@@ -18,6 +18,7 @@ import {
 } from '../../src/mail/templates';
 import type { RenderedEmail } from '../../src/mail/templates';
 import { renderServerReadyEmail } from '../../src/mail/templates/server-ready';
+import { renderServerChangedEmail } from '../../src/mail/templates/server-changed';
 import { renderEventEmail } from '../../src/notifications/events/event-emails';
 
 // React Email templates rendered to { subject, html } — the pure half of the
@@ -276,6 +277,112 @@ describe('mail templates', () => {
         expect(rendered.html).not.toMatch(/hetzner/i);
       },
     );
+  });
+
+  describe('renderServerChangedEmail', () => {
+    const text = (html: string) =>
+      html.replace(/<!-- -->/g, '').replace(/&#x27;|&#39;/g, "'");
+    const props = {
+      userName: 'Grace',
+      organizationName: 'Hopper Labs',
+      serverName: 'web-1',
+      monthlyPrice: '$30.00',
+      serverUrl: 'https://console.example.com/servers/abc123/settings',
+    };
+
+    it('says backups are on, what the Server now costs, and links to it', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: { kind: 'backups', on: true },
+      });
+
+      expect(rendered.subject).toBe('Backups are on for your Server web-1');
+      const body = text(rendered.html);
+      expect(body).toMatch(/Hello (<!-- -->)?Grace/);
+      expect(body).toContain(
+        'Backups are now on for the Server web-1 in Hopper Labs.',
+      );
+      expect(body).toContain('web-1 now costs $30.00 a month.');
+      expect(rendered.html).toContain(
+        'https://console.example.com/servers/abc123/settings',
+      );
+      expect(rendered.inlineImages).toHaveLength(1);
+    });
+
+    it('says backups are off and their backups deleted', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        monthlyPrice: '$25.00',
+        change: { kind: 'backups', on: false },
+      });
+
+      expect(rendered.subject).toBe('Backups are off for your Server web-1');
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Backups are now off for the Server web-1 in Hopper Labs, and its backups were deleted.',
+      );
+      expect(body).toContain('web-1 now costs $25.00 a month.');
+    });
+
+    it('says how much extra storage the Server now has', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: { kind: 'storage', storageGb: 250 },
+      });
+
+      expect(rendered.subject).toBe(
+        'Your Server web-1 now has 250 GB of extra storage',
+      );
+      expect(text(rendered.html)).toContain(
+        'The extra storage of the Server web-1 in Hopper Labs is now 250 GB.',
+      );
+    });
+
+    it('says what size the Server now runs on', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: { kind: 'size', size: '3 vCPU · 4 GB RAM' },
+      });
+
+      expect(rendered.subject).toBe('Your Server web-1 has a new size');
+      expect(text(rendered.html)).toContain(
+        'The Server web-1 in Hopper Labs now runs on 3 vCPU · 4 GB RAM.',
+      );
+    });
+
+    it('still says the size changed when the size cannot be described', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: { kind: 'size', size: null },
+      });
+
+      expect(text(rendered.html)).toContain(
+        'The Server web-1 in Hopper Labs now runs on its new size.',
+      );
+    });
+
+    it('goes to every owner and admin, as its footer says', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: { kind: 'backups', on: true },
+      });
+
+      expect(text(rendered.html)).toContain(
+        'It goes to every owner and admin, and cannot be turned off.',
+      );
+    });
+
+    it.each([
+      { kind: 'backups', on: true },
+      { kind: 'backups', on: false },
+      { kind: 'storage', storageGb: 250 },
+      { kind: 'size', size: '3 vCPU · 4 GB RAM' },
+    ] as const)('never names the provider for %j', async (change) => {
+      const rendered = await renderServerChangedEmail({ ...props, change });
+
+      expect(rendered.subject).not.toMatch(/hetzner/i);
+      expect(rendered.html).not.toMatch(/hetzner/i);
+    });
   });
 
   describe('the footer of an owner-only email', () => {
@@ -1046,6 +1153,18 @@ describe('mail templates', () => {
             serverName: 'web-1',
             serverUrl: url,
             firstSetup: 'finished',
+          }),
+      ],
+      [
+        'server changed',
+        () =>
+          renderServerChangedEmail({
+            userName: 'Grace',
+            organizationName: org,
+            serverName: 'web-1',
+            change: { kind: 'backups', on: true },
+            monthlyPrice: '$30.00',
+            serverUrl: url,
           }),
       ],
       [
