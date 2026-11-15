@@ -259,7 +259,7 @@ download_version() {
 PREFLIGHT_PORTS='80 443 3000 4000'
 # docs/deploy.md §1's Outbound row, held equal to it by
 # backend/test/deploy/one-command-install.spec.ts.
-PREFLIGHT_HOSTS='get.docker.com nodejs.org registry.npmjs.org registry-1.docker.io api.github.com github.com release-assets.githubusercontent.com s3.amazonaws.com nixpacks.com'
+PREFLIGHT_HOSTS='get.docker.com nodejs.org registry.npmjs.org registry-1.docker.io api.github.com github.com release-assets.githubusercontent.com s3.amazonaws.com'
 # 15 GB and 4 GB, in the KiB df and /proc/meminfo count in.
 PREFLIGHT_MIN_DISK_KIB=14648438
 PREFLIGHT_MIN_MEMORY_KIB=3906250

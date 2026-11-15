@@ -102,6 +102,13 @@ fi
 # backend/test/servers/docker-pin.spec.ts fails until they agree.
 DOCKER_VERSION=29.9.3
 
+# nixpacks, the default builder, from its GitHub release at one pinned version,
+# so two installs a week apart build the same. NIXPACKS_SHA256 is the sha256 of
+# that release's nixpacks-v<version>-x86_64-unknown-linux-musl.tar.gz, as the
+# release page lists it; move the two together (docs/deploy.md §7).
+NIXPACKS_VERSION="${NIXPACKS_VERSION:-1.41.0}"
+NIXPACKS_SHA256="${NIXPACKS_SHA256:-0f55de7874507b9cf7502113120bd96f2ab6979f78d10eaf2eb2ade9207b3af6}"
+
 # OpenTofu, which makes a Cloud account's resources (ADR-0030), and the
 # providers Cloud runs use: hashicorp/aws for AWS, and hashicorp/google for
 # Google Cloud. Each Cloudgate version pins exactly one version of each, with
@@ -561,8 +568,29 @@ fi
 # each build installs its own on whichever Server it runs on
 # (backend/src/builders/pack-install.ts).
 
-log "nixpacks"
-command -v nixpacks >/dev/null || curl -sSL --retry 3 --retry-connrefused --connect-timeout 15 https://nixpacks.com/install.sh | bash
+#
+# nixpacks is the release's static musl binary, checked byte for byte against
+# NIXPACKS_SHA256 before anything is installed: a tarball that does not match
+# stops the run, and the nixpacks already there stays as it was. Skipped when
+# that one is already at the pin. It goes to /usr/local/bin, where nixpacks'
+# own installer put it: a build runs `nixpacks` by name, from the backend
+# unit's PATH or over SSH when the platform host is also a Server, and a folder
+# of Cloudgate's own would be on neither.
+
+log "nixpacks ${NIXPACKS_VERSION}"
+if [ "$(/usr/local/bin/nixpacks --version 2>/dev/null || true)" != "nixpacks ${NIXPACKS_VERSION}" ]; then
+  tarball="nixpacks-v${NIXPACKS_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+  tmp="$(mktemp -d)"
+  (
+    cd "$tmp"
+    curl -fsSLO --retry 3 --retry-connrefused --connect-timeout 15 "https://github.com/railwayapp/nixpacks/releases/download/v${NIXPACKS_VERSION}/${tarball}"
+    echo "${NIXPACKS_SHA256}  ${tarball}" | sha256sum -c -
+    mkdir unpacked
+    tar -xzf "$tarball" -C unpacked --no-same-owner
+    install -D -m 0755 unpacked/nixpacks /usr/local/bin/nixpacks
+  )
+  rm -rf "$tmp"
+fi
 
 ### -------------------------------------------------------------- opentofu ---
 # OpenTofu and the providers, all pinned above, all checked, all into

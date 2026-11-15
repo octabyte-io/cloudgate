@@ -1979,6 +1979,158 @@ cat "$file" > "\${url##*/}"
     });
   });
 
+  /**
+   * The nixpacks step, cut out of the file as written and run against a
+   * scratch host, as the Node step is: every `/usr/local` in it points under
+   * the scratch root, and `curl` serves GitHub's release download from the
+   * scratch directory; `tar`, `sha256sum` and `install` are the real ones. The
+   * release tarball holds a stand-in `nixpacks` at its root that prints its
+   * version as nixpacks does.
+   */
+  describe('nixpacks at its pin', () => {
+    const NIXPACKS_VERSION = '1.41.0';
+    const RELEASE = `github.com/railwayapp/nixpacks/releases/download/v${NIXPACKS_VERSION}/nixpacks-v${NIXPACKS_VERSION}-x86_64-unknown-linux-musl.tar.gz`;
+    const BINARY = 'usr/local/bin/nixpacks';
+
+    /** A nixpacks that says it is `version`, as `nixpacks --version` does. */
+    const standIn = (version: string) =>
+      `#!/bin/sh\necho "nixpacks ${version}"\n`;
+
+    /** A release tarball with the stand-in at its root, as nixpacks packs it. */
+    function releaseTarball(script: string): Buffer {
+      const build = fs.mkdtempSync(path.join(scratch, 'nixpacks-build-'));
+      fs.writeFileSync(path.join(build, 'nixpacks'), script, { mode: 0o755 });
+      const tarball = path.join(build, 'nixpacks.tar.gz');
+      const packed = spawnSync('tar', [
+        '-czf',
+        tarball,
+        '-C',
+        build,
+        'nixpacks',
+      ]);
+      if (packed.status !== 0) throw new Error(String(packed.stderr));
+      return fs.readFileSync(tarball);
+    }
+
+    const sha256 = (bytes: Buffer) =>
+      createHash('sha256').update(bytes).digest('hex');
+
+    function installed(): string | undefined {
+      const at = path.join(root, BINARY);
+      return fs.existsSync(at) ? fs.readFileSync(at, 'utf8') : undefined;
+    }
+
+    function put(script: string) {
+      const at = path.join(root, BINARY);
+      fs.mkdirSync(path.dirname(at), { recursive: true });
+      fs.writeFileSync(at, script, { mode: 0o755 });
+    }
+
+    function nixpacksStep(pinnedSha256: string) {
+      const step = source().match(
+        /\n### -+ build tooling ---\n[\s\S]*?(?=\n### -+ )/,
+      );
+      if (!step) throw new Error('no build tooling step in deploy/install.sh');
+      const bin = path.join(scratch, 'bin');
+      // `curl [flags] <url>`, saving the served file under its own name, as
+      // -O does, or curl's own exit code for an HTTP error under -f.
+      fs.writeFileSync(
+        path.join(bin, 'curl'),
+        `#!/bin/sh
+url=''
+for arg in "$@"; do case "$arg" in http*) url="$arg" ;; esac; done
+echo "curl $url" >> "${calls}"
+file="${served}/\${url#https://}"
+[ -f "$file" ] || exit 22
+cat "$file" > "\${url##*/}"
+`,
+        { mode: 0o755 },
+      );
+      return spawnSync(
+        'bash',
+        [
+          '-c',
+          `set -euo pipefail; log() { :; }; NIXPACKS_VERSION=${NIXPACKS_VERSION}; NIXPACKS_SHA256=${pinnedSha256}\n${step[0].replaceAll('/usr/local', `${root}/usr/local`)}`,
+        ],
+        {
+          env: { PATH: `${bin}:${process.env.PATH}`, HOME: scratch },
+          encoding: 'utf8',
+        },
+      );
+    }
+
+    it('pins nixpacks to a version and the sha256 of its x86_64 musl tarball', () => {
+      expect(source()).toMatch(
+        /^NIXPACKS_VERSION="\$\{NIXPACKS_VERSION:-\d+\.\d+\.\d+\}"$/m,
+      );
+      expect(source()).toMatch(
+        /^NIXPACKS_SHA256="\$\{NIXPACKS_SHA256:-[0-9a-f]{64}\}"$/m,
+      );
+    });
+
+    it('installs the pinned binary from GitHub once its tarball’s sha256 is the pin', () => {
+      const release = releaseTarball(standIn(NIXPACKS_VERSION));
+      serve(RELEASE, release);
+
+      const ran = nixpacksStep(sha256(release));
+
+      expect(ran.status).toBe(0);
+      expect(called()).toBe(`curl https://${RELEASE}\n`);
+      const nixpacks = spawnSync(path.join(root, BINARY), ['--version'], {
+        encoding: 'utf8',
+      });
+      expect(nixpacks.stdout.trim()).toBe(`nixpacks ${NIXPACKS_VERSION}`);
+    });
+
+    it('refuses a tarball whose sha256 is not the pin, and installs nothing', () => {
+      const release = releaseTarball(standIn(NIXPACKS_VERSION));
+      serve(RELEASE, releaseTarball('#!/bin/sh\necho tampered\n'));
+
+      const ran = nixpacksStep(sha256(release));
+
+      expect(ran.status).not.toBe(0);
+      expect(ran.stdout + ran.stderr).toContain('FAILED');
+      expect(installed()).toBeUndefined();
+    });
+
+    it('leaves the nixpacks there as it was when the download is refused', () => {
+      put(standIn('1.39.0'));
+      const release = releaseTarball(standIn(NIXPACKS_VERSION));
+      serve(RELEASE, releaseTarball('#!/bin/sh\necho tampered\n'));
+
+      const ran = nixpacksStep(sha256(release));
+
+      expect(ran.status).not.toBe(0);
+      expect(installed()).toBe(standIn('1.39.0'));
+    });
+
+    it('downloads nothing when the nixpacks there is already at the pin', () => {
+      put(standIn(NIXPACKS_VERSION));
+
+      const ran = nixpacksStep(
+        sha256(releaseTarball(standIn(NIXPACKS_VERSION))),
+      );
+
+      expect(ran.status).toBe(0);
+      expect(called()).toBe('');
+    });
+
+    it('replaces a nixpacks at another version, as an older install left it', () => {
+      put(standIn('1.39.0'));
+      const release = releaseTarball(standIn(NIXPACKS_VERSION));
+      serve(RELEASE, release);
+
+      const ran = nixpacksStep(sha256(release));
+
+      expect(ran.status).toBe(0);
+      expect(installed()).toBe(standIn(NIXPACKS_VERSION));
+    });
+
+    it('never runs the installer script from nixpacks.com', () => {
+      expect(code()).not.toContain('nixpacks.com');
+    });
+  });
+
   describe('ensure_packages', () => {
     it('waits while another apt holds its lock, then installs what is missing', () => {
       const fns = ['apt_get', 'ensure_packages']
@@ -2156,7 +2308,6 @@ exec "${bin}/curl-served" "$@"
       'github.com',
       'release-assets.githubusercontent.com',
       's3.amazonaws.com',
-      'nixpacks.com',
     ];
 
     function shim(tool: string, body: string) {
