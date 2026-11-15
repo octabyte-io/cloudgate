@@ -14,6 +14,7 @@ import {
   boughtServer,
   boughtServerLine,
 } from '../../src/bought-servers/bought-server.schema';
+import { BoughtServerChangeSteps } from '../../src/bought-servers/bought-server-change-steps.service';
 import { BoughtServerStages } from '../../src/bought-servers/bought-server-stages.service';
 import { subscription } from '../../src/cloud/billing/billing.schema';
 import { STRIPE_API } from '../../src/cloud/billing/stripe-api';
@@ -337,6 +338,39 @@ describe('Changing the size of a Bought Server (e2e)', () => {
       expect(html).toContain('now runs on 3 vCPU · 4 GB RAM');
       expect(html).toContain('$30.00 a month');
       expect(html).not.toMatch(/hetzner|cpx22|cx23/i);
+    });
+
+    it('sends nothing more when a resume reaches the finished change again', async () => {
+      const id = await readyServer('cx23', true);
+      expect((await setSize(id, 'cpx22')).status).toBe(200);
+      const finished = await row(id);
+      const server = (await lines(id)).find((line) => line.kind === 'server');
+      mail.clear();
+      retrieveSubscription.mockClear();
+
+      // The row as a resume read it while the change was still running.
+      await ctx.app.get(BoughtServerChangeSteps).apply({
+        ...finished,
+        stage: 'changing',
+        serverType: 'cx23',
+        changeTarget: {
+          serverType: 'cpx22',
+          charged: true,
+          lines: [
+            {
+              kind: 'server',
+              stripePriceId: server!.stripePriceId,
+              monthlyCents: server!.monthlyCents,
+            },
+          ],
+        },
+        changeTries: 1,
+      });
+
+      // It reached the finish, which reads the subscription, and lost the
+      // write that sends.
+      expect(retrieveSubscription).toHaveBeenCalled();
+      expect(mail.sent).toEqual([]);
     });
 
     it('asks the provider for nothing when the card is refused', async () => {

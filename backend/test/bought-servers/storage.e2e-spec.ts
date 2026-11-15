@@ -14,6 +14,7 @@ import {
   boughtServer,
   boughtServerLine,
 } from '../../src/bought-servers/bought-server.schema';
+import { BoughtServerChangeSteps } from '../../src/bought-servers/bought-server-change-steps.service';
 import { BoughtServerStages } from '../../src/bought-servers/bought-server-stages.service';
 import { storageCommand } from '../../src/bought-servers/storage';
 import { STRIPE_API } from '../../src/cloud/billing/stripe-api';
@@ -523,6 +524,39 @@ describe('Extra storage on a Bought Server (e2e)', () => {
       expect(sent[0].email.html).toContain('$49.00 a month');
       expect(sent[0].email.html).toContain(`/servers/${id}`);
       expect(sent[0].email.html).not.toMatch(/hetzner/i);
+    });
+
+    it('sends nothing more when a resume reaches the finished change again', async () => {
+      const id = await readyServer({ storageGb: 100 });
+      expect((await grow(id, 250)).status).toBe(200);
+      const finished = await row(id);
+      const storage = (await lines(id)).find((line) => line.kind === 'storage');
+      mail.clear();
+      retrieveSubscription.mockClear();
+
+      // The row as a resume read it while the change was still running.
+      await ctx.app.get(BoughtServerChangeSteps).apply({
+        ...finished,
+        stage: 'changing',
+        storageGb: 100,
+        changeTarget: {
+          storageGb: 250,
+          charged: true,
+          lines: [
+            {
+              kind: 'storage',
+              stripePriceId: storage!.stripePriceId,
+              monthlyCents: 2400,
+            },
+          ],
+        },
+        changeTries: 1,
+      });
+
+      // It reached the finish, which reads the subscription, and lost the
+      // write that sends.
+      expect(retrieveSubscription).toHaveBeenCalled();
+      expect(mail.sent).toEqual([]);
     });
 
     it('refuses a smaller size, or the same, before anything is charged', async () => {
