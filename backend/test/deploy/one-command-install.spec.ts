@@ -55,7 +55,7 @@ beforeEach(() => {
   }
   fs.writeFileSync(
     path.join(bin, 'uname'),
-    '#!/bin/sh\n[ "$1" = -m ] && echo x86_64 || echo Linux\n',
+    '#!/bin/sh\n[ "$1" = -m ] && echo "${UNAME_M:-x86_64}" || echo Linux\n',
     { mode: 0o755 },
   );
   // `curl [flags] [-o file] <url>`: the served file for the URL, to stdout or
@@ -107,19 +107,28 @@ function serve(url: string, content: string | Buffer) {
 /**
  * GitHub's list of this repository's releases, newest first, each in the
  * order GitHub writes its fields: `tag_name` and `name` before `assets`. A
- * `vX.Y.Z` release carries its tarball and checksum unless `bare` names it,
- * as one made by hand, or still being published, does not yet.
+ * `vX.Y.Z` release carries its amd64 and arm64 tarballs and checksums unless
+ * `bare` names it, as one made by hand, or still being published, does not
+ * yet; one `amd64Only` names carries the amd64 pair alone, as a version
+ * published before arm64 does.
  */
 function releases(...tags: string[]) {
   releasesWithout([], ...tags);
 }
 
 function releasesWithout(bare: string[], ...tags: string[]) {
+  releasesOf({ bare }, ...tags);
+}
+
+function releasesOf(
+  { bare = [], amd64Only = [] }: { bare?: string[]; amd64Only?: string[] },
+  ...tags: string[]
+) {
   serve(
     RELEASES_API,
     JSON.stringify(
       tags.map((tag) => {
-        const tarball = `cloudgate-${tag.replace(/^v/, '')}-linux-amd64.tar.gz`;
+        const cpus = amd64Only.includes(tag) ? ['amd64'] : ['amd64', 'arm64'];
         return {
           tag_name: tag,
           name: tag,
@@ -127,7 +136,10 @@ function releasesWithout(bare: string[], ...tags: string[]) {
           assets:
             bare.includes(tag) || !tag.startsWith('v')
               ? []
-              : [{ name: tarball }, { name: `${tarball}.sha256` }],
+              : cpus.flatMap((cpu) => {
+                  const tarball = `cloudgate-${tag.replace(/^v/, '')}-linux-${cpu}.tar.gz`;
+                  return [{ name: tarball }, { name: `${tarball}.sha256` }];
+                }),
         };
       }),
       null,
@@ -152,13 +164,17 @@ function versionTree(version: string, into: string) {
 }
 
 /**
- * Publishes `version` as a release: its tarball, and its checksum in
- * sha256sum's format, computed here rather than by the script under test.
+ * Publishes `version` as a release: its tarball for `cpu` (amd64 unless
+ * given), and its checksum in sha256sum's format, computed here rather than
+ * by the script under test.
  */
-function publish(version: string, options: { checksumOf?: Buffer } = {}) {
-  const tree = path.join(scratch, `tree-${version}`);
+function publish(
+  version: string,
+  options: { checksumOf?: Buffer; cpu?: 'amd64' | 'arm64' } = {},
+) {
+  const tree = path.join(scratch, `tree-${version}-${options.cpu ?? 'amd64'}`);
   versionTree(version, tree);
-  const name = `cloudgate-${version}-linux-amd64.tar.gz`;
+  const name = `cloudgate-${version}-linux-${options.cpu ?? 'amd64'}.tar.gz`;
   const tarball = path.join(scratch, name);
   const packed = spawnSync('tar', ['-czf', tarball, '-C', tree, '.']);
   if (packed.status !== 0) throw new Error(String(packed.stderr));
@@ -301,6 +317,90 @@ describe('install.sh (the one-command install)', () => {
         expect(opt()).toEqual([]);
       },
     );
+  });
+
+  // ADR-0088: amd64 everywhere, arm64 for the Hosted instance only.
+  describe('the CPU it installs on', () => {
+    it('installs the arm64 tarball on an arm64 box with HOSTED_MODE=true', () => {
+      releases('v0.10.0');
+      publish('0.10.0', { cpu: 'arm64' });
+
+      const fresh = install({ UNAME_M: 'aarch64', HOSTED_MODE: 'true' });
+
+      expect(fresh.stderr).toBe('');
+      expect(fresh.status).toBe(0);
+      expect(called()).toContain(
+        `curl https://${DOWNLOAD}/v0.10.0/cloudgate-0.10.0-linux-arm64.tar.gz.sha256\n`,
+      );
+      expect(called()).toContain(
+        `curl https://${DOWNLOAD}/v0.10.0/cloudgate-0.10.0-linux-arm64.tar.gz\n`,
+      );
+      expect(called()).not.toContain('linux-amd64');
+      expect(called()).toContain(
+        `deploy/install.sh 0.10.0 from ${root}/opt/cloudgate.next host=203.0.113.10\n`,
+      );
+    });
+
+    it('counts as the latest version on arm64 only a release that carries the arm64 tarball', () => {
+      releasesOf({ amd64Only: ['v0.11.0'] }, 'v0.11.0', 'v0.10.0');
+      publish('0.11.0');
+      publish('0.10.0', { cpu: 'arm64' });
+
+      const fresh = install({ UNAME_M: 'aarch64', HOSTED_MODE: 'true' });
+
+      expect(fresh.stderr).toBe('');
+      expect(fresh.status).toBe(0);
+      expect(called()).toContain(
+        `deploy/install.sh 0.10.0 from ${root}/opt/cloudgate.next`,
+      );
+      expect(called()).not.toContain('0.11.0');
+    });
+
+    it('installs the amd64 tarball on an amd64 box, with or without HOSTED_MODE', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+
+      const fresh = install({ HOSTED_MODE: 'true' });
+
+      expect(fresh.status).toBe(0);
+      expect(called()).toContain('cloudgate-0.10.0-linux-amd64.tar.gz\n');
+      expect(called()).not.toContain('linux-arm64');
+    });
+
+    it.each<[string, Record<string, string>]>([
+      ['without HOSTED_MODE', {}],
+      ['with HOSTED_MODE=false', { HOSTED_MODE: 'false' }],
+    ])(
+      'refuses an arm64 box %s, naming the CPU, before changing anything',
+      (_, extra) => {
+        releases('v0.10.0');
+        publish('0.10.0', { cpu: 'arm64' });
+
+        const refused = install({ UNAME_M: 'aarch64', ...extra });
+
+        expect(refused.status).toBe(1);
+        expect(refused.stderr).toContain(
+          'This platform host is arm64 (aarch64). Cloudgate supports Arm for the Hosted instance only',
+        );
+        expect(refused.stderr).toContain('Nothing was changed.');
+        expect(called()).toBe('');
+        expect(opt()).toEqual([]);
+      },
+    );
+
+    it('refuses a CPU that is neither amd64 nor arm64, before changing anything', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+
+      const refused = install({ UNAME_M: 'riscv64', HOSTED_MODE: 'true' });
+
+      expect(refused.status).toBe(1);
+      expect(refused.stderr).toContain(
+        'this platform host is riscv64. Nothing was changed.',
+      );
+      expect(called()).toBe('');
+      expect(opt()).toEqual([]);
+    });
   });
 
   describe('one run at a time', () => {
@@ -1822,9 +1922,13 @@ exit 0
       put(`${into}/include/node/node.h`, `/* ${version} */`);
     }
 
-    /** nodejs.org's tarball for NODE_VERSION and its SHASUMS256.txt. */
-    function serveNode() {
-      const name = `node-${NODE_VERSION}-linux-x64`;
+    /**
+     * nodejs.org's tarball for NODE_VERSION on `arch` (its name for the CPU)
+     * and its SHASUMS256.txt, which lists the other CPU's with a sum of zeros.
+     */
+    function serveNode(arch: 'x64' | 'arm64' = 'x64') {
+      const name = `node-${NODE_VERSION}-linux-${arch}`;
+      const other = arch === 'x64' ? 'arm64' : 'x64';
       const build = path.join(scratch, 'node-build');
       const top = path.join(build, name);
       fs.mkdirSync(path.join(top, 'bin'), { recursive: true });
@@ -1848,11 +1952,11 @@ exit 0
       serve(`nodejs.org/dist/${NODE_VERSION}/${name}.tar.xz`, bytes);
       serve(
         `nodejs.org/dist/${NODE_VERSION}/SHASUMS256.txt`,
-        `${'0'.repeat(64)}  node-${NODE_VERSION}-linux-arm64.tar.xz\n${sum}  ${name}.tar.xz\n`,
+        `${'0'.repeat(64)}  node-${NODE_VERSION}-linux-${other}.tar.xz\n${sum}  ${name}.tar.xz\n`,
       );
     }
 
-    function nodeStep() {
+    function nodeStep(cpu: 'amd64' | 'arm64' = 'amd64') {
       const step = source().match(/\n### -+ node ---\n[\s\S]*?(?=\n### -+ )/);
       if (!step) throw new Error('no node step in deploy/install.sh');
       const bin = path.join(scratch, 'bin');
@@ -1874,7 +1978,7 @@ cat "$file" > "\${url##*/}"
         'bash',
         [
           '-c',
-          `set -euo pipefail; log() { :; }; NODE_VERSION=${NODE_VERSION}\n${step[0].replaceAll('/usr/local', `${root}/usr/local`)}`,
+          `set -euo pipefail; log() { :; }; NODE_VERSION=${NODE_VERSION}; CPU=${cpu}\n${step[0].replaceAll('/usr/local', `${root}/usr/local`)}`,
         ],
         {
           env: { PATH: `${bin}:${process.env.PATH}`, HOME: scratch },
@@ -1900,6 +2004,20 @@ cat "$file" > "\${url##*/}"
         'include/node/node.h',
         'lib/node_modules/npm/package.json',
       ]);
+    });
+
+    it('unpacks the arm64 build on an arm64 Hosted instance, checked against its SHASUMS line', () => {
+      serveNode('arm64');
+
+      const ran = nodeStep('arm64');
+
+      expect(ran.stderr).toBe('');
+      expect(ran.status).toBe(0);
+      expect(called()).toContain(
+        `curl https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-arm64.tar.xz\n`,
+      );
+      expect(called()).not.toContain('linux-x64');
+      expect(Object.keys(tree(OURS))).toContain('bin/node');
     });
 
     it('downloads nothing when the Node there is already the version', () => {
@@ -2052,6 +2170,7 @@ cat "$file" > "\${url##*/}"
   describe('nixpacks at its pin', () => {
     const NIXPACKS_VERSION = '1.41.0';
     const RELEASE = `github.com/railwayapp/nixpacks/releases/download/v${NIXPACKS_VERSION}/nixpacks-v${NIXPACKS_VERSION}-x86_64-unknown-linux-musl.tar.gz`;
+    const ARM64_RELEASE = `github.com/railwayapp/nixpacks/releases/download/v${NIXPACKS_VERSION}/nixpacks-v${NIXPACKS_VERSION}-aarch64-unknown-linux-musl.tar.gz`;
     const BINARY = 'usr/local/bin/nixpacks';
 
     /** A nixpacks that says it is `version`, as `nixpacks --version` does. */
@@ -2088,7 +2207,18 @@ cat "$file" > "\${url##*/}"
       fs.writeFileSync(at, script, { mode: 0o755 });
     }
 
-    function nixpacksStep(pinnedSha256: string) {
+    /**
+     * The step on a `cpu` box, with `pinnedSha256` as that CPU's pin and a
+     * pin of zeros for the other, which a download checked against the wrong
+     * one fails.
+     */
+    function nixpacksStep(
+      pinnedSha256: string,
+      cpu: 'amd64' | 'arm64' = 'amd64',
+    ) {
+      const zeros = '0'.repeat(64);
+      const amd64Pin = cpu === 'amd64' ? pinnedSha256 : zeros;
+      const arm64Pin = cpu === 'arm64' ? pinnedSha256 : zeros;
       const step = source().match(
         /\n### -+ build tooling ---\n[\s\S]*?(?=\n### -+ )/,
       );
@@ -2112,7 +2242,7 @@ cat "$file" > "\${url##*/}"
         'bash',
         [
           '-c',
-          `set -euo pipefail; log() { :; }; NIXPACKS_VERSION=${NIXPACKS_VERSION}; NIXPACKS_SHA256=${pinnedSha256}\n${step[0].replaceAll('/usr/local', `${root}/usr/local`)}`,
+          `set -euo pipefail; log() { :; }; CPU=${cpu}; NIXPACKS_VERSION=${NIXPACKS_VERSION}; NIXPACKS_SHA256=${amd64Pin}; NIXPACKS_ARM64_SHA256=${arm64Pin}\n${step[0].replaceAll('/usr/local', `${root}/usr/local`)}`,
         ],
         {
           env: { PATH: `${bin}:${process.env.PATH}`, HOME: scratch },
@@ -2121,13 +2251,28 @@ cat "$file" > "\${url##*/}"
       );
     }
 
-    it('pins nixpacks to a version and the sha256 of its x86_64 musl tarball', () => {
+    it('pins nixpacks to a version and the sha256 of its x86_64 and aarch64 musl tarballs', () => {
       expect(source()).toMatch(
         /^NIXPACKS_VERSION="\$\{NIXPACKS_VERSION:-\d+\.\d+\.\d+\}"$/m,
       );
       expect(source()).toMatch(
         /^NIXPACKS_SHA256="\$\{NIXPACKS_SHA256:-[0-9a-f]{64}\}"$/m,
       );
+      expect(source()).toMatch(
+        /^NIXPACKS_ARM64_SHA256="\$\{NIXPACKS_ARM64_SHA256:-[0-9a-f]{64}\}"$/m,
+      );
+    });
+
+    it('installs the aarch64 binary on an arm64 Hosted instance, checked against its own pin', () => {
+      const release = releaseTarball(standIn(NIXPACKS_VERSION));
+      serve(ARM64_RELEASE, release);
+      serve(RELEASE, releaseTarball('#!/bin/sh\necho amd64\n'));
+
+      const ran = nixpacksStep(sha256(release), 'arm64');
+
+      expect(ran.status).toBe(0);
+      expect(called()).toBe(`curl https://${ARM64_RELEASE}\n`);
+      expect(installed()).toBe(standIn(NIXPACKS_VERSION));
     });
 
     it('installs the pinned binary from GitHub once its tarball’s sha256 is the pin', () => {

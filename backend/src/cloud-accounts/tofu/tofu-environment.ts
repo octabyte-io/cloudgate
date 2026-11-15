@@ -179,8 +179,19 @@ export function stateEncryption(appEncryptionSecret: string): string {
 }
 
 /**
+ * The OpenTofu platform of the CPU the backend runs on, which is the one
+ * `install.sh` downloaded the providers for: `linux_amd64`, or `linux_arm64`
+ * on an arm64 Hosted instance (ADR-0088).
+ */
+export function hostPlatform(
+  arch: NodeJS.Architecture = process.arch,
+): 'linux_amd64' | 'linux_arm64' {
+  return arch === 'arm64' ? 'linux_arm64' : 'linux_amd64';
+}
+
+/**
  * Where `install.sh` unpacks a pinned provider inside the mirror, in the
- * layout `filesystem_mirror` reads.
+ * layout `filesystem_mirror` reads, under the host's own platform.
  */
 export function providerDirectory(
   providerMirror: string,
@@ -192,6 +203,6 @@ export function providerDirectory(
     'hashicorp',
     provider,
     PINNED_PROVIDERS[provider],
-    'linux_amd64',
+    hostPlatform(),
   );
 }

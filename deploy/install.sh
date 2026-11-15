@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# Cloudgate — native install on a bare Ubuntu 24.04 or 26.04 amd64 platform host.
+# Cloudgate — native install on a bare Ubuntu 24.04 or 26.04 amd64 platform host,
+# or an arm64 one for the Hosted instance only (ADR-0088).
 #
 # This is the record of the install that was actually performed and verified on
 # a 2 vCPU / 3.7 GB / 38 GB VPS (run log: .project/vps-deploy/RUN-LOG.md, L01,
@@ -14,7 +15,7 @@
 # unpacks the version and runs this, in one command (docs/deploy.md §2):
 #
 #     mkdir /opt/cloudgate.next
-#     tar -xzf cloudgate-0.3.0-linux-amd64.tar.gz -C /opt/cloudgate.next --no-same-owner
+#     tar -xzf cloudgate-0.3.0-linux-<cpu>.tar.gz -C /opt/cloudgate.next --no-same-owner
 #     CLOUDGATE_PUBLIC_HOST=203.0.113.10 bash /opt/cloudgate.next/deploy/install.sh
 #
 # Nothing is built here: the version holds the built backend and console and
@@ -107,17 +108,21 @@ DOCKER_VERSION=29.9.3
 # nixpacks, the default builder, from its GitHub release at one pinned version,
 # so two installs a week apart build the same. NIXPACKS_SHA256 is the sha256 of
 # that release's nixpacks-v<version>-x86_64-unknown-linux-musl.tar.gz, as the
-# release page lists it; move the two together (docs/deploy.md §7).
+# release page lists it, and NIXPACKS_ARM64_SHA256 that of its
+# aarch64-unknown-linux-musl one, for an arm64 Hosted instance (ADR-0088);
+# move the three together (docs/deploy.md §7).
 NIXPACKS_VERSION="${NIXPACKS_VERSION:-1.41.0}"
 NIXPACKS_SHA256="${NIXPACKS_SHA256:-0f55de7874507b9cf7502113120bd96f2ab6979f78d10eaf2eb2ade9207b3af6}"
+NIXPACKS_ARM64_SHA256="${NIXPACKS_ARM64_SHA256:-912bd02dd2bb6f9c3a9ed965fe8a68b4aa318dc7a2546e2eca6f2806a894ba39}"
 
 # OpenTofu, which makes a Cloud account's resources (ADR-0030), and the
 # providers Cloud runs use: hashicorp/aws for AWS, and hashicorp/google for
 # Google Cloud. Each Cloudgate version pins exactly one version of each, with
 # checksums, and only a Cloudgate change moves them — forward only, because a state
 # written by a newer OpenTofu or provider is refused by an older one.
-# OPENTOFU_SHA256 is the release's linux_amd64 tarball checksum, from its
-# tofu_<version>_SHA256SUMS; move the two together. 1.10 is the floor.
+# OPENTOFU_SHA256 is the release's linux_amd64 tarball checksum, and
+# OPENTOFU_ARM64_SHA256 its linux_arm64 one (ADR-0088), from its
+# tofu_<version>_SHA256SUMS; move the three together. 1.10 is the floor.
 #
 # The *_PROVIDER_VERSION lines are not inputs: deploy/opentofu/.terraform.lock.hcl
 # is, and the providers' checksums live there. These lines restate the lock
@@ -125,6 +130,7 @@ NIXPACKS_SHA256="${NIXPACKS_SHA256:-0f55de7874507b9cf7502113120bd96f2ab6979f78d1
 # backend/test/cloud-accounts/opentofu-pins.spec.ts holds them together.
 OPENTOFU_VERSION="${OPENTOFU_VERSION:-1.13.1}"
 OPENTOFU_SHA256="${OPENTOFU_SHA256:-378ada19d4bc70c43732004e8159be771b23b9a5afdf059e5f8a2b3fa2c70a69}"
+OPENTOFU_ARM64_SHA256="${OPENTOFU_ARM64_SHA256:-9c1ef375aa1852db0b2888aa921b640c71f8140d4682aa4fec99378a64fa7dc3}"
 AWS_PROVIDER_VERSION=6.69.1
 GOOGLE_PROVIDER_VERSION=8.8.0
 # Cloudgate's own: never /usr/local/bin/tofu, which may be the operator's.
@@ -136,12 +142,14 @@ OPENTOFU_PROVIDER_MIRROR="$OPENTOFU_DIR/providers"
 # (ADR-0070): Cloudgate starts a Session Manager session with the SSH document
 # and runs SSH over the plugin's stdin and stdout. Pinned and checked like
 # OpenTofu: SESSION_MANAGER_PLUGIN_SHA256 is the sha256 of the release's
-# ubuntu_64bit session-manager-plugin.deb; move the two together. 1.2.536.0 is
+# ubuntu_64bit session-manager-plugin.deb, and SESSION_MANAGER_PLUGIN_ARM64_SHA256
+# that of its ubuntu_arm64 one (ADR-0088); move the three together. 1.2.536.0 is
 # the floor: the session's token reaches the plugin in its environment, never
 # on its command line. backend/test/stack-vm/session-manager-plugin-pin.spec.ts
 # holds the pin, the floor and the path together.
 SESSION_MANAGER_PLUGIN_VERSION="${SESSION_MANAGER_PLUGIN_VERSION:-1.2.707.0}"
 SESSION_MANAGER_PLUGIN_SHA256="${SESSION_MANAGER_PLUGIN_SHA256:-91cc9a1a8df6f730622d5e11a8610be6e06d5858408e8029b56d0d63aedd0a68}"
+SESSION_MANAGER_PLUGIN_ARM64_SHA256="${SESSION_MANAGER_PLUGIN_ARM64_SHA256:-0f243794403cfae90d5cdb13982e0b60045488cbd29767d47ad2b22e064f83c1}"
 # Cloudgate's own, as OpenTofu's is: never the operator's on PATH.
 SESSION_MANAGER_PLUGIN=/usr/local/share/cloudgate/session-manager-plugin/bin/session-manager-plugin
 
@@ -256,6 +264,29 @@ case "${HOSTED_MODE:-}" in
   true) ;;
   '' | false) HOSTED_MODE= ;;
   *) echo "HOSTED_MODE must be \"true\" or \"false\" (or unset), not \"$HOSTED_MODE\"." >&2; exit 1 ;;
+esac
+
+# The platform host's CPU, as the Cloudgate version and every pinned download
+# below name it: amd64 everywhere, arm64 on the Hosted instance only
+# (ADR-0088). The Hosted instance builds nothing on its platform host
+# (ADR-0047), so none of a Self-hosted arm64 box's Cloud Run questions reach
+# it. Refused before anything changes the box, as root install.sh refuses it.
+machine="$(uname -m)"
+case "$machine" in
+  x86_64) CPU=amd64 ;;
+  aarch64)
+    if [ -z "$HOSTED_MODE" ]; then
+      echo "This platform host is arm64 ($machine). Cloudgate supports Arm for the Hosted instance only" >&2
+      echo "(HOSTED_MODE=true); a Self-hosted install needs an amd64 (x86_64) host. Nothing was changed." >&2
+      exit 1
+    fi
+    CPU=arm64
+    ;;
+  *)
+    echo "Cloudgate installs on amd64 (x86_64), and on arm64 (aarch64) for the Hosted instance only;" >&2
+    echo "this platform host is $machine. Nothing was changed." >&2
+    exit 1
+    ;;
 esac
 # A re-run that forgets the setting must not rewrite the Hosted instance as a
 # Self-hosted one: that would reopen 3000/4000, and the backend would refuse to
@@ -416,7 +447,11 @@ NODE_DIR=/usr/local/share/cloudgate/node
 
 log "Node ${NODE_VERSION}"
 if [ "$("$NODE_DIR/bin/node" --version 2>/dev/null || true)" != "$NODE_VERSION" ]; then
-  tarball="node-${NODE_VERSION}-linux-x64.tar.xz"
+  # nodejs.org calls amd64 x64.
+  case "$CPU" in
+    amd64) tarball="node-${NODE_VERSION}-linux-x64.tar.xz" ;;
+    arm64) tarball="node-${NODE_VERSION}-linux-arm64.tar.xz" ;;
+  esac
   tmp="$(mktemp -d)"
   (
     cd "$tmp"
@@ -580,12 +615,15 @@ fi
 
 log "nixpacks ${NIXPACKS_VERSION}"
 if [ "$(/usr/local/bin/nixpacks --version 2>/dev/null || true)" != "nixpacks ${NIXPACKS_VERSION}" ]; then
-  tarball="nixpacks-v${NIXPACKS_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+  case "$CPU" in
+    amd64) tarball="nixpacks-v${NIXPACKS_VERSION}-x86_64-unknown-linux-musl.tar.gz" pin="$NIXPACKS_SHA256" ;;
+    arm64) tarball="nixpacks-v${NIXPACKS_VERSION}-aarch64-unknown-linux-musl.tar.gz" pin="$NIXPACKS_ARM64_SHA256" ;;
+  esac
   tmp="$(mktemp -d)"
   (
     cd "$tmp"
     curl -fsSLO --retry 3 --retry-connrefused --connect-timeout 15 "https://github.com/railwayapp/nixpacks/releases/download/v${NIXPACKS_VERSION}/${tarball}"
-    echo "${NIXPACKS_SHA256}  ${tarball}" | sha256sum -c -
+    echo "${pin}  ${tarball}" | sha256sum -c -
     mkdir unpacked
     tar -xzf "$tarball" -C unpacked --no-same-owner
     install -D -m 0755 unpacked/nixpacks /usr/local/bin/nixpacks
@@ -610,29 +648,32 @@ fi
 # refused. `tofu init` then checks the unpacked directory again against the
 # lock file's `h1:`.
 #
-# Unpacked layout (`<host>/<namespace>/<type>/<version>/<os_arch>/`), which a
+# Unpacked layout (`<host>/<namespace>/<type>/<version>/<os_arch>/`, os_arch
+# the host's own, linux_amd64 or linux_arm64), which a
 # `filesystem_mirror` reads in place: `tofu init` links it into each working
 # directory rather than copying 840 MB. Older provider versions are removed —
 # versions only move forward, so nothing will ask for one again.
 
 log "OpenTofu ${OPENTOFU_VERSION}, the AWS provider ${AWS_PROVIDER_VERSION} and the Google provider ${GOOGLE_PROVIDER_VERSION}"
-# Both downloads below are the linux_amd64 builds, and nothing else is pinned.
-if [ "$(uname -m)" != x86_64 ]; then
-  echo "OpenTofu is installed for amd64 (x86_64) only; this host is $(uname -m)." >&2
-  exit 1
-fi
+# Every download below is the host's own CPU's build, linux_amd64 or
+# linux_arm64, each checked against its own pin.
+PLATFORM="linux_${CPU}"
 if [ "$(printf '%s\n' 1.10.0 "$OPENTOFU_VERSION" | sort -V | head -n 1)" != 1.10.0 ]; then
   echo "OPENTOFU_VERSION=${OPENTOFU_VERSION}: Cloudgate needs OpenTofu 1.10 or later." >&2
   exit 1
 fi
 
 if [ "$("$OPENTOFU_BINARY" version -json 2>/dev/null | jq -r .terraform_version 2>/dev/null || true)" != "$OPENTOFU_VERSION" ]; then
-  tarball="tofu_${OPENTOFU_VERSION}_linux_amd64.tar.gz"
+  tarball="tofu_${OPENTOFU_VERSION}_${PLATFORM}.tar.gz"
+  case "$CPU" in
+    amd64) pin="$OPENTOFU_SHA256" ;;
+    arm64) pin="$OPENTOFU_ARM64_SHA256" ;;
+  esac
   tmp="$(mktemp -d)"
   (
     cd "$tmp"
     curl -fsSLO --retry 3 --retry-connrefused --connect-timeout 15 "https://github.com/opentofu/opentofu/releases/download/v${OPENTOFU_VERSION}/${tarball}"
-    echo "${OPENTOFU_SHA256}  ${tarball}" | sha256sum -c -
+    echo "${pin}  ${tarball}" | sha256sum -c -
     mkdir unpacked
     tar -xzf "$tarball" -C unpacked --no-same-owner
     install -D -m 0755 unpacked/tofu "$OPENTOFU_BINARY"
@@ -657,10 +698,10 @@ install_provider() {
     echo "hashicorp/$type ${version} is not the version $opentofu_lock pins." >&2
     exit 1
   fi
-  if [ -x "$dir/${version}/linux_amd64/terraform-provider-$type" ]; then
+  if [ -x "$dir/${version}/${PLATFORM}/terraform-provider-$type" ]; then
     return
   fi
-  local zip="terraform-provider-${type}_${version}_linux_amd64.zip"
+  local zip="terraform-provider-${type}_${version}_${PLATFORM}.zip"
   # Beside the mirror, not in /tmp, so the move below is a rename on one
   # filesystem rather than a copy that an interrupted run could leave half done.
   install -d -m 0755 "$OPENTOFU_PROVIDER_MIRROR"
@@ -675,14 +716,14 @@ install_provider() {
       exit 1
     fi
     echo "$zip: OK (deploy/opentofu/.terraform.lock.hcl)"
-    mkdir linux_amd64
-    unzip -q "$zip" -d linux_amd64
+    mkdir "$PLATFORM"
+    unzip -q "$zip" -d "$PLATFORM"
   )
   # Replaced whole, and only once the new one is complete and checked, so an
   # interrupted run leaves the old provider or none — never half of one.
   rm -rf "$dir"
   install -d -m 0755 "$dir/${version}"
-  mv "$tmp/linux_amd64" "$dir/${version}/linux_amd64"
+  mv "$tmp/$PLATFORM" "$dir/${version}/$PLATFORM"
   rm -rf "$tmp"
 }
 install_provider aws "${AWS_PROVIDER_VERSION}"
@@ -701,11 +742,16 @@ if [ "$(printf '%s\n' 1.2.536.0 "$SESSION_MANAGER_PLUGIN_VERSION" | sort -V | he
   exit 1
 fi
 if [ "$("$SESSION_MANAGER_PLUGIN" --version 2>/dev/null || true)" != "$SESSION_MANAGER_PLUGIN_VERSION" ]; then
+  # AWS calls amd64 ubuntu_64bit.
+  case "$CPU" in
+    amd64) build=ubuntu_64bit pin="$SESSION_MANAGER_PLUGIN_SHA256" ;;
+    arm64) build=ubuntu_arm64 pin="$SESSION_MANAGER_PLUGIN_ARM64_SHA256" ;;
+  esac
   tmp="$(mktemp -d)"
   (
     cd "$tmp"
-    curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 -o session-manager-plugin.deb "https://s3.amazonaws.com/session-manager-downloads/plugin/${SESSION_MANAGER_PLUGIN_VERSION}/ubuntu_64bit/session-manager-plugin.deb"
-    echo "${SESSION_MANAGER_PLUGIN_SHA256}  session-manager-plugin.deb" | sha256sum -c -
+    curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 -o session-manager-plugin.deb "https://s3.amazonaws.com/session-manager-downloads/plugin/${SESSION_MANAGER_PLUGIN_VERSION}/${build}/session-manager-plugin.deb"
+    echo "${pin}  session-manager-plugin.deb" | sha256sum -c -
     dpkg-deb -x session-manager-plugin.deb unpacked
     install -D -m 0755 unpacked/usr/local/sessionmanagerplugin/bin/session-manager-plugin "$SESSION_MANAGER_PLUGIN"
   )

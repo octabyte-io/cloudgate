@@ -1,6 +1,6 @@
 # Deploying Cloudgate on a server
 
-Cloudgate installs **natively** on one Ubuntu 24.04 or 26.04 amd64 machine, its platform host: Node processes under systemd, Postgres on the box, Docker and a Swarm of one, and a Traefik container it owns. There is no Dockerfile for Cloudgate itself and no compose file — it deploys containers, it does not ship as one.
+Cloudgate installs **natively** on one Ubuntu 24.04 or 26.04 amd64 machine (or, for the Hosted instance only, an arm64 one, [§11](#on-an-arm-box)), its platform host: Node processes under systemd, Postgres on the box, Docker and a Swarm of one, and a Traefik container it owns. There is no Dockerfile for Cloudgate itself and no compose file — it deploys containers, it does not ship as one.
 
 What broke on a real install is written down here as well as what worked: see [Known broken on a native install](#5-known-broken-on-a-native-install) and [Traps that cost real time](#9-traps-that-cost-real-time).
 
@@ -10,7 +10,7 @@ What broke on a real install is written down here as well as what worked: see [K
 
 | | |
 |---|---|
-| Host | Ubuntu 24.04 or 26.04 on amd64 (one version tarball serves both; anything else is refused by name), **2 vCPU / 4 GB / 40 GB** is enough and was what this was proved on |
+| Host | Ubuntu 24.04 or 26.04 on amd64 (one version tarball serves both; anything else is refused by name). arm64 is accepted for the Hosted instance only, with `HOSTED_MODE=true` ([§11](#on-an-arm-box), ADR-0088); a Self-hosted install on Arm is refused, naming the CPU, before anything changes. **2 vCPU / 4 GB / 40 GB** is enough and was what this was proved on |
 | Access | root over SSH |
 | Ports open inbound | 22, 80, 443, 3000, 4000 |
 | DNS | none required — `sslip.io` resolves `<name>.<ip>.sslip.io` to `<ip>`, which is how deployed apps were reached |
@@ -35,10 +35,13 @@ tested version of Cloudgate, `vX.Y.Z`, published as a prebuilt tarball on the Gi
 its tag once its E2E run was green. Nothing is cloned and nothing is built on the host. The script:
 
 1. checks the platform host is Ubuntu 24.04 or 26.04 on amd64 (ADR-0085), and stops, naming both, on any
-   other;
+   other release, and naming the CPU on any other CPU; arm64 passes only with `HOSTED_MODE=true`
+   (ADR-0088);
 2. finds the version: the one `CLOUDGATE_VERSION` names, or else the latest one published (the
-   highest `vX.Y.Z` among the repository's releases; the CLI's `cli-v*` releases are never one);
-3. downloads `cloudgate-<X.Y.Z>-linux-amd64.tar.gz` and its `.sha256`, and stops, having changed
+   highest `vX.Y.Z` among the repository's releases that carries the host's own CPU's tarball; the
+   CLI's `cli-v*` releases are never one);
+3. downloads `cloudgate-<X.Y.Z>-linux-<cpu>.tar.gz` (`amd64`, or `arm64` on an Arm Hosted instance)
+   and its `.sha256`, and stops, having changed
    nothing, when the download does not match the published checksum or the version has no release;
 4. unpacks it into `/opt/cloudgate.next` and hands over to that version's `deploy/install.sh`,
    which does the install and puts the version in place at `/opt/cloudgate` just before it
@@ -166,8 +169,8 @@ Two things to know:
 
 The install only installs a published Cloudgate version. To run a branch or an unreleased fix on
 a host, build a version tarball from it yourself and install that by hand. Build on an Ubuntu
-24.04 amd64 machine, even for a 26.04 platform host (node-pty built there loads on both; one built on 26.04
-may not load on 24.04), with Node 24.19.0 (the one `deploy/install.sh` installs) and pnpm, in a fresh
+24.04 machine of the platform host's CPU, amd64 or arm64, even for a 26.04 platform host (node-pty built
+there loads on both; one built on 26.04 may not load on 24.04, and one built on one CPU never loads on the other), with Node 24.19.0 (the one `deploy/install.sh` installs) and pnpm, in a fresh
 clone made for it: `deploy/version-tarball.sh` replaces every `node_modules` in the tree.
 
 ```bash
@@ -178,8 +181,8 @@ bash deploy/version-tarball.sh ../out
 ```
 
 It runs `pnpm install`, both builds and a production `node_modules` with node-pty compiled, and
-writes `cloudgate-<version>-linux-amd64.tar.gz` and its `.sha256` to `../out`, `<version>` being
-`backend/package.json`'s. Copy both to the host and install them as in the by-hand install above.
+writes `cloudgate-<version>-linux-<cpu>.tar.gz` and its `.sha256` to `../out`, `<version>` being
+`backend/package.json`'s and `<cpu>` the machine's, `amd64` or `arm64`. Copy both to the host and install them as in the by-hand install above.
 The console it builds reaches its API at `127.0.0.1:4000`; for another `API_PORT`, change
 `BACKEND_INTERNAL_ORIGIN` in `deploy/version-tarball.sh` and the refusal in `deploy/install.sh`
 together. The traps of building:
@@ -433,7 +436,7 @@ A queued deployment survives a restart, as a Cloud run does. The build queue is 
 
 A Cloud account's resources are made by **OpenTofu** ([ADR-0030](adr/0030-a-cloud-accounts-resources-are-made-by-opentofu-a-servers-by-the-deploy-engine.md)), and `install.sh` installs it with the providers Cloud runs use: `hashicorp/aws` for AWS, and `hashicorp/google` for Google Cloud, which makes every Google resource, the Memorystore instance included (ADR-0030, as amended). That is about **255 MB of downloads** — `tofu` (~35 MB), `hashicorp/aws` (~180 MB) and `hashicorp/google` (~41 MB) — and the providers unpack to about **980 MB** on disk (AWS's 843 MB, Google's 138 MB; the linux_amd64 artefacts of OpenTofu 1.13.1, AWS 6.69.1 and Google 8.8.0, measured when the pin moved to 8.8.0). All land in `/usr/local/share/cloudgate/opentofu/` (`bin/tofu`, and the provider mirror under `providers/`), never in `/usr/local/bin`, so a `tofu` of your own is left alone. Every install has all of them, whichever clouds its Cloud accounts are on; a run uses only its own cloud's. The script writes `OPENTOFU_VERSION`, `OPENTOFU_BINARY`, `OPENTOFU_PROVIDER_MIRROR`, `AWS_PROVIDER_VERSION` and `GOOGLE_PROVIDER_VERSION` into `/etc/default/cloudgate-backend`.
 
-- **All are pinned, with checksums, by the Cloudgate version.** `OPENTOFU_VERSION` and `OPENTOFU_SHA256` at the top of `install.sh` (OpenTofu 1.10 or later, amd64 only — the script stops on any other `uname -m`); each provider's version and checksums in `deploy/opentofu/.terraform.lock.hcl`, from the OpenTofu registry. A provider zip whose sha256 is not in its block of that lock file is refused, and `tofu init` checks the unpacked provider against it again.
+- **All are pinned, with checksums, by the Cloudgate version.** `OPENTOFU_VERSION`, with `OPENTOFU_SHA256` for amd64 and `OPENTOFU_ARM64_SHA256` for an arm64 Hosted instance, at the top of `install.sh` (OpenTofu 1.10 or later); each provider's version and checksums in `deploy/opentofu/.terraform.lock.hcl`, from the OpenTofu registry, whose `zh:` lines list every platform's zip, `linux_arm64` among them. Every download is the host's own platform's, and the provider mirror's directories are named for it (`linux_amd64` or `linux_arm64`). A provider zip whose sha256 is not in its block of that lock file is refused, and `tofu init` checks the unpacked provider against it again.
 - **A Cloud run never downloads anything.** The CLI config it runs with names that mirror as the only place providers come from — there is no direct registry fallback.
 - **A re-run is a no-op when both are already at their pins**, and downloads only the one that moved otherwise. Re-running `install.sh` is the upgrade for these too.
 - **Versions move forward only, and only by a Cloudgate change.** A state written by a newer OpenTofu or provider is refused by an older one, so do not override `OPENTOFU_VERSION` downward, and do not install an older Cloudgate version across one that moved either pin once a Cloud run has used it. Moving a provider is `tofu init` (or `tofu providers lock`) in `deploy/opentofu/` after changing `versions.tf.json`, plus its line in `install.sh` and its constant in `backend/src/cloud-accounts/tofu/tofu-environment.ts` — `backend/test/cloud-accounts/opentofu-pins.spec.ts` fails until all four agree. Then regenerate `deploy/opentofu/schemas/` — each provider's schema trimmed to the types Cloudgate's definitions write, and the ECS container's fields of the pinned `@aws-sdk/client-ecs`, which native settings are checked against offline ([ADR-0044](adr/0044-native-adds-settings-to-what-cloudgate-generates-never-resources.md) rule 5): with `OPENTOFU_BINARY` and `OPENTOFU_PROVIDER_MIRROR` from `backend/test/cloud-accounts/moto/install-opentofu.sh <dir> aws google`, run `pnpm opentofu:schemas` in `backend/`. The pin test fails while a schema's version is not the pin's, and `backend/test/cloud-accounts/provider-schemas.spec.ts` while a schema misses a type a definition writes (or holds one none does) or the ECS fields are not the pinned SDK's. A state records the provider that wrote it and that provider's version, and one written by a newer AWS or Google provider is refused, naming it.
@@ -445,8 +448,8 @@ A Cloud account's resources are made by **OpenTofu** ([ADR-0030](adr/0030-a-clou
 The platform host gets the Docker a Server does, and nixpacks at one fixed version, so a fresh platform host runs the Docker version its Servers get, and two installs a week apart get the same Docker and nixpacks and build the same.
 
 - **Docker is `DOCKER_VERSION`, 29.9.3**, set at the top of `deploy/install.sh` and installed with `get.docker.com` and `--version`, as the Server setup installs a Server's. The Server setup's own pin is `DOCKER_VERSION` in `backend/src/servers/server-setup.ts`. It is not an input: a platform host on a different Docker version from its Servers is what it exists to prevent. A Docker already on the platform host is left as it is, as on a Server, so an upgrade does not move it, and a platform host installed over an existing Docker keeps running that version.
-- **nixpacks is `NIXPACKS_VERSION`, 1.41.0**, the release's static `x86_64-unknown-linux-musl` binary from GitHub, checked against `NIXPACKS_SHA256` before it is installed. A tarball whose sha256 is not the pin stops the run, and the nixpacks already there stays as it was. It goes to `/usr/local/bin/nixpacks`, where nixpacks' own installer put it, because a build runs `nixpacks` by name, from the backend's `PATH` or over SSH when the platform host is also a Server. A re-run downloads nothing when that one is already at the pin, and replaces any other version, the one an older install's `nixpacks.com` installer left included.
-- **Moving a pin is a Cloudgate change.** For Docker, change `DOCKER_VERSION` in `deploy/install.sh` and in `backend/src/servers/server-setup.ts`, and the console's "Install Docker" setup step in `frontend/src/features/server/infrastructure/setup-steps.ts`, together, to a version Docker's apt repository builds for both Ubuntu 24.04 and 26.04; `backend/test/servers/docker-pin.spec.ts` fails until the three agree. For nixpacks, change `NIXPACKS_VERSION` and `NIXPACKS_SHA256` together: the checksum is the sha256 of the new release's `nixpacks-v<version>-x86_64-unknown-linux-musl.tar.gz`, as its GitHub release page lists it, or as `sha256sum` prints it for the downloaded tarball.
+- **nixpacks is `NIXPACKS_VERSION`, 1.41.0**, the release's static `x86_64-unknown-linux-musl` binary from GitHub, checked against `NIXPACKS_SHA256` before it is installed (on an arm64 Hosted instance the `aarch64-unknown-linux-musl` one, checked against `NIXPACKS_ARM64_SHA256`). A tarball whose sha256 is not the pin stops the run, and the nixpacks already there stays as it was. It goes to `/usr/local/bin/nixpacks`, where nixpacks' own installer put it, because a build runs `nixpacks` by name, from the backend's `PATH` or over SSH when the platform host is also a Server. A re-run downloads nothing when that one is already at the pin, and replaces any other version, the one an older install's `nixpacks.com` installer left included.
+- **Moving a pin is a Cloudgate change.** For Docker, change `DOCKER_VERSION` in `deploy/install.sh` and in `backend/src/servers/server-setup.ts`, and the console's "Install Docker" setup step in `frontend/src/features/server/infrastructure/setup-steps.ts`, together, to a version Docker's apt repository builds for both Ubuntu 24.04 and 26.04; `backend/test/servers/docker-pin.spec.ts` fails until the three agree. For nixpacks, change `NIXPACKS_VERSION`, `NIXPACKS_SHA256` and `NIXPACKS_ARM64_SHA256` together: the checksums are the sha256 of the new release's `nixpacks-v<version>-x86_64-unknown-linux-musl.tar.gz` and `…-aarch64-unknown-linux-musl.tar.gz`, as its GitHub release page lists them, or as `sha256sum` prints them for the downloaded tarballs. OpenTofu's and the Session Manager plugin's arm64 pins move with their amd64 ones the same way.
 
 ---
 
@@ -691,6 +694,10 @@ Stripe tells the Hosted instance about payments only through one webhook endpoin
 **An event left out is never sent, and nothing fails.** Without `customer.subscription.pending_update_expired` an unpaid Bought Server purchase is never dropped; without `charge.dispute.created` no dispute reaches the Operators. **An event added is refused** with a 400, which Stripe retries for days before disabling the endpoint. The list is the backend's `HANDLED_EVENT_TYPES` (`backend/src/cloud/billing/stripe-webhook-events.ts`), and a test fails when the two disagree, so a release that handles a new event changes this list and its changelog says to subscribe to it.
 
 On every start the Hosted instance reads its endpoints from Stripe and logs a warning from `StripeWebhookEndpointCheck` naming each event an endpoint pointing at `/billing/webhook` is missing or has extra, a disabled endpoint, or no such endpoint at all. A key that cannot read webhook endpoints is a warning too, never a refusal to start.
+
+### On an Arm box
+
+The Hosted instance runs on an arm64 Ubuntu 24.04 or 26.04 box as on an amd64 one (ADR-0088). The one command with `HOSTED_MODE=true` downloads the version's `linux-arm64` tarball, and `deploy/install.sh` installs Node, OpenTofu, the AWS and Google providers, the Session Manager plugin (`ubuntu_arm64`) and nixpacks (`aarch64`) for arm64, each checked against its own arm64 pin. Docker and Traefik's image are multi-arch already. Nothing else changes: the Hosted instance builds nothing on its platform host (ADR-0047), its Servers run on either CPU, and its Stack VMs stay amd64. Without `HOSTED_MODE=true` an Arm box is refused, naming its CPU, before anything changes: Arm is for the Hosted instance only.
 
 ### The firewall in front
 

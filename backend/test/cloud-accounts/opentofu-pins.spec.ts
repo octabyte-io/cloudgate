@@ -4,9 +4,11 @@ import * as path from 'path';
 import {
   AWS_PROVIDER_VERSION,
   GOOGLE_PROVIDER_VERSION,
+  hostPlatform,
   OPENTOFU_VERSION,
   opentofuCliConfig,
   PINNED_PROVIDERS,
+  providerDirectory,
 } from '../../src/cloud-accounts/tofu/tofu-environment';
 import {
   COMPOSE_PLUGIN_VERSION,
@@ -107,10 +109,19 @@ describe('deploy/opentofu/.terraform.lock.hcl', () => {
     );
   });
 
-  it('pins OpenTofu 1.10 or later, with a checksum', () => {
+  it('pins OpenTofu 1.10 or later, with a checksum for each CPU', () => {
     expect(atLeast(installDefault('OPENTOFU_VERSION'), '1.10.0')).toBe(true);
     expect(atLeast('1.9.9', '1.10.0')).toBe(false);
     expect(installDefault('OPENTOFU_SHA256')).toMatch(/^[0-9a-f]{64}$/);
+    // The arm64 Hosted instance's (ADR-0088), beside the amd64 one.
+    expect(installDefault('OPENTOFU_ARM64_SHA256')).toMatch(/^[0-9a-f]{64}$/);
+    expect(installDefault('OPENTOFU_ARM64_SHA256')).not.toBe(
+      installDefault('OPENTOFU_SHA256'),
+    );
+    expect(installer()).toContain(
+      'amd64) pin="$OPENTOFU_SHA256" ;;\n    arm64) pin="$OPENTOFU_ARM64_SHA256" ;;',
+    );
+    expect(installer()).toContain('echo "${pin}  ${tarball}" | sha256sum -c -');
   });
 
   it('the backend names the versions install.sh installs', () => {
@@ -161,8 +172,29 @@ describe('deploy/opentofu/.terraform.lock.hcl', () => {
     expect(installer()).not.toMatch(/releases\.hashicorp\.com|\bterraform_\d/);
   });
 
-  it('refuses a host that is not amd64', () => {
-    expect(installer()).toContain('if [ "$(uname -m)" != x86_64 ]; then');
+  it("downloads OpenTofu and each provider for the host's own platform, into the mirror under it", () => {
+    expect(installer()).toContain('PLATFORM="linux_${CPU}"');
+    expect(installer()).toContain(
+      'tarball="tofu_${OPENTOFU_VERSION}_${PLATFORM}.tar.gz"',
+    );
+    expect(installer()).toContain(
+      'local zip="terraform-provider-${type}_${version}_${PLATFORM}.zip"',
+    );
+    expect(installer()).toContain('mv "$tmp/$PLATFORM" "$dir/${version}/$PLATFORM"');
+    expect(installer()).not.toContain('linux_amd64/');
+  });
+});
+
+describe('hostPlatform', () => {
+  it("names the OpenTofu platform of the backend's CPU", () => {
+    expect(hostPlatform('x64')).toBe('linux_amd64');
+    expect(hostPlatform('arm64')).toBe('linux_arm64');
+  });
+
+  it('is where providerDirectory looks for a provider in the mirror', () => {
+    expect(providerDirectory('/mirror', 'aws')).toBe(
+      `/mirror/registry.opentofu.org/hashicorp/aws/${AWS_PROVIDER_VERSION}/${hostPlatform()}`,
+    );
   });
 });
 
