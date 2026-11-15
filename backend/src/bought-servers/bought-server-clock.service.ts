@@ -40,7 +40,7 @@ import { invoicePriceIds } from './purchase-payment';
  * what a deletion date is about, and what the deletion deletes. Creating is
  * one too, but Delete waits for its machine to answer.
  */
-const LIVE_STAGES: readonly BoughtServerStage[] = [
+export const LIVE_STAGES: readonly BoughtServerStage[] = [
   'creating',
   'setting_up',
   'ready',

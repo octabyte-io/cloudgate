@@ -429,6 +429,6 @@ export class LapseNotifications {
 }
 
 /** A clock date as the emails print it. */
-function formatDate(at: Date): string {
+export function formatDate(at: Date): string {
   return format(at, 'MMM dd, yyyy');
 }

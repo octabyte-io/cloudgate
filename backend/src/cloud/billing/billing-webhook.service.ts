@@ -35,6 +35,7 @@ import { subscription } from './billing.schema';
 import { DELETION_AFTER_DAYS, isRetrying, lapseNoticeOf } from './lapse-clock';
 import { LapseNotifications } from './lapse-notifications.service';
 import { endLinkPaidForItself } from './paying-for-itself';
+import { claimCancelChange, notifyCancelChange } from './plan-cancel';
 import { STRIPE_API } from './stripe-api';
 import type { StripeApi } from './stripe-api';
 import { PaymentDisputes } from './payment-disputes.service';
@@ -746,7 +747,9 @@ export class BillingWebhookService {
    * (billing-allowance.ts), so it is stored verbatim.
    *
    * A plan that changes from Business to anything else — a downgrade to
-   * Starter taking effect — sends the custom-role email.
+   * Starter taking effect — sends the custom-role email. A cancel date set
+   * or cleared sends "Your plan ends on <date>" or "Your plan will carry on"
+   * (`plan-cancel.ts`).
    */
   private async syncFromSubscription(
     organizationId: string,
@@ -782,6 +785,11 @@ export class BillingWebhookService {
         : {}),
     };
 
+    const cancelChange = await claimCancelChange(
+      this.db,
+      organizationId,
+      stripeSubscription,
+    );
     const begun = trialFactsOf(stripeSubscription).begun;
     await this.db
       .insert(subscription)
@@ -797,6 +805,14 @@ export class BillingWebhookService {
     await this.endLinkOnceActive(organizationId, stripeSubscription);
     await this.recordTrialStart(stripeSubscription);
     await this.notifyTrialStarted(organizationId, stripeSubscription);
+    await notifyCancelChange(
+      this.db,
+      this.lapseNotifications,
+      `${this.config.siteUrl}/settings/billing`,
+      organizationId,
+      plan,
+      cancelChange,
+    );
     if (planBefore === 'business' && plan !== 'business') {
       await this.lapseNotifications.sendCustomRolesStopped(
         organizationId,
