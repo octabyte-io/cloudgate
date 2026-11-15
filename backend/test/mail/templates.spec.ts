@@ -910,11 +910,12 @@ describe('mail templates', () => {
       billingUrl: 'https://console.example.com/settings/billing',
     };
 
-    it('"ends on" names the date and the Bought Servers deleted that day, with their data and backups', async () => {
+    it('"ends on" names the date and the Bought Servers deleted that day, with their data and backups, for good', async () => {
       const rendered = await renderPlanEndsEmail({
         ...facts,
         endsOn: 'Dec 05, 2026',
         serverNames: ['web-1', 'db-1'],
+        inTrial: false,
       });
 
       expect(rendered.subject).toBe('Your plan ends on Dec 05, 2026');
@@ -924,11 +925,13 @@ describe('mail templates', () => {
         'The Business plan for Hopper Labs is cancelled and ends on Dec 05, 2026. Until then, everything works as it does now.',
       );
       expect(body).toContain(
-        'The Servers you bought for Hopper Labs are deleted that day, and their data and backups go with them: web-1, db-1.',
+        'The Servers you bought for Hopper Labs are deleted that day, and their data and backups go with them: web-1, db-1. This cannot be undone.',
       );
+      // A paid plan was cancelled at Stripe, and is renewed there.
       expect(body).toContain(
-        'To keep the plan, resume it under Settings > Billing before then.',
+        'To keep the plan, choose Manage billing at Stripe under Settings > Billing and renew it there before then.',
       );
+      expect(body).not.toContain('resume');
       expect(rendered.html).toContain(facts.billingUrl);
       expect(rendered.inlineImages).toHaveLength(1);
     });
@@ -940,11 +943,12 @@ describe('mail templates', () => {
             ...facts,
             endsOn: 'Dec 05, 2026',
             serverNames: ['web-1'],
+            inTrial: false,
           })
         ).html,
       );
       expect(one).toContain(
-        'The Server you bought for Hopper Labs is deleted that day, and its data and backups go with it: web-1.',
+        'The Server you bought for Hopper Labs is deleted that day, and its data and backups go with it: web-1. This cannot be undone.',
       );
 
       const none = text(
@@ -953,10 +957,29 @@ describe('mail templates', () => {
             ...facts,
             endsOn: 'Dec 05, 2026',
             serverNames: [],
+            inTrial: false,
           })
         ).html,
       );
       expect(none).not.toContain('deleted that day');
+      expect(none).not.toContain('cannot be undone');
+    });
+
+    it('"ends on" during the Free trial names Keep <plan>, the control that takes the cancel back', async () => {
+      const body = text(
+        (
+          await renderPlanEndsEmail({
+            ...facts,
+            endsOn: 'Dec 05, 2026',
+            serverNames: [],
+            inTrial: true,
+          })
+        ).html,
+      );
+      expect(body).toContain(
+        'To keep the plan, choose Keep Business under Settings > Billing before then.',
+      );
+      expect(body).not.toMatch(/resume|stripe/i);
     });
 
     it('"will carry on" says the cancel was taken back', async () => {
@@ -976,13 +999,16 @@ describe('mail templates', () => {
           ...facts,
           endsOn: 'Dec 05, 2026',
           serverNames: ['web-1'],
+          inTrial: true,
         }),
         await renderPlanCarriesOnEmail(facts),
       ]) {
         expect(text(rendered.html)).toContain(
           'It goes to every owner and admin, and cannot be turned off.',
         );
-        expect(rendered.html).not.toMatch(/hetzner|stripe/i);
+        // The provider of the Bought Servers' machines (ADR-0071). Stripe,
+        // the provider of payments, is named only where a control is.
+        expect(rendered.html).not.toMatch(/hetzner/i);
       }
     });
   });

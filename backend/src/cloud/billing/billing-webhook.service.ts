@@ -821,6 +821,7 @@ export class BillingWebhookService {
       organizationId,
       plan,
       cancelChange,
+      isTrialStatus(stripeSubscription.status),
     );
     if (planBefore === 'business' && plan !== 'business') {
       await this.lapseNotifications.sendCustomRolesStopped(

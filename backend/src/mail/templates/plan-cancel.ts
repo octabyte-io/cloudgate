@@ -10,7 +10,13 @@ function planOf(planLabel: string | null, organizationName: string): string {
  * The plan was cancelled (spec #69, #72): through the billing page at the
  * provider of payments, or *Cancel trial*. It names the day it ends and the
  * Bought Servers deleted that day, which take their data and backups with
- * them. The 7-day warning before that day is a separate email.
+ * them for good (ADR-0071's warnings). The 7-day warning before that day is
+ * a separate email.
+ *
+ * It names the control that takes the cancel back, as Settings > Billing
+ * labels it (CODING_STANDARDS §3.10): *Keep <plan>* during the Free trial,
+ * and *Manage billing at Stripe* for a paid plan, which was cancelled there
+ * and is renewed there. "Resume" was rejected: no control is called that.
  */
 export async function renderPlanEndsEmail({
   userName,
@@ -18,6 +24,7 @@ export async function renderPlanEndsEmail({
   planLabel,
   endsOn,
   serverNames,
+  inTrial,
   billingUrl,
 }: {
   userName: string;
@@ -25,6 +32,8 @@ export async function renderPlanEndsEmail({
   planLabel: string | null;
   endsOn: string;
   serverNames: readonly string[];
+  /** Cancelled during the Free trial, rather than a paid plan. */
+  inTrial: boolean;
   billingUrl: string;
 }): Promise<RenderedEmail> {
   const plan = planOf(planLabel, organizationName);
@@ -34,8 +43,8 @@ export async function renderPlanEndsEmail({
       ? []
       : [
           one
-            ? `The Server you bought for ${organizationName} is deleted that day, and its data and backups go with it: ${serverNames[0]}.`
-            : `The Servers you bought for ${organizationName} are deleted that day, and their data and backups go with them: ${serverNames.join(', ')}.`,
+            ? `The Server you bought for ${organizationName} is deleted that day, and its data and backups go with it: ${serverNames[0]}. This cannot be undone.`
+            : `The Servers you bought for ${organizationName} are deleted that day, and their data and backups go with them: ${serverNames.join(', ')}. This cannot be undone.`,
         ];
   return renderConfirmationEmail(userName, {
     subject: `Your plan ends on ${endsOn}`,
@@ -43,7 +52,11 @@ export async function renderPlanEndsEmail({
     paragraphs: [
       `${capitalized(plan)} is cancelled and ends on ${endsOn}. Until then, everything works as it does now.`,
       ...servers,
-      'To keep the plan, resume it under Settings > Billing before then.',
+      inTrial && planLabel
+        ? `To keep the plan, choose Keep ${planLabel} under Settings > Billing before then.`
+        : inTrial
+          ? 'To keep the plan, take the cancel back under Settings > Billing before then.'
+          : 'To keep the plan, choose Manage billing at Stripe under Settings > Billing and renew it there before then.',
     ],
     action: { label: 'Open Billing', url: billingUrl },
   });

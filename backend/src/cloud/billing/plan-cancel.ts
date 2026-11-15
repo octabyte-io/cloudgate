@@ -77,6 +77,7 @@ export async function notifyCancelChange(
   organizationId: string,
   plan: PlanName | null,
   change: CancelChange | null,
+  inTrial: boolean,
 ): Promise<void> {
   if (!change) return;
   const planLabel = plan ? PLAN_LABELS[plan] : null;
@@ -116,6 +117,7 @@ export async function notifyCancelChange(
         planLabel,
         endsOn,
         serverNames: servers.map((one) => one.name),
+        inTrial,
         billingUrl,
       }),
   );

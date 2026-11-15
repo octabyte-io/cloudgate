@@ -598,7 +598,11 @@ describe('Billing during a free trial (e2e)', () => {
         expect(sent.map((one) => one.email.subject)).toEqual([subject]);
         const html = sent[0].email.html.replace(/<!-- -->/g, '');
         expect(html).toContain(
-          'The Servers you bought for Hopper Labs are deleted that day, and their data and backups go with them: web-1, db-1.',
+          'The Servers you bought for Hopper Labs are deleted that day, and their data and backups go with them: web-1, db-1. This cannot be undone.',
+        );
+        // During the trial the control that takes it back is Keep <plan>.
+        expect(html).toContain(
+          'To keep the plan, choose Keep Business under Settings &gt; Billing before then.',
         );
         expect(html).not.toContain('old-1');
       }
@@ -648,6 +652,12 @@ describe('Billing during a free trial (e2e)', () => {
       expect(planEmails(OWNER).map((one) => one.email.subject)).toEqual([
         `Your plan ends on ${printed(endsAt)}`,
       ]);
+      // A paid plan is renewed where it was cancelled.
+      expect(
+        planEmails(OWNER)[0].email.html.replace(/<!-- -->/g, ''),
+      ).toContain(
+        'To keep the plan, choose Manage billing at Stripe under Settings &gt; Billing and renew it there before then.',
+      );
 
       await deliver(paid);
       await deliver(paid);
