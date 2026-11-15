@@ -177,6 +177,25 @@ describe('Custom roles when an Organization leaves Business (e2e)', () => {
     expect(mail.to(PLAIN_MEMBER)).toEqual([]);
   });
 
+  it('the move to Starter taking effect sends both the custom-role email and one "your plan changed", however often Stripe delivers it', async () => {
+    await idaOnACustomRole();
+
+    await movesTo(hosted.STARTER_PLAN_PRICE_ID);
+    await movesTo(hosted.STARTER_PLAN_PRICE_ID);
+
+    for (const address of [OWNER, ADMIN]) {
+      expect(customRoleEmails(address).map((one) => one.subject)).toEqual([
+        ONE_HOLDER_SUBJECT,
+      ]);
+      expect(
+        mail
+          .to(address)
+          .map((sent) => sent.email.subject)
+          .filter((subject) => subject.startsWith('Your plan changed')),
+      ).toEqual(['Your plan changed: Hopper Labs is now on Starter']);
+    }
+  });
+
   it('a lapse of the Business plan sends the same email', async () => {
     await idaOnACustomRole();
 

@@ -463,9 +463,38 @@ describe('Upgrading Starter to Business (e2e)', () => {
       const res = await upgrade(owner.cookie, Math.floor(Date.now() / 1000));
 
       expect(res.status).toBe(200);
+      // Stripe delivers its event again, after the upgrade wrote Business.
+      updateSubscription.mockReset();
+      await postWebhook('customer.subscription.updated', onBusiness);
       const sent = planChanged('grace@example.com');
       expect(sent).toHaveLength(1);
       expect(sent[0].html).toContain('Charged today: $15.33');
+    });
+
+    it('an upgrade Stripe made is answered 200, with Business stored, though no email can be sent', async () => {
+      const owner = await givenStarterOwner();
+      givenCatalogue();
+      retrieveSubscription.mockResolvedValue(starterAtStripe());
+      updateSubscription.mockResolvedValue(
+        starterAtStripe({ plan: BUSINESS_PRICE }),
+      );
+      const refused = jest
+        .spyOn(recorder, 'send')
+        .mockRejectedValue(new Error('The mail server is down'));
+
+      try {
+        const res = await upgrade(owner.cookie, Math.floor(Date.now() / 1000));
+
+        expect(res.status).toBe(200);
+        expect(refused).toHaveBeenCalled();
+        const [row] = await ctx.db
+          .select({ plan: subscription.plan })
+          .from(subscription)
+          .where(eq(subscription.organizationId, owner.organizationId));
+        expect(row.plan).toBe('business');
+      } finally {
+        refused.mockRestore();
+      }
     });
 
     it('sends nothing when the charge does not go through', async () => {
