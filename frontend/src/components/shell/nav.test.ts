@@ -24,4 +24,19 @@ describe("the Organization rail", () => {
       "Requests",
     ]);
   });
+
+  it("puts Build above Observe", () => {
+    const nav = organizationNav();
+    const sections = nav.flatMap((entry) =>
+      entry.kind === "label" ? [entry.label] : [],
+    );
+    expect(sections).toEqual(["Build", "Observe"]);
+    const build = nav.findIndex(
+      (entry) => entry.kind === "label" && entry.label === "Build",
+    );
+    expect(labels(nav.slice(build + 1, build + 3))).toEqual([
+      "Projects",
+      "Templates",
+    ]);
+  });
 });

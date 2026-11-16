@@ -91,6 +91,17 @@ const ORGANIZATION_NAV: NavEntry[] = [
     source: "starred",
   },
   { kind: "item", icon: "hdd", label: "Servers", tab: "/servers" },
+  // Build sits above Observe: the work comes before watching it run.
+  { kind: "label", label: "Build" },
+  {
+    kind: "group",
+    icon: "folder",
+    label: "Projects",
+    id: "projects",
+    tab: "/projects",
+    source: "projects",
+  },
+  { kind: "item", icon: "book", label: "Templates", tab: "/templates" },
   { kind: "label", label: "Observe" },
   { kind: "item", icon: "rocket", label: "Deployments", tab: "/deployments" },
   { kind: "item", icon: "activity", label: "Monitoring", tab: "/monitoring" },
@@ -106,16 +117,6 @@ const ORGANIZATION_NAV: NavEntry[] = [
   // Offered to every reader, the Hosted instance's customers included: it reads
   // each Server's own access log, not only the platform host's.
   { kind: "item", icon: "globe", label: "Requests", tab: "/requests" },
-  { kind: "label", label: "Build" },
-  {
-    kind: "group",
-    icon: "folder",
-    label: "Projects",
-    id: "projects",
-    tab: "/projects",
-    source: "projects",
-  },
-  { kind: "item", icon: "book", label: "Templates", tab: "/templates" },
   { kind: "rule" },
   // F16 renamed this from "Organization settings". The surface below it now
   // holds the signed-in person's account and the whole instance's platform
