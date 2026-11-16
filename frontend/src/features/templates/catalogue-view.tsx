@@ -4,7 +4,6 @@ import { Card } from "@/components/console/card";
 import { EmptyState } from "@/components/console/empty-state";
 import { MetaStrip } from "@/components/console/meta-strip";
 import { Pager } from "@/components/console/pager";
-import { PickGrid } from "@/components/console/pick-card";
 import { Skeleton } from "@/components/console/skeleton";
 import { Button } from "@/components/ui/button";
 import { isApiError } from "@/lib/api/api-error";
@@ -23,9 +22,10 @@ import { TemplateGrid } from "./template-grid";
 /**
  * The Template catalogue, narrowed by search and by tag.
  *
- * **A `PickGrid` of `PickCard`s, and no new card component** — a template is
- * a pick, not a marketing tile. The description is clamped to three lines
- * (`descriptionLines`) so one long one does not set the height of its row.
+ * **A grid of `TemplateCard` rows.** These started as `PickCard`s in a
+ * `PickGrid`, but a card that carries a logo, tags, links and its own Set up
+ * button outgrew a narrow pick: every card came out a different shape.
+ * `TemplateCard` is a wide row, two across on a wide screen.
  *
  * **The saved copy's note.** The backend keeps the last good catalogue and
  * serves it when a check fails (unreachable, or a newer file refused), saying
@@ -99,11 +99,16 @@ export function CatalogueView({
       <Card className="mt-4" ref={grid}>
         {pending ? (
           <Card.Body>
-            <PickGrid label="Templates loading" aria-busy="true">
+            <div
+              role="group"
+              aria-label="Templates loading"
+              aria-busy="true"
+              className="grid grid-cols-1 gap-3 cols:grid-cols-2"
+            >
               {[0, 1, 2, 3, 4, 5].map((slot) => (
-                <Skeleton key={slot} className="h-28 rounded-xl" />
+                <Skeleton key={slot} className="h-36 rounded-xl" />
               ))}
-            </PickGrid>
+            </div>
           </Card.Body>
         ) : isApiError(error) && error.isCatalogueNotConfigured ? (
           /**
