@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.3.4 (2026-11-16)
+
+### The upgrade checks have a version to move to
+
+No change to what the install or the console does. 0.3.4 carries a test fix to the install's own spec, so that it passes on GitHub's runners as well as locally, and it gives the live checks of 0.3.3 a next version: a Self-hosted re-run, a Hosted `cloudgate-update` and an arm64 Hosted box each upgrading from 0.3.3.
+
+**What to do on upgrade**: nothing.
+
 ## 0.3.3 (2026-11-16)
 
 ### Every Cloudgate version is signed, and the install refuses one whose signature does not verify
