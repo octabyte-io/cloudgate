@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Every Cloudgate version is signed, and the install refuses one whose signature does not verify
+
+Publishing a version now signs each tarball's `.sha256` with Cloudgate's key, the `VERSION_SIGNING_KEY` Actions secret (`ssh-keygen -Y sign`, namespace `cloudgate-version`), and attaches `cloudgate-X.Y.Z-linux-amd64.tar.gz.sha256.sig` and `…-linux-arm64.tar.gz.sha256.sig` beside the tarballs and checksums: a release is published with all six files or none, and a key that is not the one the install trusts publishes nothing. The one-command install carries the public key and checks the signature on the `.sha256` for the host's CPU with `ssh-keygen -Y verify` before it downloads the tarball; a missing signature, or one that does not verify, stops the run naming the version, with nothing changed. With no `CLOUDGATE_VERSION`, a release counts as the latest only once its signature is attached too. A host without `ssh-keygen` gets `openssh-client` from apt first. So a stolen release token can no longer put code on a box: the checksum beside a tarball now has to be one we signed (ADR-0087, `docs/deploy.md` §2 and §7). The Hosted instance gets the same check, because its updater runs the tag's own `install.sh`.
+
+**What to do on upgrade**: nothing.
+
 ### A green tag upgrades an arm64 Hosted box
 
 `cloudgate-update` now asks whether the `.sha256` of the tarball for the box's own CPU is published before it takes the backup, so a green version tag upgrades an arm64 Hosted box through **Deploy the Hosted instance** exactly as it does an amd64 one. A by-hand run of that workflow, with no tested commit, now needs both tarballs on the tag's release. The console's update notice counts a release as a Cloudgate version only once it carries the tarball for the host's own CPU (ADR-0088, `docs/deploy.md` §11).

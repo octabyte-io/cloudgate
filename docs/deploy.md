@@ -38,11 +38,15 @@ its tag once its E2E run was green. Nothing is cloned and nothing is built on th
    other release, and naming the CPU on any other CPU; arm64 passes only with `HOSTED_MODE=true`
    (ADR-0088);
 2. finds the version: the one `CLOUDGATE_VERSION` names, or else the latest one published (the
-   highest `vX.Y.Z` among the repository's releases that carries the host's own CPU's tarball; the
-   CLI's `cli-v*` releases are never one);
-3. downloads `cloudgate-<X.Y.Z>-linux-<cpu>.tar.gz` (`amd64`, or `arm64` on an Arm Hosted instance)
-   and its `.sha256`, and stops, having changed
-   nothing, when the download does not match the published checksum or the version has no release;
+   highest `vX.Y.Z` among the repository's releases that carries the host's own CPU's tarball, its
+   `.sha256` and its `.sha256.sig`; the CLI's `cli-v*` releases are never one);
+3. downloads the `.sha256` of `cloudgate-<X.Y.Z>-linux-<cpu>.tar.gz` (`amd64`, or `arm64` on an
+   Arm Hosted instance) and its signature, `.sha256.sig`, and checks the signature with
+   `ssh-keygen -Y verify` against Cloudgate's public key, which `install.sh` carries (ADR-0087);
+   only then downloads the tarball and checks it against that `.sha256`. It stops, having changed
+   nothing, when the signature is missing or does not verify, when the download does not match
+   the checksum, or when the version has no release. A host without `curl` or `ssh-keygen` gets
+   them from apt first (`ssh-keygen` is in `openssh-client`, which a stock Ubuntu server image has);
 4. unpacks it into `/opt/cloudgate.next` and hands over to that version's `deploy/install.sh`,
    which does the install and puts the version in place at `/opt/cloudgate` just before it
    migrates the database and restarts both units.
@@ -107,6 +111,12 @@ The same install by hand, which is all the one command does:
 cd /root
 curl -fsSLO https://github.com/octabyte-io/cloudgate/releases/download/v0.3.0/cloudgate-0.3.0-linux-amd64.tar.gz
 curl -fsSLO https://github.com/octabyte-io/cloudgate/releases/download/v0.3.0/cloudgate-0.3.0-linux-amd64.tar.gz.sha256
+curl -fsSLO https://github.com/octabyte-io/cloudgate/releases/download/v0.3.0/cloudgate-0.3.0-linux-amd64.tar.gz.sha256.sig
+# The VERSION_SIGNERS line of the root install.sh, without its quotes.
+curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh \
+  | sed -n "s/^VERSION_SIGNERS='\(.*\)'\$/\1/p" > cloudgate-allowed-signers
+ssh-keygen -Y verify -f cloudgate-allowed-signers -I cloudgate-version -n cloudgate-version \
+  -s cloudgate-0.3.0-linux-amd64.tar.gz.sha256.sig < cloudgate-0.3.0-linux-amd64.tar.gz.sha256
 sha256sum -c cloudgate-0.3.0-linux-amd64.tar.gz.sha256
 mkdir /opt/cloudgate.next
 tar -xzf cloudgate-0.3.0-linux-amd64.tar.gz -C /opt/cloudgate.next --no-same-owner
@@ -367,7 +377,10 @@ curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.
 The one-command install is the upgrade too. It installs the latest Cloudgate version, or the one
 `CLOUDGATE_VERSION=vX.Y.Z` names, with the public host the last install was given:
 
-1. It downloads the version and checks its sha256, changing nothing if it does not match.
+1. It downloads the version's `.sha256` and its signature, checks the signature against
+   Cloudgate's public key (ADR-0087), then downloads the tarball and checks it against that
+   `.sha256`, changing nothing if the signature is missing or does not verify or the tarball does
+   not match.
 2. It unpacks it into `/opt/cloudgate.next` and re-runs the install from there. Every step is
    guarded, so on an upgraded host they find their work done and move on.
 3. When the version changes and the `cloudgate` database was there before the run (a reinstall
@@ -722,7 +735,7 @@ Once the box has `cloudgate-update` (a Hosted install writes it), `sudo cloudgat
 Each Cloudgate version reaches the Hosted instance by itself once it is published ([ADR-0081](adr/0081-the-hosted-instance-is-upgraded-by-a-green-version-tag-over-a-key-that-can-run-only-the-updater.md), [ADR-0082](adr/0082-the-install-downloads-a-prebuilt-release-tarball-published-only-after-a-green-e2e-run-and-runs-it-natively.md)):
 
 1. `git tag v0.3.0 && git push origin v0.3.0` starts `E2E (release)`.
-2. When that run ends green, **Publish Cloudgate version** (`.github/workflows/publish-version.yml`) builds the version's amd64 and arm64 tarballs on Ubuntu 24.04, boots each on 24.04 and 26.04, and puts both, with their `.sha256`, on the tag's GitHub Release, together or not at all (ADR-0088).
+2. When that run ends green, **Publish Cloudgate version** (`.github/workflows/publish-version.yml`) builds the version's amd64 and arm64 tarballs on Ubuntu 24.04, boots each on 24.04 and 26.04, signs both `.sha256` with the `VERSION_SIGNING_KEY` secret (ADR-0087), and puts both tarballs, with their `.sha256` and `.sha256.sig`, on the tag's GitHub Release, together or not at all (ADR-0088).
 3. Its last job starts `.github/workflows/deploy-hosted.yml` on `main`, passing the tag and the commit E2E tested. That run checks the tag is on `main` and still names that commit, then checks the version with `deploy/hosted-release-gate.sh`: the tag must be `backend/package.json`'s version, and every "What to do on upgrade" line in its `CHANGELOG.md` section must read "nothing.". Anything else stops the run and names the lines.
 4. It SSHes to the box as `cloudgate-deploy`, whose key runs only `/usr/local/sbin/cloudgate-update` (`deploy/hosted-update.sh`). In its own unit, `cloudgate-update.service`, so a dropped connection cannot cut it off, that refuses a tag whose tarball for the box's own CPU is not published, takes a B2 backup, installs that tarball with the tag's own `install.sh`, and checks `/opt/cloudgate/VERSION` is the tag. An arm64 box is upgraded exactly as an amd64 one.
 5. It waits until `https://<hostname>/backend/settings/about` reports the new version in hosted mode.

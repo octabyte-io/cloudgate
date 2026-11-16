@@ -1,6 +1,6 @@
 # A Cloudgate version is signed, and the install refuses one whose signature does not verify
 
-Status: accepted. Decided, not yet built: ticket #52 builds it, and until then the install checks only the `.sha256`.
+Status: accepted. Built in #52: `deploy/version-sign.sh` signs both CPUs' `.sha256` in publish-version.yml, and root `install.sh` carries the public key as its `VERSION_SIGNERS` line.
 
 The `.sha256` beside a version's tarball comes from the same GitHub Release, so it proves the download arrived whole, not that we published it: anyone who can write a release can replace both. **The publish workflow signs the checksum with an SSH key held as a GitHub Actions secret, and `install.sh` carries the public key and verifies the signature with `ssh-keygen -Y verify` before anything is unpacked.** A version without a valid signature is refused, with nothing changed. `ssh-keygen` is on every Ubuntu host, so the box needs no new tool.
 
