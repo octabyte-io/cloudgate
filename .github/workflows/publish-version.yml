@@ -16,8 +16,11 @@
 #      (deploy/version-smoke.sh), so each tarball is proved on both releases
 #      the install accepts (ADR-0085). GitHub has no 26.04 Arm runner, so the
 #      arm64 26.04 run is an `ubuntu:26.04` container on the Arm runner;
-#   4. only when all four pass, deploy/version-publish.sh creates the GitHub
-#      Release for the tag with both tarballs and their .sha256, together;
+#   4. only when all four pass, deploy/version-sign.sh signs both .sha256
+#      with the VERSION_SIGNING_KEY secret, checking each signature against
+#      the key root install.sh trusts (ADR-0087), and
+#      deploy/version-publish.sh creates the GitHub Release for the tag with
+#      both tarballs, their .sha256 and their .sha256.sig, together;
 #   5. and it dispatches `Deploy the Hosted instance` (deploy-hosted.yml) with
 #      the tag and the commit E2E tested. That workflow cannot start from this
 #      one's `workflow_run`: this run was itself started by `workflow_run`, so
@@ -27,7 +30,7 @@
 # main, or a tag that is not backend/package.json's version publishes nothing; so does a tarball that does
 # not boot on one of the four runs. Re-running this workflow on a tag whose release already has its
 # tarballs leaves that release as it is: a published version is never replaced.
-# A release made by hand on github.com before this run gets the four files added.
+# A release made by hand on github.com before this run gets the six files added.
 #
 # There is no workflow_dispatch: a version is published only from a green E2E
 # run of its tag. To publish again after a failure, re-run this workflow's run.
@@ -224,7 +227,14 @@ jobs:
           merge-multiple: true
           path: ${{ runner.temp }}/version
 
-      - name: The release for ${{ env.TAG }}, with both tarballs and their checksums
+      # With the key whose public half root install.sh carries, which refuses
+      # a version whose signature does not verify (ADR-0087).
+      - name: Sign both checksums
+        env:
+          VERSION_SIGNING_KEY: ${{ secrets.VERSION_SIGNING_KEY }}
+        run: bash deploy/version-sign.sh "$TAG" "$RUNNER_TEMP/version"
+
+      - name: The release for ${{ env.TAG }}, with both tarballs, their checksums and their signatures
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash deploy/version-publish.sh "$TAG" "$RUNNER_TEMP/version"

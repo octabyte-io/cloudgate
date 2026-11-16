@@ -6,8 +6,9 @@ import { parse } from 'yaml';
 
 /**
  * `deploy/version-publish.sh`, the last step of publish-version.yml: it puts
- * the Cloudgate version's two tarballs, linux-amd64 and linux-arm64, and their
- * checksums on the tag's GitHub Release, all four or none (ADR-0088).
+ * the Cloudgate version's two tarballs, linux-amd64 and linux-arm64, their
+ * checksums and the checksums' signatures on the tag's GitHub Release, all six
+ * or none (ADR-0087, ADR-0088).
  * `gh` is a shim that answers `release view` as the test says GitHub would and
  * records every other call, so nothing reaches GitHub.
  */
@@ -18,7 +19,14 @@ const TARBALL = 'cloudgate-0.3.0-linux-amd64.tar.gz';
 const CHECKSUM = `${TARBALL}.sha256`;
 const ARM64_TARBALL = 'cloudgate-0.3.0-linux-arm64.tar.gz';
 const ARM64_CHECKSUM = `${ARM64_TARBALL}.sha256`;
-const FILES = [TARBALL, CHECKSUM, ARM64_TARBALL, ARM64_CHECKSUM];
+const FILES = [
+  TARBALL,
+  CHECKSUM,
+  `${CHECKSUM}.sig`,
+  ARM64_TARBALL,
+  ARM64_CHECKSUM,
+  `${ARM64_CHECKSUM}.sig`,
+];
 
 let scratch: string;
 let tree: string;
@@ -35,6 +43,7 @@ beforeEach(() => {
   for (const tarball of [TARBALL, ARM64_TARBALL]) {
     fs.writeFileSync(path.join(dist, tarball), 'tarball');
     fs.writeFileSync(path.join(dist, `${tarball}.sha256`), `abc  ${tarball}\n`);
+    fs.writeFileSync(path.join(dist, `${tarball}.sha256.sig`), 'signature');
   }
   fs.writeFileSync(
     path.join(tree, 'CHANGELOG.md'),
@@ -104,7 +113,7 @@ function called(): string[] {
 
 describe('deploy/version-publish.sh', () => {
   // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
-  it('creates the release for the tag with both tarballs and their checksums, its notes the version CHANGELOG section', () => {
+  it('creates the release for the tag with both tarballs, their checksums and both signatures, its notes the version CHANGELOG section', () => {
     const published = run('not found');
 
     expect(published.stderr).toBe('');
@@ -121,7 +130,7 @@ describe('deploy/version-publish.sh', () => {
   });
 
   // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
-  it('adds all four files to a release made by hand that has none of them', () => {
+  it('adds all six files to a release made by hand that has none of them', () => {
     const published = run({ assets: ['notes.pdf'] });
 
     expect(published.status).toBe(0);
@@ -131,12 +140,12 @@ describe('deploy/version-publish.sh', () => {
   });
 
   // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
-  it('leaves a release that already has all four files as it is', () => {
+  it('leaves a release that already has all six files as it is', () => {
     const rerun = run({ assets: FILES });
 
     expect(rerun.status).toBe(0);
     expect(rerun.stdout).toContain(
-      'v0.3.0 already has its tarballs and checksums',
+      'v0.3.0 already has its tarballs, checksums and signatures',
     );
     expect(called()).toEqual([]);
   });
@@ -158,7 +167,7 @@ describe('deploy/version-publish.sh', () => {
     const refused = run({ assets: [TARBALL, CHECKSUM] });
 
     expect(refused.status).toBe(1);
-    expect(refused.stderr).toContain('but not all four files');
+    expect(refused.stderr).toContain('but not all six files');
     expect(called()).toEqual([]);
   });
 
@@ -182,6 +191,112 @@ describe('deploy/version-publish.sh', () => {
     expect(refused.status).toBe(1);
     expect(refused.stderr).toContain('HTTP 502');
     expect(called()).toEqual([]);
+  });
+});
+
+/**
+ * `deploy/version-sign.sh`, run in publish-version.yml just before
+ * version-publish.sh: it signs both checksums with VERSION_SIGNING_KEY
+ * (`ssh-keygen -Y sign`, namespace `cloudgate-version`) and checks each
+ * signature against the allowed-signers line root `install.sh` carries
+ * (ADR-0087). The keys are made here with `ssh-keygen`; `install.sh` is a
+ * stand-in holding the trusted one's line.
+ */
+describe('deploy/version-sign.sh', () => {
+  const signScript = path.join(repoRoot, 'deploy/version-sign.sh');
+
+  /** A key made with ssh-keygen: its private half and its allowed-signers line. */
+  function makeKey(name: string): { privateKey: string; signers: string } {
+    const file = path.join(scratch, name);
+    const made = spawnSync(
+      'ssh-keygen',
+      ['-q', '-t', 'ed25519', '-N', '', '-C', name, '-f', file],
+      { encoding: 'utf8' },
+    );
+    if (made.status !== 0) throw new Error(made.stderr);
+    const publicKey = fs.readFileSync(`${file}.pub`, 'utf8').trim();
+    return {
+      privateKey: fs.readFileSync(file, 'utf8'),
+      signers: `cloudgate-version namespaces="cloudgate-version" ${publicKey}`,
+    };
+  }
+
+  let trusted: { privateKey: string; signers: string };
+
+  beforeEach(() => {
+    trusted = makeKey('trusted');
+    fs.writeFileSync(
+      path.join(tree, 'install.sh'),
+      `#!/bin/sh\nVERSION_SIGNERS='${trusted.signers}'\n`,
+    );
+    // Unsigned, as version-tarball.sh writes them.
+    for (const checksum of [CHECKSUM, ARM64_CHECKSUM]) {
+      fs.rmSync(path.join(dist, `${checksum}.sig`));
+    }
+  });
+
+  function sign(key: string | undefined) {
+    const env: NodeJS.ProcessEnv = { ...process.env };
+    delete env.VERSION_SIGNING_KEY;
+    if (key !== undefined) env.VERSION_SIGNING_KEY = key;
+    return spawnSync('bash', [signScript, 'v0.3.0', dist], {
+      cwd: tree,
+      env,
+      encoding: 'utf8',
+    });
+  }
+
+  /** `ssh-keygen -Y verify` of `checksum` against `signers`, as the install runs it. */
+  function verifies(checksum: string, signers: string): boolean {
+    const allowed = path.join(scratch, 'allowed_signers');
+    fs.writeFileSync(allowed, `${signers}\n`);
+    return (
+      spawnSync(
+        'ssh-keygen',
+        [
+          '-Y',
+          'verify',
+          '-f',
+          allowed,
+          '-I',
+          'cloudgate-version',
+          '-n',
+          'cloudgate-version',
+          '-s',
+          path.join(dist, `${checksum}.sig`),
+        ],
+        { input: fs.readFileSync(path.join(dist, checksum)) },
+      ).status === 0
+    );
+  }
+
+  it('signs both checksums with the key, in the cloudgate-version namespace', () => {
+    const signed = sign(trusted.privateKey);
+
+    expect(signed.status).toBe(0);
+    expect(verifies(CHECKSUM, trusted.signers)).toBe(true);
+    expect(verifies(ARM64_CHECKSUM, trusted.signers)).toBe(true);
+  });
+
+  it('refuses a key install.sh does not trust, leaving no signature to publish', () => {
+    const other = makeKey('other');
+
+    const refused = sign(other.privateKey);
+
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain(
+      'does not verify against the key root install.sh trusts',
+    );
+    expect(fs.existsSync(path.join(dist, `${CHECKSUM}.sig`))).toBe(false);
+    expect(fs.existsSync(path.join(dist, `${ARM64_CHECKSUM}.sig`))).toBe(false);
+  });
+
+  it('refuses to run without VERSION_SIGNING_KEY, signing nothing', () => {
+    const refused = sign(undefined);
+
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain('VERSION_SIGNING_KEY is not set');
+    expect(fs.existsSync(path.join(dist, `${CHECKSUM}.sig`))).toBe(false);
   });
 });
 
@@ -248,6 +363,29 @@ describe('.github/workflows/publish-version.yml', () => {
       'arm64 24.04 ubuntu-24.04-arm -',
       'arm64 26.04 ubuntu-24.04-arm ubuntu:26.04',
     ]);
+  });
+
+  it('signs both checksums with VERSION_SIGNING_KEY just before it publishes them', () => {
+    const steps = (
+      jobs().publish as Job & {
+        steps: { run?: string; env?: Record<string, string> }[];
+      }
+    ).steps;
+    const signing = steps.findIndex((step) =>
+      step.run?.includes('deploy/version-sign.sh'),
+    );
+    const publishing = steps.findIndex((step) =>
+      step.run?.includes('deploy/version-publish.sh'),
+    );
+
+    expect(signing).toBeGreaterThan(-1);
+    expect(steps[signing].run).toContain(
+      'bash deploy/version-sign.sh "$TAG" "$RUNNER_TEMP/version"',
+    );
+    expect(steps[signing].env).toEqual({
+      VERSION_SIGNING_KEY: '${{ secrets.VERSION_SIGNING_KEY }}',
+    });
+    expect(publishing).toBe(signing + 1);
   });
 
   it('publishes only once the smoke check has passed on all four', () => {

@@ -5,22 +5,24 @@
 #
 #     bash deploy/version-publish.sh v0.3.0 <dir>
 #
-# <dir> holds what deploy/version-tarball.sh wrote on each CPU: the
-# linux-amd64 and linux-arm64 tarballs, each with its .sha256 (ADR-0088).
-# .github/workflows/publish-version.yml runs it last, after every tarball has
-# been smoke-booted. A version always has both tarballs: with any of the four
-# files missing from <dir>, nothing is published.
+# <dir> holds what deploy/version-tarball.sh wrote on each CPU, the
+# linux-amd64 and linux-arm64 tarballs, each with its .sha256 (ADR-0088), and
+# the .sha256.sig deploy/version-sign.sh wrote beside each checksum
+# (ADR-0087). .github/workflows/publish-version.yml runs it last, after every
+# tarball has been smoke-booted and both checksums signed. A version always
+# has both tarballs and both signatures: with any of the six files missing
+# from <dir>, nothing is published.
 #
-#   no release for the tag     creates it, the four files attached and
+#   no release for the tag     creates it, the six files attached and
 #                              CHANGELOG.md's section for the version as its
 #                              notes
-#   a release with none        attaches all four (one made by hand on
+#   a release with none        attaches all six (one made by hand on
 #                              github.com)
-#   a release with all four    leaves it as it is: a re-run never replaces a
+#   a release with all six     leaves it as it is: a re-run never replaces a
 #                              version someone may have installed
 #   a release with some        refuses, replacing nothing; a person looks
 #
-# Exit 0 when the release has all four files, 1 otherwise.
+# Exit 0 when the release has all six files, 1 otherwise.
 #
 # backend/test/deploy/version-publish.spec.ts runs it with gh shimmed.
 
@@ -38,13 +40,14 @@ dir="${2:-}"
 version="${BASH_REMATCH[1]}"
 files=()
 for cpu in amd64 arm64; do
-  files+=("cloudgate-$version-linux-$cpu.tar.gz" "cloudgate-$version-linux-$cpu.tar.gz.sha256")
+  tarball="cloudgate-$version-linux-$cpu.tar.gz"
+  files+=("$tarball" "$tarball.sha256" "$tarball.sha256.sig")
 done
 paths=()
 for file in "${files[@]}"; do
   [ -f "$dir/$file" ] ||
-    fail "$dir/$file is not there; build it with deploy/version-tarball.sh on its CPU." \
-      "A version is published with both tarballs or not at all, so nothing was published."
+    fail "$dir/$file is not there; build it with deploy/version-tarball.sh on its CPU, and sign its checksum with deploy/version-sign.sh." \
+      "A version is published with both tarballs, their checksums and both signatures, or not at all, so nothing was published."
   paths+=("$dir/$file")
 done
 
@@ -78,7 +81,7 @@ if [ "$exists" = false ]; then
   [ -s "$notes" ] || echo "Cloudgate $version." > "$notes"
   gh release create "$tag" "${paths[@]}" \
     --verify-tag --title "Cloudgate $version" --notes-file "$notes"
-  echo "Published $tag with its amd64 and arm64 tarballs ✅"
+  echo "Published $tag with its amd64 and arm64 tarballs, signed ✅"
   exit 0
 fi
 
@@ -88,12 +91,12 @@ for file in "${files[@]}"; do
   if has "$file"; then held_files+=("$file"); fi
 done
 if [ "${#held_files[@]}" -eq "${#files[@]}" ]; then
-  echo "$tag already has its tarballs and checksums; they are left as they are."
+  echo "$tag already has its tarballs, checksums and signatures; they are left as they are."
   exit 0
 fi
 if [ "${#held_files[@]}" -gt 0 ]; then
-  fail "The release $tag already holds ${held_files[*]} but not all four files, and a published file is never replaced." \
-    "Look at it on GitHub: delete what it holds of the four and run this again, or attach the others by hand."
+  fail "The release $tag already holds ${held_files[*]} but not all six files, and a published file is never replaced." \
+    "Look at it on GitHub: delete what it holds of the six and run this again, or attach the others by hand."
 fi
 gh release upload "$tag" "${paths[@]}"
-echo "Attached the amd64 and arm64 tarballs to the existing release $tag ✅"
+echo "Attached the amd64 and arm64 tarballs, signed, to the existing release $tag ✅"
