@@ -28,6 +28,11 @@ const EXEMPT: { file: string; site: RegExp; why: string }[] = [
     why: 'the public address lookup: it tries a second service when the first does not answer',
   },
   {
+    file: 'deploy/public-ip.sh',
+    site: /curl -4 -fsS --max-time 5 "\$lookup"/,
+    why: 'the public address lookup for Settings > Instance: it tries the next service when one does not answer, and finding nothing only leaves the address unset',
+  },
+  {
     file: 'install.sh',
     site: /curl -s -o \/dev\/null --max-time 5 "https:\/\/\$host\/"/,
     why: 'the preflight probe: it asks once whether a host answers within 5 seconds',

@@ -3,10 +3,10 @@
  *
  * sslip.io resolves the literal written into the name and nothing else, so a
  * value that is not one is an unresolvable host by the time it reaches a
- * browser — which is the whole point. Settings → Instance takes "an IP or a
- * hostname", and a hostname is a legitimate thing to record there — it is what
- * `SettingsService.getInstanceUrl` builds every callback link out of. It is
- * only *this* use of the column that needs a literal.
+ * browser — which is the whole point. Settings → Instance now saves only an IP
+ * (`SettingsService.updateServerIp`), but an instance that saved a hostname
+ * there before keeps it, and `SettingsService.getInstanceUrl` still builds
+ * links out of it, so a hostname can still be read here and names nothing.
  *
  * Shape only — an IPv4 quad, or the hex-and-colons of an IPv6 address. Nothing
  * here asks whether the address reaches this machine, which is not a question

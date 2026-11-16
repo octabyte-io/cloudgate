@@ -112,6 +112,12 @@ export const envSchema = z.object({
   // native one — set it to `http://cloudgate:3000` for the containerised shape,
   // where the console is a container on cloudgate-network.
   CLOUDGATE_PUBLIC_HOST: z.string().optional(),
+  // This host's public IP address as `deploy/install.sh` found it
+  // (`deploy/public-ip.sh`), or as the operator named it. Read once, at boot,
+  // by `SettingsService.prefillServerIp`, which writes it into Settings >
+  // Instance's public address only while that has never been set. Empty is
+  // none.
+  CLOUDGATE_PUBLIC_IP: z.string().optional(),
   CONSOLE_PORT: z.coerce.number().int().positive().optional(),
   CLOUDGATE_CONSOLE_URL: z.url().optional(),
   // This API's own public origin — the console's CLOUDGATE_API_URL, where a

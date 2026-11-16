@@ -322,7 +322,7 @@ describe('Settings (e2e)', () => {
       const update = await request(httpServer)
         .post('/settings/ip')
         .set('Cookie', session.cookie)
-        .send({ serverIp: '198.51.100.4' });
+        .send({ serverIp: CONSOLE_HOST });
       expect(update.status).toBe(200);
 
       // getIp is open to any authenticated user.
@@ -330,7 +330,7 @@ describe('Settings (e2e)', () => {
         .get('/settings/ip')
         .set('Cookie', session.cookie);
       expect(read.status).toBe(200);
-      expect(read.text).toBe('198.51.100.4');
+      expect(read.text).toBe(CONSOLE_HOST);
     });
 
     it('updates the builds concurrency within 1 to 100', async () => {
@@ -3613,7 +3613,7 @@ fi`;
       const res = await request(httpServer)
         .post('/settings/ip')
         .set('Cookie', session.cookie)
-        .send({ serverIp: '198.51.100.4' });
+        .send({ serverIp: CONSOLE_HOST });
 
       expect(res.status).toBe(200);
       const body = res.body as {
@@ -3624,7 +3624,7 @@ fi`;
       expect(body.metricsConfig.server.hasToken).toBe(true);
       // The rest of the row still answers the caller's write.
       expect(body.id).toBeTruthy();
-      expect(body.serverIp).toBe('198.51.100.4');
+      expect(body.serverIp).toBe(CONSOLE_HOST);
       expect(body.certificateType).toBe('none');
     });
 
@@ -3669,12 +3669,12 @@ fi`;
       const ip = await request(httpServer)
         .post('/settings/ip')
         .set('Cookie', session.cookie)
-        .send({ serverIp: '198.51.100.4' });
+        .send({ serverIp: CONSOLE_HOST });
       expect(ip.status).toBe(200);
 
       const row = await settings.getWebServerSettings();
       expect(row.metricsConfig.server.token).toBe(METRICS_TOKEN);
-      expect(row.serverIp).toBe('198.51.100.4');
+      expect(row.serverIp).toBe(CONSOLE_HOST);
     });
   });
 });

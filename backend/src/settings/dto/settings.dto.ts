@@ -2,9 +2,16 @@ import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 import { hostSchema } from '../../domains/dto/domain.dto';
 
-/** `POST /settings/ip` body. */
+/**
+ * `POST /settings/ip` body. `confirmUnverified` saves an address this host
+ * cannot recognise as its own (`SettingsService.updateServerIp`), for one that
+ * reaches it through NAT or a load balancer.
+ */
 export class UpdateServerIpDto extends createZodDto(
-  z.object({ serverIp: z.string() }),
+  z.object({
+    serverIp: z.string().max(255),
+    confirmUnverified: z.boolean().optional(),
+  }),
 ) {}
 
 /** `POST /settings/builds-concurrency` body: 1 to 100 concurrent builds. */

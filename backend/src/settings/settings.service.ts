@@ -1,4 +1,6 @@
 import {
+  BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -6,7 +8,8 @@ import {
   OnApplicationBootstrap,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { asc, eq } from 'drizzle-orm';
+import { networkInterfaces } from 'node:os';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import type { Env } from '../common/config/env.schema';
 import { DRIZZLE } from '../db/drizzle.module';
 import type { DrizzleDB } from '../db/drizzle.module';
@@ -15,6 +18,7 @@ import { InstanceMode } from '../instance-mode/instance-mode.service';
 import { PermissionService } from '../rbac/permission.service';
 import type { PermissionCtx } from '../rbac/permission.service';
 import type { CertificateType } from '../domains/domain.schema';
+import { ipLiteral } from '../domains/ip-literal';
 import { sanitizeMetricsConfig } from '../servers/nested-server';
 import type { SanitizedMetricsConfig } from '../servers/nested-server';
 import {
@@ -43,6 +47,12 @@ import {
 import { TraefikFilesService } from './traefik-files.service';
 
 /** `http://127.0.0.1:3000`, `http://[::1]:3000`, `http://localhost:3000`. */
+/**
+ * The code a `POST /settings/ip` refusal carries when the address is not one
+ * this host knows as its own; the console offers "Save it anyway" on it.
+ */
+export const PUBLIC_ADDRESS_UNVERIFIED_CODE = 'PUBLIC_ADDRESS_UNVERIFIED';
+
 const LOOPBACK_UPSTREAM =
   /^https?:\/\/(127\.\d+\.\d+\.\d+|\[::1\]|localhost)(:|$)/;
 
@@ -355,10 +365,27 @@ export class SettingsService implements OnApplicationBootstrap {
    * Sets the platform host's IP. Answers with the sanitized row: this is a
    * controller return, and the singleton carries the metrics agent token
    * (the instance SSH key once rode this answer, before it was dropped).
+   *
+   * **An IP address or nothing.** The free sslip.io Domains are made from this
+   * value and can carry only an IP in their name, so a hostname saved here
+   * made none, and said so only when one was generated; a hostname for the
+   * console is Settings > Instance's Console domain. Empty clears it.
+   *
+   * **And one this host knows as its own, unless the caller confirms it.** A
+   * mistyped address makes Domains that resolve to somebody else's machine.
+   * This host knows the addresses on its network interfaces and the public IP
+   * the install found (`CLOUDGATE_PUBLIC_IP`, `CLOUDGATE_PUBLIC_HOST`); any
+   * other is refused with {@link PUBLIC_ADDRESS_UNVERIFIED_CODE}, which the
+   * console answers with a "Save it anyway" switch. A refusal and not a
+   * reachability probe: a host behind NAT or a firewall cannot reliably dial
+   * its own public address (hairpin NAT is often off), so a probe would refuse
+   * correct addresses, and a NAT or load-balancer address this host cannot
+   * see is legitimate, so it can always be confirmed.
    */
   async updateServerIp(
     ctx: PermissionCtx,
     serverIp: string,
+    confirmUnverified = false,
   ): Promise<SanitizedWebServerSettings> {
     // The platform host's own address on the settings singleton, and what
     // `getInstanceUrl` builds every callback and notification link out of when
@@ -366,9 +393,61 @@ export class SettingsService implements OnApplicationBootstrap {
     // `GET /settings/ip` stays any-authenticated: it is a value the console
     // shows on its own setup screen.
     await this.requireInstanceAuthority(ctx);
+    const given = serverIp.trim().replace(/^\[/, '').replace(/\]$/, '');
+    if (given !== '') {
+      const address = ipLiteral(given);
+      if (address === null) {
+        throw new BadRequestException(
+          `The public address is this server's IP address, such as 203.0.113.10, not "${given}": the free sslip.io addresses carry it in their name. To reach the console on a hostname, set Console domain instead.`,
+        );
+      }
+      const { known, found } = this.ownAddresses();
+      if (!confirmUnverified && !known.includes(address.toLowerCase())) {
+        const install = found
+          ? `the public IP the install found, ${found}`
+          : 'a public IP the install found';
+        throw new ConflictException({
+          message: `${address} is not an address this server knows as its own: it is on none of its network interfaces and is not ${install}. Domains made from a wrong address resolve to another machine. If it reaches this server through NAT or a load balancer, save it anyway.`,
+          code: PUBLIC_ADDRESS_UNVERIFIED_CODE,
+        });
+      }
+    }
     return sanitizeWebServerSettings(
-      await this.updateWebServerSettings({ serverIp }),
+      await this.updateWebServerSettings({ serverIp: given }),
     );
+  }
+
+  /**
+   * The IP addresses this host knows as its own, lower-cased: those on its
+   * network interfaces (link-local IPv6 left out, since no visitor dials one)
+   * and the public IP the install found or was given. Behind NAT the public
+   * one is on no interface, which is why the install's answer is kept.
+   */
+  private ownAddresses(): { known: string[]; found: string | null } {
+    const known = new Set<string>();
+    let found: string | null = null;
+    for (const entries of Object.values(networkInterfaces())) {
+      for (const entry of entries ?? []) {
+        if (entry.family === 'IPv6' && entry.address.startsWith('fe80')) {
+          continue;
+        }
+        known.add(entry.address.toLowerCase());
+      }
+    }
+    for (const name of [
+      'CLOUDGATE_PUBLIC_IP',
+      'CLOUDGATE_PUBLIC_HOST',
+    ] as const) {
+      const address = ipLiteral(
+        (this.config.get(name, { infer: true }) ?? '')
+          .replace(/^\[/, '')
+          .replace(/\]$/, ''),
+      );
+      if (address === null) continue;
+      known.add(address.toLowerCase());
+      found ??= address;
+    }
+    return { known: [...known], found };
   }
 
   /**
@@ -789,6 +868,14 @@ export class SettingsService implements OnApplicationBootstrap {
    */
   async onApplicationBootstrap(): Promise<void> {
     try {
+      await this.prefillServerIp();
+    } catch (error) {
+      this.logger.error(
+        'Filling in the public address at boot failed',
+        error as Error,
+      );
+    }
+    try {
       await this.sweepConsoleHost();
     } catch (error) {
       this.logger.error('Console host sweep at boot failed', error as Error);
@@ -801,6 +888,54 @@ export class SettingsService implements OnApplicationBootstrap {
         error as Error,
       );
     }
+  }
+
+  /**
+   * Fills in Settings > Instance's public address (`serverIp`) from
+   * `CLOUDGATE_PUBLIC_IP`, the address `deploy/install.sh` found for this host
+   * (`deploy/public-ip.sh`), **only while it has never been set**.
+   *
+   * A fresh install had it empty, so the first generated sslip.io Domain on
+   * the platform host only said to set it, and an operator who never opened
+   * Settings > Instance had no way to know why. The install already knows the
+   * address; this hands it over once.
+   *
+   * Never set is a `NULL` column, or no settings row at all. An owner's own
+   * value is kept, and so is an empty one: saving the field blank writes `''`,
+   * which is a choice, not an absence, so a cleared address stays cleared
+   * across restarts and re-installs. A value that is not an IP literal is
+   * ignored, since sslip.io can make nothing of it. Whether the address is
+   * public was the install's question (it gives a private one only when the
+   * operator named it), so it is not asked again here.
+   */
+  async prefillServerIp(): Promise<void> {
+    const address = ipLiteral(
+      this.config.get('CLOUDGATE_PUBLIC_IP', { infer: true }) ?? '',
+    );
+    if (address === null) return;
+    const [row] = await this.db
+      .select({ id: webServerSettings.id })
+      .from(webServerSettings)
+      .orderBy(asc(webServerSettings.createdAt))
+      .limit(1);
+    if (!row) {
+      await this.db.insert(webServerSettings).values({ serverIp: address });
+    } else {
+      const filled = await this.db
+        .update(webServerSettings)
+        .set({ serverIp: address, updatedAt: new Date().toISOString() })
+        .where(
+          and(
+            eq(webServerSettings.id, row.id),
+            isNull(webServerSettings.serverIp),
+          ),
+        )
+        .returning({ id: webServerSettings.id });
+      if (filled.length === 0) return;
+    }
+    this.logger.log(
+      `Set the public address to ${address}, found by the install; change it in Settings > Instance`,
+    );
   }
 
   /**
