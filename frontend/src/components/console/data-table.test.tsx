@@ -80,7 +80,9 @@ describe("DataTable", () => {
       .map((column) => column.head)
       .filter((head): head is string => typeof head === "string");
 
-    expect(heads.length).toBeGreaterThanOrEqual(6);
+    // Service, path, port and scheme are the line under each host now, so
+    // the host is never the column that gets cut.
+    expect(heads).toEqual(["Host", "Certificate", "Sign-in"]);
     expect(heads.filter((head) => /\s/.test(head))).toEqual([]);
   });
 

@@ -10,6 +10,13 @@ The field now takes only an IP address; a hostname is refused with a pointer to 
 
 **What to do on upgrade**: nothing. An instance whose public address was never set gets it on this upgrade. One that saved a hostname there keeps it until the field is next saved, and should save the server's IP instead to get sslip.io Domains.
 
+### Pending setups and Domains fit their card
+
+- An Environment's Pending setups are rows instead of a table that scrolled sideways and hid when each one expires. Review the plan is the card's button; Cancel setup is a quiet button on each row.
+- A Domains table no longer cuts the host short. The service, path, port and scheme are a line under the host, leaving Host, Certificate and the actions as columns, on every Domains tab.
+
+**What to do on upgrade**: nothing.
+
 ### Template setup reads better end to end
 
 A walk of the template flow on a fresh instance (Uptime Kuma, Ackee, gonic, Memos and Apache Answer, into a new and an existing Project) turned up these, now fixed:
