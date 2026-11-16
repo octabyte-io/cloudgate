@@ -1,5 +1,5 @@
 import { api } from "../client";
-import type { DomainPortMove } from "./applications";
+import type { DomainPortMove, ServiceType } from "./applications";
 import type { DeploymentStatus } from "./deployments";
 import type { BucketLeftBehind, TeardownReport } from "./teardown";
 import type { DnsRecord } from "./environments";
@@ -927,7 +927,7 @@ export interface PlanStepResult {
   status: "running" | "applied" | "failed" | "blocked";
   /** Why it failed or is blocked; `null` when it was applied. */
   message: string | null;
-  serviceType: string | null;
+  serviceType: ServiceType | null;
   serviceId: string | null;
   /** A plan-created `web`'s generated sslip.io host. */
   domain: string | null;
