@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 
 /**
  * **Warn before leaving a form with edits nobody has saved**.
@@ -19,12 +19,17 @@ import { useEffect } from "react";
  *   click that opens a new tab or window (a modifier, a middle button, a
  *   `target`) leaves this page where it is and is let through.
  *
+ * A **layout** effect, so the listeners come off in the same commit that
+ * clears `dirty` and the "Unsaved changes" line with it. A passive effect left
+ * them on until React got round to it, which under load was after a click the
+ * screen already said was safe (#78).
+ *
  * Rejected: patching `history.pushState`, which would also catch a
  * programmatic `router.push` — none of the ways out of this screen is one, and
  * wrapping a global the router owns is how the next Next release breaks it.
  */
 export function useUnsavedChangesGuard(dirty: boolean, message: string) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!dirty) return;
 
     const beforeUnload = (event: BeforeUnloadEvent) => {
