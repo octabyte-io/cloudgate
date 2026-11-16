@@ -3,10 +3,14 @@ import Link from "next/link";
 import { Card } from "@/components/console/card";
 import { KVList, KVRow } from "@/components/console/kv-list";
 import { Skeleton } from "@/components/console/skeleton";
+import type { Domain } from "@/lib/api/endpoints/domains";
 import { Icon } from "@/lib/design/icons";
 
 import { certificateCell } from "./domain-columns";
 import { useApplicationDomains } from "./use-domains";
+
+const LINK =
+  "font-medium text-brand-tx underline-offset-3 hover:underline focus-visible:underline";
 
 /**
  * How this Application is reached, in the rail on the Overview tab.
@@ -22,7 +26,39 @@ import { useApplicationDomains } from "./use-domains";
  */
 export function DomainsAside({ applicationId }: { applicationId: string }) {
   const domains = useApplicationDomains(applicationId);
-  const rows = domains.data ?? [];
+  return (
+    <DomainsAsideCard
+      rows={domains.data}
+      pending={domains.isPending}
+      tab={`/applications/${applicationId}/domains`}
+      noun="Application"
+      unreached="its internal name reaches it"
+    />
+  );
+}
+
+/**
+ * The rail card itself, for any parent with domains: the Application's
+ * above, and a Compose stack's (`ComposeDomainsAside`).
+ */
+export function DomainsAsideCard({
+  rows = [],
+  pending,
+  tab,
+  noun,
+  unreached,
+  service = false,
+}: {
+  rows?: readonly Domain[];
+  pending: boolean;
+  /** The Domains tab, where a domain is added and the rest are listed. */
+  tab: string;
+  noun: string;
+  /** What reaches it while it has no domain. */
+  unreached: string;
+  /** Whether to name the compose service the first domain routes into. */
+  service?: boolean;
+}) {
   const first = rows[0];
 
   return (
@@ -31,27 +67,23 @@ export function DomainsAside({ applicationId }: { applicationId: string }) {
         title={rows.length > 1 ? "Domains" : "Domain"}
         sub={
           rows.length > 1
-            ? `${rows.length} hosts route to this Application.`
+            ? `${rows.length} hosts route to this ${noun}.`
             : undefined
         }
         headingLevel={2}
       />
       <Card.Body>
-        {domains.isPending ? (
+        {pending ? (
           <div className="grid gap-2" aria-busy="true">
             <Skeleton className="h-row" />
             <Skeleton className="h-row" />
           </div>
         ) : !first ? (
           <p className="text-body text-tx-2">
-            <Link
-              href={`/applications/${applicationId}/domains`}
-              className="font-medium text-brand-tx underline-offset-3 hover:underline focus-visible:underline"
-            >
+            <Link href={tab} className={LINK}>
               Add a domain
             </Link>{" "}
-            to reach this Application from the internet. Until then only its
-            internal name reaches it.
+            to reach this {noun} from the internet. Until then only {unreached}.
           </p>
         ) : (
           <KVList>
@@ -70,23 +102,24 @@ export function DomainsAside({ applicationId }: { applicationId: string }) {
                 </a>
               }
             />
+            {service ? (
+              <KVRow
+                label="Service"
+                value={first.serviceName ?? "unset"}
+                mono
+              />
+            ) : null}
             <KVRow
               label="Container port"
               value={first.port === null ? "unset" : `:${first.port}`}
               mono
             />
-            <KVRow
-              label="Certificate"
-              value={certificateCell(first)}
-            />
+            <KVRow label="Certificate" value={certificateCell(first)} />
             {rows.length > 1 ? (
               <KVRow
                 label="Others"
                 value={
-                  <Link
-                    href={`/applications/${applicationId}/domains`}
-                    className="font-medium text-brand-tx underline-offset-3 hover:underline focus-visible:underline"
-                  >
+                  <Link href={tab} className={LINK}>
                     {rows.length - 1} more
                   </Link>
                 }

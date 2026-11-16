@@ -20,6 +20,7 @@ import type { PanelProps } from "@/lib/shell/tab-registry";
 import { HealthFactRow } from "@/components/console/service-health-state";
 
 import { ComposeFactsCard } from "../compose-facts-card";
+import { ComposeDomainsAside } from "../domains/compose-domains-aside";
 import { ComposePanel } from "../compose-panel";
 import { ComposeFileCard } from "../editor/compose-file-card";
 import { ComposeActions } from "../lifecycle/compose-actions";
@@ -67,12 +68,15 @@ export default function Panel(props: PanelProps) {
     <ComposePanel
       panel={props}
       aside={(row) => (
-        <ComposeFactsCard
-          compose={row}
-          health={
-            <HealthFactRow serviceType="compose" serviceId={row.composeId} />
-          }
-        />
+        <>
+          <ComposeFactsCard
+            compose={row}
+            health={
+              <HealthFactRow serviceType="compose" serviceId={row.composeId} />
+            }
+          />
+          <ComposeDomainsAside composeId={row.composeId} />
+        </>
       )}
       header={(row) => (
         <PageHeader
