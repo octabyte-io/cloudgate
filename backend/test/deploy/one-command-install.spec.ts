@@ -20,9 +20,50 @@ import * as path from 'node:path';
  * The version tarballs are built here, flat as `deploy/version-tarball.sh`
  * packs them, and hold a stand-in `deploy/install.sh` that records which
  * version it was run from and where, which is the hand-over.
+ *
+ * Each checksum is signed as publish-version.yml signs it (ADR-0087), with a
+ * key made here by `ssh-keygen`, and `ssh-keygen` verifies it for real. The
+ * run is of a copy of `install.sh` that trusts that key in place of the one
+ * #51 made; nothing else in the copy differs.
  */
 const repoRoot = path.resolve(__dirname, '../../..');
-const installer = path.join(repoRoot, 'install.sh');
+const realInstaller = path.join(repoRoot, 'install.sh');
+
+/** The allowed-signers line root install.sh carries: #51's public key. */
+const SIGNERS_LINE = `VERSION_SIGNERS='cloudgate-version namespaces="cloudgate-version" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOErAhkCuVbN93mcEL4k0I0v+5KL528MRSBJPyfvsE7B cloudgate-version-signing'`;
+
+let keys: string;
+let installer: string;
+
+/** A key made with ssh-keygen in `keys`; its public half, as one line. */
+function makeKey(name: string): string {
+  const made = spawnSync(
+    'ssh-keygen',
+    ['-q', '-t', 'ed25519', '-N', '', '-C', name, '-f', path.join(keys, name)],
+    { encoding: 'utf8' },
+  );
+  if (made.status !== 0) throw new Error(made.stderr);
+  return fs.readFileSync(path.join(keys, `${name}.pub`), 'utf8').trim();
+}
+
+beforeAll(() => {
+  keys = fs.mkdtempSync(path.join(os.tmpdir(), 'one-command-install-keys-'));
+  const trusted = makeKey('trusted');
+  makeKey('other');
+  const source = fs.readFileSync(realInstaller, 'utf8');
+  const copy = source.replace(
+    SIGNERS_LINE,
+    () =>
+      `VERSION_SIGNERS='cloudgate-version namespaces="cloudgate-version" ${trusted}'`,
+  );
+  if (copy === source) throw new Error(`install.sh has no ${SIGNERS_LINE}`);
+  installer = path.join(keys, 'install.sh');
+  fs.writeFileSync(installer, copy);
+});
+
+afterAll(() => {
+  fs.rmSync(keys, { recursive: true, force: true });
+});
 
 const RELEASES_API =
   'api.github.com/repos/octabyte-io/cloudgate/releases?per_page=100';
@@ -107,10 +148,11 @@ function serve(url: string, content: string | Buffer) {
 /**
  * GitHub's list of this repository's releases, newest first, each in the
  * order GitHub writes its fields: `tag_name` and `name` before `assets`. A
- * `vX.Y.Z` release carries its amd64 and arm64 tarballs and checksums unless
- * `bare` names it, as one made by hand, or still being published, does not
- * yet; one `amd64Only` names carries the amd64 pair alone, as a version
- * published before arm64 does.
+ * `vX.Y.Z` release carries its amd64 and arm64 tarballs, checksums and
+ * signatures unless `bare` names it, as one made by hand, or still being
+ * published, does not yet; one `amd64Only` names carries the amd64 files
+ * alone, as a version published before arm64 does; one `unsigned` names
+ * carries no signature.
  */
 function releases(...tags: string[]) {
   releasesWithout([], ...tags);
@@ -121,7 +163,11 @@ function releasesWithout(bare: string[], ...tags: string[]) {
 }
 
 function releasesOf(
-  { bare = [], amd64Only = [] }: { bare?: string[]; amd64Only?: string[] },
+  {
+    bare = [],
+    amd64Only = [],
+    unsigned = [],
+  }: { bare?: string[]; amd64Only?: string[]; unsigned?: string[] },
   ...tags: string[]
 ) {
   serve(
@@ -138,7 +184,13 @@ function releasesOf(
               ? []
               : cpus.flatMap((cpu) => {
                   const tarball = `cloudgate-${tag.replace(/^v/, '')}-linux-${cpu}.tar.gz`;
-                  return [{ name: tarball }, { name: `${tarball}.sha256` }];
+                  return [
+                    { name: tarball },
+                    { name: `${tarball}.sha256` },
+                    ...(unsigned.includes(tag)
+                      ? []
+                      : [{ name: `${tarball}.sha256.sig` }]),
+                  ];
                 }),
         };
       }),
@@ -164,13 +216,40 @@ function versionTree(version: string, into: string) {
 }
 
 /**
+ * Signs the served file at `url` as publish-version.yml does, with the key
+ * `key` names, serving the signature beside it as `<url>.sig`.
+ */
+function sign(url: string, key: 'trusted' | 'other') {
+  const signed = spawnSync(
+    'ssh-keygen',
+    [
+      '-q',
+      '-Y',
+      'sign',
+      '-f',
+      path.join(keys, key),
+      '-n',
+      'cloudgate-version',
+      path.join(served, url),
+    ],
+    { encoding: 'utf8' },
+  );
+  if (signed.status !== 0) throw new Error(signed.stderr);
+}
+
+/**
  * Publishes `version` as a release: its tarball for `cpu` (amd64 unless
- * given), and its checksum in sha256sum's format, computed here rather than
- * by the script under test.
+ * given), its checksum in sha256sum's format, computed here rather than by
+ * the script under test, and the checksum's signature, by the key the
+ * install trusts unless `signedBy` says another or none.
  */
 function publish(
   version: string,
-  options: { checksumOf?: Buffer; cpu?: 'amd64' | 'arm64' } = {},
+  options: {
+    checksumOf?: Buffer;
+    cpu?: 'amd64' | 'arm64';
+    signedBy?: 'trusted' | 'other' | 'nobody';
+  } = {},
 ) {
   const tree = path.join(scratch, `tree-${version}-${options.cpu ?? 'amd64'}`);
   versionTree(version, tree);
@@ -184,6 +263,10 @@ function publish(
     .digest('hex');
   serve(`${DOWNLOAD}/v${version}/${name}`, bytes);
   serve(`${DOWNLOAD}/v${version}/${name}.sha256`, `${sum}  ${name}\n`);
+  const signedBy = options.signedBy ?? 'trusted';
+  if (signedBy !== 'nobody') {
+    sign(`${DOWNLOAD}/v${version}/${name}.sha256`, signedBy);
+  }
 }
 
 /** Runs `script` under sh as `uid`, the host as `extra` says. */
@@ -682,6 +765,141 @@ describe('install.sh (the one-command install)', () => {
       // Nothing unpacked, nothing left behind, nothing handed over.
       expect(opt()).toEqual([]);
       expect(called()).not.toContain('deploy/install.sh');
+    });
+
+    it('checks the signature of the checksum before downloading the tarball', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+
+      const fresh = install();
+
+      expect(fresh.stderr).toBe('');
+      expect(fresh.status).toBe(0);
+      const sums = `curl https://${DOWNLOAD}/v0.10.0/cloudgate-0.10.0-linux-amd64.tar.gz.sha256\n`;
+      const signature = `curl https://${DOWNLOAD}/v0.10.0/cloudgate-0.10.0-linux-amd64.tar.gz.sha256.sig\n`;
+      const tarball = `curl https://${DOWNLOAD}/v0.10.0/cloudgate-0.10.0-linux-amd64.tar.gz\n`;
+      expect(called().indexOf(sums)).toBeGreaterThan(-1);
+      expect(called().indexOf(signature)).toBeGreaterThan(
+        called().indexOf(sums),
+      );
+      expect(called().indexOf(tarball)).toBeGreaterThan(
+        called().indexOf(signature),
+      );
+      expect(called()).toContain(
+        `deploy/install.sh 0.10.0 from ${root}/opt/cloudgate.next`,
+      );
+    });
+
+    it('refuses a version whose checksum has no signature, before unpacking anything', () => {
+      publish('0.10.0', { signedBy: 'nobody' });
+
+      const unsigned = install({ CLOUDGATE_VERSION: 'v0.10.0' });
+
+      expect(unsigned.status).toBe(1);
+      expect(unsigned.stderr).toContain(
+        'Cloudgate v0.10.0 has no signature on its checksum',
+      );
+      expect(unsigned.stderr).toContain('Nothing was changed.');
+      expect(opt()).toEqual([]);
+      expect(called()).not.toContain('.tar.gz\n');
+      expect(called()).not.toContain('deploy/install.sh');
+    });
+
+    it('refuses a version signed by a key it does not trust, before unpacking anything', () => {
+      publish('0.10.0', { signedBy: 'other' });
+
+      const forged = install({ CLOUDGATE_VERSION: 'v0.10.0' });
+
+      expect(forged.status).toBe(1);
+      expect(forged.stderr).toContain(
+        'The signature on Cloudgate v0.10.0’s checksum does not verify',
+      );
+      expect(forged.stderr).toContain('Nothing was changed.');
+      expect(opt()).toEqual([]);
+      expect(called()).not.toContain('.tar.gz\n');
+      expect(called()).not.toContain('deploy/install.sh');
+    });
+
+    it('refuses a checksum replaced after it was signed, with a tarball to match, before unpacking anything', () => {
+      publish('0.10.0');
+      const name = 'cloudgate-0.10.0-linux-amd64.tar.gz';
+      const other = Buffer.from('another tarball');
+      serve(`${DOWNLOAD}/v0.10.0/${name}`, other);
+      serve(
+        `${DOWNLOAD}/v0.10.0/${name}.sha256`,
+        `${createHash('sha256').update(other).digest('hex')}  ${name}\n`,
+      );
+
+      const replaced = install({ CLOUDGATE_VERSION: 'v0.10.0' });
+
+      expect(replaced.status).toBe(1);
+      expect(replaced.stderr).toContain(
+        'The signature on Cloudgate v0.10.0’s checksum does not verify',
+      );
+      expect(opt()).toEqual([]);
+      expect(called()).not.toContain('deploy/install.sh');
+    });
+
+    // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
+    it('never counts a release whose signature has not been attached as the latest version', () => {
+      releasesOf({ unsigned: ['v0.11.0'] }, 'v0.11.0', 'v0.10.0');
+      publish('0.11.0');
+      publish('0.10.0');
+
+      const fresh = install();
+
+      expect(fresh.stderr).toBe('');
+      expect(fresh.status).toBe(0);
+      expect(called()).toContain(
+        `deploy/install.sh 0.10.0 from ${root}/opt/cloudgate.next`,
+      );
+      expect(called()).not.toContain('0.11.0');
+    });
+
+    it('trusts the key #51 made, as one allowed-signers line in the cloudgate-version namespace', () => {
+      const lines = fs
+        .readFileSync(realInstaller, 'utf8')
+        .split('\n')
+        .filter((line) => line.startsWith('VERSION_SIGNERS='));
+
+      expect(lines).toEqual([SIGNERS_LINE]);
+    });
+
+    it('installs openssh-client when ssh-keygen is not on the platform host, then verifies with it', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+      // Every tool the run can find, ssh-keygen apart; apt-get puts it back.
+      const tools = path.join(scratch, 'tools');
+      fs.mkdirSync(tools);
+      for (const dir of (process.env.PATH ?? '').split(path.delimiter)) {
+        if (!dir || !fs.existsSync(dir)) continue;
+        for (const tool of fs.readdirSync(dir)) {
+          if (tool === 'ssh-keygen' || fs.existsSync(path.join(tools, tool)))
+            continue;
+          fs.symlinkSync(path.join(dir, tool), path.join(tools, tool));
+        }
+      }
+      const sshKeygen = spawnSync('sh', ['-c', 'command -v ssh-keygen'], {
+        encoding: 'utf8',
+      }).stdout.trim();
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(
+        path.join(bin, 'apt-get'),
+        `#!/bin/sh
+echo "apt-get $*" >> "${calls}"
+case "$*" in *openssh-client*) ln -s "${sshKeygen}" "${bin}/ssh-keygen" ;; esac
+`,
+        { mode: 0o755 },
+      );
+
+      const bare = install({ PATH: `${bin}:${tools}` });
+
+      expect(bare.stderr).not.toContain('ssh-keygen: not found');
+      expect(bare.status).toBe(0);
+      expect(called()).toMatch(/^apt-get .*install .*openssh-client/m);
+      expect(called()).toContain(
+        `deploy/install.sh 0.10.0 from ${root}/opt/cloudgate.next`,
+      );
     });
 
     it('re-runs the installed version’s own install, without downloading it, when it is the latest', () => {

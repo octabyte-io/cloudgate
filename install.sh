@@ -7,8 +7,9 @@
 # On a bare Ubuntu 24.04 or 26.04 amd64 platform host (ADR-0085), or an arm64
 # one with HOSTED_MODE=true for the Hosted instance only (ADR-0088), it
 # downloads a Cloudgate version (ADR-0082): the tarball for the host's CPU on
-# the GitHub Release for its tag, checked against the sha256
-# published beside it and unpacked into /opt/cloudgate.next. Then it hands over
+# the GitHub Release for its tag, checked against the sha256 published beside
+# it once that checksum's signature verifies against the key below (ADR-0087),
+# and unpacked into /opt/cloudgate.next. Then it hands over
 # to that version's deploy/install.sh, which does the install itself and puts
 # the version in place at /opt/cloudgate. Nothing is cloned or built. Running it
 # again is the upgrade (docs/deploy.md §7); a run on the version already
@@ -60,6 +61,14 @@ OS_RELEASE="${INSTALL_ROOT:-}/etc/os-release"
 RELEASES_API=https://api.github.com/repos/octabyte-io/cloudgate/releases?per_page=100
 RELEASES_DOWNLOAD=https://github.com/octabyte-io/cloudgate/releases/download
 RELEASES_PAGE=https://github.com/octabyte-io/cloudgate/releases
+
+# The key every Cloudgate version's checksums are signed with (ADR-0087), as
+# one line of ssh-keygen's allowed-signers file: publish-version.yml signs
+# each .sha256 with its private half, the VERSION_SIGNING_KEY secret, in the
+# cloudgate-version namespace. A rotation puts the new public key here before
+# the first version signed with it. deploy/version-sign.sh reads this line to
+# check what it signed.
+VERSION_SIGNERS='cloudgate-version namespaces="cloudgate-version" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOErAhkCuVbN93mcEL4k0I0v+5KL528MRSBJPyfvsE7B cloudgate-version-signing'
 
 say() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 fail() {
@@ -171,15 +180,15 @@ refuse_older() {
 }
 
 # The highest vX.Y.Z among the repository's releases that carries the
-# tarball for this host's CPU, as X.Y.Z, compared as numbers (0.10.0 is after
-# 0.9.0). A release without cloudgate-X.Y.Z-linux-<cpu>.tar.gz, made by hand or still being
-# published, is not a version yet: its download would fail. One page of 100,
-# newest first, as the console's update notice reads it. Empty when there is
-# none.
+# tarball for this host's CPU with its .sha256 and .sha256.sig, as X.Y.Z,
+# compared as numbers (0.10.0 is after 0.9.0). A release missing any of the
+# three, made by hand or still being published, is not a version yet: its
+# download would fail or be refused. One page of 100, newest first, as the
+# console's update notice reads it. Empty when there is none.
 #
 # No jq on a bare box, so the answer is read as the sequence of its
 # "tag_name" and "name" strings: GitHub writes a release's tag_name before
-# its assets, and each asset's name inside them, so a tarball's name is
+# its assets, and each asset's name inside them, so each file's name is
 # matched against the tag last seen.
 latest_version() {
   releases="$(curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 "$RELEASES_API")" || fail \
@@ -191,18 +200,24 @@ latest_version() {
     awk -F '"' -v cpu="$cpu" '
       $2 == "tag_name" {
         tag = ($4 ~ /^v[0-9]+\.[0-9]+\.[0-9]+$/) ? substr($4, 2) : ""
+        held = 0
       }
-      $2 == "name" && tag != "" && $4 == "cloudgate-" tag "-linux-" cpu ".tar.gz" {
-        print tag
+      $2 == "name" && tag != "" {
+        tarball = "cloudgate-" tag "-linux-" cpu ".tar.gz"
+        if ($4 == tarball || $4 == tarball ".sha256" || $4 == tarball ".sha256.sig")
+          if (++held == 3) print tag
       }' |
     sort -t . -k 1,1n -k 2,2n -k 3,3n |
     tail -n 1
 }
 
-# download_version <X.Y.Z>: the version's tarball for this host's CPU, checked against its
-# published sha256 before anything is unpacked, unpacked into $STAGING_DIR.
-# Nothing outside a download directory beside the install is written until the
-# checksum matches, and that directory is removed whatever happens.
+# download_version <X.Y.Z>: the version's tarball for this host's CPU, checked
+# against its published sha256 before anything is unpacked, unpacked into
+# $STAGING_DIR. The sha256 is trusted only once its signature verifies against
+# VERSION_SIGNERS (ADR-0087), which is checked before the tarball is
+# downloaded. Nothing outside a download directory beside the install is
+# written until both checks pass, and that directory is removed whatever
+# happens.
 download_version() {
   version="$1"
   name="cloudgate-$version-linux-$cpu.tar.gz"
@@ -224,6 +239,16 @@ download_version() {
   curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 -o "$download/$name.sha256" "$url.sha256" || fail \
     "Cloudgate v$version has no published release to install ($url.sha256)." \
     "The versions are listed at $RELEASES_PAGE. Nothing was changed."
+  curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 -o "$download/$name.sha256.sig" "$url.sha256.sig" || fail \
+    "Cloudgate v$version has no signature on its checksum ($url.sha256.sig), so it was not installed." \
+    "Every Cloudgate version is signed when it is published; one without a signature is not one we published." \
+    "Nothing was changed."
+  printf '%s\n' "$VERSION_SIGNERS" > "$download/allowed_signers"
+  ssh-keygen -Y verify -f "$download/allowed_signers" -I cloudgate-version -n cloudgate-version \
+    -s "$download/$name.sha256.sig" < "$download/$name.sha256" > "$download/verified" 2>&1 || fail \
+    "The signature on Cloudgate v$version’s checksum does not verify, so it was not installed:" \
+    "$(sed 's/^/  /' "$download/verified")" \
+    "It was not signed with Cloudgate's key (docs/deploy.md §2). Nothing was changed. If it happens again, report it."
   # A progress bar for an operator watching a terminal; nothing when the
   # output goes to a file or a pipe, which would only collect its redraws.
   progress=-sS
@@ -445,10 +470,17 @@ main() {
   fi
   if [ -n "$requested" ]; then refuse_older "$requested"; fi
 
-  if ! command -v curl >/dev/null 2>&1; then
-    say "Installing curl"
+  # curl downloads the version and ssh-keygen checks its signature; a stock
+  # Ubuntu server image has both, a minimal one may have neither.
+  missing=''
+  command -v curl >/dev/null 2>&1 || missing='curl ca-certificates'
+  command -v ssh-keygen >/dev/null 2>&1 || missing="${missing:+$missing }openssh-client"
+  if [ -n "$missing" ]; then
+    say "Installing $missing"
     apt_get update -qq
-    apt_get install -y -qq curl ca-certificates
+    # One word per package.
+    # shellcheck disable=SC2086
+    apt_get install -y -qq $missing
   fi
 
   # Before anything is downloaded; it needs curl for the hosts.
