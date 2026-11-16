@@ -1882,7 +1882,7 @@ describe('deploy/install.sh', () => {
    * the body the backend gives in that state.
    */
   describe('self_hosted_done', () => {
-    function done(signUpOpen: string) {
+    function done(signUpOpen: string, platformPublicIp = '203.0.113.7') {
       const fns = ['log', 'self_hosted_done'].map((name) => {
         const fn = source().match(
           new RegExp(
@@ -1903,7 +1903,7 @@ describe('deploy/install.sh', () => {
         'bash',
         [
           '-c',
-          `set -euo pipefail; API_PORT=4000; VERSION=0.3.4; CONSOLE_ORIGIN=http://203.0.113.7:3000; ${fns.join('')} self_hosted_done; printf '%s\\n' "\${finish[@]}"`,
+          `set -euo pipefail; API_PORT=4000; VERSION=0.3.4; CONSOLE_ORIGIN=http://203.0.113.7:3000; PLATFORM_PUBLIC_IP='${platformPublicIp}'; ${fns.join('')} self_hosted_done; printf '%s\\n' "\${finish[@]}"`,
         ],
         {
           encoding: 'utf8',
@@ -1928,6 +1928,22 @@ describe('deploy/install.sh', () => {
       expect(said.stdout).not.toContain('/sign-in');
       expect(fs.readFileSync(calls, 'utf8')).toContain(
         'http://127.0.0.1:4000/auth/sign-up-open',
+      );
+    });
+
+    it('says to set the public address when the install found none', () => {
+      const said = done('{"open":true,"state":"unclaimed"}', '');
+
+      expect(said.status).toBe(0);
+      expect(said.stdout).toBe(
+        [
+          'Cloudgate 0.3.4 is installed.',
+          '',
+          'Open http://203.0.113.7:3000/sign-up',
+          'The first account owns the instance.',
+          'Then set its public address in Settings > Instance.',
+          '',
+        ].join('\n'),
       );
     });
 
