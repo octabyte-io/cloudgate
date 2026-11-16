@@ -43,9 +43,14 @@ import { normalisePlan } from './normalise-plan';
  * `static-spa-change`, `static-drift`, `static-domain-certificate`,
  * `static-domain-attach`).
  *
- * moto never validates a certificate: it stays pending, and moto puts it on
- * the distribution all the same. That a Domain's certificate is issued, and
- * the site answers on it, is the walk by hand's (5d).
+ * moto never validates a certificate, and moto puts it on the distribution
+ * all the same. Left to itself, moto 5.2.3 reports a pending certificate as
+ * issued once `MOTO_ACM_VALIDATION_WAIT` (60 s) has passed since it was
+ * created, so a run slow enough to reach the alternate domain name's Drift
+ * after that refreshed the certificate as changed too (#77). The container
+ * is started with that wait longer than the lane, so the certificate stays
+ * pending throughout. That a Domain's certificate is issued, and the site
+ * answers on it, is the walk by hand's (5d).
  *
  * Needs what the bucket lane needs: `OPENTOFU_BINARY`,
  * `OPENTOFU_PROVIDER_MIRROR`, Docker, and `123456789012.localhost` resolving
@@ -53,6 +58,11 @@ import { normalisePlan } from './normalise-plan';
  */
 
 const MOTO_IMAGE = 'motoserver/moto:5.2.3';
+/**
+ * Seconds before moto reports a pending certificate as issued: a day, longer
+ * than any run of the lane, so a certificate never changes between plans.
+ */
+const MOTO_ACM_VALIDATION_WAIT = String(24 * 60 * 60);
 const POSTGRES_IMAGE = 'postgres:17-alpine';
 
 const REPO = resolve(__dirname, '..', '..', '..', '..');
@@ -227,6 +237,7 @@ beforeAll(async () => {
   [postgres, moto] = await Promise.all([
     new PostgreSqlContainer(POSTGRES_IMAGE).withDatabase('cloudgate').start(),
     new GenericContainer(MOTO_IMAGE)
+      .withEnvironment({ MOTO_ACM_VALIDATION_WAIT })
       .withExposedPorts(5000)
       .withWaitStrategy(Wait.forHttp('/moto-api/', 5000))
       .start(),
