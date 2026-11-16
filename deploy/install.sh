@@ -253,18 +253,28 @@ API_ORIGIN="http://$(url_host "$CLOUDGATE_PUBLIC_HOST"):${API_PORT}"
 
 log() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 
-# The line a Self-hosted run ends on. /sign-up is the way in only while the
-# first account has not claimed the instance (`unclaimed`); every re-run after
-# that finds sign-up `closed`, so it sends the operator to /sign-in and says
-# which version now runs. An answer it cannot read counts as closed: the
-# health check above already passed, and /sign-in is never wrong.
+# What a Self-hosted run ends on, set beside the mark by finish_banner
+# (deploy/finish-banner.sh) as the run's last output. /sign-up is the way in
+# only while the first account has not claimed the instance (`unclaimed`);
+# every re-run after that finds sign-up `closed`, so it sends the operator to
+# /sign-in and says which version now runs. An answer it cannot read counts as
+# closed: the health check above already passed, and /sign-in is never wrong.
 self_hosted_done() {
   local sign_up_state
   sign_up_state="$(curl -fsS "http://127.0.0.1:${API_PORT}/auth/sign-up-open" | jq -r .state)" || sign_up_state=''
   if [ "$sign_up_state" = unclaimed ]; then
-    log "Done. Open ${CONSOLE_ORIGIN}/sign-up — the first account owns the instance."
+    finish=(
+      "Cloudgate ${VERSION} is installed."
+      ''
+      "Open ${CONSOLE_ORIGIN}/sign-up"
+      "The first account owns the instance."
+    )
   else
-    log "Done. Cloudgate ${VERSION} is running. Sign in at ${CONSOLE_ORIGIN}/sign-in."
+    finish=(
+      "Cloudgate ${VERSION} is running."
+      ''
+      "Sign in at ${CONSOLE_ORIGIN}/sign-in"
+    )
   fi
 }
 
@@ -275,6 +285,8 @@ self_hosted_done() {
 # nothing on the box.
 # shellcheck source=deploy/hosted.sh
 . "$REPO_ROOT/deploy/hosted.sh"
+# shellcheck source=deploy/finish-banner.sh
+. "$REPO_ROOT/deploy/finish-banner.sh"
 case "${HOSTED_MODE:-}" in
   true) ;;
   '' | false) HOSTED_MODE= ;;
@@ -407,6 +419,8 @@ install_log_exit() {
   echo "The install stopped (exit code $1). Everything it printed is in $INSTALL_LOG." >&2
   echo "What the backend logged last: journalctl -u cloudgate-backend -n 50" >&2
 }
+# Before the log: from here on stdout is a pipe into tee.
+finish_banner_colour
 start_install_log
 
 # A Cloudgate version carries VERSION at its top level; a git checkout or a
@@ -1453,9 +1467,15 @@ else
   journalctl -u cloudgate-backup.service -n 4 --no-pager -o cat || true
   systemctl list-timers cloudgate-backup.timer cloudgate-backup-check.timer --no-pager || true
 
-  log "Done. Open https://${CLOUDGATE_HOSTNAME}/sign-in as ${INSTANCE_OWNER_EMAIL}."
   echo "Web sign-up is open to the public at https://${CLOUDGATE_HOSTNAME}/sign-up."
+  finish=(
+    "Cloudgate ${VERSION} is installed."
+    ''
+    "Open https://${CLOUDGATE_HOSTNAME}/sign-in"
+    "as ${INSTANCE_OWNER_EMAIL}."
+  )
 fi
 echo "Secrets are in ${SECRETS_FILE} (mode 0600); the same three are also in"
 echo "/etc/default/cloudgate-backend. Back up both — docs/deploy.md §8. Without"
 echo "APP_ENCRYPTION_SECRET every encrypted column is permanently unreadable."
+finish_banner "${finish[@]}"

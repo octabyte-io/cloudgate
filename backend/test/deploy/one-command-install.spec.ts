@@ -1874,7 +1874,8 @@ describe('deploy/install.sh', () => {
   });
 
   /**
-   * The line a Self-hosted run ends on (#79). It sends the operator to
+   * What a Self-hosted run ends on (#79), the lines finish_banner sets beside
+   * the mark. They send the operator to
    * /sign-up only while sign-up is open, before the first account owns the
    * instance; a re-run on a box that has an owner sends them to /sign-in.
    * `curl` is the one boundary: it answers `GET /auth/sign-up-open` with
@@ -1902,7 +1903,7 @@ describe('deploy/install.sh', () => {
         'bash',
         [
           '-c',
-          `set -euo pipefail; API_PORT=4000; VERSION=0.3.4; CONSOLE_ORIGIN=http://203.0.113.7:3000; ${fns.join('')} self_hosted_done`,
+          `set -euo pipefail; API_PORT=4000; VERSION=0.3.4; CONSOLE_ORIGIN=http://203.0.113.7:3000; ${fns.join('')} self_hosted_done; printf '%s\\n' "\${finish[@]}"`,
         ],
         {
           encoding: 'utf8',
@@ -1915,8 +1916,14 @@ describe('deploy/install.sh', () => {
       const said = done('{"open":true,"state":"unclaimed"}');
 
       expect(said.status).toBe(0);
-      expect(said.stdout).toContain(
-        'Done. Open http://203.0.113.7:3000/sign-up — the first account owns the instance.',
+      expect(said.stdout).toBe(
+        [
+          'Cloudgate 0.3.4 is installed.',
+          '',
+          'Open http://203.0.113.7:3000/sign-up',
+          'The first account owns the instance.',
+          '',
+        ].join('\n'),
       );
       expect(said.stdout).not.toContain('/sign-in');
       expect(fs.readFileSync(calls, 'utf8')).toContain(
@@ -1928,8 +1935,13 @@ describe('deploy/install.sh', () => {
       const said = done('{"open":false,"state":"closed"}');
 
       expect(said.status).toBe(0);
-      expect(said.stdout).toContain(
-        'Done. Cloudgate 0.3.4 is running. Sign in at http://203.0.113.7:3000/sign-in.',
+      expect(said.stdout).toBe(
+        [
+          'Cloudgate 0.3.4 is running.',
+          '',
+          'Sign in at http://203.0.113.7:3000/sign-in',
+          '',
+        ].join('\n'),
       );
       expect(said.stdout).not.toContain('/sign-up');
       expect(said.stdout).not.toContain('first account owns');

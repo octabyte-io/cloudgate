@@ -161,15 +161,29 @@ swarm: active
 network: overlay attachable=true
 traefik: true traefik:v3.6.7
 
-==> Done. Open http://<host>:3000/sign-up — the first account owns the instance.
 Secrets are in /etc/default/cloudgate-secrets (mode 0600); the same three are also in
 /etc/default/cloudgate-backend. Back up both — docs/deploy.md §8. Without
 APP_ENCRYPTION_SECRET every encrypted column is permanently unreadable.
+
+      ▄████▄        Cloudgate 0.3.0 is installed.
+  ▄▄█ ███████▄
+ ▄███▄█▀██ ████     Open http://<host>:3000/sign-up
+██████████▄█████    The first account owns the instance.
+▀██████████████▀
+
+      _                 _             _
+  ___| | ___  _   _  __| | __ _  __ _| |_ ___
+ / __| |/ _ \| | | |/ _` |/ _` |/ _` | __/ _ \
+| (__| | (_) | |_| | (_| | (_| | (_| | ||  __/
+ \___|_|\___/ \__,_|\__,_|\__, |\__,_|\__\___|
+                          |___/
 ```
+
+On a terminal the mark and the logotype are drawn in the console's brand colour; `NO_COLOR` turns that off.
 
 `404` from Traefik on port 80 is the success case: it is listening and has no route for a bare IP yet.
 
-A re-run on a box that already has an owner finds sign-up closed, so it ends with `==> Done. Cloudgate <version> is running. Sign in at http://<host>:3000/sign-in.` instead.
+A re-run on a box that already has an owner finds sign-up closed, so the lines beside the mark say `Cloudgate <version> is running.` and `Sign in at http://<host>:3000/sign-in` instead.
 
 ### Claim the instance
 
