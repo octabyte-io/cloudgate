@@ -260,6 +260,8 @@ log() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 # nothing on the box.
 # shellcheck source=deploy/hosted.sh
 . "$REPO_ROOT/deploy/hosted.sh"
+# shellcheck source=deploy/finish-banner.sh
+. "$REPO_ROOT/deploy/finish-banner.sh"
 case "${HOSTED_MODE:-}" in
   true) ;;
   '' | false) HOSTED_MODE= ;;
@@ -392,6 +394,8 @@ install_log_exit() {
   echo "The install stopped (exit code $1). Everything it printed is in $INSTALL_LOG." >&2
   echo "What the backend logged last: journalctl -u cloudgate-backend -n 50" >&2
 }
+# Before the log: from here on stdout is a pipe into tee.
+finish_banner_colour
 start_install_log
 
 # A Cloudgate version carries VERSION at its top level; a git checkout or a
@@ -1381,7 +1385,12 @@ docker network inspect cloudgate-network -f 'network: {{.Driver}} attachable={{.
 docker inspect -f 'traefik: {{.State.Running}} {{.Config.Image}}' cloudgate-traefik
 
 if [ -z "$HOSTED_MODE" ]; then
-  log "Done. Open ${CONSOLE_ORIGIN}/sign-up — the first account owns the instance."
+  finish=(
+    "Cloudgate ${VERSION} is installed."
+    ''
+    "Open ${CONSOLE_ORIGIN}/sign-up"
+    "The first account owns the instance."
+  )
 else
   # -k: the certificate is issued on the first HTTPS request after DNS points
   # here, so it may not be in place yet. The answer still says Traefik routes.
@@ -1438,9 +1447,15 @@ else
   journalctl -u cloudgate-backup.service -n 4 --no-pager -o cat || true
   systemctl list-timers cloudgate-backup.timer cloudgate-backup-check.timer --no-pager || true
 
-  log "Done. Open https://${CLOUDGATE_HOSTNAME}/sign-in as ${INSTANCE_OWNER_EMAIL}."
   echo "Web sign-up is open to the public at https://${CLOUDGATE_HOSTNAME}/sign-up."
+  finish=(
+    "Cloudgate ${VERSION} is installed."
+    ''
+    "Open https://${CLOUDGATE_HOSTNAME}/sign-in"
+    "as ${INSTANCE_OWNER_EMAIL}."
+  )
 fi
 echo "Secrets are in ${SECRETS_FILE} (mode 0600); the same three are also in"
 echo "/etc/default/cloudgate-backend. Back up both — docs/deploy.md §8. Without"
 echo "APP_ENCRYPTION_SECRET every encrypted column is permanently unreadable."
+finish_banner "${finish[@]}"

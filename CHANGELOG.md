@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### The install ends with the Cloudgate mark
+
+A successful run of the install now ends with the Cloudgate mark, what to open next beside it (the console's sign-up address on a Self-hosted install, its sign-in address and the owner on the Hosted instance) and the `cloudgate` logotype under it, after the note about backing up the secrets. On a terminal the mark and the logotype are in the console's brand colour; `NO_COLOR`, `TERM=dumb` or output that is not a terminal draws them plain. The `==> Done.` line it replaces is gone (`docs/deploy.md` §2).
+
+**What to do on upgrade**: nothing.
+
 ## 0.3.4 (2026-11-16)
 
 ### The upgrade checks have a version to move to
