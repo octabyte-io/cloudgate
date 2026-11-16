@@ -269,6 +269,10 @@ self_hosted_done() {
       "Open ${CONSOLE_ORIGIN}/sign-up"
       "The first account owns the instance."
     )
+    # Without an address the first sslip.io Domain only says to set one.
+    if [ -z "${PLATFORM_PUBLIC_IP:-}" ]; then
+      finish+=("Then set its public address in Settings > Instance.")
+    fi
   else
     finish=(
       "Cloudgate ${VERSION} is running."
@@ -287,6 +291,14 @@ self_hosted_done() {
 . "$REPO_ROOT/deploy/hosted.sh"
 # shellcheck source=deploy/finish-banner.sh
 . "$REPO_ROOT/deploy/finish-banner.sh"
+# shellcheck source=deploy/public-ip.sh
+. "$REPO_ROOT/deploy/public-ip.sh"
+# An address the operator names for Settings > Instance's public address is
+# checked here, before anything changes the box; the one found on its own is
+# looked up once curl is certain to be installed (Environment files, below).
+if [ -n "${CLOUDGATE_PUBLIC_IP:-}" ]; then
+  PLATFORM_PUBLIC_IP="$(platform_public_ip)" || exit 1
+fi
 case "${HOSTED_MODE:-}" in
   true) ;;
   '' | false) HOSTED_MODE= ;;
@@ -819,6 +831,18 @@ chown -R "$SERVICE_USER:$SERVICE_USER" "$REPO_ROOT"
 # NOT under $CLOUDGATE_DIR — see finding F-04.
 
 log "Environment files"
+# The public address a fresh instance starts with in Settings > Instance, which
+# its free sslip.io Domains are made from (deploy/public-ip.sh). The backend
+# fills it in only while it has never been set, so this never replaces an
+# owner's own value; empty is no address, and Settings > Instance says to set one.
+if [ -z "${CLOUDGATE_PUBLIC_IP:-}" ]; then
+  PLATFORM_PUBLIC_IP="$(platform_public_ip)"
+fi
+if [ -n "$PLATFORM_PUBLIC_IP" ]; then
+  echo "Public address for sslip.io Domains: $PLATFORM_PUBLIC_IP (used only while Settings > Instance has none)"
+else
+  echo "No public IP address found for sslip.io Domains; set one in Settings > Instance > Public address."
+fi
 umask 077
 # `<<EOF` unquoted, deliberately: nine values below are interpolated, and
 # `<<'EOF'` would write `PORT=${API_PORT}` and a DATABASE_URL containing the
@@ -879,6 +903,10 @@ CONTAINER_LOG_MAX_FILE=${CONTAINER_LOG_MAX_FILE}
 # here once Traefik or a load balancer is in front, and a hop count only ever on
 # its own; never to \`true\`.
 TRUST_PROXY=loopback
+# This host's public IP address (deploy/public-ip.sh). Written into Settings >
+# Instance's public address at boot only while that has never been set; an
+# owner's own value, or one they cleared, is kept. Empty is none.
+CLOUDGATE_PUBLIC_IP=${PLATFORM_PUBLIC_IP}
 EOF
 # The Hosted instance's settings, every one the hosted boot check requires,
 # from deploy/hosted.sh rather than the heredoc above so that file can

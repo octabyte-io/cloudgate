@@ -6,7 +6,7 @@ import {
   OnApplicationBootstrap,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import type { Env } from '../common/config/env.schema';
 import { DRIZZLE } from '../db/drizzle.module';
 import type { DrizzleDB } from '../db/drizzle.module';
@@ -15,6 +15,7 @@ import { InstanceMode } from '../instance-mode/instance-mode.service';
 import { PermissionService } from '../rbac/permission.service';
 import type { PermissionCtx } from '../rbac/permission.service';
 import type { CertificateType } from '../domains/domain.schema';
+import { ipLiteral } from '../domains/ip-literal';
 import { sanitizeMetricsConfig } from '../servers/nested-server';
 import type { SanitizedMetricsConfig } from '../servers/nested-server';
 import {
@@ -789,6 +790,14 @@ export class SettingsService implements OnApplicationBootstrap {
    */
   async onApplicationBootstrap(): Promise<void> {
     try {
+      await this.prefillServerIp();
+    } catch (error) {
+      this.logger.error(
+        'Filling in the public address at boot failed',
+        error as Error,
+      );
+    }
+    try {
       await this.sweepConsoleHost();
     } catch (error) {
       this.logger.error('Console host sweep at boot failed', error as Error);
@@ -801,6 +810,54 @@ export class SettingsService implements OnApplicationBootstrap {
         error as Error,
       );
     }
+  }
+
+  /**
+   * Fills in Settings > Instance's public address (`serverIp`) from
+   * `CLOUDGATE_PUBLIC_IP`, the address `deploy/install.sh` found for this host
+   * (`deploy/public-ip.sh`), **only while it has never been set**.
+   *
+   * A fresh install had it empty, so the first generated sslip.io Domain on
+   * the platform host only said to set it, and an operator who never opened
+   * Settings > Instance had no way to know why. The install already knows the
+   * address; this hands it over once.
+   *
+   * Never set is a `NULL` column, or no settings row at all. An owner's own
+   * value is kept, and so is an empty one: saving the field blank writes `''`,
+   * which is a choice, not an absence, so a cleared address stays cleared
+   * across restarts and re-installs. A value that is not an IP literal is
+   * ignored, since sslip.io can make nothing of it. Whether the address is
+   * public was the install's question (it gives a private one only when the
+   * operator named it), so it is not asked again here.
+   */
+  async prefillServerIp(): Promise<void> {
+    const address = ipLiteral(
+      this.config.get('CLOUDGATE_PUBLIC_IP', { infer: true }) ?? '',
+    );
+    if (address === null) return;
+    const [row] = await this.db
+      .select({ id: webServerSettings.id })
+      .from(webServerSettings)
+      .orderBy(asc(webServerSettings.createdAt))
+      .limit(1);
+    if (!row) {
+      await this.db.insert(webServerSettings).values({ serverIp: address });
+    } else {
+      const filled = await this.db
+        .update(webServerSettings)
+        .set({ serverIp: address, updatedAt: new Date().toISOString() })
+        .where(
+          and(
+            eq(webServerSettings.id, row.id),
+            isNull(webServerSettings.serverIp),
+          ),
+        )
+        .returning({ id: webServerSettings.id });
+      if (filled.length === 0) return;
+    }
+    this.logger.log(
+      `Set the public address to ${address}, found by the install; change it in Settings > Instance`,
+    );
   }
 
   /**

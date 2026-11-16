@@ -81,7 +81,7 @@ export function InstanceSection() {
       <SettingsCard
         gate={gate}
         title="Public address"
-        lede="The address operators reach this instance on. Cloudgate does not detect it."
+        lede="The address operators reach this instance on. The install fills it in with this host's public IP and never replaces one you save."
         schema={z.object({
           serverIp: z.string().max(255),
         })}
