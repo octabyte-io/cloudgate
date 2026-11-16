@@ -291,6 +291,23 @@ describe('deploy/version-sign.sh', () => {
     expect(fs.existsSync(path.join(dist, `${ARM64_CHECKSUM}.sig`))).toBe(false);
   });
 
+  // ADR-0087: a rotation ships the new key in install.sh beside the old one
+  // before the first version signed with it.
+  it('signs with a key on any line of a VERSION_SIGNERS that holds more than one', () => {
+    const old = makeKey('old');
+    fs.writeFileSync(
+      path.join(tree, 'install.sh'),
+      `#!/bin/sh\nVERSION_SIGNERS='${old.signers}\n${trusted.signers}'\n`,
+    );
+
+    const signed = sign(trusted.privateKey);
+
+    expect(signed.stderr).toBe('');
+    expect(signed.status).toBe(0);
+    expect(verifies(CHECKSUM, trusted.signers)).toBe(true);
+    expect(verifies(ARM64_CHECKSUM, trusted.signers)).toBe(true);
+  });
+
   it('refuses to run without VERSION_SIGNING_KEY, signing nothing', () => {
     const refused = sign(undefined);
 

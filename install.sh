@@ -62,12 +62,13 @@ RELEASES_API=https://api.github.com/repos/octabyte-io/cloudgate/releases?per_pag
 RELEASES_DOWNLOAD=https://github.com/octabyte-io/cloudgate/releases/download
 RELEASES_PAGE=https://github.com/octabyte-io/cloudgate/releases
 
-# The key every Cloudgate version's checksums are signed with (ADR-0087), as
-# one line of ssh-keygen's allowed-signers file: publish-version.yml signs
-# each .sha256 with its private half, the VERSION_SIGNING_KEY secret, in the
-# cloudgate-version namespace. A rotation puts the new public key here before
-# the first version signed with it. deploy/version-sign.sh reads this line to
-# check what it signed.
+# The keys Cloudgate versions' checksums are signed with (ADR-0087), as
+# ssh-keygen's allowed-signers file, one line per key: publish-version.yml
+# signs each .sha256 with the private half, the VERSION_SIGNING_KEY secret, in
+# the cloudgate-version namespace, and a signature by any key here verifies.
+# A rotation adds the new public key as a second line before the first version
+# signed with it. deploy/version-sign.sh reads every line to check what it
+# signed.
 VERSION_SIGNERS='cloudgate-version namespaces="cloudgate-version" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOErAhkCuVbN93mcEL4k0I0v+5KL528MRSBJPyfvsE7B cloudgate-version-signing'
 
 say() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }

@@ -10,8 +10,8 @@
 # in the cloudgate-version namespace, the signature written beside it as
 # .sha256.sig, which deploy/version-publish.sh then attaches with it. Each
 # signature is checked, before anything is published, against the
-# allowed-signers line root install.sh carries (VERSION_SIGNERS): a key that
-# is not the one every box trusts would publish a version no box installs.
+# allowed-signers lines root install.sh carries (VERSION_SIGNERS): a key that
+# is not one every box trusts would publish a version no box installs.
 # A refused key leaves no signature behind.
 #
 # .github/workflows/publish-version.yml runs it with the VERSION_SIGNING_KEY
@@ -33,7 +33,12 @@ version="${BASH_REMATCH[1]}"
 [ -n "${VERSION_SIGNING_KEY:-}" ] ||
   fail "VERSION_SIGNING_KEY is not set, so nothing was signed." \
     "It is the private half of the key whose public half root install.sh carries (ADR-0087)."
-signers="$(sed -n "s/^VERSION_SIGNERS='\(.*\)'\$/\1/p" install.sh)"
+# Every allowed-signers line of VERSION_SIGNERS, from its opening quote to
+# its closing one: during a key rotation it holds the old key and the new.
+signers="$(awk "
+  /^VERSION_SIGNERS='/ { open = 1; sub(/^VERSION_SIGNERS='/, \"\") }
+  open { if (sub(/'\$/, \"\")) { print; exit } print }
+" install.sh)"
 [ -n "$signers" ] ||
   fail "Root install.sh has no VERSION_SIGNERS line, so nothing was signed."
 

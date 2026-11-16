@@ -23,17 +23,41 @@ import * as path from 'node:path';
  *
  * Each checksum is signed as publish-version.yml signs it (ADR-0087), with a
  * key made here by `ssh-keygen`, and `ssh-keygen` verifies it for real. The
- * run is of a copy of `install.sh` that trusts that key in place of the one
- * #51 made; nothing else in the copy differs.
+ * run is of a copy of `install.sh` that trusts that key in place of the
+ * ones it carries; nothing else in the copy differs.
  */
 const repoRoot = path.resolve(__dirname, '../../..');
 const realInstaller = path.join(repoRoot, 'install.sh');
 
-/** The allowed-signers line root install.sh carries: #51's public key. */
-const SIGNERS_LINE = `VERSION_SIGNERS='cloudgate-version namespaces="cloudgate-version" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOErAhkCuVbN93mcEL4k0I0v+5KL528MRSBJPyfvsE7B cloudgate-version-signing'`;
+/** The allowed-signers line for #51's public key, which root install.sh carries. */
+const KEY_51_LINE = `cloudgate-version namespaces="cloudgate-version" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOErAhkCuVbN93mcEL4k0I0v+5KL528MRSBJPyfvsE7B cloudgate-version-signing`;
+
+/** install.sh's VERSION_SIGNERS, one allowed-signers line or several, in its quotes. */
+const SIGNERS = /^VERSION_SIGNERS='([^']*)'$/m;
 
 let keys: string;
 let installer: string;
+let trustedKey: string;
+let otherKey: string;
+
+/**
+ * A copy of root install.sh in `keys`, as `file`, whose VERSION_SIGNERS holds
+ * the given public keys, one allowed-signers line each.
+ */
+function installerTrusting(file: string, ...publicKeys: string[]): string {
+  const source = fs.readFileSync(realInstaller, 'utf8');
+  if (!SIGNERS.test(source))
+    throw new Error('install.sh has no VERSION_SIGNERS');
+  const lines = publicKeys.map(
+    (key) => `cloudgate-version namespaces="cloudgate-version" ${key}`,
+  );
+  const copy = path.join(keys, file);
+  fs.writeFileSync(
+    copy,
+    source.replace(SIGNERS, () => `VERSION_SIGNERS='${lines.join('\n')}'`),
+  );
+  return copy;
+}
 
 /** A key made with ssh-keygen in `keys`; its public half, as one line. */
 function makeKey(name: string): string {
@@ -48,17 +72,9 @@ function makeKey(name: string): string {
 
 beforeAll(() => {
   keys = fs.mkdtempSync(path.join(os.tmpdir(), 'one-command-install-keys-'));
-  const trusted = makeKey('trusted');
-  makeKey('other');
-  const source = fs.readFileSync(realInstaller, 'utf8');
-  const copy = source.replace(
-    SIGNERS_LINE,
-    () =>
-      `VERSION_SIGNERS='cloudgate-version namespaces="cloudgate-version" ${trusted}'`,
-  );
-  if (copy === source) throw new Error(`install.sh has no ${SIGNERS_LINE}`);
-  installer = path.join(keys, 'install.sh');
-  fs.writeFileSync(installer, copy);
+  trustedKey = makeKey('trusted');
+  otherKey = makeKey('other');
+  installer = installerTrusting('install.sh', trustedKey);
 });
 
 afterAll(() => {
@@ -885,13 +901,34 @@ describe('install.sh (the one-command install)', () => {
       expect(called()).not.toContain('0.11.0');
     });
 
-    it('trusts the key #51 made, as one allowed-signers line in the cloudgate-version namespace', () => {
-      const lines = fs
-        .readFileSync(realInstaller, 'utf8')
-        .split('\n')
-        .filter((line) => line.startsWith('VERSION_SIGNERS='));
+    it('trusts the key #51 made, as an allowed-signers line in the cloudgate-version namespace', () => {
+      const signers = SIGNERS.exec(fs.readFileSync(realInstaller, 'utf8'));
 
-      expect(lines).toEqual([SIGNERS_LINE]);
+      expect(signers?.[1].split('\n')).toContain(KEY_51_LINE);
+    });
+
+    // ADR-0087: a rotation ships the new key beside the old one before the
+    // first version signed with it.
+    it('installs a version signed by any key VERSION_SIGNERS holds, when it holds more than one', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+      const oneKey = installer;
+      installer = installerTrusting(
+        'install-two-keys.sh',
+        otherKey,
+        trustedKey,
+      );
+      try {
+        const fresh = install();
+
+        expect(fresh.stderr).toBe('');
+        expect(fresh.status).toBe(0);
+        expect(called()).toContain(
+          `deploy/install.sh 0.10.0 from ${root}/opt/cloudgate.next`,
+        );
+      } finally {
+        installer = oneKey;
+      }
     });
 
     it('installs openssh-client when ssh-keygen is not on the platform host, then verifies with it', () => {
