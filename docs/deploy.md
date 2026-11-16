@@ -139,6 +139,8 @@ install made before versions were published, is switched over: the checkout is m
 
 `CLOUDGATE_PUBLIC_HOST` is the only required input. It becomes the API address both env files carry (`CLOUDGATE_API_URL`), which the console reads when it starts; changing it later is an edit to those files and a restart ([§3](#3-why-the-console-and-the-api-share-one-hostname)).
 
+**Not a hostname under an HSTS-preloaded top-level domain** (`.app`, `.dev`, `.page`, …) unless HTTPS is in front. Browsers force HTTPS for every name under those domains, and the console is plain HTTP on `:3000` and `:4000`, so with `CLOUDGATE_PUBLIC_HOST=staging.example.app` Chrome shows only an error page and a sign-in fails with `Failed to fetch`. Use the IP address, a name under a domain that is not preloaded, or put HTTPS in front ([§3](#a-hostname-under-an-hsts-preloaded-domain-needs-https)). The install warns about `.app`, `.dev` and `.page` names, and installs anyway.
+
 `deploy/install.sh` is one file, and it does the whole thing: base packages, Node from `nodejs.org` (checksum-verified, into `/usr/local/share/cloudgate/node`), Docker, `swarm init`, the `cloudgate-network` overlay, Postgres with a generated role, nixpacks, OpenTofu and its providers, the Session Manager plugin, the `cloudgate` service user, `/etc/cloudgate`, the env files, the version put in place, migrations, `traefik.yml`, the Traefik container, two systemd units, and ufw. It needs no `build-essential`, no `python3`, no pnpm and no swap file: the version arrives with the backend and console built and node-pty compiled.
 
 Node is Cloudgate's own, as OpenTofu is: both units run `/usr/local/share/cloudgate/node/bin/node`, never `/usr/local/bin/node`, and the Node step writes and removes nothing in `/usr/local/bin`, `/usr/local/lib` or `/usr/local/include`, so a Node of your own there is left alone. The install as a whole still writes one file there, `/usr/local/bin/nixpacks`, because a build runs `nixpacks` by name ([§7](#docker-and-nixpacks)). A command from `/opt/cloudgate/backend/dist/commands/` run by hand takes that path too.
@@ -229,6 +231,12 @@ systemctl restart cloudgate-console
 A console with no `CLOUDGATE_API_URL`, or one that does not start with `http://` or `https://`, does not start at all: `journalctl -u cloudgate-console` shows a sentence naming the variable. It used to fall back to `http://localhost:4000`, which made every operator's browser dial its own machine.
 
 The Cloudgate CLI needs the same origin for its log streams, so the backend advertises it too: `CLOUDGATE_API_URL` in `/etc/default/cloudgate-backend`, which the install script writes with the same value, is what the public `GET /settings/about` answers as `apiUrl`. Move the API and you change both files and restart both units.
+
+### A hostname under an HSTS-preloaded domain needs HTTPS
+
+Chrome, and every browser that uses the HSTS preload list, forces HTTPS for whole top-level domains such as `.app`, `.dev` and `.page`. It rewrites `http://staging.example.app:3000` to `https://` before sending anything, finds no TLS on the console's port, and shows an error page; a sign-in fetch from a page that did load fails with `Failed to fetch`. There is no per-site override for a preloaded domain.
+
+The install serves the console and the API over plain HTTP, so a public host under such a domain gives a console no browser can open. Either name the host by its IP address or by a name under a domain that is not preloaded, or put HTTPS in front of both ports (a reverse proxy with a certificate, keeping one hostname for the reason above) and point `CLOUDGATE_API_URL` at the `https://` address. The Hosted instance is unaffected: Traefik serves it over HTTPS.
 
 ### A console domain is a second hostname, and a stock install refuses sign-in on it
 
