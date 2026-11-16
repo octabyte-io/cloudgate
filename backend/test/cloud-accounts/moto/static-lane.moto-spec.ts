@@ -43,9 +43,14 @@ import { normalisePlan } from './normalise-plan';
  * `static-spa-change`, `static-drift`, `static-domain-certificate`,
  * `static-domain-attach`).
  *
- * moto never validates a certificate: it stays pending, and moto puts it on
- * the distribution all the same. That a Domain's certificate is issued, and
- * the site answers on it, is the walk by hand's (5d).
+ * moto issues a certificate by itself, with no DNS answered: it reads back
+ * `PENDING_VALIDATION` until `MOTO_ACM_VALIDATION_WAIT` seconds after the
+ * request (60 by default), then `ISSUED`. The lane sets that wait to 0 and
+ * attaches only once moto says `ISSUED`, as Cloudgate attaches only once ACM
+ * does. With the default the issue landed wherever 60 s fell on the clock,
+ * and the next plan's `resource_drift` carried the certificate's `status`
+ * (#77). That a Domain's certificate is issued by DNS, and the site answers
+ * on it, is the walk by hand's (5d).
  *
  * Needs what the bucket lane needs: `OPENTOFU_BINARY`,
  * `OPENTOFU_PROVIDER_MIRROR`, Docker, and `123456789012.localhost` resolving
@@ -204,6 +209,35 @@ async function editDistribution(edit: (xml: string) => string) {
   if (!put.ok) throw new Error(`UpdateDistribution: ${await put.text()}`);
 }
 
+/**
+ * Waits until ACM, in moto, lists every certificate as `ISSUED`: what
+ * Cloudgate's poll waits for before a Domain's run attaches one.
+ */
+async function certificatesIssued() {
+  for (let tries = 0; tries < 30; tries += 1) {
+    const response = await fetch(motoUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `AWS4-HMAC-SHA256 Credential=moto/20260101/${CLOUDFRONT_CERTIFICATE_REGION}/acm/aws4_request, SignedHeaders=host, Signature=0`,
+        'Content-Type': 'application/x-amz-json-1.1',
+        'X-Amz-Target': 'CertificateManager.ListCertificates',
+      },
+      body: '{}',
+    });
+    if (!response.ok) {
+      throw new Error(`ListCertificates: ${await response.text()}`);
+    }
+    const { CertificateSummaryList: listed } = (await response.json()) as {
+      CertificateSummaryList: { Status: string }[];
+    };
+    if (listed.length > 0 && listed.every((c) => c.Status === 'ISSUED')) {
+      return;
+    }
+    await new Promise((done) => setTimeout(done, 1000));
+  }
+  throw new Error('moto never issued the certificate');
+}
+
 /** One S3 REST call to moto, unsigned: moto checks no signature. */
 async function s3(method: string, query: string) {
   const response = await fetch(`${motoUrl}/${BUCKET}?${query}`, {
@@ -227,6 +261,8 @@ beforeAll(async () => {
   [postgres, moto] = await Promise.all([
     new PostgreSqlContainer(POSTGRES_IMAGE).withDatabase('cloudgate').start(),
     new GenericContainer(MOTO_IMAGE)
+      // Issued at its first read after the request, not 60 s on (#77).
+      .withEnvironment({ MOTO_ACM_VALIDATION_WAIT: '0' })
       .withExposedPorts(5000)
       .withWaitStrategy(Wait.forHttp('/moto-api/', 5000))
       .start(),
@@ -397,6 +433,7 @@ describe("a static site's generated definition, against moto", () => {
   });
 
   it('plans the issued certificate onto the distribution as its alternate domain name, and nothing else', async () => {
+    await certificatesIssued();
     const run = () => siteRun(true, false, [domain(true)]);
     const show = shown(await runner.plan(run()));
 

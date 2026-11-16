@@ -105,7 +105,7 @@
             "region": "us-east-1",
             "renewal_eligibility": "INELIGIBLE",
             "renewal_summary": [],
-            "status": "PENDING_VALIDATION",
+            "status": "ISSUED",
             "subject_alternative_names": [
               "docs.example.com"
             ],
@@ -657,7 +657,7 @@
           "region": "us-east-1",
           "renewal_eligibility": "INELIGIBLE",
           "renewal_summary": [],
-          "status": "PENDING_VALIDATION",
+          "status": "ISSUED",
           "subject_alternative_names": [
             "docs.example.com"
           ],
@@ -709,7 +709,7 @@
           "region": "us-east-1",
           "renewal_eligibility": "INELIGIBLE",
           "renewal_summary": [],
-          "status": "PENDING_VALIDATION",
+          "status": "ISSUED",
           "subject_alternative_names": [
             "docs.example.com"
           ],
@@ -1920,7 +1920,7 @@
               "region": "us-east-1",
               "renewal_eligibility": "INELIGIBLE",
               "renewal_summary": [],
-              "status": "PENDING_VALIDATION",
+              "status": "ISSUED",
               "subject_alternative_names": [
                 "docs.example.com"
               ],
