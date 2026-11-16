@@ -418,6 +418,26 @@ describe("SetupFormView", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it("points a Project with no Environment at the page that adds one, instead of asking to pick one", async () => {
+    const onSubmit = vi.fn();
+    render(
+      <SetupFormView
+        form={{ ...FORM, asked: [], environments: [] }}
+        projectId="prj-1"
+        onSubmit={onSubmit}
+      />,
+    );
+
+    expect(
+      screen
+        .getByRole("link", { name: "Add an Environment to this Project" })
+        .getAttribute("href"),
+    ).toBe("/projects/prj-1");
+    submit();
+    await waitFor(() => expect(onSubmit).not.toHaveBeenCalled());
+    expect(screen.queryByText("Pick an Environment")).toBeNull();
+  });
+
   it("puts back the Environment's generated host after it was cleared", async () => {
     renderForm(vi.fn(), STACKED);
 

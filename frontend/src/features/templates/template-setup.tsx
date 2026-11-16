@@ -98,6 +98,7 @@ export function TemplateSetup({ templateId }: { templateId: string }) {
         <SetupFormView
           key={projectId}
           form={form.data}
+          projectId={creating ? undefined : projectId}
           newProject={
             creating
               ? {
