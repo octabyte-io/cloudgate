@@ -79,7 +79,9 @@ export function joinContainers(input: {
   // could be read at all — an unreadable file must not produce a table of ghosts.
   for (const service of declared ?? []) {
     if (claimed.has(service)) continue;
-    const task = tasks?.find((row) => row.name.startsWith(`${appName}_${service}.`));
+    const task = tasks?.find((row) =>
+      row.name.startsWith(`${appName}_${service}.`),
+    );
     rows.push({
       service,
       containerId: null,
@@ -106,17 +108,28 @@ function serviceOf(
   appName: string,
   declared: string[] | undefined,
 ): string | null {
+  // The whole of what follows the service must be Docker's own suffix (`-<n>`, or
+  // `.<slot>.<taskId>`), not just begin with a separator: `ackee` must not claim
+  // `<app>-ackee-mongo-1`, which only *starts* with `<app>-ackee-`.
   for (const service of declared ?? []) {
+    const composeName = `${appName}-${service}`;
+    const swarmName = `${appName}_${service}`;
     if (
-      containerName.startsWith(`${appName}-${service}-`) ||
-      containerName.startsWith(`${appName}_${service}.`) ||
-      containerName === `${appName}-${service}` ||
-      containerName === `${appName}_${service}`
+      containerName === composeName ||
+      containerName === swarmName ||
+      isComposeReplica(containerName, composeName) ||
+      containerName.startsWith(`${swarmName}.`)
     ) {
       return service;
     }
   }
   return null;
+}
+
+/** `<app>-<service>-<n>`: the prefix, a hyphen, and nothing but the replica number. */
+function isComposeReplica(containerName: string, composeName: string): boolean {
+  if (!containerName.startsWith(`${composeName}-`)) return false;
+  return /^\d+$/.test(containerName.slice(composeName.length + 1));
 }
 
 /** The Swarm task whose name matches this container's, when there is one. */
@@ -125,6 +138,10 @@ function matchTask(
   tasks: SwarmTask[] | undefined,
 ): SwarmTask | undefined {
   // A task is `<stack>_<service>.<slot>` and its container is that plus
-  // `.<taskId>`, so the task's name is a prefix of the container's.
-  return (tasks ?? []).find((task) => containerName.startsWith(task.name));
+  // `.<taskId>`, so the task's name is a prefix of the container's — up to the
+  // dot, or `<stack>_web.1` would claim slot 10's `<stack>_web.10.<taskId>`.
+  return (tasks ?? []).find(
+    (task) =>
+      containerName === task.name || containerName.startsWith(`${task.name}.`),
+  );
 }
