@@ -64,7 +64,7 @@ export function filterTemplates(
 ): TemplateSummary[] {
   const text = query.trim().toLowerCase();
 
-  return templates.filter((template) => {
+  const matching = templates.filter((template) => {
     if (tags.size > 0 && !template.tags.some((tag) => tags.has(tag))) {
       return false;
     }
@@ -76,6 +76,18 @@ export function filterTemplates(
       template.tags.some((tag) => tag.includes(text))
     );
   });
+  if (text === "") return matching;
+  // A template whose name holds the search comes first ("uptime" puts Uptime
+  // Kuma above the monitors that only mention uptime), a name that starts
+  // with it before one that holds it later. The sort is stable, so each group
+  // keeps the catalogue's own order.
+  const rank = (template: TemplateSummary) => {
+    const name = template.name.toLowerCase();
+    if (name.startsWith(text)) return 0;
+    if (name.includes(text)) return 1;
+    return 2;
+  };
+  return matching.sort((a, b) => rank(a) - rank(b));
 }
 
 /** How many cards a page of the catalogue holds. */

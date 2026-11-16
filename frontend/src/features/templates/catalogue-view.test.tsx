@@ -142,6 +142,23 @@ describe("CatalogueView", () => {
     ]);
   });
 
+  it("puts a Template whose name holds the search above ones that only mention it", () => {
+    const monitor: TemplateSummary = {
+      ...GHOST,
+      id: "checkmate",
+      name: "Checkmate",
+      description: "Watches your uptime and alerts you.",
+    };
+    render(<Harness templates={[monitor, KUMA]} />);
+
+    fireEvent.change(search(), { target: { value: "uptime" } });
+
+    expect(cards().map((card) => card.getAttribute("aria-label"))).toEqual([
+      "Uptime Kuma",
+      "Checkmate",
+    ]);
+  });
+
   it("filters by tag", async () => {
     render(<Harness templates={[KUMA, GHOST]} />);
 
