@@ -973,11 +973,15 @@ describe('install.sh (the one-command install)', () => {
       // Every tool the run can find, ssh-keygen apart; apt-get puts it back.
       const tools = path.join(scratch, 'tools');
       fs.mkdirSync(tools);
+      // By name, the first on PATH winning as a lookup does: existsSync follows
+      // the link, so a tool that is itself a dangling link (one on the CI
+      // runner is) would be linked twice when /bin and /usr/bin both list it.
+      const linked = new Set<string>(['ssh-keygen']);
       for (const dir of (process.env.PATH ?? '').split(path.delimiter)) {
         if (!dir || !fs.existsSync(dir)) continue;
         for (const tool of fs.readdirSync(dir)) {
-          if (tool === 'ssh-keygen' || fs.existsSync(path.join(tools, tool)))
-            continue;
+          if (linked.has(tool)) continue;
+          linked.add(tool);
           fs.symlinkSync(path.join(dir, tool), path.join(tools, tool));
         }
       }
