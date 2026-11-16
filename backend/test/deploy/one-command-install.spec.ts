@@ -619,6 +619,54 @@ describe('install.sh (the one-command install)', () => {
       expect(called()).toContain('host=cloud.example.com\n');
     });
 
+    // Browsers force HTTPS for every name under an HSTS-preloaded TLD, and
+    // the Self-hosted console is plain HTTP, so no browser opens it (#80).
+    it.each([
+      'staging.cloudgate.example.app',
+      'cloud.example.DEV',
+      'console.example.page',
+    ])(
+      'warns that %s, under an HSTS-preloaded TLD, needs HTTPS in front, and installs anyway',
+      (host) => {
+        releases('v0.10.0');
+        publish('0.10.0');
+
+        const warned = install({ CLOUDGATE_PUBLIC_HOST: host });
+
+        expect(warned.status).toBe(0);
+        expect(warned.stderr).toContain(`Warning: ${host} is under`);
+        expect(warned.stderr).toContain('HTTPS');
+        expect(warned.stderr).toContain('docs/deploy.md');
+        expect(called()).toContain(`host=${host}\n`);
+      },
+    );
+
+    it.each(['cloud.example.com', 'app.example.com', '203.0.113.10'])(
+      'gives no HSTS warning for %s',
+      (host) => {
+        releases('v0.10.0');
+        publish('0.10.0');
+
+        const plain = install({ CLOUDGATE_PUBLIC_HOST: host });
+
+        expect(plain.status).toBe(0);
+        expect(plain.stderr).not.toContain('HSTS');
+      },
+    );
+
+    it('gives no HSTS warning on the Hosted instance, which Traefik serves over HTTPS', () => {
+      releases('v0.10.0');
+      publish('0.10.0');
+
+      const hosted = install({
+        CLOUDGATE_PUBLIC_HOST: 'cloud.example.app',
+        HOSTED_MODE: 'true',
+      });
+
+      expect(hosted.status).toBe(0);
+      expect(hosted.stderr).not.toContain('HSTS');
+    });
+
     // A re-run with no CLOUDGATE_PUBLIC_HOST reuses what the env files hold,
     // which someone may have edited since.
     it.each([
@@ -1822,6 +1870,87 @@ describe('deploy/install.sh', () => {
         expect(said.stdout).not.toContain('.previous');
         expect(said.stdout).not.toContain('pg_restore');
       });
+    });
+  });
+
+  /**
+   * What a Self-hosted run ends on (#79), the lines finish_banner sets beside
+   * the mark. They send the operator to
+   * /sign-up only while sign-up is open, before the first account owns the
+   * instance; a re-run on a box that has an owner sends them to /sign-in.
+   * `curl` is the one boundary: it answers `GET /auth/sign-up-open` with
+   * the body the backend gives in that state.
+   */
+  describe('self_hosted_done', () => {
+    function done(signUpOpen: string) {
+      const fns = ['log', 'self_hosted_done'].map((name) => {
+        const fn = source().match(
+          new RegExp(
+            `^${name}\\(\\) \\{(?: .*\\}\\n|\\n[\\s\\S]*?\\n\\}\\n)`,
+            'm',
+          ),
+        );
+        if (!fn) throw new Error(`no ${name} in deploy/install.sh`);
+        return fn[0];
+      });
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(
+        path.join(bin, 'curl'),
+        `#!/bin/sh\necho "curl $*" >> "${calls}"\nprintf '%s' '${signUpOpen}'\n`,
+        { mode: 0o755 },
+      );
+      return spawnSync(
+        'bash',
+        [
+          '-c',
+          `set -euo pipefail; API_PORT=4000; VERSION=0.3.4; CONSOLE_ORIGIN=http://203.0.113.7:3000; ${fns.join('')} self_hosted_done; printf '%s\\n' "\${finish[@]}"`,
+        ],
+        {
+          encoding: 'utf8',
+          env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+        },
+      );
+    }
+
+    it('sends the operator to /sign-up while the first account has not claimed the instance', () => {
+      const said = done('{"open":true,"state":"unclaimed"}');
+
+      expect(said.status).toBe(0);
+      expect(said.stdout).toBe(
+        [
+          'Cloudgate 0.3.4 is installed.',
+          '',
+          'Open http://203.0.113.7:3000/sign-up',
+          'The first account owns the instance.',
+          '',
+        ].join('\n'),
+      );
+      expect(said.stdout).not.toContain('/sign-in');
+      expect(fs.readFileSync(calls, 'utf8')).toContain(
+        'http://127.0.0.1:4000/auth/sign-up-open',
+      );
+    });
+
+    it('sends the operator to /sign-in, naming the version now running, once sign-up is closed', () => {
+      const said = done('{"open":false,"state":"closed"}');
+
+      expect(said.status).toBe(0);
+      expect(said.stdout).toBe(
+        [
+          'Cloudgate 0.3.4 is running.',
+          '',
+          'Sign in at http://203.0.113.7:3000/sign-in',
+          '',
+        ].join('\n'),
+      );
+      expect(said.stdout).not.toContain('/sign-up');
+      expect(said.stdout).not.toContain('first account owns');
+    });
+
+    it('ends every Self-hosted run with it', () => {
+      expect(code()).toMatch(
+        /if \[ -z "\$HOSTED_MODE" \]; then\n\s*self_hosted_done\n\s*else/,
+      );
     });
   });
 
