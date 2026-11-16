@@ -99,8 +99,16 @@ export interface PlanStepResult {
   readonly serviceType: ServiceType | null;
   /** The Service it wrote; `null` for a create that failed before writing. */
   readonly serviceId: string | null;
-  /** The generated sslip.io host of a plan-created `web`. */
+  /**
+   * The generated sslip.io host of a plan-created `web`, or the first Domain
+   * of a Template's compose part.
+   */
   readonly domain: string | null;
+  /**
+   * A Template's compose part's Domains after {@link domain} (gonic's
+   * second host, for its file browser). Absent where there are none.
+   */
+  readonly moreDomains?: readonly string[];
   readonly deploy: PlanStepDeploy | null;
   /** A destroy's leftovers; `null` when it left nothing, or for a non-destroy. */
   readonly leftovers: PlanStepLeftovers | null;

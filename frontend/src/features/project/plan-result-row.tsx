@@ -99,6 +99,12 @@ export function ResultRow({ result }: { result: PlanStepResult }) {
             Domain <span className="font-mono">{result.domain}</span>
           </p>
         ) : null}
+        {result.moreDomains?.map((host) => (
+          // A Template stack's other Domains (gonic's file browser).
+          <p key={host}>
+            Domain <span className="font-mono">{host}</span>
+          </p>
+        ))}
         {result.domainPortMove ? (
           // A `web.port` change moved its Domains on the old port (ADR-0068).
           <p>{domainPortMoveSentence(result.domainPortMove)}</p>
