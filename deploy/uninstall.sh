@@ -23,6 +23,12 @@
 # /root/cloudgate-live-test/env.migrated, once the operator has typed the
 # instance's public host; any other answer changes nothing.
 #
+# The Swarm services and containers of the Applications and other Services the
+# instance deployed on this host keep running either way: a reinstall on the
+# kept instance manages them again. --purge leaves nothing to manage them, so
+# before the database goes it lists them and offers to remove them once it is
+# dropped; only y or yes removes them, and their volumes stay.
+#
 # Docker, Postgres, the swarm, cloudgate-network, ufw and the cloudgate user
 # stay: they may serve more than Cloudgate. So does a git checkout an install
 # moved to /opt/cloudgate.checkout-<date>, which may hold the operator's own
@@ -115,6 +121,88 @@ if [ -n "$purge" ]; then
   fi
 fi
 
+# The Swarm services and standalone containers this instance deployed on the
+# platform host. Its database is the only record of them: Cloudgate labels
+# nothing as its own, so a Docker object is the instance's when its name is
+# one the database holds. An Application, a Database, a Bucket or a preview
+# runs as the Swarm service named its app_name; a Swarm Compose stack's
+# services carry its app_name as their stack namespace; a Docker Compose
+# stack's containers carry it as their Compose project. A plain uninstall
+# reads none of this: the kept database still names them, so a reinstall
+# manages them again.
+#
+# Every table with an app_name column but github (the GitHub App's own name)
+# is read; uninstall.spec.ts fails when a table is added without it.
+deployed_names() {
+  su - postgres -c "psql -d cloudgate -X -q -tA -v ON_ERROR_STOP=1" <<'SQL'
+SELECT app_name FROM application
+UNION SELECT app_name FROM preview_deployment
+UNION SELECT app_name FROM compose
+UNION SELECT app_name FROM postgres
+UNION SELECT app_name FROM mysql
+UNION SELECT app_name FROM mariadb
+UNION SELECT app_name FROM mongo
+UNION SELECT app_name FROM redis
+UNION SELECT app_name FROM libsql
+UNION SELECT app_name FROM bucket
+UNION SELECT app_name FROM backup
+UNION SELECT app_name FROM schedule
+UNION SELECT app_name FROM volume_backup;
+SQL
+}
+
+deployed_services=()
+deployed_containers=()
+remove_deployed=''
+if [ -n "$purge" ]; then
+  declare -A deployed=()
+  if names="$(deployed_names)"; then
+    while IFS= read -r name; do
+      if [ -n "$name" ]; then deployed[$name]=1; fi
+    done <<<"$names"
+  else
+    echo "The cloudgate database could not be read, so what this instance deployed is not listed:" >&2
+    echo "its Applications and other Services keep running. docker service ls and docker ps name them." >&2
+  fi
+  if [ "${#deployed[@]}" -gt 0 ]; then
+    # Neither listing is an error to stop on: a host that is no swarm manager,
+    # or whose Docker is down, runs nothing of the instance's.
+    service_ids="$(docker service ls -q 2>/dev/null </dev/null)" || service_ids=''
+    if [ -n "$service_ids" ]; then
+      # shellcheck disable=SC2086 # one argument per service id
+      while IFS='|' read -r name stack; do
+        if [ -n "${deployed[$name]+x}" ] || { [ -n "$stack" ] && [ -n "${deployed[$stack]+x}" ]; }; then
+          deployed_services+=("$name")
+        fi
+      done < <(docker service inspect \
+        --format '{{.Spec.Name}}|{{index .Spec.Labels "com.docker.stack.namespace"}}' \
+        $service_ids 2>/dev/null </dev/null || true)
+    fi
+    while IFS='|' read -r name project; do
+      if [ -n "$project" ] && [ -n "${deployed[$project]+x}" ]; then
+        deployed_containers+=("$name")
+      fi
+    done < <(docker ps -a --filter label=com.docker.compose.project \
+      --format '{{.Names}}|{{.Label "com.docker.compose.project"}}' 2>/dev/null </dev/null || true)
+  fi
+
+  if [ "${#deployed_services[@]}" -gt 0 ] || [ "${#deployed_containers[@]}" -gt 0 ]; then
+    echo
+    echo "These run the Applications and other Services this instance deployed on this platform host."
+    echo "They keep running unmanaged once its database is gone: nothing is left to stop, update or"
+    echo "remove them."
+    for name in "${deployed_services[@]}"; do echo "  Swarm service $name"; done
+    for name in "${deployed_containers[@]}"; do echo "  container $name"; done
+    printf 'Remove them as well, once the database is dropped? Their volumes are kept. [y/N]: '
+    answer=''
+    IFS= read -r answer || true
+    case "$answer" in
+      [yY] | [yY][eE][sS]) remove_deployed=1 ;;
+    esac
+    echo
+  fi
+fi
+
 # The Hosted updater runs in its own transient unit (deploy/hosted-update.sh),
 # which has no file to remove; left running, it would install Cloudgate again.
 if systemctl is-active --quiet cloudgate-update.service; then
@@ -176,6 +264,27 @@ SQL
   if [ -e "$OLD_SECRETS_FILE" ]; then
     rm -f "$OLD_SECRETS_FILE"
     echo "  and the old secrets in $OLD_SECRETS_FILE"
+  fi
+  # Only once the drop has gone through: a failed one keeps the instance, and
+  # what it deployed is still its own.
+  if [ "${#deployed_services[@]}" -gt 0 ] || [ "${#deployed_containers[@]}" -gt 0 ]; then
+    if [ -n "$remove_deployed" ]; then
+      log "Removing the Swarm services and containers of this instance's Applications and other Services; their volumes are kept"
+      if [ "${#deployed_services[@]}" -gt 0 ]; then
+        docker service rm "${deployed_services[@]}"
+      fi
+      if [ "${#deployed_containers[@]}" -gt 0 ]; then
+        docker rm -f "${deployed_containers[@]}"
+      fi
+    else
+      log "Left running unmanaged: the Swarm services and containers of this instance's Applications and other Services"
+      for name in "${deployed_services[@]}"; do
+        echo "  Swarm service $name: remove it with docker service rm $name"
+      done
+      for name in "${deployed_containers[@]}"; do
+        echo "  container $name: remove it with docker rm -f $name"
+      done
+    fi
   fi
 else
   # The instance: a reinstall, or a restore on another platform host (docs/deploy.md

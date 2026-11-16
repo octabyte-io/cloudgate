@@ -2,6 +2,9 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { is } from 'drizzle-orm';
+import { getTableConfig, PgTable } from 'drizzle-orm/pg-core';
+import * as schema from '../../src/db/schema';
 
 /**
  * `deploy/uninstall.sh`, which takes Cloudgate off the platform host and keeps
@@ -10,8 +13,10 @@ import * as path from 'node:path';
  *
  * The boundaries are shimmed, as `one-command-install.spec.ts` shims them:
  * `systemctl` and `docker` record each call (`docker container inspect` finds
- * `cloudgate-traefik` while the test says it runs), `su` runs the command it
- * is handed, `psql` records its arguments and the SQL it reads, and `id` says
+ * `cloudgate-traefik` while the test says it runs, and the host's Swarm
+ * services and containers are the ones `SERVICES` and `CONTAINERS` name), `su`
+ * runs the command it is handed, `psql` records its arguments and the SQL it
+ * reads and answers a query with the names `APP_NAMES` holds, and `id` says
  * the run is root. `INSTALL_ROOT` points every path the script touches into
  * scratch.
  */
@@ -47,15 +52,28 @@ if [ "$1" = is-active ]; then
   exit 3
 fi`,
   );
+  // SERVICES holds `name|stack namespace` and CONTAINERS `name|Compose
+  // project`, space-separated: what `docker service inspect` and `docker ps`
+  // print with the uninstall's formats.
   shim(
     'docker',
     `if [ "$1 $2" = "container inspect" ]; then [ -e "${traefik}" ]; exit; fi
 echo "docker $*" >> "${calls}"
 [ "$1 $2 $3" = "rm -f cloudgate-traefik" ] && rm -f "${traefik}"
+case "$1 $2" in
+  "service ls") for entry in \${SERVICES:-}; do echo "\${entry%%|*}"; done ;;
+  "service inspect") for entry in \${SERVICES:-}; do echo "$entry"; done ;;
+  "ps -a") for entry in \${CONTAINERS:-}; do echo "$entry"; done ;;
+esac
 exit 0`,
   );
   shim('su', `echo "su $1 $2" >> "${calls}"\nexec sh -c "$4"`);
-  shim('psql', `echo "psql $*" >> "${calls}"\ncat >> "${calls}"`);
+  shim(
+    'psql',
+    `echo "psql $*" >> "${calls}"
+cat >> "${calls}"
+case " $* " in *" -tA "*) for name in \${APP_NAMES:-}; do echo "$name"; done ;; esac`,
+  );
   // `id -u` says who runs it; `id <user>` finds only the users the test says
   // exist.
   shim(
@@ -133,6 +151,21 @@ const REMOTE_UPDATER = [
 function remoteUpdater() {
   for (const file of REMOTE_UPDATER) put(file, 'hosted\n');
 }
+
+/**
+ * What the instance deployed on the platform host: an Application and a
+ * Database by their Swarm service's name, a Swarm Compose stack by its
+ * services' stack namespace, a Docker Compose stack by its containers'
+ * project. `my-own` and `my-own-web-1` are the operator's, in no table.
+ */
+const DEPLOYED = {
+  env: {
+    APP_NAMES: 'app-r42a2o postgres-k2m9x4 compose-q7w3e1 compose-z8v6b5',
+    SERVICES:
+      'app-r42a2o| postgres-k2m9x4| compose-q7w3e1_web|compose-q7w3e1 my-own|',
+    CONTAINERS: 'compose-z8v6b5-web-1|compose-z8v6b5 my-own-web-1|my-own',
+  },
+};
 
 /** Runs the script on the scratch host with `args`, `input` on its stdin. */
 function uninstall(
@@ -278,6 +311,19 @@ describe('deploy/uninstall.sh', () => {
 
       expect(called().filter((line) => line.startsWith('userdel'))).toEqual([]);
       expect(exists('etc/sudoers.d/operator')).toBe(true);
+    });
+
+    // A reinstall on the kept instance manages them again.
+    it('lists, asks about and removes nothing the instance deployed', () => {
+      installed();
+
+      const ran = uninstall([], DEPLOYED);
+
+      expect(ran.status).toBe(0);
+      expect(ran.stdout).not.toContain('app-r42a2o');
+      expect(called().join('\n')).not.toMatch(
+        /docker (service|ps)|service rm|-tA/,
+      );
     });
   });
 
@@ -428,7 +474,9 @@ describe('deploy/uninstall.sh', () => {
         'DROP ROLE IF EXISTS cloudgate;',
       ]);
       // The units that hold connections to it are gone first.
-      expect(called().indexOf('su - postgres')).toBeGreaterThan(
+      expect(
+        called().indexOf('DROP DATABASE IF EXISTS cloudgate WITH (FORCE);'),
+      ).toBeGreaterThan(
         called().indexOf('systemctl disable --now cloudgate-backend.service'),
       );
       for (const gone of INSTANCE) {
@@ -532,6 +580,148 @@ describe('deploy/uninstall.sh', () => {
       for (const kept of INSTANCE) {
         expect({ kept, exists: exists(kept) }).toEqual({ kept, exists: true });
       }
+    });
+
+    describe('what the instance deployed on this host', () => {
+      it('lists its Swarm services and standalone containers before dropping the database, and keeps them running by default', () => {
+        installed();
+
+        const ran = uninstall(['--purge'], {
+          input: '203.0.113.10\n\n',
+          ...DEPLOYED,
+        });
+
+        expect(ran.stderr).toBe('');
+        expect(ran.status).toBe(0);
+        const asked = ran.stdout.slice(0, ran.stdout.indexOf('[y/N]'));
+        for (const listed of [
+          'app-r42a2o',
+          'postgres-k2m9x4',
+          'compose-q7w3e1_web',
+          'compose-z8v6b5-web-1',
+        ]) {
+          expect(asked).toContain(listed);
+        }
+        expect(asked).toContain('keep running');
+        expect(asked).not.toContain('my-own');
+        // Read from the database while it is still there.
+        const read = called().findIndex((line) => line.includes('-tA'));
+        expect(read).toBeGreaterThan(-1);
+        expect(read).toBeLessThan(
+          called().indexOf('DROP DATABASE IF EXISTS cloudgate WITH (FORCE);'),
+        );
+        expect(
+          called().filter((line) => /^docker (service rm|rm -f) /.test(line)),
+        ).toEqual(['docker rm -f cloudgate-traefik']);
+        expect(sql()).toHaveLength(3);
+        // The closing word names what is left running, and how to remove it.
+        const after = ran.stdout.slice(ran.stdout.indexOf('[y/N]'));
+        expect(after).toContain('app-r42a2o');
+        expect(after).toContain('docker service rm');
+      });
+
+      it('keeps them running when its input ends at the question', () => {
+        installed();
+
+        const ran = uninstall(['--purge'], {
+          input: '203.0.113.10\n',
+          ...DEPLOYED,
+        });
+
+        expect(ran.status).toBe(0);
+        expect(called().join('\n')).not.toMatch(/docker service rm/);
+        expect(sql()).toHaveLength(3);
+      });
+
+      it.each([['y'], ['yes'], ['Y']])(
+        'removes them, and only them, once the database is dropped, on %s',
+        (answer) => {
+          installed();
+
+          const ran = uninstall(['--purge'], {
+            input: `203.0.113.10\n${answer}\n`,
+            ...DEPLOYED,
+          });
+
+          expect(ran.stderr).toBe('');
+          expect(ran.status).toBe(0);
+          const removed = called().filter((line) =>
+            /^docker (service rm|rm -f) /.test(line),
+          );
+          expect(removed).toEqual([
+            'docker rm -f cloudgate-traefik',
+            'docker service rm app-r42a2o postgres-k2m9x4 compose-q7w3e1_web',
+            'docker rm -f compose-z8v6b5-web-1',
+          ]);
+          expect(
+            called().indexOf(
+              'docker service rm app-r42a2o postgres-k2m9x4 compose-q7w3e1_web',
+            ),
+          ).toBeGreaterThan(
+            called().indexOf('DROP DATABASE IF EXISTS cloudgate WITH (FORCE);'),
+          );
+        },
+      );
+
+      // A failed drop keeps the instance, so what it deployed is still its.
+      it('removes nothing it deployed when the database cannot be dropped', () => {
+        installed();
+        shim(
+          'psql',
+          `echo "psql $*" >> "${calls}"
+cat > /dev/null
+case " $* " in *" -tA "*) echo app-r42a2o; exit 0 ;; esac
+exit 1`,
+        );
+
+        const ran = uninstall(['--purge'], {
+          input: '203.0.113.10\ny\n',
+          ...DEPLOYED,
+        });
+
+        expect(ran.status).not.toBe(0);
+        expect(called().join('\n')).not.toMatch(/docker service rm/);
+      });
+
+      it('asks nothing when it deployed nothing on this host', () => {
+        installed();
+
+        const ran = uninstall(['--purge'], {
+          input: '203.0.113.10\n',
+          env: { APP_NAMES: 'app-r42a2o', SERVICES: 'my-own|' },
+        });
+
+        expect(ran.stderr).toBe('');
+        expect(ran.status).toBe(0);
+        expect(ran.stdout).not.toContain('[y/N]');
+        expect(sql()).toHaveLength(3);
+      });
+
+      // Every column the instance names a Docker object by: a deployable kind
+      // added with an app_name the uninstall does not read would be left
+      // running unmanaged again. The GitHub App's name names no Docker object.
+      it('reads the name from every table with an app_name column but the GitHub App’s', () => {
+        const tables: string[] = [];
+        for (const value of Object.values(schema)) {
+          if (!is(value, PgTable)) continue;
+          const { name, columns } = getTableConfig(value);
+          if (name === 'github') continue;
+          if (columns.some((column) => column.name === 'app_name')) {
+            tables.push(name);
+          }
+        }
+        tables.sort();
+        const read = [
+          ...fs
+            .readFileSync(script, 'utf8')
+            .matchAll(/SELECT app_name FROM (\w+)/g),
+        ]
+          .map(([, table]) => table)
+          .sort();
+
+        expect(tables.length).toBeGreaterThan(0);
+        expect(read).toEqual(tables);
+      });
     });
   });
 

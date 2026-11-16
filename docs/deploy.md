@@ -697,6 +697,13 @@ when an earlier install left it, `/root/cloudgate-live-test/env.migrated` (old s
 moved aside and no longer reads). Any other answer, or none, changes nothing. If the drop fails, the files are kept, since without the secrets the
 database cannot be read.
 
+With the database gone, nothing is left to stop, update or remove the Applications and other
+Services the instance deployed on the platform host, so before it drops the database `--purge`
+lists their Swarm services and containers, found by the names the database holds, and asks
+whether to remove them as well. Only `y` or `yes` removes them, once the drop has gone through, and
+their volumes are kept; any other answer, or none, leaves them running and names the
+`docker service rm` or `docker rm -f` that removes each one by hand.
+
 The script is removed with `/opt/cloudgate`, so to remove a kept instance afterwards, do it by hand:
 
 ```bash
