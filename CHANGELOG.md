@@ -2,7 +2,15 @@
 
 ## Unreleased
 
-## 0.3.4 (2026-11-16)
+## 0.3.5 (2026-11-16)
+
+### The first signed version, published for amd64 and arm64
+
+0.3.5 is the first Cloudgate version published with a signature on each checksum and with an arm64 tarball beside the amd64 one. It carries everything listed under 0.3.4 and 0.3.3, neither of which was published. Their release run failed on a Moto-lane test whose certificate turned "issued" on a 60-second moto timer, so the test counted it as drift (#77); the lane now waits for the certificate to be issued before it attaches it. Nothing in the install or the console differs from what 0.3.3 lists.
+
+**What to do on upgrade**: nothing.
+
+## 0.3.4 (2026-11-16, not published)
 
 ### The upgrade checks have a version to move to
 
@@ -10,7 +18,7 @@ No change to what the install or the console does. 0.3.4 carries a test fix to t
 
 **What to do on upgrade**: nothing.
 
-## 0.3.3 (2026-11-16)
+## 0.3.3 (2026-11-16, not published)
 
 ### Every Cloudgate version is signed, and the install refuses one whose signature does not verify
 
