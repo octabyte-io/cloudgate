@@ -132,6 +132,18 @@ export interface SetupForm {
   domains: SetupDomain[];
   environments: SetupEnvironment[];
   deployTargets: DeployTargetRefusals;
+  /**
+   * For a new Project, each compose Domain's generated sslip.io host on each
+   * Deploy target that can generate one, which the form starts from when
+   * that target is picked; null for an existing Project.
+   */
+  newProjectHosts: NewProjectHosts | null;
+}
+
+/** A new Project's generated hosts: by Server id, and the platform host's. */
+export interface NewProjectHosts {
+  servers: Record<string, Record<string, string>>;
+  platformHost: Record<string, string> | null;
 }
 
 /** Where a setup goes: an existing Project's Environment, or a new Project. */

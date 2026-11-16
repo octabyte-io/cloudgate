@@ -4,16 +4,37 @@ import {
 } from '../../../src/templates/setup/setup-domains';
 
 describe('templateDomainHttps', () => {
-  it('serves the generated host over plain HTTP on a Server, as a plan-made web and a console-generated Domain are', () => {
-    expect(templateDomainHttps({ cloud: false, generated: true })).toBe(false);
+  const on = (where: { cloud: boolean; generated: boolean }) => ({
+    ...where,
+    generatedHttps: false,
+  });
+
+  it('serves the generated host over plain HTTP on a Server whose address no certificate authority can reach', () => {
+    expect(templateDomainHttps(on({ cloud: false, generated: true }))).toBe(
+      false,
+    );
+  });
+
+  it('serves the generated host over HTTPS on a Server with a public address, as a plan-made web is', () => {
+    expect(
+      templateDomainHttps({
+        cloud: false,
+        generated: true,
+        generatedHttps: true,
+      }),
+    ).toBe(true);
   });
 
   it('serves a host the user typed over HTTPS on a Server, with a Let’s Encrypt certificate', () => {
-    expect(templateDomainHttps({ cloud: false, generated: false })).toBe(true);
+    expect(templateDomainHttps(on({ cloud: false, generated: false }))).toBe(
+      true,
+    );
   });
 
   it('serves every host over HTTPS in a Cloud Environment, whose load balancer has its own certificate', () => {
-    expect(templateDomainHttps({ cloud: true, generated: false })).toBe(true);
+    expect(templateDomainHttps(on({ cloud: true, generated: false }))).toBe(
+      true,
+    );
   });
 });
 

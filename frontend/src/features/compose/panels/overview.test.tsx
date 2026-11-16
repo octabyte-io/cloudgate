@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ComposeDetail } from "@/lib/api/endpoints/compose";
@@ -34,8 +40,13 @@ vi.mock("../use-compose", async (original) => ({
   useUpdateCompose: () => ({ mutateAsync }),
 }));
 vi.mock("../compose-facts-card", () => ({ ComposeFactsCard: () => null }));
+vi.mock("../domains/compose-domains-aside", () => ({
+  ComposeDomainsAside: () => null,
+}));
 vi.mock("../lifecycle/compose-actions", () => ({ ComposeActions: () => null }));
-vi.mock("../source/compose-source-card", () => ({ ComposeSourceCard: () => null }));
+vi.mock("../source/compose-source-card", () => ({
+  ComposeSourceCard: () => null,
+}));
 vi.mock("../editor/compose-file-card", () => ({ ComposeFileCard: () => null }));
 vi.mock("@/components/console/toast", () => ({
   toast: { done: vi.fn(), error: vi.fn(), info: vi.fn() },
@@ -93,7 +104,9 @@ describe("Compose Overview — Identity", () => {
     fireEvent.submit(name.closest("form") as HTMLFormElement);
 
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toContain(COMPOSE_UPDATE_REFUSAL),
+      expect(screen.getByRole("alert").textContent).toContain(
+        COMPOSE_UPDATE_REFUSAL,
+      ),
     );
     expect(mutateAsync).not.toHaveBeenCalled();
   });

@@ -201,7 +201,7 @@ const CENSUS: Readonly<Record<string, Verdict>> = {
     verdict: FOLLOWS,
     why: "An existing Application's build Server, or its GPUs on its own run Server.",
   },
-  'domains/domains.service.ts#generatedHostAddress': {
+  'domains/domains.service.ts#generatedHostIp': {
     verdict: FOLLOWS,
     why: 'Reads the address a generated Domain names, for the place its create already chose; runs nothing.',
   },

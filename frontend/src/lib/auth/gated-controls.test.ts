@@ -99,6 +99,8 @@ const EXEMPT: Record<string, string> = {
     "Rendered only once GET /sso/proven-domains has answered, and that read admits an owner or admin alone (SsoService.ensureEnterprise) — the role check the add asks, not a statement; anyone else gets the card's refusal and no form.",
   "features/settings/organization/organizations-section.tsx::Create an Organization":
     "Any signed-in user makes their own Organization; no role in this one enters into it.",
+  "features/templates/setup-fields.tsx::Generate one for me":
+    "Calls no route: it puts the host the setup form was already given back into its own field; the setup it submits is what POST /templates/setup checks.",
   "features/billing/starter-checklist.tsx::Delete":
     "Rendered only for an Attached Organization the reader owns (`ownedByYou`, from GET /billing/attached-organizations), which is the owner check DELETE /organizations/:id asks; no role in the open Organization enters into it.",
 };

@@ -1137,10 +1137,14 @@ export class PlanApplier {
         written.serviceType = 'application';
         written.serviceId = created.applicationId;
         if (host !== null && entry.kind === 'web') {
+          // HTTPS where Let's Encrypt can reach the Server's address; plain
+          // HTTP on a private one, where no certificate could be issued.
+          const https = await this.domains.generatedHostHttps(ctx, serverId);
           await this.domains.createForNewService(ctx, {
             host,
             port: entry.port,
-            https: false,
+            https,
+            certificateType: https ? 'letsencrypt' : 'none',
             applicationId: created.applicationId,
             domainType: 'application',
           });

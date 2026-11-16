@@ -63,6 +63,7 @@ const FORM: SetupForm = {
   ],
   domains: [],
   deployTargets: { server: null, platformHost: null, aws: null, gcp: null },
+  newProjectHosts: null,
 };
 
 /** The same template with a compose Domain, on two Environments. */
@@ -390,7 +391,7 @@ describe("SetupFormView", () => {
   it("starts each compose Domain on the Environment's generated host, which may be replaced", async () => {
     const onSubmit = renderForm(vi.fn(), STACKED);
 
-    const host = screen.getByLabelText(/Host of ghost/) as HTMLInputElement;
+    const host = screen.getByLabelText(/ghost’s Domain/) as HTMLInputElement;
     expect(host.value).toBe("ghost-ghost-1a2b3c-198-51-100-7.sslip.io");
     fireEvent.change(host, { target: { value: "blog.example.com" } });
     submit();
@@ -409,12 +410,97 @@ describe("SetupFormView", () => {
 
     fireEvent.click(screen.getByRole("radio", { name: /bare/ }));
     expect(
-      (screen.getByLabelText(/Host of ghost/) as HTMLInputElement).value,
+      (screen.getByLabelText(/ghost’s Domain/) as HTMLInputElement).value,
     ).toBe("");
     submit();
 
     expect(await screen.findByText("Give this Domain a host")).toBeTruthy();
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("points a Project with no Environment at the page that adds one, instead of asking to pick one", async () => {
+    const onSubmit = vi.fn();
+    render(
+      <SetupFormView
+        form={{ ...FORM, asked: [], environments: [] }}
+        projectId="prj-1"
+        onSubmit={onSubmit}
+      />,
+    );
+
+    expect(
+      screen
+        .getByRole("link", { name: "Add an Environment to this Project" })
+        .getAttribute("href"),
+    ).toBe("/projects/prj-1");
+    submit();
+    await waitFor(() => expect(onSubmit).not.toHaveBeenCalled());
+    expect(screen.queryByText("Pick an Environment")).toBeNull();
+  });
+
+  it("puts back the Environment's generated host after it was cleared", async () => {
+    renderForm(vi.fn(), STACKED);
+
+    const host = screen.getByLabelText(/ghost’s Domain/) as HTMLInputElement;
+    fireEvent.change(host, { target: { value: "" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Generate one for me" }),
+    );
+
+    expect(host.value).toBe("ghost-ghost-1a2b3c-198-51-100-7.sslip.io");
+  });
+
+  describe("for a new Project with a compose Domain", () => {
+    const TARGETS = newProjectTargets(
+      [
+        {
+          serverId: "srv-1",
+          name: "edge-1",
+          ipAddress: "203.0.113.4",
+          serverType: "deploy",
+        },
+      ] as never,
+      [],
+      { server: null, platformHost: null, aws: null, gcp: null },
+      { platformHost: true },
+    );
+    const NEW: SetupForm = {
+      ...STACKED,
+      environments: [],
+      newProjectHosts: {
+        servers: {
+          "srv-1": { ghost: "ghost-ghost-4d5e6f-203-0-113-4.sslip.io" },
+        },
+        platformHost: { ghost: "ghost-ghost-1a2b3c-198-51-100-7.sslip.io" },
+      },
+    };
+
+    it("starts each host on the generated one of the Deploy target picked, and swaps it with the target", async () => {
+      const onSubmit = vi.fn();
+      render(
+        <SetupFormView
+          form={NEW}
+          newProject={{ targets: TARGETS }}
+          onSubmit={onSubmit}
+        />,
+      );
+
+      const host = screen.getByLabelText(/ghost’s Domain/) as HTMLInputElement;
+      expect(host.value).toBe("ghost-ghost-1a2b3c-198-51-100-7.sslip.io");
+      fireEvent.click(screen.getByRole("radio", { name: /edge-1/ }));
+      expect(host.value).toBe("ghost-ghost-4d5e6f-203-0-113-4.sslip.io");
+
+      fireEvent.change(screen.getByLabelText("Project name"), {
+        target: { value: "blog" },
+      });
+      submit();
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hosts: { ghost: "ghost-ghost-4d5e6f-203-0-113-4.sslip.io" },
+        }),
+      );
+    });
   });
 
   describe("in a Cloud Environment (#1379)", () => {
@@ -448,7 +534,7 @@ describe("SetupFormView", () => {
     it("asks for each host with no prefill, and shows the record pointing it at the network's load balancer", async () => {
       const onSubmit = renderForm(vi.fn(), CLOUD);
 
-      const host = screen.getByLabelText(/Host of ghost/) as HTMLInputElement;
+      const host = screen.getByLabelText(/ghost’s Domain/) as HTMLInputElement;
       expect(host.value).toBe("");
       expect(screen.getByText(/a Stack VM has no generated host/)).toBeTruthy();
       fireEvent.change(host, { target: { value: "blog.example.com" } });
@@ -472,7 +558,7 @@ describe("SetupFormView", () => {
       renderForm(vi.fn(), CLOUD);
 
       fireEvent.click(screen.getByRole("radio", { name: /gcp/ }));
-      fireEvent.change(screen.getByLabelText(/Host of ghost/), {
+      fireEvent.change(screen.getByLabelText(/ghost’s Domain/), {
         target: { value: "example.com" },
       });
 

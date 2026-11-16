@@ -25,6 +25,7 @@ import {
   setupChoice,
   setupSchema,
   startingHosts,
+  targetHosts,
   startingValues,
   type SetupChoice,
   type SetupValues,
@@ -52,7 +53,8 @@ export const EMPTY_PROJECT_NOTE =
  * leaves an empty Project.
  *
  * Each compose Domain asks for its host (#1373), starting on the generated
- * sslip.io host of the Environment picked; a new Project's has none yet.
+ * sslip.io host of the Environment picked, or for a new Project of the
+ * Deploy target picked, which "Generate one for me" puts back once cleared.
  * In a Cloud Environment (#1379) each host is typed, with the DNS record it
  * needs shown under it.
  *
@@ -62,10 +64,13 @@ export const EMPTY_PROJECT_NOTE =
  */
 export function SetupFormView({
   form: setup,
+  projectId,
   newProject,
   onSubmit,
 }: {
   form: SetupForm;
+  /** The existing Project set up into, for the link to add an Environment. */
+  projectId?: string;
   /** The Deploy targets a new Project may pick; absent for an existing one. */
   newProject?: { targets: NewProjectTarget[] };
   /**
@@ -151,6 +156,11 @@ export function SetupFormView({
                       checked={target === one.value}
                       onPick={() => {
                         form.setValue("newProject.target", one.value);
+                        // Each Deploy target generates its own hosts.
+                        form.setValue(
+                          "hosts",
+                          startingHosts(setup, targetHosts(setup, one.value)),
+                        );
                         if (
                           one.cloud === null ||
                           !CLOUDS[one.cloud].regions.includes(region)
@@ -188,7 +198,20 @@ export function SetupFormView({
                 </legend>
                 {setup.environments.length === 0 ? (
                   <p className="text-meta text-tx-3">
-                    This Project has no Environment you can read.
+                    This Project has no Environment you can read, so there is
+                    nowhere to set {setup.templateName} up yet.{" "}
+                    {projectId ? (
+                      <>
+                        <Link
+                          href={`/projects/${encodeURIComponent(projectId)}`}
+                          className="font-medium text-brand-tx underline-offset-3 hover:underline focus-visible:underline"
+                        >
+                          Add an Environment to this Project
+                        </Link>
+                        , then come back, or pick &ldquo;New Project&rdquo;
+                        above to make one with its Environment.
+                      </>
+                    ) : null}
                   </p>
                 ) : null}
                 {setup.environments.map((env) => (
@@ -207,7 +230,10 @@ export function SetupFormView({
                     }}
                   />
                 ))}
-                <ChoiceError message={errors.environmentId?.message} />
+                {/* With nothing to pick, the note above says what to do. */}
+                {setup.environments.length > 0 ? (
+                  <ChoiceError message={errors.environmentId?.message} />
+                ) : null}
               </fieldset>
             )}
 
@@ -225,6 +251,13 @@ export function SetupFormView({
 
             <DomainHostFields
               domains={setup.domains}
+              generated={
+                newProject
+                  ? targetHosts(setup, target)
+                  : (setup.environments.find(
+                      (env) => env.environmentId === environmentId,
+                    )?.hosts ?? null)
+              }
               cloud={
                 newProject
                   ? // A new Project's network is made by its first Plan.

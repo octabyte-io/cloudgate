@@ -9,6 +9,7 @@ import {
   mount,
   pendingSetup,
   postgres,
+  server as serverTable,
   webServerSettings,
 } from '../../src/db/schema';
 import type { DeploymentJob } from '../../src/deployment-queue/job-types';
@@ -149,6 +150,10 @@ interface SetupBody {
 
 interface FormBody {
   domains: { name: string; service: string; port: number; path: string }[];
+  newProjectHosts: {
+    servers: Record<string, Record<string, string>>;
+    platformHost: Record<string, string> | null;
+  } | null;
   environments: {
     environmentId: string;
     canTake: boolean;
@@ -333,6 +338,43 @@ describe('Template compose part setup (e2e)', () => {
     );
   });
 
+  it('prefills each compose Domain for a new Project on every deploy Server and the platform host, whose Environment does not exist yet', async () => {
+    const orgs = await request(server)
+      .get('/organizations')
+      .set('Cookie', cookie);
+    const organizationId = (orgs.body as { id: string }[])[0].id;
+    const [edge] = await ctx.db
+      .insert(serverTable)
+      .values({
+        name: 'edge-1',
+        ipAddress: '34.117.42.7',
+        port: 22,
+        organizationId,
+      })
+      .returning();
+
+    const res = await request(server)
+      .get('/templates/ghost/setup')
+      .set('Cookie', cookie);
+
+    expect(res.status).toBe(200);
+    const form = res.body as FormBody;
+    expect(form.environments).toEqual([]);
+    expect(form.newProjectHosts?.servers[edge.serverId]?.ghost).toMatch(
+      /^ghost-ghost-[0-9a-f]{6}-34-117-42-7\.sslip\.io$/,
+    );
+    expect(form.newProjectHosts?.platformHost?.ghost).toMatch(
+      /^ghost-ghost-[0-9a-f]{6}-198-51-100-7\.sslip\.io$/,
+    );
+
+    // An existing Project's form starts from its Environments' hosts.
+    const existing = await request(server)
+      .get('/templates/ghost/setup')
+      .query({ projectId })
+      .set('Cookie', cookie);
+    expect((existing.body as FormBody).newProjectHosts).toBeNull();
+  });
+
   it('plans the stack from its template and Applies the stack, its .env, its encrypted mounts and its Domain', async () => {
     const res = await setUp();
 
@@ -496,7 +538,7 @@ describe('Template compose part setup (e2e)', () => {
     ]);
   });
 
-  it('keeps the host the form generated plain HTTP, as a plan-made web’s generated Domain is (#1411)', async () => {
+  it('keeps the host the form generated plain HTTP on an address no certificate authority can reach, as a plan-made web’s generated Domain is (#1411)', async () => {
     const form = await request(server)
       .get('/templates/ghost/setup')
       .query({ projectId })
@@ -512,6 +554,27 @@ describe('Template compose part setup (e2e)', () => {
         host: generated,
         https: false,
         certificateType: 'none',
+      }),
+    ]);
+  });
+
+  it('serves the host the form generated over HTTPS with a Let’s Encrypt certificate when its address is public', async () => {
+    await ctx.db.update(webServerSettings).set({ serverIp: '34.117.42.7' });
+    const form = await request(server)
+      .get('/templates/ghost/setup')
+      .query({ projectId })
+      .set('Cookie', cookie);
+    const generated = (form.body as FormBody).environments[0].hosts?.ghost;
+    expect(generated).toMatch(/-34-117-42-7\.sslip\.io$/);
+
+    const { env, domains } = await appliedOn({ ghost: generated! });
+
+    expect(env.SITE_URL).toBe(`https://${generated}`);
+    expect(domains).toEqual([
+      expect.objectContaining({
+        host: generated,
+        https: true,
+        certificateType: 'letsencrypt',
       }),
     ]);
   });
