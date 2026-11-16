@@ -38,7 +38,7 @@ export function askedValueProblem(
     try {
       return new RegExp(`^(?:${input.pattern})$`, "u").test(value)
         ? null
-        : `${input.label} must match ${input.pattern}`;
+        : `${input.label} is not in the format this template asks for: ${input.pattern}`;
     } catch {
       // A pattern the browser cannot read: the setup checks it.
       return null;
