@@ -134,7 +134,11 @@ describe("SetupFormView", () => {
       await screen.findByText("Admin email must be an email address"),
     ).toBeTruthy();
     expect(onSubmit).not.toHaveBeenCalled();
-    expect(screen.getByText("Site code must match [A-Z]{4}")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Site code is not in the format this template asks for: [A-Z]{4}",
+      ),
+    ).toBeTruthy();
     expect(
       screen.getByText(
         "Use lowercase letters, digits and hyphens, starting with a letter",

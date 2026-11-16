@@ -11,7 +11,7 @@
     "postinstall": "node scripts/restore-node-pty-exec-bit.mjs",
     "dev": "pnpm -r --parallel run dev",
     "dev:frontend": "pnpm --filter frontend dev",
-    "dev:backend": "pnpm --filter backend start:dev",
+    "dev:backend": "pnpm --filter backend dev",
     "build": "pnpm -r run build"
   }
 }

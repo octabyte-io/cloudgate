@@ -35,7 +35,10 @@ import { NEW_PROJECT, useSetupForm, useSetUpTemplate } from "./use-templates";
 export function TemplateSetup({ templateId }: { templateId: string }) {
   const router = useRouter();
   const projects = useProjects();
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
+  // With no Project yet there is only one choice, so it starts on it.
+  const projectId =
+    picked ?? (projects.data?.length === 0 ? NEW_PROJECT : null);
   const form = useSetupForm(templateId, projectId);
   const setUp = useSetUpTemplate();
   const creating = projectId === NEW_PROJECT;
@@ -65,7 +68,7 @@ export function TemplateSetup({ templateId }: { templateId: string }) {
         <Picker
           value={projectId ?? ""}
           onValueChange={(next) => {
-            setProjectId(next || null);
+            setPicked(next || null);
             setUp.reset();
           }}
           placeholder="Choose a Project"

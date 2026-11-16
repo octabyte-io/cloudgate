@@ -175,7 +175,7 @@ describe('getComposeFilePath', () => {
 describe('createComposeCommand', () => {
   it('builds the docker compose up command', () => {
     expect(createComposeCommand(makeCompose())).toBe(
-      'compose -p wp-stack -f ./docker-compose.yml up -d --build --remove-orphans',
+      'compose -p wp-stack -f ./docker-compose.yml up -d --build --remove-orphans --quiet-pull',
     );
   });
 
@@ -191,7 +191,7 @@ describe('createComposeCommand', () => {
         makeCompose({ sourceType: 'raw', composePath: './elsewhere.yml' }),
       ),
     ).toBe(
-      'compose -p wp-stack -f docker-compose.yml up -d --build --remove-orphans',
+      'compose -p wp-stack -f docker-compose.yml up -d --build --remove-orphans --quiet-pull',
     );
   });
 
@@ -795,7 +795,7 @@ describe('getBuildComposeCommand', () => {
     );
     expect(command).toContain(`cd ${STACK_DIRECTORY}/code;`);
     expect(command).toContain(
-      'env -i PATH="$PATH" HOME="$HOME" docker compose -p wp-stack -f ./docker-compose.yml up -d --build --remove-orphans 2>&1',
+      'env -i PATH="$PATH" HOME="$HOME" docker compose -p wp-stack -f ./docker-compose.yml up -d --build --remove-orphans --quiet-pull 2>&1',
     );
     // Not isolated: no per-app network management.
     expect(command).not.toContain('docker network create');

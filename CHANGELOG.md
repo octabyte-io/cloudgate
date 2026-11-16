@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Template setup reads better end to end
+
+A walk of the template flow on a fresh instance (Uptime Kuma, Ackee, gonic, Memos and Apache Answer, into a new and an existing Project) turned up these, now fixed:
+
+- A generated sslip.io host names a service called as its Template once: `ackee-<hash>-…`, not `ackee-ackee-<hash>-…`. Other services keep `<template>-<service>-<hash>-…`.
+- An applied Template stack's result on the Config tab lists every Domain it was made with; gonic's second host was missing.
+- A catalogue search puts the templates whose name holds the words first, so "uptime" starts with the Uptime ones.
+- The setup screen starts on New Project when the Organization has no Project yet.
+- Where the platform host has no public IP recorded, a Domain's hint links to Settings, Instance, where setting one makes the free sslip.io address; that field's hint says so too.
+- An asked value that misses its template's pattern says so in words before the pattern.
+- A Compose stack's Deployment pulls its images quietly, so its log is no longer hundreds of download progress lines.
+- `pnpm dev` starts the backend as well as the console, as the README says.
+
+**What to do on upgrade**: nothing.
+
 ### The install ends with the Cloudgate mark
 
 A successful run of the install now ends with the Cloudgate mark, what to open next beside it (on a Self-hosted install, the console's sign-up address while the instance is unclaimed and its sign-in address with the version now running after that; on the Hosted instance, its sign-in address and the owner) and the `cloudgate` logotype under it, after the note about backing up the secrets. On a terminal the mark and the logotype are in the console's brand colour; `NO_COLOR`, `TERM=dumb` or output that is not a terminal draws them plain. The `==> Done.` line it replaces is gone (`docs/deploy.md` §2).

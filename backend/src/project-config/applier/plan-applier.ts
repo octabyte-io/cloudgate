@@ -156,6 +156,8 @@ type Described = Exclude<ServiceEntry, { managed: 'console' }>;
  */
 interface StepOutcome {
   domain: string | null;
+  /** A Template stack's Domains after its first, as {@link PlanStepResult.moreDomains}. */
+  moreDomains?: readonly string[];
   deploy: PlanStepDeploy | null;
   domainPortMove?: DomainPortMove;
 }
@@ -979,6 +981,9 @@ export class PlanApplier {
         serviceType: written.serviceType,
         serviceId: written.serviceId,
         domain: outcome.domain,
+        ...(outcome.moreDomains?.length
+          ? { moreDomains: outcome.moreDomains }
+          : {}),
         deploy: outcome.deploy,
         leftovers: null,
         ...(outcome.domainPortMove
@@ -1080,7 +1085,7 @@ export class PlanApplier {
     step: Extract<PlanStep, { action: 'create' }>,
     entry: Described,
     written: { serviceType: ServiceType | null; serviceId: string | null },
-  ): Promise<{ domain: string | null; deploy: PlanStepDeploy | null }> {
+  ): Promise<StepOutcome> {
     const { configName } = step;
     const serverId = serverIdOf(input.deployTarget);
     const base = {
@@ -1303,7 +1308,11 @@ export class PlanApplier {
       readonly template: TemplateCreate;
     },
     written: { serviceType: ServiceType | null; serviceId: string | null },
-  ): Promise<{ domain: string | null; deploy: PlanStepDeploy }> {
+  ): Promise<{
+    domain: string | null;
+    moreDomains: readonly string[];
+    deploy: PlanStepDeploy;
+  }> {
     const writes = input.templateWrites?.get(step.configName);
     const values = input.templateValues?.get(step.configName);
     if (!writes?.composeFile || !values) {
@@ -1360,8 +1369,10 @@ export class PlanApplier {
     }
     written.serviceType = 'compose';
     written.serviceId = created.composeId;
+    const hosts = (step.template.domains ?? []).map((domain) => domain.host);
     return {
-      domain: step.template.domains?.[0]?.host ?? null,
+      domain: hosts[0] ?? null,
+      moreDomains: hosts.slice(1),
       deploy: await this.deployCompose(ctx, created.composeId),
     };
   }

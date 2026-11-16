@@ -929,8 +929,13 @@ export interface PlanStepResult {
   message: string | null;
   serviceType: ServiceType | null;
   serviceId: string | null;
-  /** A plan-created `web`'s generated sslip.io host. */
+  /**
+   * A plan-created `web`'s generated sslip.io host, or a Template's compose
+   * part's first Domain.
+   */
   domain: string | null;
+  /** A Template's compose part's other Domains; absent where there are none. */
+  moreDomains?: string[];
   deploy: PlanStepDeploy | null;
   /**
    * A destroy's leftovers; `null` when it left nothing. Absent on a plan

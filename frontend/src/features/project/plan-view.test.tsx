@@ -518,6 +518,41 @@ describe("PlanView", () => {
     ).toBe("/compose/cmp-1/deployments");
   });
 
+  it("lists every Domain an applied Template stack was made with", () => {
+    render(
+      <PlanView
+        plan={{
+          ...base,
+          status: "applied",
+          results: [
+            {
+              configName: "gonic-app",
+              action: "create",
+              status: "applied",
+              message: null,
+              serviceType: "compose",
+              serviceId: "cmp-1",
+              domain: "gonic-1a2b3c-203-0-113-10.sslip.io",
+              moreDomains: ["gonic-filebrowser-4d5e6f-203-0-113-10.sslip.io"],
+              deploy: { status: "queued", deploymentId: "dep-1" },
+              leftovers: null,
+            },
+          ],
+        }}
+      />,
+    );
+
+    const results = screen.getByRole("region", { name: "Results" });
+    expect(
+      within(results).getByText("gonic-1a2b3c-203-0-113-10.sslip.io"),
+    ).toBeTruthy();
+    expect(
+      within(results).getByText(
+        "gonic-filebrowser-4d5e6f-203-0-113-10.sslip.io",
+      ),
+    ).toBeTruthy();
+  });
+
   describe("applying destroys", () => {
     const destroying: Plan = {
       ...base,

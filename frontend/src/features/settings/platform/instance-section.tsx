@@ -93,7 +93,7 @@ export function InstanceSection() {
             optional: true,
             mono: true,
             placeholder: "203.0.113.10",
-            hint: "An IP or a hostname. It is stored and shown; nothing verifies it.",
+            hint: "An IP or a hostname. An IP also makes the free sslip.io addresses Cloudgate generates for what runs on this host. Nothing verifies it.",
           },
         ]}
         defaultValues={{ serverIp: row.serverIp ?? "" }}

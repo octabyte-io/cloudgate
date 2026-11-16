@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useFormContext, useWatch } from "react-hook-form";
 
 import { Field } from "@/components/console/field";
@@ -12,6 +13,7 @@ import type {
   SetupEnvironment,
 } from "@/lib/api/endpoints/templates";
 import { Icon } from "@/lib/design/icons";
+import { settingsHref } from "@/lib/settings/sections";
 
 import { SetupDnsRecords } from "./setup-dns-records";
 
@@ -128,7 +130,7 @@ function hostHint(
     offered,
     onOffered,
   }: { cloud: boolean; offered: string | undefined; onOffered: boolean },
-): string {
+): React.ReactNode {
   if (cloud) {
     return "Type your own domain: a Stack VM has no generated host. Its Domain is added once the Plan's Apply has made the Stack VM.";
   }
@@ -138,5 +140,20 @@ function hostHint(
   if (offered !== undefined) {
     return `The address people open ${service} at: your own domain, with its DNS pointed at the Server, or a free sslip.io one.`;
   }
-  return `The address people open ${service} at: your own domain, with its DNS pointed at the Server.`;
+  // Nothing generated off the cloud: the platform host has no IP address
+  // recorded, and its public address is where one is set.
+  return (
+    <>
+      The address people open {service} at: your own domain, with its DNS
+      pointed at the Server. For a free sslip.io address on this Cloudgate host,
+      set its public IP under{" "}
+      <Link
+        href={settingsHref("instance")}
+        className="font-medium text-brand-tx underline-offset-3 hover:underline focus-visible:underline"
+      >
+        Settings, Instance
+      </Link>
+      .
+    </>
+  );
 }

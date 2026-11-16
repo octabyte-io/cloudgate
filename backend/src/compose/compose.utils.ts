@@ -1061,7 +1061,7 @@ export function createComposeCommand(
   if (compose.composeType === 'stack') {
     return `stack deploy -c ${quote([path])} ${quote([compose.appName])} --prune --with-registry-auth`;
   }
-  return `compose -p ${quote([compose.appName])} -f ${quote([path])} up -d --build --remove-orphans`;
+  return `compose -p ${quote([compose.appName])} -f ${quote([path])} up -d --build --remove-orphans --quiet-pull`;
 }
 
 /**

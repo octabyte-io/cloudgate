@@ -107,7 +107,7 @@ function Body({ compose }: { compose: ComposeDetail }) {
       placeholder:
         compose.composeType === "stack"
           ? `stack deploy -c docker-compose.yml ${compose.appName} --prune --with-registry-auth`
-          : `compose -p ${compose.appName} -f docker-compose.yml up -d --build --remove-orphans`,
+          : `compose -p ${compose.appName} -f docker-compose.yml up -d --build --remove-orphans --quiet-pull`,
       hint: "Replaces the generated command entirely, and runs as its arguments — start it at the subcommand, without the word docker. Leave it empty to use the generated one.",
     },
   ];
