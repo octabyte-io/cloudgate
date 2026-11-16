@@ -296,6 +296,39 @@ describe('Template setup of an own web’s URL (e2e)', () => {
       });
       expect(await ctx.db.select().from(pendingSetup)).toEqual([]);
     });
+
+    it('serves the web’s generated host over HTTPS, and fills its URL in so, when the address is public', async () => {
+      await ctx.db.update(webServerSettings).set({ serverIp: '34.117.42.7' });
+
+      const res = await setUp();
+
+      expect(res.status).toBe(201);
+      const plan = (res.body as { plan: PlanBody }).plan;
+      const app = plan.steps.find((step) => step.configName === 'ghost-app');
+      const picked = app?.template?.host ?? '';
+      expect(picked).toMatch(/-34-117-42-7\.sslip\.io$/);
+      const applied = await request(server)
+        .post(`/environments/${environmentId}/plan/apply`)
+        .set('Cookie', cookie)
+        .send({ planId: plan.planId });
+      expect(applied.status).toBe(200);
+      const [made] = await ctx.db
+        .select()
+        .from(application)
+        .where(eq(application.configName, 'ghost-app'));
+      const domains = await ctx.db
+        .select({
+          host: domain.host,
+          https: domain.https,
+          certificateType: domain.certificateType,
+        })
+        .from(domain)
+        .where(eq(domain.applicationId, made.applicationId));
+      expect(domains).toEqual([
+        { host: picked, https: true, certificateType: 'letsencrypt' },
+      ]);
+      expect(parseDotenv(made.env ?? '').PUBLIC_URL).toBe(`https://${picked}`);
+    });
   });
 
   describe('where the web would get no generated host', () => {

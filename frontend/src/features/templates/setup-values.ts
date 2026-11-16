@@ -3,7 +3,10 @@ import { z } from "zod";
 import type { DeployTarget } from "@/lib/api/endpoints/environments";
 import type { SetupForm } from "@/lib/api/endpoints/templates";
 
-import { fromPickerValue } from "../environment/deploy-target";
+import {
+  fromPickerValue,
+  PLATFORM_HOST_VALUE,
+} from "../environment/deploy-target";
 import { askedValueProblem, SETUP_NAME } from "./asked-value";
 
 /**
@@ -104,9 +107,27 @@ export function startingValues(
     environmentId: newProject ? "" : (first?.environmentId ?? ""),
     setupName: form.setupName,
     values: form.asked.map((input) => input.default ?? ""),
-    hosts: startingHosts(form, newProject ? null : first?.hosts),
+    hosts: startingHosts(
+      form,
+      newProject ? targetHosts(form, newProject.firstTarget) : first?.hosts,
+    ),
     newProject: { name: "", target: newProject?.firstTarget ?? "", region: "" },
   };
+}
+
+/**
+ * A new Project's generated hosts on the Deploy target picked (its
+ * `deploy-target.ts` Picker value), or null where it has none: a Cloud
+ * account, or a platform host with no public address.
+ */
+export function targetHosts(
+  form: SetupForm,
+  target: string,
+): Readonly<Record<string, string>> | null {
+  const hosts = form.newProjectHosts;
+  if (hosts === null) return null;
+  if (target === PLATFORM_HOST_VALUE) return hosts.platformHost;
+  return hosts.servers[target] ?? null;
 }
 
 /** Each compose Domain's starting host: the one generated, or empty. */

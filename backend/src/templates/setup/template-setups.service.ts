@@ -18,6 +18,7 @@ import {
   plan,
   project,
   projectConfigLocation,
+  server,
   setupRecord,
 } from '../../db/schema';
 import type { Environment } from '../../db/schema';
@@ -137,6 +138,22 @@ export interface SetupForm {
    * take the template on each kind of Deploy target, and if not, why.
    */
   readonly deployTargets: DeployTargetRefusals;
+  /**
+   * For a new Project, a generated sslip.io host for each compose Domain on
+   * each Deploy target that can generate one, which the form starts from
+   * when that target is picked, as an existing Project's form starts from
+   * its Environment's `hosts`: by Server id, and the platform host's.
+   * Null for an existing Project, or a template with no compose Domain.
+   */
+  readonly newProjectHosts: NewProjectHosts | null;
+}
+
+/** A new Project's generated hosts, by Deploy target (see `SetupForm`). */
+export interface NewProjectHosts {
+  /** By Server id: each deploy Server of the Organization. */
+  readonly servers: Readonly<Record<string, Readonly<Record<string, string>>>>;
+  /** Null where the platform host has no public address, or is refused. */
+  readonly platformHost: Readonly<Record<string, string>> | null;
 }
 
 /** A Pending setup as a response carries it: each value only as present. */
@@ -293,6 +310,49 @@ export class TemplateSetups {
         platformHostGeneratesHosts:
           await this.domains.platformHostGeneratesHosts(),
       }),
+      newProjectHosts:
+        projectId === undefined && domains.length > 0
+          ? await this.newProjectHosts(ctx, template, domains)
+          : null,
+    };
+  }
+
+  /**
+   * A new Project's generated hosts on each Deploy target that can carry
+   * one: every deploy Server of the Organization, and the platform host
+   * unless this is the Hosted instance (ADR-0053). A Cloud account has none:
+   * its Stack VM has no address a host could carry (#1379).
+   */
+  private async newProjectHosts(
+    ctx: PermissionCtx,
+    template: Template,
+    domains: readonly SetupDomain[],
+  ): Promise<NewProjectHosts> {
+    const servers = await this.db
+      .select({ serverId: server.serverId })
+      .from(server)
+      .where(
+        and(
+          eq(server.organizationId, ctx.session.activeOrganizationId),
+          eq(server.serverType, 'deploy'),
+        ),
+      )
+      .orderBy(asc(server.createdAt));
+    const byServer: Record<string, Record<string, string>> = {};
+    for (const { serverId } of servers) {
+      const hosts = await this.generatedHostsOn(ctx, template, domains, {
+        kind: 'server',
+        serverId,
+      });
+      if (hosts !== null) byServer[serverId] = hosts;
+    }
+    return {
+      servers: byServer,
+      platformHost: this.instanceMode.isHosted
+        ? null
+        : await this.generatedHostsOn(ctx, template, domains, {
+            kind: 'platform-host',
+          }),
     };
   }
 
@@ -309,10 +369,20 @@ export class TemplateSetups {
     domains: readonly SetupDomain[],
     env: Environment,
   ): Promise<Record<string, string> | null> {
-    if (domains.length === 0 || env.deployTarget.kind === 'cloud') {
+    return this.generatedHostsOn(ctx, template, domains, env.deployTarget);
+  }
+
+  /** {@link generatedHosts} on a Deploy target, an Environment's or not. */
+  private async generatedHostsOn(
+    ctx: PermissionCtx,
+    template: Template,
+    domains: readonly SetupDomain[],
+    target: DeployTarget,
+  ): Promise<Record<string, string> | null> {
+    if (domains.length === 0 || target.kind === 'cloud') {
       return null;
     }
-    const serverId = serverIdOf(env.deployTarget);
+    const serverId = serverIdOf(target);
     const hosts: Record<string, string> = {};
     try {
       for (const domain of domains) {
@@ -541,8 +611,12 @@ export class TemplateSetups {
     if (!hosts.ok) throw refused(hosts.reason);
     const serverId = serverIdOf(env.deployTarget);
     // Each served as its Apply will make it: plain HTTP only on the host
-    // the form generated for it, never on any other sslip.io host (#1411).
+    // the form generated for it, and there only on an address no
+    // certificate authority can reach; never on any other sslip.io host
+    // (#1411).
     const cloud = env.deployTarget.kind === 'cloud';
+    const generatedHttps =
+      !cloud && (await this.domains.generatedHostHttps(ctx, serverId));
     const served: TemplateDomain[] = [];
     for (const [at, domain] of domains.entries()) {
       const chosen = hosts.domains[at];
@@ -556,7 +630,7 @@ export class TemplateSetups {
         ));
       served.push({
         ...chosen,
-        https: templateDomainHttps({ cloud, generated }),
+        https: templateDomainHttps({ cloud, generated, generatedHttps }),
       });
     }
     const httpsOf = new Map(
@@ -579,11 +653,15 @@ export class TemplateSetups {
     const answers = {
       asked: request.values,
       domain: (name: string, part: 'url' | 'host') => {
-        // A web's generated Domain is plain HTTP, as any plan-made web's.
+        // A web's generated Domain is served as any plan-made web's is:
+        // HTTPS on a public address, plain HTTP otherwise.
         const own = ownHosts.get(name);
-        if (own !== undefined) return part === 'host' ? own : `http://${own}`;
+        if (own !== undefined) {
+          if (part === 'host') return own;
+          return `${generatedHttps ? 'https' : 'http'}://${own}`;
+        }
         // A compose Domain's, picked above (#1373), served as its Apply
-        // makes it: plain HTTP on a generated host, like the web's.
+        // makes it, by the same rule as the web's on a generated host.
         const host = hostOf.get(name);
         if (host === undefined) return null;
         if (part === 'host') return host;

@@ -50,25 +50,29 @@ export function generatedHostName(
 
 /**
  * Whether a Template's compose Domain is served over HTTPS, which is also
- * whether `{{domains.<name>.url}}` is `https://`. The host the setup form
- * generated is plain HTTP, as a plan-made `web`'s generated Domain and a
- * console Domain on a generated host are (`https` starts off there); a host
- * the user typed takes a Let's Encrypt certificate, an `*.sslip.io` one
- * included, as an Application Domain on one does (#1411). In a Cloud
- * Environment every Domain is HTTPS: the load balancer holds its
- * certificate (ADR-0070).
+ * whether `{{domains.<name>.url}}` is `https://`. A host the user typed
+ * takes a Let's Encrypt certificate, an `*.sslip.io` one included, as an
+ * Application Domain on one does (#1411). The host the setup form
+ * generated takes one too when its Server's address is public
+ * (`generatedHostHttps`), as a plan-made `web`'s generated Domain does; on
+ * a private or documentation address no certificate could be issued, so it
+ * stays plain HTTP. In a Cloud Environment every Domain is HTTPS: the load
+ * balancer holds its certificate (ADR-0070).
  *
- * Rejected: HTTPS on every host, which made a compose part's generated host
- * the one generated host served otherwise than a web's of the same setup;
- * plain HTTP on every host, which would serve a typed domain unencrypted;
- * and plain HTTP on every `*.sslip.io` host, which took a typed one for a
- * generated one (#1411).
+ * Rejected: plain HTTP on every generated host, which served a public
+ * Server's app unencrypted though a certificate was one request away;
+ * HTTPS on every generated host, which gave a Server on a private network
+ * a host no certificate authority can reach; plain HTTP on every host,
+ * which would serve a typed domain unencrypted; and plain HTTP on every
+ * `*.sslip.io` host, which took a typed one for a generated one (#1411).
  */
 export function templateDomainHttps(where: {
   readonly cloud: boolean;
   readonly generated: boolean;
+  /** Whether a generated host on this Server is served over HTTPS. */
+  readonly generatedHttps: boolean;
 }): boolean {
-  return where.cloud || !where.generated;
+  return where.cloud || !where.generated || where.generatedHttps;
 }
 
 /**

@@ -56,6 +56,7 @@ import { rewriteRoutingForDelete } from '../traefik/routing-delete';
 import { GARAGE_S3_PORT } from '../buckets/garage';
 import { bucketDomainRefusal } from './bucket-domain';
 import { ipLiteral } from './ip-literal';
+import { isPublicAddress } from './public-address';
 import { storedDomainRoutingSchema } from './dto/domain.dto';
 import {
   coveringCertificate,
@@ -1424,8 +1425,36 @@ export class DomainsService {
     ).test(host);
   }
 
+  /**
+   * Whether a host {@link generateHostForNewService} makes on this Server (or
+   * the platform host) is served over HTTPS: when its address is public, so
+   * Let's Encrypt can reach it. On a private or documentation address no
+   * certificate could be issued, and the generated host stays plain HTTP.
+   * False where no host can be generated at all.
+   */
+  async generatedHostHttps(
+    ctx: PermissionCtx,
+    serverId?: string | null,
+  ): Promise<boolean> {
+    try {
+      return isPublicAddress(await this.generatedHostIp(ctx, serverId));
+    } catch (error) {
+      if (error instanceof BadRequestException) return false;
+      throw error;
+    }
+  }
+
   /** The address a generated host carries, dashed as it is written there. */
   private async generatedHostAddress(
+    ctx: PermissionCtx,
+    serverId?: string | null,
+  ): Promise<string> {
+    const serverIp = await this.generatedHostIp(ctx, serverId);
+    return serverIp.replaceAll('.', '-').replaceAll(':', '-');
+  }
+
+  /** The address a generated host resolves to, as written in settings. */
+  private async generatedHostIp(
     ctx: PermissionCtx,
     serverId?: string | null,
   ): Promise<string> {
@@ -1441,7 +1470,7 @@ export class DomainsService {
     if (serverIp === null) {
       throw new BadRequestException(NO_PLATFORM_ADDRESS_MESSAGE);
     }
-    return serverIp.replaceAll('.', '-').replaceAll(':', '-');
+    return serverIp;
   }
 
   /**

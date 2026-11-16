@@ -25,6 +25,7 @@ import {
   setupChoice,
   setupSchema,
   startingHosts,
+  targetHosts,
   startingValues,
   type SetupChoice,
   type SetupValues,
@@ -52,7 +53,8 @@ export const EMPTY_PROJECT_NOTE =
  * leaves an empty Project.
  *
  * Each compose Domain asks for its host (#1373), starting on the generated
- * sslip.io host of the Environment picked; a new Project's has none yet.
+ * sslip.io host of the Environment picked, or for a new Project of the
+ * Deploy target picked, which "Generate one for me" puts back once cleared.
  * In a Cloud Environment (#1379) each host is typed, with the DNS record it
  * needs shown under it.
  *
@@ -151,6 +153,11 @@ export function SetupFormView({
                       checked={target === one.value}
                       onPick={() => {
                         form.setValue("newProject.target", one.value);
+                        // Each Deploy target generates its own hosts.
+                        form.setValue(
+                          "hosts",
+                          startingHosts(setup, targetHosts(setup, one.value)),
+                        );
                         if (
                           one.cloud === null ||
                           !CLOUDS[one.cloud].regions.includes(region)
@@ -225,6 +232,13 @@ export function SetupFormView({
 
             <DomainHostFields
               domains={setup.domains}
+              generated={
+                newProject
+                  ? targetHosts(setup, target)
+                  : (setup.environments.find(
+                      (env) => env.environmentId === environmentId,
+                    )?.hosts ?? null)
+              }
               cloud={
                 newProject
                   ? // A new Project's network is made by its first Plan.

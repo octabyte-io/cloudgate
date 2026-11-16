@@ -32,6 +32,7 @@ function form(over: Partial<SetupForm>): SetupForm {
     domains: [],
     environments: [],
     deployTargets: { server: null, platformHost: null, aws: null, gcp: null },
+    newProjectHosts: null,
     ...over,
   };
 }
