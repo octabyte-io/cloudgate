@@ -2355,7 +2355,10 @@ fi`;
       expect(tagRes.text).toBe('latest');
     });
 
-    /** `GET /repos/octabyte-io/cloudgate/releases`, each with its tarball. */
+    /**
+     * `GET /repos/octabyte-io/cloudgate/releases`, each with the tarballs,
+     * checksums and signatures publish-version.yml attaches.
+     */
     const githubReleases = (...tags: string[]) =>
       ({
         ok: true,
@@ -2364,9 +2367,11 @@ fi`;
           Promise.resolve(
             tags.map((tag) => ({
               tag_name: tag,
-              assets: [
-                { name: `cloudgate-${tag.slice(1)}-linux-amd64.tar.gz` },
-              ],
+              assets: ['amd64', 'arm64'].flatMap((cpu) =>
+                ['', '.sha256', '.sha256.sig'].map((suffix) => ({
+                  name: `cloudgate-${tag.slice(1)}-linux-${cpu}.tar.gz${suffix}`,
+                })),
+              ),
             })),
           ),
       }) as unknown as Response;

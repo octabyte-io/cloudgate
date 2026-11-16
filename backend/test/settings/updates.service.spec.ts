@@ -24,6 +24,17 @@ function updatesService(
   );
 }
 
+// The amd64 tarball is the one looked for unless a test says the host is
+// arm64, whatever CPU runs the tests. process.arch is read-only, so
+// jest.replaceProperty cannot put it back.
+const realArch = Object.getOwnPropertyDescriptor(process, 'arch')!;
+beforeEach(() => {
+  Object.defineProperty(process, 'arch', { ...realArch, value: 'x64' });
+});
+afterEach(() => {
+  Object.defineProperty(process, 'arch', realArch);
+});
+
 /** What the host's shell answers the resource probe with: a native install is neither. */
 const shellAnswering = (resource: 'service' | 'unknown') =>
   jest.fn(() => Promise.resolve({ stdout: `${resource}\n`, stderr: '' }));
@@ -54,7 +65,8 @@ describe('UpdatesService.getUpdateData', () => {
 
   /**
    * A release as `GET /repos/{owner}/{repo}/releases` lists it, with the
-   * tarball and checksum publish-version.yml attaches to a Cloudgate version.
+   * tarball, checksum and checksum signature publish-version.yml attaches to
+   * a Cloudgate version.
    */
   const release = (tag_name: string, assets = tarballOf(tag_name)) => ({
     tag_name,
@@ -66,7 +78,7 @@ describe('UpdatesService.getUpdateData', () => {
 
   function tarballOf(tag: string): string[] {
     const tarball = `cloudgate-${tag.replace(/^v/, '')}-linux-amd64.tar.gz`;
-    return [tarball, `${tarball}.sha256`];
+    return [tarball, `${tarball}.sha256`, `${tarball}.sha256.sig`];
   }
 
   const releases = (...tags: string[]) =>
@@ -145,7 +157,7 @@ describe('UpdatesService.getUpdateData', () => {
         tag,
         cpus.flatMap((cpu) => {
           const tarball = `cloudgate-${tag.replace(/^v/, '')}-linux-${cpu}.tar.gz`;
-          return [tarball, `${tarball}.sha256`];
+          return [tarball, `${tarball}.sha256`, `${tarball}.sha256.sig`];
         }),
       );
 
@@ -187,6 +199,22 @@ describe('UpdatesService.getUpdateData', () => {
         // The checksum alone, or another version's tarball, is not this one's.
         release('v0.4.1', ['cloudgate-0.4.1-linux-amd64.tar.gz.sha256']),
         release('v0.4.0', ['cloudgate-0.3.0-linux-amd64.tar.gz']),
+        release('v0.3.1'),
+      ]),
+    );
+
+    const data = await service(fetchClient).getUpdateData('0.3.0');
+
+    expect(data.latestVersion).toBe('v0.3.1');
+  });
+
+  // ADR-0087: the install refuses a version whose checksum is not signed, so
+  // the notice never offers one.
+  it('never offers a version whose checksum signature has not been attached', async () => {
+    const tarball = 'cloudgate-0.4.0-linux-amd64.tar.gz';
+    const fetchClient = jest.fn(() =>
+      githubResponse(200, [
+        release('v0.4.0', [tarball, `${tarball}.sha256`]),
         release('v0.3.1'),
       ]),
     );
@@ -342,7 +370,11 @@ describe('UpdatesService.updateServer', () => {
           Promise.resolve([
             {
               tag_name: 'v0.4.0',
-              assets: [{ name: 'cloudgate-0.4.0-linux-amd64.tar.gz' }],
+              assets: [
+                'cloudgate-0.4.0-linux-amd64.tar.gz',
+                'cloudgate-0.4.0-linux-amd64.tar.gz.sha256',
+                'cloudgate-0.4.0-linux-amd64.tar.gz.sha256.sig',
+              ].map((name) => ({ name })),
             },
           ]),
       } as unknown as Response),

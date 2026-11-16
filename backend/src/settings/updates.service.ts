@@ -38,14 +38,18 @@ const CLOUDGATE_VERSION_TAG = /^v\d+\.\d+\.\d+$/;
 const CLOUDGATE_IMAGE = 'cloudgate/cloudgate';
 
 /**
- * The tarball publish-version.yml attaches to a Cloudgate version's release
- * for the CPU this backend runs on: `linux-amd64`, or `linux-arm64` on an Arm
- * Hosted instance (ADR-0088). A release without it is not a version this host
- * can install yet: made by hand, or still being published, and the install
- * would refuse it (root `install.sh` asks for the same name).
+ * The files publish-version.yml attaches to a Cloudgate version's release for
+ * the CPU this backend runs on (`linux-amd64`, or `linux-arm64` on an Arm
+ * Hosted instance, ADR-0088): the tarball, its `.sha256` and the checksum's
+ * signature, `.sha256.sig` (ADR-0087). A release missing any of the three is
+ * not a version this host can install yet: made by hand, or still being
+ * published, and root `install.sh`, which asks for the same three names,
+ * would not count it either.
  */
-const tarballName = (tag: string): string =>
-  `cloudgate-${tag.replace(/^v/, '')}-linux-${process.arch === 'arm64' ? 'arm64' : 'amd64'}.tar.gz`;
+const versionFiles = (tag: string): string[] => {
+  const tarball = `cloudgate-${tag.replace(/^v/, '')}-linux-${process.arch === 'arm64' ? 'arm64' : 'amd64'}.tar.gz`;
+  return [tarball, `${tarball}.sha256`, `${tarball}.sha256.sig`];
+};
 
 /**
  * What `POST /settings/update-server` answers on an instance that is not the
@@ -132,7 +136,8 @@ export class UpdatesService {
 
   /**
    * The tags of this repository's releases that carry their Cloudgate version
-   * tarball for this host's CPU, or a thrown error that says what went wrong.
+   * tarball for this host's CPU with its checksum and signature, or a thrown
+   * error that says what went wrong.
    */
   private async fetchReleaseTags(): Promise<string[]> {
     let response: Response;
@@ -169,9 +174,8 @@ export class UpdatesService {
       const tag = release?.tag_name;
       if (typeof tag !== 'string') return [];
       const assets = Array.isArray(release?.assets) ? release.assets : [];
-      return assets.some((asset) => asset?.name === tarballName(tag))
-        ? [tag]
-        : [];
+      const names = new Set(assets.map((asset) => asset?.name));
+      return versionFiles(tag).every((name) => names.has(name)) ? [tag] : [];
     });
   }
 

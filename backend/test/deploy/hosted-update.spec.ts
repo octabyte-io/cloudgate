@@ -7,8 +7,8 @@ import { parse } from 'yaml';
 /**
  * The Hosted instance's updater, `deploy/hosted-update.sh`, as
  * deploy-hosted.yml reaches it over SSH. The network is `curl`, stubbed on
- * PATH: the tag's published `.sha256` answers unless CURL_SHA256_EXIT says
- * otherwise, and the tag's raw `install.sh` is a stand-in that records what it
+ * PATH: the tag's published `.sha256` and its signature, `.sha256.sig`, answer
+ * unless CURL_SHA256_EXIT or CURL_SIG_EXIT says otherwise, and the tag's raw `install.sh` is a stand-in that records what it
  * was run with and writes the install directory's VERSION as the real one
  * does. `id`, `sudo`, `systemd-run`, `journalctl` and `systemctl` are stubbed
  * too; the systemd-run stub runs the unit's command in place. `uname -m`
@@ -75,6 +75,9 @@ case "$url" in
   *.sha256)
     [ "\${CURL_SHA256_EXIT:-0}" -eq 0 ] || exit "$CURL_SHA256_EXIT"
     echo "0123abcd  \${url##*/}" > "$out" ;;
+  *.sha256.sig)
+    [ "\${CURL_SIG_EXIT:-0}" -eq 0 ] || exit "$CURL_SIG_EXIT"
+    echo "-----BEGIN SSH SIGNATURE-----" > "$out" ;;
   */install.sh)
     [ "\${CURL_INSTALL_EXIT:-0}" -eq 0 ] || exit "$CURL_INSTALL_EXIT"
     cp "$STAND_IN" "$out" ;;
@@ -192,6 +195,18 @@ describe('deploy/hosted-update.sh (cloudgate-update)', () => {
     expect(log('order')).toBe('');
   });
 
+  // ADR-0087: the tag's install refuses a checksum without its signature, so
+  // a tag without one is not a published version.
+  it('refuses a tag whose checksum has no signature, before the backup', () => {
+    const refused = run(['v0.3.0'], { CURL_SIG_EXIT: '22' });
+
+    expect(refused.status).not.toBe(0);
+    expect(refused.stderr).toContain(
+      `v0.3.0 has no signature on its checksum (${RELEASES}/v0.3.0/cloudgate-0.3.0-linux-amd64.tar.gz.sha256.sig), so nothing was backed up or upgraded.`,
+    );
+    expect(log('order')).toBe('');
+  });
+
   it('backs up, then installs the published version with the tag’s own install.sh in hosted mode inside its own unit', () => {
     const upgraded = run(['v0.3.0']);
 
@@ -303,7 +318,9 @@ describe('deploy/hosted-update.sh (cloudgate-update)', () => {
 /**
  * `.github/workflows/deploy-hosted.yml`'s by-hand check, run with no tested
  * commit, that the tag is a published version before the gate and the SSH. A
- * box may be either CPU (ADR-0088), so the release must carry both tarballs.
+ * box may be either CPU (ADR-0088), so the release must carry both tarballs,
+ * each with its `.sha256` and the checksum's signature, `.sha256.sig`
+ * (ADR-0087).
  * The step's script runs here as written, with `gh` a stub that lists the
  * release's assets.
  */
@@ -348,27 +365,26 @@ describe('.github/workflows/deploy-hosted.yml by hand checks the tag’s Cloudga
   const BOTH = ['amd64', 'arm64'].flatMap((cpu) => [
     `cloudgate-0.3.0-linux-${cpu}.tar.gz`,
     `cloudgate-0.3.0-linux-${cpu}.tar.gz.sha256`,
+    `cloudgate-0.3.0-linux-${cpu}.tar.gz.sha256.sig`,
   ]);
 
   // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
-  it('passes a release that carries both tarballs', () => {
+  it('passes a release that carries both tarballs, checksums and signatures', () => {
     const passed = check(BOTH);
 
     expect(passed.stdout + passed.stderr).toBe('');
     expect(passed.status).toBe(0);
   });
 
-  it.each(['amd64', 'arm64'])(
+  it.each(BOTH)(
     // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
-    'stops a release without its %s tarball, naming it',
-    (cpu) => {
-      const stopped = check(
-        BOTH.filter((name) => name !== `cloudgate-0.3.0-linux-${cpu}.tar.gz`),
-      );
+    'stops a release without %s, naming it',
+    (missing) => {
+      const stopped = check(BOTH.filter((name) => name !== missing));
 
       expect(stopped.status).toBe(1);
       expect(stopped.stdout).toContain(
-        `v0.3.0 has no published release with cloudgate-0.3.0-linux-${cpu}.tar.gz`,
+        `v0.3.0 has no published release with ${missing}.`,
       );
     },
   );

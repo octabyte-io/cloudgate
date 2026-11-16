@@ -14,9 +14,10 @@
 #
 # The tag must be vX.Y.Z and a published Cloudgate version: the .sha256 of its
 # tarball for this box's CPU (linux-amd64, or linux-arm64 on an Arm box,
-# ADR-0088) is on the tag's GitHub Release, which publish-version.yml puts there
-# only after the tag's E2E (release) run is green (ADR-0082). A run takes a
-# backup to B2 first and then runs the tag's own one-command install with
+# ADR-0088), and that checksum's signature, .sha256.sig (ADR-0087), are on the
+# tag's GitHub Release, which publish-version.yml puts there only after the
+# tag's E2E (release) run is green (ADR-0082). A run takes a backup to B2
+# first and then runs the tag's own one-command install with
 # CLOUDGATE_VERSION=<tag> and HOSTED_MODE=true, which is the upgrade
 # (docs/deploy.md §7), and checks /opt/cloudgate/VERSION is the tag after it;
 # every other input is read back from /etc/default/cloudgate-hosted, so
@@ -78,10 +79,11 @@ box_cpu() {
 }
 
 # A tag is a Cloudgate version once publish-version.yml has put its tarballs'
-# .sha256 on the tag's GitHub Release, which it does only after the tag's
-# E2E (release) run is green (ADR-0082). This box's own CPU's is the one
-# asked for (ADR-0088). Asked before the backup, so a tag that was never
-# published costs nothing.
+# .sha256 and their signatures, .sha256.sig (ADR-0087), on the tag's GitHub
+# Release, which it does only after the tag's E2E (release) run is green
+# (ADR-0082). This box's own CPU's are the ones asked for (ADR-0088): the
+# tag's install refuses a checksum without its signature. Asked before the
+# backup, so a tag that was never published costs nothing.
 published_version() {
   local tag="$1" cpu url status=0
   cpu="$(box_cpu)"
@@ -91,6 +93,13 @@ published_version() {
     0) ;;
     22) fail "$tag has no published release ($url), so nothing was backed up or upgraded." \
       "A version is published by the Publish Cloudgate version workflow once its E2E (release) run is green." ;;
+    *) fail "Could not ask GitHub whether $tag is published (curl exit $status), so nothing was backed up or upgraded." ;;
+  esac
+  curl -fsSL --retry 3 --retry-connrefused --connect-timeout 15 --max-time 30 -o /dev/null "$url.sig" || status=$?
+  case "$status" in
+    0) ;;
+    22) fail "$tag has no signature on its checksum ($url.sig), so nothing was backed up or upgraded." \
+      "The Publish Cloudgate version workflow signs every version it publishes; one without a signature is not one it published." ;;
     *) fail "Could not ask GitHub whether $tag is published (curl exit $status), so nothing was backed up or upgraded." ;;
   esac
 }

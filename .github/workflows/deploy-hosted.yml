@@ -114,10 +114,11 @@ jobs:
           fi
 
       # By hand, with no commit passed: the tag's release must already carry
-      # both its tarballs, amd64 and arm64, which only a green publish run puts
-      # there together (ADR-0088), so the box is upgraded whichever CPU it is.
-      # The box refuses a tag without its own anyway; this says so before the
-      # gate and the SSH.
+      # both its tarballs, amd64 and arm64, each with its .sha256 and the
+      # checksum's signature, .sha256.sig, which only a green publish run puts
+      # there together (ADR-0087, ADR-0088), so the box is upgraded whichever
+      # CPU it is. The box refuses a tag without its own anyway; this says so
+      # before the gate and the SSH.
       - name: The tag's Cloudgate version is published
         if: env.TESTED_SHA == ''
         env:
@@ -129,10 +130,12 @@ jobs:
           }
           for cpu in amd64 arm64; do
             tarball="cloudgate-${TAG#v}-linux-$cpu.tar.gz"
-            if ! grep -qxF "$tarball" <<<"$assets"; then
-              echo "::error::$TAG has no published release with $tarball. Only a version Publish Cloudgate version has published, with both its tarballs, is deployed."
-              exit 1
-            fi
+            for file in "$tarball" "$tarball.sha256" "$tarball.sha256.sig"; do
+              if ! grep -qxF "$file" <<<"$assets"; then
+                echo "::error::$TAG has no published release with $file. Only a version Publish Cloudgate version has published, with both its tarballs, their checksums and signatures, is deployed."
+                exit 1
+              fi
+            done
           done
 
       - uses: actions/setup-node@v4

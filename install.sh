@@ -183,8 +183,9 @@ refuse_older() {
 # tarball for this host's CPU with its .sha256 and .sha256.sig, as X.Y.Z,
 # compared as numbers (0.10.0 is after 0.9.0). A release missing any of the
 # three, made by hand or still being published, is not a version yet: its
-# download would fail or be refused. One page of 100, newest first, as the
-# console's update notice reads it. Empty when there is none.
+# download would fail or be refused. One page of 100, newest first; the
+# console's update notice reads the same page and counts a release by the
+# same three files. Empty when there is none.
 #
 # No jq on a bare box, so the answer is read as the sequence of its
 # "tag_name" and "name" strings: GitHub writes a release's tag_name before
