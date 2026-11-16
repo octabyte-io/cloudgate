@@ -248,7 +248,7 @@ download_version() {
   printf '%s\n' "$VERSION_SIGNERS" > "$download/allowed_signers"
   ssh-keygen -Y verify -f "$download/allowed_signers" -I cloudgate-version -n cloudgate-version \
     -s "$download/$name.sha256.sig" < "$download/$name.sha256" > "$download/verified" 2>&1 || fail \
-    "The signature on Cloudgate v$version’s checksum does not verify, so it was not installed:" \
+    "The signature on Cloudgate v$version's checksum does not verify, so it was not installed:" \
     "$(sed 's/^/  /' "$download/verified")" \
     "It was not signed with Cloudgate's key (docs/deploy.md §2). Nothing was changed. If it happens again, report it."
   # The signature proves we signed this checksum, not that it is this
@@ -519,8 +519,8 @@ main() {
   if [ -z "$version" ]; then
     version="$(latest_version)"
     [ -n "$version" ] || fail \
-      "No Cloudgate version has been published yet ($RELEASES_PAGE)." \
-      "Nothing was changed."
+      "No Cloudgate version has been published yet: no release at $RELEASES_PAGE carries a signed $cpu tarball" \
+      "(the tarball, its .sha256 and the signature on it, .sha256.sig). Nothing was changed."
     refuse_older "$version"
   fi
 

@@ -768,6 +768,42 @@ describe('install.sh (the one-command install)', () => {
       expect(opt()).toEqual([]);
     });
 
+    // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
+    it('picks a signed release with the amd64 files alone over newer releases missing their signature', () => {
+      // v0.3.2's shape: the amd64 tarball, its .sha256 and the .sig, no arm64.
+      releasesOf(
+        { amd64Only: ['v0.3.2'], unsigned: ['v0.4.0', 'v0.3.3'] },
+        'v0.4.0',
+        'v0.3.3',
+        'v0.3.2',
+      );
+      publish('0.3.2');
+
+      const fresh = install();
+
+      expect(fresh.stderr).toBe('');
+      expect(fresh.status).toBe(0);
+      expect(called()).toContain(
+        `deploy/install.sh 0.3.2 from ${root}/opt/cloudgate.next`,
+      );
+      expect(called()).not.toContain('0.4.0');
+      expect(called()).not.toContain('0.3.3');
+    });
+
+    it('says no signed version is published when every release is missing its signature', () => {
+      releasesOf({ unsigned: ['v0.4.0', 'v0.3.2'] }, 'v0.4.0', 'v0.3.2');
+
+      const none = install();
+
+      expect(none.status).toBe(1);
+      expect(none.stderr).toContain(
+        'No Cloudgate version has been published yet: no release at https://github.com/octabyte-io/cloudgate/releases carries a signed amd64 tarball',
+      );
+      expect(none.stderr).toContain('Nothing was changed.');
+      expect(opt()).toEqual([]);
+      expect(called()).not.toContain('releases/download');
+    });
+
     it('refuses a download whose checksum does not match, before unpacking anything', () => {
       releases('v0.10.0');
       publish('0.10.0', { checksumOf: Buffer.from('another tarball') });
@@ -828,7 +864,7 @@ describe('install.sh (the one-command install)', () => {
 
       expect(forged.status).toBe(1);
       expect(forged.stderr).toContain(
-        'The signature on Cloudgate v0.10.0’s checksum does not verify',
+        "The signature on Cloudgate v0.10.0's checksum does not verify",
       );
       expect(forged.stderr).toContain('Nothing was changed.');
       expect(opt()).toEqual([]);
@@ -850,7 +886,7 @@ describe('install.sh (the one-command install)', () => {
 
       expect(replaced.status).toBe(1);
       expect(replaced.stderr).toContain(
-        'The signature on Cloudgate v0.10.0’s checksum does not verify',
+        "The signature on Cloudgate v0.10.0's checksum does not verify",
       );
       expect(opt()).toEqual([]);
       expect(called()).not.toContain('deploy/install.sh');
