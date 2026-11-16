@@ -134,4 +134,10 @@ export type DomainBody = {
 export type ServiceChoice = {
   names: string[] | undefined;
   pending: boolean;
+  /**
+   * The container port each service is known to listen on
+   * (`composeServicePorts`). Picking a service moves the Container port to its
+   * entry, unless the operator typed a port of their own.
+   */
+  ports?: Readonly<Record<string, number>>;
 };

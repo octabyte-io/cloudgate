@@ -10,6 +10,8 @@ import { toast } from "@/components/console/toast";
 import { useApiForm } from "@/components/console/use-api-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { followServicePort } from "@/features/application/domains/domain-service-field";
+import type { ServiceChoice } from "@/features/application/domains/domain-schema";
 import { CLOUD_NAMES } from "@/lib/api/endpoints/cloud-accounts";
 import type {
   CreateDomainInput,
@@ -73,7 +75,7 @@ export function StackVmDomainFormModal({
   /** The stack is in a Google Cloud Environment: its host takes an A record. */
   google: boolean;
   /** The compose file's services; `names` is `undefined` when it could not be read. */
-  services: { names: string[] | undefined; pending: boolean };
+  services: ServiceChoice;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   create: (input: StackVmDomainInput) => Promise<Domain>;
@@ -149,7 +151,10 @@ export function StackVmDomainFormModal({
                           label: name,
                         }))}
                         value={field.value}
-                        onValueChange={field.onChange}
+                        onValueChange={(name) => {
+                          field.onChange(name);
+                          followServicePort(form, services.ports, name);
+                        }}
                         pending={services.pending}
                         placeholder={
                           names.length === 0

@@ -10,13 +10,13 @@ import { useCloudAccounts } from "@/lib/api/use-cloud-accounts";
 import { CloudRemoveDomainModal } from "@/features/application/domains/cloud-domain-modals";
 import { CloudDomainsCard } from "@/features/application/domains/cloud-domains-card";
 
-import { useComposeServices } from "../use-compose";
 import { StackVmDomainFormModal } from "./stack-vm-domain-modal";
 import {
   useComposeDomains,
   useCreateComposeDomain,
   useUpdateComposeDomain,
 } from "./use-compose-domains";
+import { useServiceChoice } from "./use-service-choice";
 
 /**
  * **The Domains of a stack on its Stack VM** (ADR-0070, #1371): the cloud
@@ -33,7 +33,6 @@ export function StackVmDomains({ compose }: { compose: ComposeDetail }) {
   const domains = useComposeDomains(compose.composeId);
   const create = useCreateComposeDomain(compose.composeId);
   const update = useUpdateComposeDomain(compose.composeId);
-  const services = useComposeServices(compose.composeId);
   const accounts = useCloudAccounts();
 
   const [editing, setEditing] = useState<Domain | null>(null);
@@ -48,10 +47,11 @@ export function StackVmDomains({ compose }: { compose: ComposeDetail }) {
   const google = account
     ? account.cloud === "gcp"
     : rows.some((one) => one.cloud?.servedBy === "fixed-ip");
-  const serviceChoice = {
-    names: services.error ? undefined : services.data,
-    pending: services.isPending,
-  };
+  const serviceChoice = useServiceChoice(
+    compose.composeId,
+    rows,
+    adding || editing !== null,
+  );
   const parent = { composeId: compose.composeId };
 
   if (domains.error || domains.isPending) {

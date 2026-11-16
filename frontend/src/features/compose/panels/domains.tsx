@@ -27,7 +27,7 @@ import {
   useCreateComposeDomain,
   useUpdateComposeDomain,
 } from "../domains/use-compose-domains";
-import { useComposeServices } from "../use-compose";
+import { useServiceChoice } from "../domains/use-service-choice";
 
 /**
  * The hosts this stack answers on — and, unlike an Application's, **which service
@@ -74,7 +74,6 @@ function Body({ compose }: { compose: ComposeDetail }) {
   const domains = useComposeDomains(compose.composeId);
   const create = useCreateComposeDomain(compose.composeId);
   const update = useUpdateComposeDomain(compose.composeId);
-  const services = useComposeServices(compose.composeId);
 
   const [editing, setEditing] = useState<Domain | null>(null);
   const [removing, setRemoving] = useState<Domain | null>(null);
@@ -91,16 +90,18 @@ function Body({ compose }: { compose: ComposeDetail }) {
   const rows = domains.data ?? [];
   const serverIp = compose.server?.ipAddress ?? null;
   /**
-   * The service list for the dialog's picker.
+   * The service list for the dialog's picker, and each service's port.
    *
-   * `undefined` when the read failed, which is the normal state for a git-sourced
-   * stack that has never been deployed — the route reads the file out of the clone.
-   * The dialog falls back to a text field there rather than an empty picker.
+   * `names` is `undefined` when the read failed, which is the normal state for a
+   * git-sourced stack that has never been deployed — the route reads the file out
+   * of the clone. The dialog falls back to a text field there rather than an
+   * empty picker.
    */
-  const serviceChoice = {
-    names: services.error ? undefined : services.data,
-    pending: services.isPending,
-  };
+  const serviceChoice = useServiceChoice(
+    compose.composeId,
+    rows,
+    adding || editing !== null,
+  );
 
   return (
     <>
