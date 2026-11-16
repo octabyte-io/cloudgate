@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { z } from "zod";
 
-import { SettingsCard } from "@/components/console/settings-card";
 import { useWebServerSettings } from "@/lib/api/use-web-server-settings";
 import { useArrival } from "@/components/console/use-arrival";
 import { cn } from "@/lib/utils";
@@ -16,26 +14,22 @@ import { ConsoleRouterCard } from "./console-router-card";
 import { RequestedPreviewMaxTtlCard } from "./requested-preview-max-ttl-card";
 import { GpuCard } from "./gpu-card";
 import { InstanceDangerZone } from "./instance-danger-zone";
+import { PublicAddressCard } from "./public-address-card";
 import { HealthCard } from "./instance-health-card";
 import { IdentityCard } from "./instance-identity-card";
 import { RuntimeCard } from "./instance-runtime-card";
-import { useInstanceGate, usePlatformMutations } from "./use-platform";
 
 /**
  * This deployment of Cloudgate: what it is, where it is reached, whether its
  * dependencies are up, and the two controls that restart it.
  *
- * The one setting that is a single field and nothing else is inline; everything
- * with its own reasoning is a sibling file, named for the card it draws.
- * Concurrent builds joined them when it grew a licence notice: it is one
+ * Every card is a sibling file, named for the card it draws. The public
+ * address was the last inline one, until it learned to refuse an address this
+ * server does not know as its own. Concurrent builds joined them when it grew a licence notice: it is one
  * field, but which sentence it shows depends on a second read.
  */
 export function InstanceSection() {
   const settings = useWebServerSettings();
-  const mutations = usePlatformMutations();
-  // Every write on this screen takes instance authority (ADR-0013), and so
-  // does the health read the gate is taken from.
-  const gate = useInstanceGate();
   /**
    * Whether anybody has asked GitHub for the latest Cloudgate version yet.
    *
@@ -78,28 +72,7 @@ export function InstanceSection() {
       <RuntimeCard />
       <HealthCard />
 
-      <SettingsCard
-        gate={gate}
-        title="Public address"
-        lede="The address operators reach this instance on. The install fills it in with this host's public IP and never replaces one you save."
-        schema={z.object({
-          serverIp: z.string().max(255),
-        })}
-        fields={[
-          {
-            kind: "text",
-            name: "serverIp",
-            label: "Address",
-            optional: true,
-            mono: true,
-            placeholder: "203.0.113.10",
-            hint: "An IP or a hostname. An IP also makes the free sslip.io addresses Cloudgate generates for what runs on this host. Nothing verifies it.",
-          },
-        ]}
-        defaultValues={{ serverIp: row.serverIp ?? "" }}
-        submit={(values) => mutations.updateIp.mutateAsync(values.serverIp)}
-        savedMessage="The public address is saved."
-      />
+      <PublicAddressCard value={row.serverIp} />
 
       <ConcurrentBuildsCard value={row.buildsConcurrency} />
       <CloudRunLimitsCard

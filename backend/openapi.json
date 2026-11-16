@@ -27752,7 +27752,11 @@
         "type": "object",
         "properties": {
           "serverIp": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 255
+          },
+          "confirmUnverified": {
+            "type": "boolean"
           }
         },
         "required": [

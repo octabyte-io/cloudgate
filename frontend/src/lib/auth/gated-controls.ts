@@ -352,7 +352,7 @@ export const GATED_CALLERS: GatedCaller[] = [
   { file: "features/server/settings/setup-command-card.tsx", component: "SettingsCard", requires: { server: ["create"] }, route: "PATCH /servers/:id" },
   { file: "features/environment/panels/variables.tsx", component: "VariablesCard", requires: { environment: ["update"] }, route: "PATCH /environments/:id", checkedIn: "EnvironmentsService.update" },
   { file: "features/project/panels/settings.tsx", component: "VariablesCard", requires: { project: ["update"] }, route: "PATCH /projects/:id", checkedIn: "ProjectsService.update" },
-  { file: "features/settings/platform/instance-section.tsx", component: "SettingsCard", requires: "instance" },
+  { file: "features/settings/platform/public-address-card.tsx", component: "SettingsCard", requires: "instance" },
   { file: "features/settings/platform/console-domain-card.tsx", component: "SettingsCard", requires: "instance" },
   { file: "features/settings/platform/concurrent-builds-card.tsx", component: "SettingsCard", requires: "instance" },
   { file: "features/settings/platform/cloud-run-limits-card.tsx", component: "SettingsCard", requires: "instance" },

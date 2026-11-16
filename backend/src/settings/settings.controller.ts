@@ -176,7 +176,11 @@ export class SettingsController {
     @CurrentSession() session: Session,
     @Body() body: UpdateServerIpDto,
   ) {
-    return this.settings.updateServerIp(toCtx(user, session), body.serverIp);
+    return this.settings.updateServerIp(
+      toCtx(user, session),
+      body.serverIp,
+      body.confirmUnverified ?? false,
+    );
   }
 
   @Post('builds-concurrency')

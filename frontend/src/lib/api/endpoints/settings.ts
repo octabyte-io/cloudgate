@@ -424,8 +424,15 @@ export const settingsApi = {
   /** The address operators reach this instance on. Empty string when unset. */
   ip: () => api.getText("/settings/ip"),
 
-  updateIp: (serverIp: string) =>
-    api.post<WebServerSettings>("/settings/ip", { serverIp }),
+  /**
+   * An IP address or empty. One this host does not know as its own is refused
+   * with {@link PUBLIC_ADDRESS_UNVERIFIED_CODE} unless `confirmUnverified`.
+   */
+  updateIp: (serverIp: string, confirmUnverified = false) =>
+    api.post<WebServerSettings>("/settings/ip", {
+      serverIp,
+      ...(confirmUnverified ? { confirmUnverified: true } : {}),
+    }),
 
   updateBuildsConcurrency: (buildsConcurrency: number) =>
     api.post<boolean>("/settings/builds-concurrency", { buildsConcurrency }),
@@ -628,3 +635,9 @@ export const settingsApi = {
       serverId: serverId ?? undefined,
     }),
 };
+
+/**
+ * The code `POST /settings/ip` refuses an address with when this host does
+ * not know it as its own (the backend's `PUBLIC_ADDRESS_UNVERIFIED_CODE`).
+ */
+export const PUBLIC_ADDRESS_UNVERIFIED_CODE = "PUBLIC_ADDRESS_UNVERIFIED";

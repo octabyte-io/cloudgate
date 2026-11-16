@@ -214,7 +214,13 @@ export function usePlatformMutations() {
 
   return {
     updateIp: useMutation({
-      mutationFn: (serverIp: string) => settingsApi.updateIp(serverIp),
+      mutationFn: ({
+        serverIp,
+        confirmUnverified,
+      }: {
+        serverIp: string;
+        confirmUnverified?: boolean;
+      }) => settingsApi.updateIp(serverIp, confirmUnverified),
       ...settled,
     }),
     updateBuildsConcurrency: useMutation({

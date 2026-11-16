@@ -6,7 +6,9 @@
 
 On a fresh install, Settings, Instance's public address was empty, so generating a free sslip.io Domain for something on the platform host only said to set it, and a Domain made anyway did not resolve. The install now finds this host's public IP (the public host it was given when that is a public IP, otherwise the address `api.ipify.org`, `checkip.amazonaws.com` or `ipv4.icanhazip.com` sees, with a 5-second limit each) and the backend writes it into that setting at boot, only while the setting has never been set. An address you saved, or cleared, is kept. `CLOUDGATE_PUBLIC_IP=<ip>` names the address instead, and `CLOUDGATE_PUBLIC_IP=none` turns this off (`docs/deploy.md` §2).
 
-**What to do on upgrade**: nothing. An instance whose public address was never set gets it on this upgrade.
+The field now takes only an IP address; a hostname is refused with a pointer to Console domain. An IP this server does not know as its own (on none of its network interfaces and not the one the install found) is refused with a **Save it anyway** switch, for an address that reaches it through NAT or a load balancer.
+
+**What to do on upgrade**: nothing. An instance whose public address was never set gets it on this upgrade. One that saved a hostname there keeps it until the field is next saved, and should save the server's IP instead to get sslip.io Domains.
 
 ### Template setup reads better end to end
 
