@@ -1,6 +1,5 @@
 import type { Column } from "@/components/console/data-table";
 import { Chip } from "@/components/console/chip";
-import { Dash } from "@/components/console/dash";
 import { Icon } from "@/lib/design/icons";
 import type { Domain } from "@/lib/api/endpoints/domains";
 
@@ -32,8 +31,8 @@ export function domainColumns({
    *
    * An Application has one container, so there is nothing to say; a stack has
    * several, and a domain that does not name one makes the *deploy* throw
-   * (`addDomainsToComposeSpec`). Passing this adds the column; omitting it leaves
-   * the table exactly as F09 built it.
+   * (`addDomainsToComposeSpec`). Passing this puts the service first on the
+   * line under each host; omitting it leaves that line without one.
    */
   service?: (row: Domain) => string | null;
   /**
@@ -73,26 +72,32 @@ export function domainColumns({
       id: "host",
       head: "Host",
       tone: "key",
-      className: "font-mono",
-      // The host is what widened this table past its card at desktop width, and
-      // the Actions went behind the scroll. It takes what the other
-      // columns leave, and the link is capped to that so the host is what gets
-      // the ellipsis — not the whole link, which is what an overflowing
-      // `inline-flex` would be replaced with.
-      truncate: true,
+      // **The host is never cut.** It is the one value people come to this
+      // table for, and a generated sslip.io host is longer than the column
+      // ever had room for ("vaultwarden-2035de-2…" at 1440px). So it wraps
+      // at any character, and what used to be four narrow columns beside it
+      // (service, path, port, scheme) is the line under it: one route,
+      // read left to right, that leaves the row's width to the host. The
+      // certificate and the actions keep their columns, because a column is
+      // what lets a reader scan them down the table.
+      className: "whitespace-normal",
       compare: (a, b) => a.host.localeCompare(b.host),
       cell: (row) => (
-        <span className="grid gap-0.5">
+        <span className="grid gap-1">
           <a
             href={`${row.https ? "https" : "http"}://${row.host}${row.path && row.path !== "/" ? row.path : ""}`}
             target="_blank"
             rel="noreferrer noopener"
-            title={row.host}
-            className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-brand-tx underline-offset-3 hover:underline focus-visible:underline"
+            className="font-mono wrap-anywhere text-brand-tx underline-offset-3 hover:underline focus-visible:underline"
           >
-            <span className="truncate">{row.host}</span>
-            <Icon name="ext" size={12} className="flex-none opacity-70" />
+            {row.host}
+            <Icon
+              name="ext"
+              size={12}
+              className="ml-1.5 inline-block align-[-1px] opacity-70"
+            />
           </a>
+          <RouteLine row={row} service={service} />
           {troubled?.(row) ? (
             // Words, not a dot: the meaning never rests on a hue
             // (`design-system.md`), and this row's link still looks exactly like
@@ -106,50 +111,10 @@ export function domainColumns({
       ),
     },
     {
-      id: "path",
-      head: "Path",
-      // A path has no space to wrap at; without this a long one widens the
-      // table and pushes Actions behind the scroll.
-      className: "font-mono whitespace-normal wrap-anywhere",
-      // `flex-wrap`, so the "stripped" chip goes under the path rather than
-      // adding its width to the column's minimum.
-      cell: (row) =>
-        row.path && row.path !== "/" ? (
-          <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-            {row.path}
-            {row.stripPath ? <Chip>stripped</Chip> : null}
-          </span>
-        ) : (
-          <span className="text-tx-3">/</span>
-        ),
-    },
-    {
-      id: "port",
-      head: "Port",
-      tone: "num",
-      className: "font-mono",
-      compare: (a, b) => (a.port ?? 0) - (b.port ?? 0),
-      cell: (row) => (row.port === null ? <Dash word="Unset" /> : row.port),
-    },
-    {
-      id: "scheme",
-      head: "Scheme",
-      cell: (row) =>
-        row.https ? (
-          <span className="inline-flex items-center gap-1.5">
-            <Icon name="lock" size={13} className="text-tx-3" />
-            HTTPS
-          </span>
-        ) : (
-          <span className="text-tx-2">HTTP</span>
-        ),
-    },
-    {
       id: "certificate",
       head: "Certificate",
       // Words, so they may wrap: "Not managed here" on one line was the widest
-      // thing in its column, and every column's minimum is what put Remove
-      // behind the scroll.
+      // thing in its column.
       className: "whitespace-normal",
       compare: (a, b) => a.certificateType.localeCompare(b.certificateType),
       cell: certificateCell,
@@ -170,30 +135,60 @@ export function domainColumns({
     });
   }
 
-  if (service) {
-    columns.splice(1, 0, {
-      id: "service",
-      head: "Service",
-      className: "font-mono",
-      compare: (a, b) => (service(a) ?? "").localeCompare(service(b) ?? ""),
-      // No `truncate`, which in an unbounded cell clipped nothing, and
-      // not a truncating column either: a compose service name is short by
-      // convention, and a second column sharing the slack would halve the
-      // host's, which is the value that is actually long.
-      cell: (row) => {
-        const name = service(row);
-        return name ? (
-          name
+  return columns;
+}
+
+/**
+ * Where a host goes, under it: the compose service (F12 only), the path, the
+ * port and the scheme, in that order, wrapping as a line of words.
+ */
+function RouteLine({
+  row,
+  service,
+}: {
+  row: Domain;
+  service?: (row: Domain) => string | null;
+}) {
+  const name = service?.(row);
+  return (
+    <span className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-meta text-tx-2">
+      {service ? (
+        name ? (
+          <span className="font-mono wrap-anywhere text-tx">{name}</span>
         ) : (
           // Not a `Dash`: this is not a value that happens to be absent, it is a
           // domain the next deploy will refuse. Saying "None" would read as fine.
-          <span className="text-meta text-bad">Names no service</span>
-        );
-      },
-    });
-  }
-
-  return columns;
+          <span className="text-bad">Names no service</span>
+        )
+      ) : null}
+      <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 wrap-anywhere">
+        path{" "}
+        <span className="font-mono">
+          {row.path && row.path !== "/" ? row.path : "/"}
+        </span>
+        {row.stripPath && row.path && row.path !== "/" ? (
+          <Chip>stripped</Chip>
+        ) : null}
+      </span>
+      <span>
+        {row.port === null ? (
+          "port unset"
+        ) : (
+          <>
+            port <span className="font-mono">{row.port}</span>
+          </>
+        )}
+      </span>
+      {row.https ? (
+        <span className="inline-flex items-center gap-1">
+          <Icon name="lock" size={12} className="text-tx-3" />
+          HTTPS
+        </span>
+      ) : (
+        <span>HTTP</span>
+      )}
+    </span>
+  );
 }
 
 /**

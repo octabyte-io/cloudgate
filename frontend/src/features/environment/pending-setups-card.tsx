@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { useState } from "react";
 
 import { Card } from "@/components/console/card";
-import { DataTable, type Column } from "@/components/console/data-table";
+import { Chip } from "@/components/console/chip";
 import { FormError } from "@/components/console/field";
+import { LinkButton } from "@/components/console/link-button";
 import { Modal } from "@/components/console/modal";
 import { Skeleton } from "@/components/console/skeleton";
 import { toast } from "@/components/console/toast";
@@ -30,9 +30,16 @@ import {
  * of them would be a statement about a feature, not about this Environment.
  * A refusal or a failed read is still said, because it is not an empty list.
  *
+ * **Rows, not a table.** A five-column table here was wider than the
+ * Services column at desktop width and scrolled sideways, hiding Expires.
+ * Each setup is a row whose facts wrap under its name, so nothing scrolls at
+ * any width. The next step, the Environment's plan, is the card's one
+ * button; Cancel setup is a quiet button on each row, because it is the
+ * rarer and destructive choice.
+ *
  * **Values are counted, never shown.** The route reports each as present
- * (ADR-0019), so the row says how many the setup holds and that they are
- * kept encrypted until Apply; the plan says how each one is made.
+ * (ADR-0019), so the row says how many the setup holds; the plan says how
+ * each one is made.
  *
  * **Cancel asks once**, in a dialog held at list level and keyed by the row
  * (rule 3.6): it drops secrets that cannot be made again, though the
@@ -76,94 +83,75 @@ export function PendingSetupsCard({
   const { pendingSetups, expired } = list.data;
   if (pendingSetups.length === 0 && expired.length === 0) return null;
 
-  const columns: Column<PendingSetup>[] = [
-    {
-      id: "setup",
-      head: "Setup",
-      tone: "key",
-      cell: (row) => (
-        <span>
-          {row.setupName}
-          <span className="text-tx-3"> · {row.templateName} template</span>
-        </span>
-      ),
-    },
-    {
-      id: "parts",
-      head: "Still to create",
-      tone: "wrap",
-      cell: (row) => (
-        <span className="font-mono">{row.configNames.join(", ")}</span>
-      ),
-    },
-    {
-      id: "values",
-      head: "Values",
-      cell: (row) => valuesLine(row),
-    },
-    {
-      id: "expires",
-      head: "Expires",
-      cell: (row) => (
-        <span title={timeExact(row.expiresAt)}>{timeAgo(row.expiresAt)}</span>
-      ),
-    },
-    {
-      id: "actions",
-      head: <span className="sr-only">Actions</span>,
-      cell: (row) => (
-        <Button
-          size="sm"
-          aria-disabled={canCancel.allowed ? undefined : true}
-          title={canCancel.allowed ? undefined : PENDING_SETUP_CANCEL_REFUSAL}
-          onClick={
-            canCancel.allowed
-              ? () => {
-                  setRefusal(null);
-                  setCancelling(row);
-                }
-              : undefined
-          }
-        >
-          Cancel setup
-        </Button>
-      ),
-    },
-  ];
+  const planHref = projectId
+    ? environmentPlanHref(projectId, environmentId)
+    : null;
 
   return (
     <Card>
       <Card.Header
         title="Pending setups"
-        sub={
-          <>
-            Templates set up here whose parts no Apply has created yet. Each
-            waits 30 days for its plan
-            {projectId ? (
-              <>
-                {" "}
-                (
-                <Link
-                  className="text-brand hover:underline"
-                  href={environmentPlanHref(projectId, environmentId)}
-                >
-                  review the plan
-                </Link>
-                )
-              </>
-            ) : null}
-            , then is dropped.
-          </>
+        sub="Waiting for an Apply to create their parts. Each is dropped after 30 days."
+        actions={
+          planHref && pendingSetups.length > 0 ? (
+            <LinkButton href={planHref} size="sm">
+              Review the plan
+            </LinkButton>
+          ) : null
         }
       />
       <Card.Body flush>
         {pendingSetups.length > 0 ? (
-          <DataTable
-            label="Pending setups"
-            columns={columns}
-            rows={pendingSetups}
-            getRowId={(row) => row.pendingSetupId}
-          />
+          <ul aria-label="Pending setups" className="divide-y divide-line">
+            {pendingSetups.map((row) => (
+              <li
+                key={row.pendingSetupId}
+                className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3"
+              >
+                <div className="min-w-0 grow basis-60">
+                  <p className="text-body wrap-anywhere text-tx">
+                    <span className="font-medium">{row.setupName}</span>
+                    <span className="text-tx-3">
+                      {" "}
+                      · {row.templateName} template
+                    </span>
+                  </p>
+                  <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-meta text-tx-2">
+                    <span className="inline-flex flex-wrap items-center gap-1">
+                      Creates{" "}
+                      {row.configNames.map((name) => (
+                        <Chip key={name} variant="mono">
+                          {name}
+                        </Chip>
+                      ))}
+                    </span>
+                    <span>{valuesLine(row)}</span>
+                    <span title={timeExact(row.expiresAt)}>
+                      Expires {timeAgo(row.expiresAt)}
+                    </span>
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="qt"
+                  aria-disabled={canCancel.allowed ? undefined : true}
+                  title={
+                    canCancel.allowed ? undefined : PENDING_SETUP_CANCEL_REFUSAL
+                  }
+                  onClick={
+                    canCancel.allowed
+                      ? () => {
+                          setRefusal(null);
+                          setCancelling(row);
+                        }
+                      : undefined
+                  }
+                >
+                  Cancel setup
+                </Button>
+              </li>
+            ))}
+          </ul>
         ) : null}
         {expired.length > 0 ? (
           <ul className="grid gap-1.5 border-t border-line px-4 py-3 text-body text-tx-2 first:border-t-0">
@@ -238,9 +226,12 @@ export function PendingSetupsCard({
   );
 }
 
-/** "2 values, kept encrypted until Apply": a count, never a value. */
+/**
+ * "2 values ready": a count, never a value. They are kept encrypted until
+ * Apply (ADR-0019); the plan says how each one is made.
+ */
 function valuesLine(row: PendingSetup): string {
   const held = row.values.filter((value) => value.hasValue).length;
-  if (held === 0) return "None";
-  return `${held} ${held === 1 ? "value" : "values"}, kept encrypted until Apply`;
+  if (held === 0) return "No values";
+  return `${held} ${held === 1 ? "value" : "values"} ready`;
 }
