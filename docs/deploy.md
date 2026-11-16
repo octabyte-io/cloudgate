@@ -167,6 +167,8 @@ APP_ENCRYPTION_SECRET every encrypted column is permanently unreadable.
 
 `404` from Traefik on port 80 is the success case: it is listening and has no route for a bare IP yet.
 
+A re-run on a box that already has an owner finds sign-up closed, so it ends with `==> Done. Cloudgate <version> is running. Sign in at http://<host>:3000/sign-in.` instead.
+
 ### Claim the instance
 
 Open `http://<host>:3000/sign-up`. **The first account created owns the instance**, and sign-up closes behind it — `GET /auth/sign-up-open` flips to `{"open":false}` and stays there. Everyone after that arrives by invitation.

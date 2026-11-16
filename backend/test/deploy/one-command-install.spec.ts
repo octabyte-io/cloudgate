@@ -1825,6 +1825,75 @@ describe('deploy/install.sh', () => {
     });
   });
 
+  /**
+   * The line a Self-hosted run ends on (#79). It sends the operator to
+   * /sign-up only while sign-up is open, before the first account owns the
+   * instance; a re-run on a box that has an owner sends them to /sign-in.
+   * `curl` is the one boundary: it answers `GET /auth/sign-up-open` with
+   * the body the backend gives in that state.
+   */
+  describe('self_hosted_done', () => {
+    function done(signUpOpen: string) {
+      const fns = ['log', 'self_hosted_done'].map((name) => {
+        const fn = source().match(
+          new RegExp(
+            `^${name}\\(\\) \\{(?: .*\\}\\n|\\n[\\s\\S]*?\\n\\}\\n)`,
+            'm',
+          ),
+        );
+        if (!fn) throw new Error(`no ${name} in deploy/install.sh`);
+        return fn[0];
+      });
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(
+        path.join(bin, 'curl'),
+        `#!/bin/sh\necho "curl $*" >> "${calls}"\nprintf '%s' '${signUpOpen}'\n`,
+        { mode: 0o755 },
+      );
+      return spawnSync(
+        'bash',
+        [
+          '-c',
+          `set -euo pipefail; API_PORT=4000; VERSION=0.3.4; CONSOLE_ORIGIN=http://203.0.113.7:3000; ${fns.join('')} self_hosted_done`,
+        ],
+        {
+          encoding: 'utf8',
+          env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+        },
+      );
+    }
+
+    it('sends the operator to /sign-up while the first account has not claimed the instance', () => {
+      const said = done('{"open":true,"state":"unclaimed"}');
+
+      expect(said.status).toBe(0);
+      expect(said.stdout).toContain(
+        'Done. Open http://203.0.113.7:3000/sign-up — the first account owns the instance.',
+      );
+      expect(said.stdout).not.toContain('/sign-in');
+      expect(fs.readFileSync(calls, 'utf8')).toContain(
+        'http://127.0.0.1:4000/auth/sign-up-open',
+      );
+    });
+
+    it('sends the operator to /sign-in, naming the version now running, once sign-up is closed', () => {
+      const said = done('{"open":false,"state":"closed"}');
+
+      expect(said.status).toBe(0);
+      expect(said.stdout).toContain(
+        'Done. Cloudgate 0.3.4 is running. Sign in at http://203.0.113.7:3000/sign-in.',
+      );
+      expect(said.stdout).not.toContain('/sign-up');
+      expect(said.stdout).not.toContain('first account owns');
+    });
+
+    it('ends every Self-hosted run with it', () => {
+      expect(code()).toMatch(
+        /if \[ -z "\$HOSTED_MODE" \]; then\n\s*self_hosted_done\n\s*else/,
+      );
+    });
+  });
+
   /** What /opt/cloudgate holds that the run can replace, checked before anything changes. */
   describe('check_install_dir', () => {
     /** Runs check_install_dir run from `from` for an install at `into`. */
