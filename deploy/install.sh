@@ -529,6 +529,17 @@ swarm_advertise_addr() {
     awk '{ for (i = 1; i < NF; i++) if ($i == "src") { print $(i + 1); exit } }' ||
     true
 }
+# Where Traefik's container reaches the console and the API on the Hosted
+# instance: this host's address on docker_gwbridge, the bridge a container on
+# cloudgate-network leaves the overlay by (deploy/hosted.sh makes it, before
+# `swarm init` so swarm takes it rather than racing to make its own). Not the
+# public address — 3000/4000 are closed there — and not 127.0.0.1, which inside
+# the container is Traefik itself. The Firewall step opens 3000/4000 on that
+# bridge alone.
+if [ -n "$HOSTED_MODE" ]; then
+  hosted_docker_gwbridge
+  echo "Traefik reaches this host at ${DOCKER_HOST_GATEWAY} (docker_gwbridge)"
+fi
 if [ "$(docker info --format '{{.Swarm.LocalNodeState}}')" != "active" ]; then
   advertise_addr="$(swarm_advertise_addr)"
   if [ -n "$advertise_addr" ]; then
@@ -541,17 +552,6 @@ fi
 # false-positives on any network whose name merely contains the string.
 if ! docker network inspect cloudgate-network >/dev/null 2>&1; then
   docker network create --driver overlay --attachable cloudgate-network
-fi
-
-# Where Traefik's container reaches the console and the API on the Hosted
-# instance: this host's address on docker_gwbridge, the bridge a container on
-# cloudgate-network leaves the overlay by (deploy/hosted.sh makes it). Not the
-# public address — 3000/4000 are closed there — and not 127.0.0.1, which inside
-# the container is Traefik itself. The Firewall step opens 3000/4000 on that
-# bridge alone.
-if [ -n "$HOSTED_MODE" ]; then
-  hosted_docker_gwbridge
-  echo "Traefik reaches this host at ${DOCKER_HOST_GATEWAY} (docker_gwbridge)"
 fi
 
 ### -------------------------------------------------------------- postgres ---

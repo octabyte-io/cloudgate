@@ -357,10 +357,12 @@ describe('deploy/hosted.sh', () => {
   });
 
   /**
-   * Docker makes docker_gwbridge only when a container first joins an overlay
-   * network, never at `swarm init`, so a fresh box has none when install.sh
-   * asks for Traefik's way to the console. The stub answers like that daemon:
-   * `inspect` fails until the bridge exists, and `create` makes it.
+   * `docker swarm init` makes docker_gwbridge itself, a moment later and with
+   * Docker's defaults, unless one exists already; so install.sh makes it
+   * first, with enable_icc=false, as Docker documents. The stub answers like
+   * that daemon: `inspect` fails until the bridge exists, `create` makes it
+   * with the options it is given, and a `swarm-makes` file stands for the
+   * bridge swarm makes between the inspect and the create.
    */
   describe('hosted_docker_gwbridge', () => {
     let docker: string;
@@ -382,11 +384,23 @@ if [ "$1 $2" = "network inspect" ] && [ "$3" = docker_gwbridge ]; then
   case "$5" in
     *Gateway*) echo 172.18.0.1 ;;
     *Subnet*) echo 172.18.0.0/16 ;;
+    *enable_icc*) cat "${state}/gwbridge"; echo ;;
+    '') echo '[{"Name": "docker_gwbridge"}]' ;;
+    *) echo "docker stub: $*" >&2; exit 2 ;;
   esac
   exit 0
 fi
 if [ "$1 $2" = "network create" ] && [ "\${@: -1}" = docker_gwbridge ]; then
-  touch "${state}/gwbridge"
+  if [ -e "${state}/swarm-makes" ]; then
+    cp "${state}/swarm-makes" "${state}/gwbridge"
+    echo "Error response from daemon: network with name docker_gwbridge already exists" >&2
+    exit 1
+  fi
+  icc=
+  for arg in "$@"; do
+    case "$arg" in com.docker.network.bridge.enable_icc=*) icc="\${arg#*=}" ;; esac
+  done
+  printf '%s' "$icc" > "${state}/gwbridge"
   exit 0
 fi
 echo "docker stub: $*" >&2
@@ -412,7 +426,32 @@ exit 2
       );
     }
 
-    it("finds Traefik's way to the console on a fresh swarm, before any container joined an overlay", () => {
+    function calls(): string {
+      return fs.readFileSync(path.join(state, 'calls'), 'utf8');
+    }
+
+    it('makes docker_gwbridge with icc off on a box that has none, and finds Traefik’s way to the console', () => {
+      const found = gwbridge();
+
+      expect(found.stderr).toBe('');
+      expect(found.status).toBe(0);
+      expect(found.stdout.trim()).toBe('172.18.0.1 172.18.0.0/16');
+      expect(calls()).toContain('com.docker.network.bridge.enable_icc=false');
+    });
+
+    it('leaves a docker_gwbridge that already exists with icc off as it is', () => {
+      fs.writeFileSync(path.join(state, 'gwbridge'), 'false');
+
+      const found = gwbridge();
+
+      expect(found.status).toBe(0);
+      expect(found.stdout.trim()).toBe('172.18.0.1 172.18.0.0/16');
+      expect(calls()).not.toContain('network create');
+    });
+
+    it('takes a docker_gwbridge that appeared between the inspect and the create, with icc off', () => {
+      fs.writeFileSync(path.join(state, 'swarm-makes'), 'false');
+
       const found = gwbridge();
 
       expect(found.stderr).toBe('');
@@ -420,16 +459,46 @@ exit 2
       expect(found.stdout.trim()).toBe('172.18.0.1 172.18.0.0/16');
     });
 
-    it('leaves a docker_gwbridge that already exists as it is', () => {
-      fs.writeFileSync(path.join(state, 'gwbridge'), '');
+    it('refuses a docker_gwbridge that appeared between the inspect and the create with icc on', () => {
+      fs.writeFileSync(path.join(state, 'swarm-makes'), 'true');
 
       const found = gwbridge();
 
-      expect(found.status).toBe(0);
-      expect(found.stdout.trim()).toBe('172.18.0.1 172.18.0.0/16');
-      expect(fs.readFileSync(path.join(state, 'calls'), 'utf8')).not.toContain(
-        'network create',
+      expect(found.status).toBe(1);
+      expect(found.stdout).toBe('');
+      expect(found.stderr).toContain('docker_gwbridge has enable_icc=true');
+      expect(found.stderr).toContain(
+        '  docker swarm leave --force\n  docker network rm docker_gwbridge\n',
       );
+    });
+
+    it.each([
+      ['true', 'enable_icc=true'],
+      ['', 'enable_icc unset'],
+    ])(
+      'refuses a docker_gwbridge that already exists with icc on (%j), naming how to recreate it',
+      (icc, named) => {
+        fs.writeFileSync(path.join(state, 'gwbridge'), icc);
+
+        const found = gwbridge();
+
+        expect(found.status).toBe(1);
+        expect(found.stdout).toBe('');
+        expect(found.stderr).toContain(`docker_gwbridge has ${named}`);
+        expect(found.stderr).toContain(
+          '  docker swarm leave --force\n  docker network rm docker_gwbridge\n',
+        );
+        expect(found.stderr).toContain('run this install again');
+        expect(calls()).not.toContain('network create');
+      },
+    );
+
+    it('is made by install.sh before `docker swarm init`, so swarm takes it rather than making its own', () => {
+      const script = fs.readFileSync(installer, 'utf8');
+      const made = script.indexOf('\n  hosted_docker_gwbridge\n');
+
+      expect(made).toBeGreaterThan(-1);
+      expect(made).toBeLessThan(script.indexOf('docker swarm init'));
     });
   });
 });
