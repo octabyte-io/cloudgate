@@ -840,6 +840,35 @@ describe('install.sh (the one-command install)', () => {
       expect(called()).not.toContain('deploy/install.sh');
     });
 
+    it('refuses a signed checksum that names another file, before downloading the tarball', () => {
+      // The amd64 tarball, its checksum and that checksum's good signature,
+      // served in the arm64 slot: every byte signed, none of it the arm64 build.
+      publish('0.10.0');
+      const amd64 = `${DOWNLOAD}/v0.10.0/cloudgate-0.10.0-linux-amd64.tar.gz`;
+      const arm64 = `${DOWNLOAD}/v0.10.0/cloudgate-0.10.0-linux-arm64.tar.gz`;
+      for (const suffix of ['', '.sha256', '.sha256.sig']) {
+        serve(
+          `${arm64}${suffix}`,
+          fs.readFileSync(path.join(served, `${amd64}${suffix}`)),
+        );
+      }
+
+      const swapped = install({
+        CLOUDGATE_VERSION: 'v0.10.0',
+        UNAME_M: 'aarch64',
+        HOSTED_MODE: 'true',
+      });
+
+      expect(swapped.status).toBe(1);
+      expect(swapped.stderr).toContain(
+        "Cloudgate v0.10.0's signed checksum is for cloudgate-0.10.0-linux-amd64.tar.gz, not cloudgate-0.10.0-linux-arm64.tar.gz",
+      );
+      expect(swapped.stderr).toContain('Nothing was changed.');
+      expect(opt()).toEqual([]);
+      expect(called()).not.toContain('.tar.gz\n');
+      expect(called()).not.toContain('deploy/install.sh');
+    });
+
     // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
     it('never counts a release whose signature has not been attached as the latest version', () => {
       releasesOf({ unsigned: ['v0.11.0'] }, 'v0.11.0', 'v0.10.0');

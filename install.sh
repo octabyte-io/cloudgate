@@ -250,6 +250,13 @@ download_version() {
     "The signature on Cloudgate v$version’s checksum does not verify, so it was not installed:" \
     "$(sed 's/^/  /' "$download/verified")" \
     "It was not signed with Cloudgate's key (docs/deploy.md §2). Nothing was changed. If it happens again, report it."
+  # The signature proves we signed this checksum, not that it is this
+  # tarball's: another CPU's or version's, signed as well, would verify too.
+  # sha256sum writes "<hash>  <file>" ("<hash> *<file>" in binary mode).
+  named="$(sed -n '1s/^[^ ]* [ *]//p' "$download/$name.sha256")"
+  [ "$named" = "$name" ] || fail \
+    "Cloudgate v$version's signed checksum is for ${named:-no file}, not $name, so it was not installed." \
+    "Nothing was changed. If it happens again, report it."
   # A progress bar for an operator watching a terminal; nothing when the
   # output goes to a file or a pipe, which would only collect its redraws.
   progress=-sS
