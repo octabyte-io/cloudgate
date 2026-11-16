@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Pending setups and Domains fit their card
+
+- An Environment's Pending setups are rows instead of a table that scrolled sideways and hid when each one expires. Review the plan is the card's button; Cancel setup is a quiet button on each row.
+- A Domains table no longer cuts the host short. The service, path, port and scheme are a line under the host, leaving Host, Certificate and the actions as columns, on every Domains tab.
+
+**What to do on upgrade**: nothing.
+
 ### Template setup reads better end to end
 
 A walk of the template flow on a fresh instance (Uptime Kuma, Ackee, gonic, Memos and Apache Answer, into a new and an existing Project) turned up these, now fixed:

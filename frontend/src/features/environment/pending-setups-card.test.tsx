@@ -121,17 +121,17 @@ describe("PendingSetupsCard", () => {
   it("lists each Pending setup with its parts and a count of its values, never a value", async () => {
     mount();
 
-    const table = await screen.findByRole("table", { name: "Pending setups" });
-    const row = within(table).getByText("blog").closest("tr");
+    const list = await screen.findByRole("list", { name: "Pending setups" });
+    const row = within(list).getByText("blog").closest("li");
     expect(row).not.toBeNull();
     expect(within(row!).getByText(/Ghost template/)).toBeTruthy();
-    expect(within(row!).getByText("blog-app, blog-db")).toBeTruthy();
-    expect(
-      within(row!).getByText("2 values, kept encrypted until Apply"),
-    ).toBeTruthy();
+    expect(within(row!).getByText("blog-app")).toBeTruthy();
+    expect(within(row!).getByText("blog-db")).toBeTruthy();
+    expect(within(row!).getByText("2 values ready")).toBeTruthy();
+    expect(within(row!).getByText(/^Expires /)).toBeTruthy();
     expect(
       screen
-        .getByRole("link", { name: "review the plan" })
+        .getByRole("link", { name: "Review the plan" })
         .getAttribute("href"),
     ).toBe("/projects/p-1/config#plan-env-1");
   });
@@ -160,7 +160,7 @@ describe("PendingSetupsCard", () => {
     // Nothing left to say, so the card goes.
     await waitFor(() =>
       expect(
-        screen.queryByRole("table", { name: "Pending setups" }),
+        screen.queryByRole("list", { name: "Pending setups" }),
       ).toBeNull(),
     );
   });
@@ -197,7 +197,8 @@ describe("PendingSetupsCard", () => {
     expect(note.textContent).toContain("docs");
     expect(note.textContent).toContain("Ghost template");
     expect(note.textContent).toContain("docs-app, docs-db");
-    expect(screen.queryByRole("table", { name: "Pending setups" })).toBeNull();
+    expect(screen.queryByRole("list", { name: "Pending setups" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Review the plan" })).toBeNull();
   });
 
   it("renders nothing for an Environment with no Pending setup and no note", async () => {
