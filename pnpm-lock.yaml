@@ -509,6 +509,9 @@ importers:
       jsdom:
         specifier: ^30.0.1
         version: 30.0.1(@noble/hashes@2.2.0)
+      nanostores:
+        specifier: ^1.4.0
+        version: 1.4.0
       tailwindcss:
         specifier: ^4
         version: 4.3.2
