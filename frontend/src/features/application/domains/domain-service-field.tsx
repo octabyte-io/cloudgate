@@ -1,4 +1,11 @@
-import { Controller, useFormContext } from "react-hook-form";
+import {
+  Controller,
+  useFormContext,
+  type FieldValues,
+  type Path,
+  type PathValue,
+  type UseFormReturn,
+} from "react-hook-form";
 
 import { Field } from "@/components/console/field";
 import { Picker } from "@/components/console/picker";
@@ -39,7 +46,10 @@ export function DomainServiceField({ service }: { service: ServiceChoice }) {
               mono
               options={names.map((name) => ({ value: name, label: name }))}
               value={field.value}
-              onValueChange={field.onChange}
+              onValueChange={(name) => {
+                field.onChange(name);
+                followServicePort(form, service.ports, name);
+              }}
               pending={service.pending}
               placeholder={
                 names.length === 0
@@ -59,4 +69,20 @@ export function DomainServiceField({ service }: { service: ServiceChoice }) {
       )}
     </Field>
   );
+}
+
+/**
+ * Moves the Container port to the port the picked service listens on, when it
+ * is known and the operator has not typed one. Set without marking the field
+ * dirty, so picking another service moves it again.
+ */
+export function followServicePort<T extends FieldValues & { port: number }>(
+  form: Pick<UseFormReturn<T>, "getFieldState" | "setValue">,
+  ports: Readonly<Record<string, number>> | undefined,
+  serviceName: string,
+): void {
+  const port = ports?.[serviceName];
+  const field = "port" as Path<T>;
+  if (port === undefined || form.getFieldState(field).isDirty) return;
+  form.setValue(field, port as PathValue<T, Path<T>>, { shouldValidate: true });
 }

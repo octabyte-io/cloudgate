@@ -453,3 +453,69 @@ describe("addedDescription", () => {
     );
   });
 });
+
+describe("DomainFormModal's container port on a Compose stack", () => {
+  function addOnStack(ports: Record<string, number>) {
+    render(
+      withQuery(
+        <DomainFormModal
+          appName="compose-ackee"
+          serverIp={null}
+          serverId={null}
+          domain={null}
+          open
+          onOpenChange={() => {}}
+          create={vi.fn(async () => {})}
+          update={vi.fn(async () => {})}
+          service={{ names: ["ackee", "ackee-mongo"], pending: false, ports }}
+          noun="stack"
+        />,
+      ),
+    );
+  }
+
+  async function pick(name: string) {
+    fireEvent.click(screen.getByRole("combobox"));
+    const option = await screen.findByRole("option", { name });
+    fireEvent.pointerDown(option, { pointerType: "mouse" });
+    fireEvent.click(option, { detail: 1 });
+  }
+
+  const port = () =>
+    (screen.getByLabelText(/Container port/) as HTMLInputElement).value;
+
+  it("follows the port the picked service exposes", async () => {
+    addOnStack({ ackee: 3000, "ackee-mongo": 27017 });
+
+    await pick("ackee-mongo");
+    await waitFor(() => expect(port()).toBe("27017"));
+
+    await pick("ackee");
+    await waitFor(() => expect(port()).toBe("3000"));
+  });
+
+  it("keeps a port the operator typed when the service changes", async () => {
+    addOnStack({ ackee: 3000, "ackee-mongo": 27017 });
+
+    fireEvent.change(screen.getByLabelText(/Container port/), {
+      target: { value: "8080" },
+    });
+    await pick("ackee-mongo");
+
+    await waitFor(() =>
+      expect(screen.getByRole("combobox").textContent).toContain("ackee-mongo"),
+    );
+    expect(port()).toBe("8080");
+  });
+
+  it("leaves the port alone for a service that exposes none", async () => {
+    addOnStack({ "ackee-mongo": 27017 });
+
+    await pick("ackee");
+
+    await waitFor(() =>
+      expect(screen.getByRole("combobox").textContent).toContain("ackee"),
+    );
+    expect(port()).toBe("3000");
+  });
+});
