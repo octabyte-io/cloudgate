@@ -1,5 +1,6 @@
 import {
   appliedDomainHttps,
+  generatedHostName,
   templateDomainHttps,
 } from '../../../src/templates/setup/setup-domains';
 
@@ -60,6 +61,24 @@ describe('appliedDomainHttps', () => {
     ).toBe(false);
     expect(appliedDomainHttps({ ...domain, host: 'blog.example.com' })).toBe(
       true,
+    );
+  });
+});
+
+describe('generatedHostName', () => {
+  const template = { id: 'ackee' } as Parameters<typeof generatedHostName>[0];
+  const domain = (service: string) =>
+    ({ name: service, service, port: 3000 }) as Parameters<
+      typeof generatedHostName
+    >[1];
+
+  it('names a service called as its Template once, not ackee-ackee', () => {
+    expect(generatedHostName(template, domain('ackee'))).toBe('ackee');
+  });
+
+  it('names any other service after the Template and the service', () => {
+    expect(generatedHostName(template, domain('ackee-mongo'))).toBe(
+      'ackee-ackee-mongo',
     );
   });
 });

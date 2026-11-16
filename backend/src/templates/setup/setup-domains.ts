@@ -39,13 +39,17 @@ export function setupDomains(template: Template): SetupDomain[] {
 /**
  * The name a compose Domain's generated host is made from: the setup form
  * offers `<this>-<hash>-<address>.sslip.io`, and setup asks whether the
- * host it is given is still that one (#1411).
+ * host it is given is still that one (#1411). A service named as its
+ * Template is (Ackee's `ackee`) gives the Template's id once, so the host
+ * reads `ackee-<hash>-…`, not `ackee-ackee-<hash>-…`.
  */
 export function generatedHostName(
   template: Template,
   domain: SetupDomain,
 ): string {
-  return `${template.id}-${domain.service}`;
+  return domain.service === template.id
+    ? template.id
+    : `${template.id}-${domain.service}`;
 }
 
 /**

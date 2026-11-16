@@ -334,7 +334,7 @@ describe('Template compose part setup (e2e)', () => {
       expect.objectContaining({ environmentId, canTake: true }),
     ]);
     expect(form.environments[0].hosts?.ghost).toMatch(
-      /^ghost-ghost-[0-9a-f]{6}-198-51-100-7\.sslip\.io$/,
+      /^ghost-[0-9a-f]{6}-198-51-100-7\.sslip\.io$/,
     );
   });
 
@@ -361,10 +361,10 @@ describe('Template compose part setup (e2e)', () => {
     const form = res.body as FormBody;
     expect(form.environments).toEqual([]);
     expect(form.newProjectHosts?.servers[edge.serverId]?.ghost).toMatch(
-      /^ghost-ghost-[0-9a-f]{6}-34-117-42-7\.sslip\.io$/,
+      /^ghost-[0-9a-f]{6}-34-117-42-7\.sslip\.io$/,
     );
     expect(form.newProjectHosts?.platformHost?.ghost).toMatch(
-      /^ghost-ghost-[0-9a-f]{6}-198-51-100-7\.sslip\.io$/,
+      /^ghost-[0-9a-f]{6}-198-51-100-7\.sslip\.io$/,
     );
 
     // An existing Project's form starts from its Environments' hosts.
