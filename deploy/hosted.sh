@@ -223,19 +223,43 @@ hosted_backend_env() {
 # Hosted sign-in would share Traefik's address for the rate limit and
 # session.ip_address.
 #
-# Docker makes docker_gwbridge only when the first container joins an overlay
-# network, not at `swarm init`, so on a fresh box it does not exist yet: the
-# first hosted install stopped here with "network docker_gwbridge not found".
-# So it is made here, as Docker documents making it by hand, with the options
-# Docker itself gives it and a subnet Docker picks; Traefik's container then
-# joins this one rather than Docker making another.
+# A box may not have docker_gwbridge yet (the first hosted install stopped
+# here with "network docker_gwbridge not found"), and `docker swarm init`
+# makes one on its own, a moment later and with Docker's defaults, icc on.
+# So install.sh calls this before `swarm init`, which Docker documents as the
+# way to customise the bridge: it is made here with enable_icc=false and a
+# subnet Docker picks, and swarm and Traefik's container then use this one.
+# A bridge that appears between the inspect and the create ("already exists")
+# is taken like any existing one: kept only if its icc is off, since the
+# options of a network in use cannot be changed in place.
 hosted_docker_gwbridge() {
+  local refused icc
   if ! docker network inspect docker_gwbridge >/dev/null 2>&1; then
-    docker network create \
+    if ! refused="$(docker network create \
       --opt com.docker.network.bridge.name=docker_gwbridge \
       --opt com.docker.network.bridge.enable_icc=false \
       --opt com.docker.network.bridge.enable_ip_masquerade=true \
-      docker_gwbridge >/dev/null
+      docker_gwbridge 2>&1 >/dev/null)"; then
+      case "$refused" in
+        *"already exists"*) ;;
+        *)
+          echo "$refused" >&2
+          return 1
+          ;;
+      esac
+    fi
+  fi
+  icc="$(docker network inspect docker_gwbridge \
+    --format '{{index .Options "com.docker.network.bridge.enable_icc"}}')"
+  if [ "$icc" != false ]; then
+    [ -n "$icc" ] && icc="enable_icc=${icc}" || icc="enable_icc unset"
+    cat >&2 <<EOF
+docker_gwbridge has ${icc}, not false: the containers on it could reach each other.
+Docker cannot change that on an existing bridge. Recreate it, then run this install again:
+  docker swarm leave --force
+  docker network rm docker_gwbridge
+EOF
+    return 1
   fi
   DOCKER_HOST_GATEWAY="$(docker network inspect docker_gwbridge \
     --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}')"
