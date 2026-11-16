@@ -1733,6 +1733,13 @@ dependency-free, argued in `console/qr-code.tsx`.
 > gone. Today `features/templates/` is the catalogue view (logo, links, version, where a Template
 > runs, the saved copy's age) and a setup form whose Submit opens the Environment's Plan, or shows
 > the renamed entries to paste for a repository-kept config.
+>
+> **The catalogue's cards are `template-card.tsx`, no longer `PickCard`s.** A card with a logo, tags,
+> links and its own Set up outgrew a narrow pick: tags wrapped to three rows and Set up landed at a
+> different height on every card in a row. `TemplateCard` is a wide row, one across and two from
+> `cols` up: the logo on a 44px tile, then the name, version and where it runs with Set up at the top
+> right, two clamped lines of description, and three tags on one line (the rest counted) beside the
+> links. `PickCard`'s `descriptionLines`, `footer` and `render` have no consumer since.
 
 The one screen in the product that is about *browsing* rather than operating, and the phase whose
 **endpoint audit changed the flow the brief described**. The whole audit is in
