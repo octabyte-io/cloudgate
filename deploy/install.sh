@@ -253,6 +253,21 @@ API_ORIGIN="http://$(url_host "$CLOUDGATE_PUBLIC_HOST"):${API_PORT}"
 
 log() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 
+# The line a Self-hosted run ends on. /sign-up is the way in only while the
+# first account has not claimed the instance (`unclaimed`); every re-run after
+# that finds sign-up `closed`, so it sends the operator to /sign-in and says
+# which version now runs. An answer it cannot read counts as closed: the
+# health check above already passed, and /sign-in is never wrong.
+self_hosted_done() {
+  local sign_up_state
+  sign_up_state="$(curl -fsS "http://127.0.0.1:${API_PORT}/auth/sign-up-open" | jq -r .state)" || sign_up_state=''
+  if [ "$sign_up_state" = unclaimed ]; then
+    log "Done. Open ${CONSOLE_ORIGIN}/sign-up — the first account owns the instance."
+  else
+    log "Done. Cloudgate ${VERSION} is running. Sign in at ${CONSOLE_ORIGIN}/sign-in."
+  fi
+}
+
 ### ---------------------------------------------------------- hosted mode ---
 # HOSTED_MODE=true is the Hosted instance (ADR-0049); unset or false is
 # the Self-hosted install, and every hosted branch below is skipped. Checked
@@ -1381,7 +1396,7 @@ docker network inspect cloudgate-network -f 'network: {{.Driver}} attachable={{.
 docker inspect -f 'traefik: {{.State.Running}} {{.Config.Image}}' cloudgate-traefik
 
 if [ -z "$HOSTED_MODE" ]; then
-  log "Done. Open ${CONSOLE_ORIGIN}/sign-up — the first account owns the instance."
+  self_hosted_done
 else
   # -k: the certificate is issued on the first HTTPS request after DNS points
   # here, so it may not be in place yet. The answer still says Traefik routes.

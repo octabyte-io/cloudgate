@@ -28,6 +28,9 @@
 #                          Default: the value the last install on this host
 #                          was given, and on a first install this host's
 #                          public IPv4 address, as api.ipify.org sees it.
+#                          A name under an HSTS-preloaded domain (.app, .dev,
+#                          .page) is warned about: browsers open it only over
+#                          HTTPS, and the console is plain HTTP.
 #   CLOUDGATE_SKIP_PREFLIGHT  1 skips the checks before the download, which
 #                          warn about busy ports, low disk and memory and
 #                          hosts that do not answer, and never stop the run.
@@ -113,6 +116,24 @@ public_host_ok() {
       case "$1" in *[!0-9A-Fa-f:.]*) return 1 ;; esac
       ;;
     *:*) return 1 ;;
+  esac
+}
+
+# Browsers force HTTPS for every name under an HSTS-preloaded top-level
+# domain (.app, .dev, .page, ...), and a Self-hosted console is plain HTTP on
+# :3000 and :4000, so no browser would open it. A warning, never a refusal:
+# HTTPS put in front of it is a working setup (docs/deploy.md §3). The Hosted
+# instance is served over HTTPS by Traefik, so it is not warned.
+warn_hsts_preloaded() {
+  [ "${HOSTED_MODE:-}" = true ] && return 0
+  case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+    *.app | *.dev | *.page)
+      {
+        echo "Warning: $1 is under an HSTS-preloaded top-level domain, so browsers open it only over HTTPS."
+        echo "The console is plain HTTP on :3000 and :4000: put HTTPS in front of it, or use the IP address"
+        echo "or a name under a domain that is not preloaded. docs/deploy.md §3 says more."
+      } >&2
+      ;;
   esac
 }
 
@@ -533,6 +554,7 @@ main() {
     dir="$STAGING_DIR"
   fi
 
+  warn_hsts_preloaded "$public_host"
   CLOUDGATE_PUBLIC_HOST="$public_host"
   export CLOUDGATE_PUBLIC_HOST
   # The lock on descriptor 9 goes with it, so it is held until the install ends.
