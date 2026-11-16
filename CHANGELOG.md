@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.3.6 (2026-11-16)
+
+### A next version for 0.3.5's upgrade checks
+
+No change to what the install or the console does. 0.3.6 exists so that a Self-hosted re-run, a Hosted `cloudgate-update` and an arm64 Hosted box can each be seen upgrading from 0.3.5.
+
+**What to do on upgrade**: nothing.
+
 ## 0.3.5 (2026-11-16)
 
 ### The first signed version, published for amd64 and arm64
