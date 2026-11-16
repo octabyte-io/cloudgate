@@ -482,6 +482,42 @@ describe("PlanView", () => {
     expect(within(results).getByText(/created, failed/)).toBeTruthy();
   });
 
+  it("links an applied Compose stack's Open and Deployments to its own Compose screen", () => {
+    // A Template's setup (Ackee, say) writes a `compose` entry: its result
+    // opens the stack, not a database or an Application of the same id.
+    render(
+      <PlanView
+        plan={{
+          ...base,
+          status: "applied",
+          results: [
+            {
+              configName: "ackee",
+              action: "create",
+              status: "applied",
+              message: null,
+              serviceType: "compose",
+              serviceId: "cmp-1",
+              domain: null,
+              deploy: { status: "queued", deploymentId: "dep-1" },
+              leftovers: null,
+            },
+          ],
+        }}
+      />,
+    );
+
+    const results = screen.getByRole("region", { name: "Results" });
+    expect(
+      within(results).getByRole("link", { name: "Open" }).getAttribute("href"),
+    ).toBe("/compose/cmp-1");
+    expect(
+      within(results)
+        .getByRole("link", { name: "Follow it in Deployments" })
+        .getAttribute("href"),
+    ).toBe("/compose/cmp-1/deployments");
+  });
+
   describe("applying destroys", () => {
     const destroying: Plan = {
       ...base,

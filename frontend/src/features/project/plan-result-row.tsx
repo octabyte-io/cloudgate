@@ -13,6 +13,10 @@ import {
   isCloudBucketKept,
   type BucketLeftBehind,
 } from "@/lib/api/endpoints/teardown";
+import {
+  serviceHref,
+  serviceTabHref,
+} from "@/components/shell/service-href";
 import { Icon } from "@/lib/design/icons";
 import { domainPortMoveSentence } from "@/lib/format/domain-port-move";
 import { cn } from "@/lib/utils";
@@ -81,9 +85,12 @@ export function ResultRow({ result }: { result: PlanStepResult }) {
           {running ? "being made" : RESULT_VERB[result.action]}
           {failed ? ", failed" : blocked ? ", blocked" : ""}
         </span>
-        {result.serviceId && !gone ? (
+        {result.serviceType && result.serviceId && !gone ? (
           <Link
-            href={serviceHref(result)}
+            href={serviceHref({
+              serviceType: result.serviceType,
+              serviceId: result.serviceId,
+            })}
             className="text-meta font-medium text-brand-tx underline-offset-3 hover:underline focus-visible:underline"
           >
             Open
@@ -170,16 +177,20 @@ function NetworkLine({ running }: { running: boolean }) {
 function DeployLine({ result }: { result: PlanStepResult }) {
   const deploy = result.deploy;
   if (!deploy) return null;
+  const service =
+    result.serviceType && result.serviceId
+      ? { serviceType: result.serviceType, serviceId: result.serviceId }
+      : null;
   switch (deploy.status) {
     case "queued":
       // A bucket on AWS's Cloud run has no Deployments tab: its
       // page shows it, and a Delete's Deleting or Delete incomplete.
-      if (result.serviceType === "bucket") {
+      if (service?.serviceType === "bucket") {
         return (
           <p>
             Its Cloud run is queued.{" "}
             <Link
-              href={`/buckets/${result.serviceId}`}
+              href={serviceHref(service)}
               className="font-medium text-brand-tx underline-offset-3 hover:underline focus-visible:underline"
             >
               Open the bucket
@@ -187,11 +198,13 @@ function DeployLine({ result }: { result: PlanStepResult }) {
           </p>
         );
       }
+      // An Application's or a Compose stack's own Deployments tab.
+      if (!service) return <p>A Deployment is queued.</p>;
       return (
         <p>
           A Deployment is queued.{" "}
           <Link
-            href={`/applications/${result.serviceId}/deployments`}
+            href={serviceTabHref(service, "deployments")}
             className="font-medium text-brand-tx underline-offset-3 hover:underline focus-visible:underline"
           >
             Follow it in Deployments
@@ -226,11 +239,4 @@ function BucketKept({ kept }: { kept: BucketLeftBehind }) {
       )}
     </p>
   );
-}
-
-/** Where a Service a plan wrote is opened in the console. */
-function serviceHref(result: PlanStepResult): string {
-  return result.serviceType === "application"
-    ? `/applications/${result.serviceId}`
-    : `/databases/${result.serviceType}/${result.serviceId}`;
 }
