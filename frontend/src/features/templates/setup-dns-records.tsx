@@ -7,6 +7,15 @@ import type { CloudPointTarget } from "@/lib/api/endpoints/templates";
  * not made, the setup's Plan makes it, and the record names it. The
  * certificate's validation record exists only once the Domain is added,
  * after the Stack VM is made, so it is named, not shown.
+ *
+ * **No Check DNS here, even once `pointsAt` is known**, unlike a setup on a
+ * Server (`SetupDnsCheck`). `POST /domains/validate` compares the address a
+ * host resolves to with one address, so it cannot say whether a CNAME or
+ * ALIAS reaches a load balancer's name, and of the validation record it
+ * knows nothing; a GCP fixed IP is the one case it could answer, and half an
+ * answer beside a record it cannot check reads as all of it. The cloud
+ * Domain's own status, on the stack's Domains tab after Apply, checks both
+ * records (CONTEXT.md, Domain), so the line below points there.
  */
 export function SetupDnsRecords({
   host,
@@ -26,8 +35,8 @@ export function SetupDnsRecords({
           "the Environment network's load balancer, which this setup's Plan makes"}
       </p>
       <p>
-        Its certificate&apos;s validation record is listed on the stack&apos;s
-        Domains once its Stack VM is made.
+        Once Apply has made the Stack VM, the stack&apos;s Domains tab lists its
+        certificate&apos;s validation record and checks both records.
       </p>
     </div>
   );

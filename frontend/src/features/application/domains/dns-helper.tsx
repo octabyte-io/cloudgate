@@ -54,6 +54,7 @@ export function DnsHelper({
   result,
   pending,
   noun = "Application",
+  failNote = DEFAULT_FAIL_NOTE,
 }: {
   host: string;
   /**
@@ -66,6 +67,11 @@ export function DnsHelper({
   pending?: boolean;
   /** What is being pointed at, for the one sentence that names it (F12: "stack"). */
   noun?: string;
+  /**
+   * What a failed check says to do next. A Template setup says its Set up
+   * does not wait on the record, since its Domain is not added until then.
+   */
+  failNote?: string;
 }) {
   const record = recordFor(host);
   const sslip = isSslip(host);
@@ -164,20 +170,30 @@ export function DnsHelper({
           Resolving {host}…
         </p>
       ) : result ? (
-        <Verdict host={host} serverIp={serverIp} result={result} />
+        <Verdict
+          host={host}
+          serverIp={serverIp}
+          result={result}
+          failNote={failNote}
+        />
       ) : null}
     </div>
   );
 }
 
+const DEFAULT_FAIL_NOTE =
+  "DNS changes can take a while to spread. Create or correct the record above and check again.";
+
 function Verdict({
   host,
   serverIp,
   result,
+  failNote,
 }: {
   host: string;
   serverIp: string | null;
   result: DomainValidation;
+  failNote: string;
 }) {
   // An answer with nothing to compare against is not an "ok": with no expected
   // address the console sends no `expectedIp`, and `cdn.service.ts` answers
@@ -234,10 +250,7 @@ function Verdict({
             address above.
           </p>
         ) : result.error && !result.isValid ? (
-          <p className="mt-0.5 text-tx-2">
-            DNS changes can take a while to spread. Create or correct the record
-            above and check again.
-          </p>
+          <p className="mt-0.5 text-tx-2">{failNote}</p>
         ) : null}
         {result.isValid && !result.cdnProvider ? (
           serverIp === null ? (
@@ -296,7 +309,7 @@ function recordFor(host: string): { name: string; zone: string } {
 }
 
 /** Whether the answer comes from sslip.io rather than from a record. */
-function isSslip(host: string): boolean {
+export function isSslip(host: string): boolean {
   return /\.sslip\.io$/i.test(host.trim());
 }
 
@@ -320,7 +333,7 @@ function isSslip(host: string): boolean {
  * that cannot be told from a label by shape, and a wrong address printed as
  * fact is worse than the sentence above it that is true either way.
  */
-function addressInSslipName(host: string): string | null {
+export function addressInSslipName(host: string): string | null {
   const name = host.trim().replace(/\.sslip\.io$/i, "");
   const quad = /(?:^|[-.])((?:\d{1,3}[-.]){3}\d{1,3})$/.exec(name);
   if (!quad) return null;

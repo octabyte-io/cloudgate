@@ -7,13 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Icon } from "@/lib/design/icons";
 import { hostnameValue, isHostname } from "@/lib/forms/hostname";
 
+import { CheckDnsButton, useDnsCheck } from "./dns-check";
 import { DnsHelper } from "./dns-helper";
 import type { DomainValues } from "./domain-schema";
-import {
-  useGenerateHost,
-  usePlatformHostIp,
-  useValidateHost,
-} from "./use-domains";
+import { useGenerateHost, usePlatformHostIp } from "./use-domains";
 
 /**
  * The hostname, and the two network calls made *inside* a form — which no other
@@ -31,7 +28,8 @@ import {
  * Both mutations live here together because a lookup's answer belongs to **the
  * host it was asked about**, and both of them replace that host. The verdict is
  * shown only while the field still holds the host the lookup was sent for
- * (`validate.variables.host`), so typing over a checked host hides its answer
+ * (`useDnsCheck`, shared with a Template setup's Domain field), so typing over
+ * a checked host hides its answer
  * rather than relabelling it with the new name — "nope.invalid is behind
  * Cloudflare" about a host nobody looked up — and typing the old host back
  * shows it again, because it is still true of that one. Generate also resets the
@@ -56,7 +54,6 @@ export function DomainHostField({
 }) {
   const form = useFormContext<DomainValues>();
   const generate = useGenerateHost();
-  const validate = useValidateHost();
 
   /**
    * Where the host should point, from whichever of the two places has it: the
@@ -97,10 +94,9 @@ export function DomainHostField({
   const usable = isHostname(host);
 
   // Keyed to the host that was asked about rather than cleared on each
-  // keystroke: `variables` is what the last `mutateAsync` was called with, so
-  // the pending line and the verdict both belong to *that* host, never to
-  // whatever the field says now.
-  const asked = validate.variables?.host === host;
+  // keystroke: the pending line and the verdict both belong to *that* host,
+  // never to whatever the field says now (`useDnsCheck`).
+  const validate = useDnsCheck(host, pointsAt);
 
   return (
     <>
@@ -150,33 +146,19 @@ export function DomainHostField({
           <Icon name="spark" size={14} />
           Generate one for me
         </Button>
-        <Button
-          type="button"
-          size="sm"
-          disabled={!usable || validate.isPending}
-          aria-busy={validate.isPending || undefined}
-          onClick={async () => {
-            try {
-              await validate.mutateAsync({
-                host,
-                serverIp: pointsAt ?? undefined,
-              });
-            } catch (error) {
-              toast.error(error);
-            }
-          }}
-        >
-          <Icon name="net" size={14} />
-          Check DNS
-        </Button>
+        <CheckDnsButton
+          check={validate.check}
+          checking={validate.checking}
+          disabled={!usable}
+        />
       </div>
 
       {usable ? (
         <DnsHelper
           host={host}
           serverIp={pointsAt}
-          result={asked ? (validate.data ?? null) : null}
-          pending={asked && validate.isPending}
+          result={validate.result}
+          pending={validate.pending}
           noun={noun}
         />
       ) : null}

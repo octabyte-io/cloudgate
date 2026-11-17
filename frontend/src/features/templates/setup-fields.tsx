@@ -13,10 +13,16 @@ import type {
   SetupDomain,
   SetupEnvironment,
 } from "@/lib/api/endpoints/templates";
+import {
+  addressInSslipName,
+  isSslip,
+} from "@/features/application/domains/dns-helper";
 import { Icon } from "@/lib/design/icons";
+import { hostnameValue, isHostname } from "@/lib/forms/hostname";
 import { settingsHref } from "@/lib/settings/sections";
 
 import { isYesNo } from "./asked-value";
+import { SetupDnsCheck } from "./setup-dns-check";
 import { SetupDnsRecords } from "./setup-dns-records";
 
 /**
@@ -97,57 +103,104 @@ export function DomainHostFields({
   /** Set in a Cloud Environment: where its Domains point. */
   cloud: SetupEnvironment["cloudDomains"];
 }) {
+  return domains.map((domain, at) => (
+    <DomainHostField
+      key={domain.name}
+      domain={domain}
+      at={at}
+      offered={cloud ? undefined : generated?.[domain.name]}
+      cloud={cloud}
+    />
+  ));
+}
+
+/**
+ * One compose Domain's host. On a Server or this Cloudgate host, an own
+ * domain typed in place of the generated one gets the Add a domain dialog's
+ * DNS panel under it: the A record and Check DNS (`SetupDnsCheck`). An
+ * sslip.io host gets neither, generated or typed, since sslip.io answers
+ * from the name and there is no record to make.
+ *
+ * **Where the record points is read off the generated host**, which is
+ * `generateHostForNewService`'s name carrying the very address the Domain
+ * is routed on: the Server's, or the platform host's public address. The
+ * setup form carries no address of its own, and adding one would be a second
+ * answer to a question the generated host already answers. No generated host
+ * off the cloud is the platform host with no public address recorded, which
+ * the panel says where to set. A generated host whose address cannot be read
+ * back (an IPv6 Server's dashed name) shows no panel: `DnsHelper` prints an A
+ * record, and an A record for a v6 address, or one "pointing at this
+ * Cloudgate host", would be a wrong instruction rather than a missing one.
+ */
+function DomainHostField({
+  domain,
+  at,
+  offered,
+  cloud,
+}: {
+  domain: SetupDomain;
+  at: number;
+  offered: string | undefined;
+  cloud: SetupEnvironment["cloudDomains"];
+}) {
   const { setValue } = useFormContext();
-  const hosts = useWatch({ name: "hosts" }) as string[] | undefined;
-  return domains.map((domain, at) => {
-    const offered = cloud ? undefined : generated?.[domain.name];
-    const host = hosts?.[at] ?? "";
-    return (
-      <div key={domain.name} className="grid gap-2">
-        <Field
-          name={`hosts.${at}`}
-          label={
-            <>
-              {domain.service}&rsquo;s Domain{" "}
-              <span className="font-mono text-meta font-normal text-tx-3">
-                port {domain.port}
-                {domain.path === "/" ? "" : ` at ${domain.path}`}
-              </span>
-            </>
-          }
-          hint={hostHint(domain.service, {
-            cloud: cloud !== null,
-            offered,
-            onOffered: offered !== undefined && host.trim() === offered,
-          })}
-        >
-          <Input
-            autoComplete="off"
-            spellCheck={false}
-            placeholder="app.example.com"
-            className="font-mono text-meta md:text-meta"
-          />
-        </Field>
-        {offered !== undefined && host.trim() !== offered ? (
-          <div>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() =>
-                setValue(`hosts.${at}`, offered, { shouldValidate: true })
-              }
-            >
-              <Icon name="spark" size={14} />
-              Generate one for me
-            </Button>
-          </div>
-        ) : null}
-        {cloud ? (
-          <SetupDnsRecords host={host} pointsAt={cloud.pointsAt} />
-        ) : null}
-      </div>
-    );
-  });
+  const host = hostnameValue(
+    (useWatch({ name: `hosts.${at}` }) as string | undefined) ?? "",
+  );
+  const address = offered === undefined ? null : addressInSslipName(offered);
+  const ownDomain =
+    cloud === null &&
+    isHostname(host) &&
+    !isSslip(host) &&
+    (offered === undefined || address !== null);
+  const generate =
+    offered !== undefined && host !== offered ? (
+      <Button
+        type="button"
+        size="sm"
+        onClick={() =>
+          setValue(`hosts.${at}`, offered, { shouldValidate: true })
+        }
+      >
+        <Icon name="spark" size={14} />
+        Generate one for me
+      </Button>
+    ) : null;
+  return (
+    <div className="grid gap-2">
+      <Field
+        name={`hosts.${at}`}
+        label={
+          <>
+            {domain.service}&rsquo;s Domain{" "}
+            <span className="font-mono text-meta font-normal text-tx-3">
+              port {domain.port}
+              {domain.path === "/" ? "" : ` at ${domain.path}`}
+            </span>
+          </>
+        }
+        hint={hostHint(domain.service, {
+          cloud: cloud !== null,
+          offered,
+          address,
+          onOffered: offered !== undefined && host === offered,
+        })}
+      >
+        <Input
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="app.example.com"
+          className="font-mono text-meta md:text-meta"
+        />
+      </Field>
+      {ownDomain ? (
+        <SetupDnsCheck host={host} pointsAt={address} beside={generate} />
+      ) : generate ? (
+        <div>{generate}</div>
+      ) : null}
+      {cloud ? <SetupDnsRecords host={host} pointsAt={cloud.pointsAt} /> : null}
+    </div>
+  );
 }
 
 /** What a Domain's host field says under it, for where the setup goes. */
@@ -156,25 +209,34 @@ function hostHint(
   {
     cloud,
     offered,
+    address,
     onOffered,
-  }: { cloud: boolean; offered: string | undefined; onOffered: boolean },
+  }: {
+    cloud: boolean;
+    offered: string | undefined;
+    /** The address the generated host carries; null where it carries none. */
+    address: string | null;
+    onOffered: boolean;
+  },
 ): React.ReactNode {
   if (cloud) {
     return "Type your own domain: a Stack VM has no generated host. Its Domain is added once the Plan's Apply has made the Stack VM.";
   }
+  const record = `an A record for it pointing at ${address ?? "the Server's address"}`;
   if (onOffered) {
-    return "A free sslip.io address that works right away, over HTTPS when the Server's address is public. To use your own domain instead, type it here and point its DNS at the Server.";
+    return `A free sslip.io address that works right away, over HTTPS when the Server's address is public. To use your own domain instead, type it here and add ${record}.`;
   }
   if (offered !== undefined) {
-    return `The address people open ${service} at: your own domain, with its DNS pointed at the Server, or a free sslip.io one.`;
+    return `The address people open ${service} at: your own domain, with ${record}, or a free sslip.io one.`;
   }
   // Nothing generated off the cloud: the platform host has no IP address
   // recorded, and its public address is where one is set.
   return (
     <>
-      The address people open {service} at: your own domain, with its DNS
-      pointed at the Server. For a free sslip.io address on this Cloudgate host,
-      set its public IP under{" "}
+      The address people open {service}{" "}
+      at: your own domain, with an A record for it pointing at this Cloudgate
+      host. For the record&rsquo;s address, and a free sslip.io one, set its
+      public IP under{" "}
       <Link
         href={settingsHref("instance")}
         className="font-medium text-brand-tx underline-offset-3 hover:underline focus-visible:underline"

@@ -1,10 +1,12 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
-  render,
+  render as renderUi,
   screen,
   waitFor,
 } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api/api-error";
@@ -14,6 +16,14 @@ import { newProjectTargets } from "./new-project-targets";
 import { EMPTY_PROJECT_NOTE, SetupFormView } from "./setup-form";
 
 afterEach(cleanup);
+
+/** In a query client, which an own domain's Check DNS needs, as the console has. */
+function render(ui: ReactElement) {
+  const client = new QueryClient();
+  return renderUi(
+    <QueryClientProvider client={client}>{ui}</QueryClientProvider>,
+  );
+}
 
 const FORM: SetupForm = {
   templateId: "ghost",

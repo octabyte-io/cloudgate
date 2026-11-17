@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### A Template setup shows the DNS record for your own domain, and checks it
+
+In a Template's setup, typing your own domain in place of the generated sslip.io host on a Server or this Cloudgate host gave no record to make and no way to check it: the hint said only to point its DNS at the Server. The field now shows the record the Add a domain dialog shows, an A record with its Name (`@` for a bare domain) and the address it points at, with **Check DNS** beside it. A failed check says so and does not hold Set up back, since the record can be fixed after the Plan is applied. With no public address recorded for this Cloudgate host, the panel says to set it under **Settings → Instance**. The hint names the address too: "add an A record for it pointing at 203.0.113.10". An sslip.io host still needs no record and shows none. In a Cloud Environment the records are shown as before, with a line saying the stack's Domains tab checks them once Apply has made the Stack VM.
+
+**What to do on upgrade**: nothing.
+
 ### A running Compose stack offers Restart where Start was
 
 On a Compose stack whose containers were all up, **Start** stayed on and did nothing when pressed. While every container of a stack is running, that button is now **Restart**, which restarts the containers without a clone or a build; with any container stopped or removed, it is Start again. Restart was offered only on a stack on its own Stack VM before, as a fifth button beside Start. A Swarm stack has neither, as before: Deploy restarts it. Once a stack is deployed, hovering **Deploy** says what it does again: deploys the compose file as it is now, building again what has a build, and pulling an image already there only if its `pull_policy` says so.
