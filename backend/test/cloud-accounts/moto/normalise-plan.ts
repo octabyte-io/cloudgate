@@ -263,11 +263,14 @@ const HEX_ID =
 
 /**
  * moto's CloudFront ids and ETags: 13 upper-case letters and digits,
- * at least one of each. Not 14: a Route 53 hosted zone id AWS fixes
- * (`Z21DNDUVLTQW6Q`, `Z2FDTNDATAQYW2`) is, and stays as printed.
+ * at least one letter. moto draws each character at random, so about one
+ * id in 70 has no digit (`NTUZMLQERDLTT`); asking for one left that id as
+ * printed and the stored plans differed on that run. Not 14: a Route 53
+ * hosted zone id AWS fixes (`Z21DNDUVLTQW6Q`, `Z2FDTNDATAQYW2`) is, and
+ * stays as printed.
  */
 const CLOUDFRONT_ID =
-  /(?<![0-9A-Za-z])(?=[0-9A-Z]*[0-9])(?=[0-9A-Z]*[A-Z])[0-9A-Z]{13}(?![0-9A-Za-z])/g;
+  /(?<![0-9A-Za-z])(?=[0-9A-Z]*[A-Z])[0-9A-Z]{13}(?![0-9A-Za-z])/g;
 
 /** A distribution's own `<random>.cloudfront.net` name. */
 const CLOUDFRONT_DOMAIN = /\b[0-9a-z]{13,14}(?=\.cloudfront\.net\b)/g;
