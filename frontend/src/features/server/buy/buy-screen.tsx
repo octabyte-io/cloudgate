@@ -27,6 +27,7 @@ import {
 } from "./location-cards";
 import { LocationMap } from "./location-map";
 import { SizeTable } from "./size-table";
+import { Suggested } from "./suggestion-cards";
 import {
   useBoughtServerCatalogue,
   useBoughtServerOffer,
@@ -192,6 +193,17 @@ function Chooser({ catalogue }: { catalogue: BoughtServerCatalogue }) {
       }
       asideLabel="Summary"
     >
+      <Suggested
+        ordered={ordered}
+        sizes={catalogue.sizes}
+        chosen={{ locationId, sizeId }}
+        onChoose={({ location: next, size: picked }) => {
+          setLocationId(next.id);
+          setFamily(picked.family);
+          setSizeId(picked.id);
+        }}
+      />
+
       <Card>
         <Card.Header
           title="1. Location"

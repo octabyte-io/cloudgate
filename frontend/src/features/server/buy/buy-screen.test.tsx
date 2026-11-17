@@ -619,7 +619,7 @@ describe("BuyScreen", () => {
     fireEvent.click(
       screen.getByRole("radio", { name: "4 vCPU · 8 GB RAM · 80 GB disk" }),
     );
-    for (const family of ["Shared", "Shared Arm", "Shared AMD", "Dedicated"]) {
+    for (const family of ["Standard", "Performance", "Arm", "Dedicated"]) {
       fireEvent.click(screen.getByRole("button", { name: family }));
       expect(document.body.textContent).not.toMatch(
         /\b(cx|cax|cpx|ccx)\d+|\b(fsn1|nbg1|hel1|ash|sin)\b|hetzner/i,
@@ -682,5 +682,64 @@ describe("BuyScreen", () => {
 
     expect(await screen.findByText(`caught: ${NOT_FOUND}`)).toBeTruthy();
     expect(api.catalogue).not.toHaveBeenCalled();
+  });
+
+  describe("Server families", () => {
+    it("names each family by what it is, and says what the chosen one is under the tabs", async () => {
+      await cardOrder();
+      chooseCard("Falkenstein");
+
+      for (const name of ["Standard", "Performance", "Arm", "Dedicated"]) {
+        expect(screen.getByRole("button", { name })).toBeTruthy();
+      }
+      expect(document.body.textContent).not.toMatch(/Shared (Arm|AMD)/);
+
+      fireEvent.click(screen.getByRole("button", { name: "Performance" }));
+      expect(screen.getByText(/Shared AMD cores/)).toBeTruthy();
+    });
+  });
+
+  describe("Closest and Cheapest", () => {
+    it("offers the nearest place that fits and the cheapest one anywhere, each with its size and price", async () => {
+      renderScreen();
+      const cards = await screen.findByRole("list", {
+        name: "Suggested Servers",
+      });
+
+      // From Berlin: Falkenstein is nearest, and Nuremberg sells a 4 GB size for less.
+      const [closest, cheapest] = within(cards).getAllByRole("button");
+      expect(closest.textContent).toMatch(/Closest/);
+      expect(closest.textContent).toMatch(/Falkenstein/);
+      expect(closest.textContent).toMatch(/4 vCPU · 8 GB/);
+      expect(closest.textContent).toMatch(/\$14/);
+      expect(cheapest.textContent).toMatch(/Cheapest/);
+      expect(cheapest.textContent).toMatch(/Nuremberg/);
+      expect(cheapest.textContent).toMatch(/2 vCPU · 4 GB/);
+      expect(cheapest.textContent).toMatch(/\$9/);
+    });
+
+    it("sets the place and the size when one is picked", async () => {
+      renderScreen();
+      const cards = await screen.findByRole("list", {
+        name: "Suggested Servers",
+      });
+
+      fireEvent.click(within(cards).getAllByRole("button")[1]);
+
+      expect(
+        within(cards).getAllByRole("button")[1].getAttribute("aria-pressed"),
+      ).toBe("true");
+      expect(
+        screen
+          .getByRole("radio", { name: "2 vCPU · 4 GB RAM · 40 GB disk" })
+          .getAttribute("aria-checked") ??
+          (
+            screen.getByRole("radio", {
+              name: "2 vCPU · 4 GB RAM · 40 GB disk",
+            }) as HTMLInputElement
+          ).checked.toString(),
+      ).toBe("true");
+      expect(screen.getByText(/Server, 2 vCPU · 4 GB, Nuremberg/)).toBeTruthy();
+    });
   });
 });

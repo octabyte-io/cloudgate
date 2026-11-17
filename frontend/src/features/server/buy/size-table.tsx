@@ -29,8 +29,39 @@ export function SizeTable({
   chosen: string | null;
   onChoose: (sizeId: string) => void;
 }) {
+  // Under the tabs whatever the table holds, so the family's name is
+  // explained before a place is picked or where it is not sold.
   const hint = FAMILIES.find((entry) => entry.value === family)?.hint;
+  return (
+    <>
+      {hint ? (
+        <p className="px-4 pt-3 pb-2 text-meta text-tx-3">{hint}</p>
+      ) : null}
+      <SizeRows
+        sizes={sizes}
+        family={family}
+        location={location}
+        chosen={chosen}
+        onChoose={onChoose}
+      />
+    </>
+  );
+}
 
+/** The sizes of one family in one place, or why there are none to pick. */
+function SizeRows({
+  sizes,
+  family,
+  location,
+  chosen,
+  onChoose,
+}: {
+  sizes: CatalogueSize[];
+  family: SizeFamily;
+  location: CatalogueLocation | null;
+  chosen: string | null;
+  onChoose: (sizeId: string) => void;
+}) {
   if (!location) {
     return (
       <p className="px-4 py-3.5 text-ui text-tx-3">
@@ -58,13 +89,10 @@ export function SizeTable({
     );
   }
 
-  // Keyed on the family, so switching Shared / Dedicated swaps the list with
-  // a fade in place rather than a jump.
+  // Keyed on the family, so switching Standard / Dedicated swaps the list
+  // with a fade in place rather than a jump.
   return (
     <div key={family} className="animate-fade">
-      {hint ? (
-        <p className="px-4 pt-3 pb-2 text-meta text-tx-3">{hint}</p>
-      ) : null}
       <table className="w-full border-collapse text-ui">
         <thead>
           <tr className="h-thead border-y border-line bg-panel-2 text-left text-tx-3">

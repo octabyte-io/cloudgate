@@ -11,28 +11,44 @@ import type {
  * renders one.
  */
 
+/**
+ * The Server families (CONTEXT.md), in the order the tabs show them: each
+ * named by what it is, never by the provider's line, with the sentence shown
+ * under the tabs while it is chosen.
+ */
 export const FAMILIES: ReadonlyArray<{
   value: SizeFamily;
   label: string;
   hint: string;
 }> = [
-  { value: "shared", label: "Shared", hint: "Good value for most apps." },
   {
-    value: "arm",
-    label: "Shared Arm",
-    hint: "Cheaper per core. Your images must run on Arm.",
+    value: "shared",
+    label: "Standard",
+    hint: "Shared Intel or AMD cores, the cheapest, and enough for most apps. Shared cores are shared with other machines on the same host.",
   },
   {
     value: "amd",
-    label: "Shared AMD",
-    hint: "Faster shared cores, in more locations.",
+    label: "Performance",
+    hint: "Shared AMD cores, faster than Standard, in more locations.",
+  },
+  {
+    value: "arm",
+    label: "Arm",
+    hint: "Shared Arm cores, the cheapest per core. Your app's images must run on Arm.",
   },
   {
     value: "dedicated",
     label: "Dedicated",
-    hint: "Cores that are yours alone, for steady heavy load.",
+    hint: "Cores reserved for this Server alone, for steady heavy load.",
   },
 ];
+
+/**
+ * The smallest memory a suggested size has. Most catalogue apps run an app
+ * and a database side by side, and 2 GB leaves one of them swapping; 4 GB is
+ * the smallest size the catalogue's own apps are tried on.
+ */
+export const SUGGESTED_MEMORY_GB = 4;
 
 /** `3 vCPU · 4 GB RAM · 80 GB disk`. */
 export function sizeLabel(

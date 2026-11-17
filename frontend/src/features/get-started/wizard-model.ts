@@ -12,7 +12,7 @@ import type { AutoApplyView } from "@/lib/api/endpoints/pending-setups";
 import type { Plan } from "@/lib/api/endpoints/project-config";
 import { lastSetup, type Server } from "@/lib/api/endpoints/servers";
 
-import { offerIn } from "../server/buy/buy-model";
+import { SUGGESTED_MEMORY_GB, offerIn } from "../server/buy/buy-model";
 
 /**
  * The get-started wizard's decisions, as pure functions over what the API
@@ -116,12 +116,7 @@ export function startingPrice(catalogue: BoughtServerCatalogue): number | null {
   return lowest;
 }
 
-/**
- * The smallest memory the suggested size has. Most catalogue apps run an
- * app and a database side by side, and 2 GB leaves one of them swapping;
- * 4 GB is the smallest size the catalogue's own apps are tried on.
- */
-export const SUGGESTED_MEMORY_GB = 4;
+export { SUGGESTED_MEMORY_GB };
 
 /**
  * The size the wizard suggests in a Location: the cheapest shared one with
