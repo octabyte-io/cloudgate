@@ -1,3 +1,6 @@
+import { Logger } from '@nestjs/common';
+import type { OnModuleDestroy } from '@nestjs/common';
+import { UNLICENSED_BUILDS_CONCURRENCY } from './concurrency';
 import { getGroup, getPartition } from './job-types';
 import type { DeploymentJob } from './job-types';
 import type { JobState, QueuedJob, QueuePort } from './queue.port';
@@ -34,10 +37,13 @@ export interface InMemoryQueueOptions {
   resolveConcurrency: (partition: string) => Promise<number> | number;
 }
 
-export class InMemoryQueue implements QueuePort {
+export class InMemoryQueue implements QueuePort, OnModuleDestroy {
+  private readonly logger = new Logger(InMemoryQueue.name);
   private partitions = new Map<string, Partition>();
   private processor: Processor | null = null;
   private seq = 0;
+  /** Set at shutdown: no job starts and no concurrency is read after it. */
+  private stopped = false;
 
   constructor(private readonly options: InMemoryQueueOptions) {}
 
@@ -111,8 +117,19 @@ export class InMemoryQueue implements QueuePort {
     return Promise.resolve(dropped);
   }
 
+  /**
+   * App shutdown: start nothing more. A running job is left to finish or be
+   * cut off with the process, and start-up settles its row as it does any
+   * build a restart cut off. Without this the queue went on scheduling
+   * after the app closed: a job ending then read the partition's concurrency
+   * from a database the process had already let go of.
+   */
+  onModuleDestroy(): void {
+    this.stopped = true;
+  }
+
   private schedule(): void {
-    if (!this.processor) return;
+    if (!this.processor || this.stopped) return;
     for (const key of this.partitions.keys()) {
       void this.drainPartition(key);
     }
@@ -120,9 +137,10 @@ export class InMemoryQueue implements QueuePort {
 
   private async drainPartition(key: string): Promise<void> {
     const partition = this.partitions.get(key);
-    if (!partition || !this.processor) return;
+    if (!partition || !this.processor || this.stopped) return;
 
-    const concurrency = Math.max(1, await this.options.resolveConcurrency(key));
+    const concurrency = Math.max(1, await this.readConcurrency(key));
+    if (this.stopped) return;
 
     while (partition.active.length < concurrency) {
       // First waiting job whose group is not already running.
@@ -136,6 +154,24 @@ export class InMemoryQueue implements QueuePort {
       partition.active.push(job);
       partition.activeGroups.add(job.group);
       void this.runJob(job);
+    }
+  }
+
+  /**
+   * The partition's concurrency, or one build at a time when it cannot be read
+   * (the database away). Every drain is `void`-ed, so a rejection here would be
+   * unhandled, which ends the process, and would leave the partition's waiting
+   * jobs unstarted until something else drained it.
+   */
+  private async readConcurrency(key: string): Promise<number> {
+    try {
+      return await this.options.resolveConcurrency(key);
+    } catch (error) {
+      this.logger.warn(
+        `Builds concurrency for ${key} could not be read; running one ` +
+          `build at a time: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return UNLICENSED_BUILDS_CONCURRENCY;
     }
   }
 

@@ -202,4 +202,65 @@ describe('InMemoryQueue', () => {
     // Nothing else ever starts.
     expect(events).toEqual(['start:app-a', 'start:app-c']);
   });
+
+  // After a job ends the queue reads the partition's concurrency (a database
+  // read) and starts the next, outside any request. That work stops with the
+  // app: the e2e harness ends the pool after `app.close()`, and a drain that
+  // read from it then failed a suite after all its tests had passed.
+  it('starts no job and reads no concurrency once the app shuts down, leaving the running job to finish', async () => {
+    const events: string[] = [];
+    const gate = deferred();
+    const resolveConcurrency = jest.fn(() => 1);
+    const queue = new InMemoryQueue({ resolveConcurrency });
+    queue.process(async (job) => {
+      events.push(`start:${(job.data as ApplicationJob).applicationId}`);
+      await gate.promise;
+      events.push(`finish:${(job.data as ApplicationJob).applicationId}`);
+    });
+
+    await queue.add(appJob('app-a'));
+    await queue.add(appJob('app-b'));
+    await flush();
+    expect(events).toEqual(['start:app-a']);
+
+    queue.onModuleDestroy();
+    const reads = resolveConcurrency.mock.calls.length;
+    gate.resolve();
+    await flush();
+    await queue.add(appJob('app-c'));
+    await flush();
+
+    expect(events).toEqual(['start:app-a', 'finish:app-a']);
+    expect(resolveConcurrency.mock.calls.length).toBe(reads);
+  });
+
+  // Every drain is `void`-ed, so a concurrency read that rejects (the
+  // database away) was an unhandled rejection, which ends a Node process.
+  it('runs one build at a time when the concurrency cannot be read, rather than rejecting unhandled', async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      const events: string[] = [];
+      const gate = deferred();
+      const queue = new InMemoryQueue({
+        resolveConcurrency: () =>
+          Promise.reject(new Error('Cannot use a pool after calling end')),
+      });
+      queue.process(async (job) => {
+        events.push(`start:${(job.data as ApplicationJob).applicationId}`);
+        await gate.promise;
+      });
+
+      await queue.add(appJob('app-a', { serverId: 'srv-1' }));
+      await queue.add(appJob('app-b', { serverId: 'srv-1' }));
+      await flush();
+
+      expect(events).toEqual(['start:app-a']);
+      expect(unhandled).toEqual([]);
+      gate.resolve();
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
+  });
 });
