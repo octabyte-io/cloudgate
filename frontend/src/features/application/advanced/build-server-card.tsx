@@ -3,8 +3,7 @@ import { z } from "zod";
 
 import { KVList, KVRow } from "@/components/console/kv-list";
 import type { ApplicationDetail } from "@/lib/api/endpoints/applications";
-import { notReadyYet } from "@/lib/api/endpoints/servers";
-import type { Server } from "@/lib/api/endpoints/servers";
+import { notReadyYet, type Server } from "@/lib/api/endpoints/servers";
 import { usePermission } from "@/lib/auth/use-permission";
 
 import { APPLICATION_SETTINGS_REFUSAL } from "../use-application";
