@@ -11,6 +11,7 @@ import { Stepper } from "@/components/console/stepper";
 import { Button } from "@/components/ui/button";
 import type { TemplateSummary } from "@/lib/api/endpoints/templates";
 import { errorMessage } from "@/lib/api/error-message";
+import { cn } from "@/lib/utils";
 
 import { useTemplateCatalogue } from "../templates/use-templates";
 import { DetailsStep } from "./details-step";
@@ -51,8 +52,8 @@ export function GetStartedScreen() {
           <Card>
             <Card.Body className="grid justify-items-start gap-3">
               <p className="text-body text-tx">
-                The list of apps could not be read, so this one cannot be set
-                up yet.
+                The list of apps could not be read, so this one cannot be set up
+                yet.
               </p>
               <p className="text-ui text-tx-2">
                 {errorMessage(catalogue.error)}
@@ -85,10 +86,16 @@ export function GetStartedScreen() {
   if (!template) return <UnknownApp />;
 
   const step = stepOf(state);
+  // Buying is the Buy screen's two columns, which need more than the one
+  // calm column every other step reads in.
+  const buying =
+    step === "server" && state.path === "buy" && state.serverId === null;
 
   return (
     <Page>
-      <div className="mx-auto grid max-w-3xl gap-5">
+      <div
+        className={cn("mx-auto grid gap-5", buying ? "max-w-6xl" : "max-w-3xl")}
+      >
         <AppHeader template={template} />
         <WizardStepper step={step} appName={template.name} />
         {/*

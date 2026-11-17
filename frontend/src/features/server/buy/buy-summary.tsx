@@ -4,7 +4,11 @@ import { useId, useState } from "react";
 import { Card } from "@/components/console/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { BuyChoice, TodayView } from "@/lib/api/endpoints/bought-servers";
+import type {
+  BuyChoice,
+  PurchaseResult,
+  TodayView,
+} from "@/lib/api/endpoints/bought-servers";
 import { formatDay } from "@/lib/api/endpoints/billing";
 import { errorMessage } from "@/lib/api/error-message";
 
@@ -66,17 +70,26 @@ function planLines(today: TodayView | undefined): SummaryLine[] {
  * A Buy that can't be pressed says why: what is still to pick first, then
  * the terms box. Pressed on a plan, it charges at once; the purchase then
  * shows under Servers, waiting for payment (3D Secure) or being made.
+ *
+ * The get-started wizard buys from here too, with its own `returnTo` and
+ * `onBought`, so the buyer comes back to the wizard rather than Servers.
  */
 export function BuySummary({
   lines,
   missing,
   choice,
+  returnTo,
+  onBought,
 }: {
   lines: SummaryLine[];
   /** What the customer still has to pick or fix, or null once the choice can be bought. */
   missing: string | null;
   /** The size and Location, and backups and extra storage when chosen, once the size can be bought there. */
   choice: BuyChoice | null;
+  /** Where Checkout or a bank's check sends the browser back to; Servers when left out. */
+  returnTo?: string;
+  /** What follows a Buy answered; left out, Checkout when it starts a plan, else Servers. */
+  onBought?: (result: PurchaseResult) => void;
 }) {
   const router = useRouter();
   const termsId = useId();
@@ -105,11 +118,14 @@ export function BuySummary({
         ...choice,
         termsAccepted: true,
         prorationDate: today.data.prorationDate,
+        ...(returnTo ? { returnTo } : {}),
       },
       {
         onSuccess: (result) => {
+          if (onBought) onBought(result);
           // With no plan, the plan starts in Checkout; the Server waits for it.
-          if (checkout && result.payUrl) window.location.href = result.payUrl;
+          else if (checkout && result.payUrl)
+            window.location.href = result.payUrl;
           else router.push("/servers");
         },
       },

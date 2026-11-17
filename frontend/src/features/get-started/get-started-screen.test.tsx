@@ -1,5 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Server } from "@/lib/api/endpoints/servers";
@@ -8,6 +15,8 @@ import type { TemplateSummary } from "@/lib/api/endpoints/templates";
 import type { LaunchPhase } from "./wizard-model";
 
 const search = vi.hoisted(() => ({ current: "" }));
+const replace = vi.hoisted(() => vi.fn());
+const buy = vi.hoisted(() => vi.fn());
 const reads = vi.hoisted(() => ({
   templates: [] as TemplateSummary[],
   servers: [] as Server[],
@@ -19,7 +28,71 @@ const reads = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(search.current),
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace }),
+}));
+vi.mock("../server/buy/where-you-are", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../server/buy/where-you-are")>()),
+  browserTimeZone: () => "Europe/Berlin",
+}));
+
+/**
+ * A catalogue as the backend answers it. From Berlin, Nuremberg is the
+ * nearest place, and its 2 vCPU · 4 GB size the cheapest anywhere.
+ */
+const CATALOGUE = vi.hoisted(() => ({
+  locations: [
+    {
+      id: "hel1",
+      city: "Helsinki",
+      country: "FI",
+      latitude: 60.17,
+      longitude: 24.94,
+    },
+    {
+      id: "nbg1",
+      city: "Nuremberg",
+      country: "DE",
+      latitude: 49.45,
+      longitude: 11.08,
+    },
+  ],
+  storage: { minGb: 10, maxGb: 10240, perGbMonthly: 0.05 },
+  sizes: [
+    {
+      id: "cx23",
+      family: "shared",
+      architecture: "x86",
+      vcpus: 2,
+      memoryGb: 4,
+      diskGb: 40,
+      offers: [
+        { locationId: "nbg1", available: true, monthly: 7, backupsMonthly: 2 },
+        { locationId: "hel1", available: true, monthly: 8, backupsMonthly: 2 },
+      ],
+    },
+  ],
+  images: [
+    {
+      id: "ubuntu-24.04",
+      label: "Ubuntu 24.04",
+      architectures: ["x86", "arm"],
+    },
+    { id: "debian-13", label: "Debian 13", architectures: ["x86", "arm"] },
+  ],
+  defaultImage: "ubuntu-24.04",
+}));
+
+/** The Today box's answer on a plan: $5.10 now. */
+const TODAY = vi.hoisted(() => ({
+  state: "plan" as const,
+  plan: null,
+  addOn: null,
+  today: 510,
+  monthly: 1200,
+  currency: "usd",
+  from: Date.UTC(2026, 10, 10, 12) / 1000,
+  to: Date.UTC(2026, 11, 1, 12) / 1000,
+  prorationDate: 1_794_000_000,
 }));
 vi.mock("../templates/use-templates", () => ({
   NEW_PROJECT: "new-project",
@@ -39,32 +112,12 @@ vi.mock("@/lib/auth/use-permission", () => ({
 }));
 vi.mock("../server/buy/use-bought-servers", () => ({
   useBoughtServerOffer: () => ({ offered: reads.offered, pending: false }),
-  useBoughtServerCatalogue: () => ({
-    data: {
-      locations: [],
-      storage: { minGb: 10, maxGb: 100, perGbMonthly: 0.05 },
-      sizes: [
-        {
-          id: "cx23",
-          family: "shared",
-          vcpus: 2,
-          memoryGb: 4,
-          diskGb: 40,
-          offers: [
-            {
-              locationId: "nbg1",
-              available: true,
-              monthly: 7,
-              backupsMonthly: 2,
-            },
-          ],
-        },
-      ],
-    },
-  }),
+  useBoughtServerCatalogue: () => ({ data: CATALOGUE }),
   useCancelPurchase: () => ({ mutate: vi.fn(), isPending: false }),
-  useBoughtServerToday: () => ({}),
-  useBuyServer: () => ({ mutate: vi.fn(), isPending: false }),
+  useBoughtServerToday: (choice: unknown) => ({
+    data: choice ? TODAY : undefined,
+  }),
+  useBuyServer: () => ({ mutate: buy, isPending: false }),
 }));
 vi.mock("./use-get-started", () => ({
   useWizardServers: () => ({
@@ -128,7 +181,12 @@ beforeEach(() => {
   reads.domains = [];
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  replace.mockReset();
+  buy.mockReset();
+  vi.unstubAllGlobals();
+});
 
 describe("GetStartedScreen", () => {
   it("sends a link with no app back to the catalogue", () => {
@@ -262,5 +320,129 @@ describe("GetStartedScreen", () => {
         .getByRole("link", { name: "See what happened" })
         .getAttribute("href"),
     ).toBe("/environments/env_1");
+  });
+
+  describe("buying a server", () => {
+    /** Base UI's trigger opens on `mousedown`, so a bare click is what opens it. */
+    async function chooseImage(name: string) {
+      fireEvent.click(screen.getByRole("combobox"));
+      const option = await screen.findByRole("option", { name });
+      fireEvent.pointerDown(option, { pointerType: "mouse" });
+      fireEvent.click(option, { detail: 1 });
+      await waitFor(() =>
+        expect(screen.queryAllByRole("option")).toHaveLength(0),
+      );
+    }
+
+    function pressBuy() {
+      fireEvent.click(screen.getByRole("checkbox"));
+      fireEvent.click(screen.getByRole("button", { name: "Buy" }));
+    }
+
+    it("offers every buy option, with the summary and Buy in a column beside them", () => {
+      show("template=ghost&path=buy");
+
+      for (const name of [
+        "Suggested",
+        "1. Location",
+        "2. Size in Nuremberg",
+        "3. Operating system",
+        "4. Extras",
+      ]) {
+        expect(screen.getByRole("heading", { name })).toBeTruthy();
+      }
+      expect(
+        screen.getByRole("list", { name: "Suggested Servers" }),
+      ).toBeTruthy();
+      expect(
+        screen.getByRole("list", { name: "Locations, nearest first" }),
+      ).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Standard" })).toBeTruthy();
+      expect(screen.getByRole("combobox").textContent).toMatch(/Ubuntu 24\.04/);
+      expect(screen.getByRole("switch", { name: "Backups" })).toBeTruthy();
+      expect(screen.getByLabelText(/Extra storage/)).toBeTruthy();
+      const rail = screen.getByRole("complementary", { name: "Summary" });
+      expect(within(rail).getByRole("button", { name: "Buy" })).toBeTruthy();
+    });
+
+    it("opens on the closest suggestion", () => {
+      show("template=ghost&path=buy");
+
+      expect(
+        screen
+          .getByRole("radio", { name: "2 vCPU · 4 GB RAM · 40 GB disk" })
+          .matches(":checked"),
+      ).toBe(true);
+      expect(
+        screen.getByText("Server, 2 vCPU · 4 GB, Nuremberg, Ubuntu 24.04"),
+      ).toBeTruthy();
+    });
+
+    it("keeps the summary in view beside the options, and under them in one column on a phone", () => {
+      show("template=ghost&path=buy");
+
+      const rail = screen.getByRole("complementary", { name: "Summary" });
+      const summary = within(rail).getByRole("heading", { name: "Summary" });
+      // jsdom lays nothing out, so the classes that do it are what is pinned:
+      // a rail only as tall as its card (`items-start`) leaves sticky no room.
+      expect(rail.parentElement!.className).toMatch(/\bitems-stretch\b/);
+      expect(rail.parentElement!.className).not.toMatch(/\bitems-start\b/);
+      expect(summary.closest(".cols\\:sticky")).not.toBeNull();
+      // Under 1040px the grid is one column, the summary after the options.
+      expect(rail.parentElement!.className).toMatch(/(^|\s)grid-cols-1\b/);
+      // Two columns need more than the wizard's one-column measure.
+      expect(rail.closest(".max-w-3xl")).toBeNull();
+    });
+
+    it("buys the image, backups and extra storage picked, and comes back to the wizard", async () => {
+      show("template=ghost&path=buy");
+      await chooseImage("Debian 13");
+      fireEvent.click(screen.getByRole("switch", { name: "Backups" }));
+      fireEvent.change(screen.getByLabelText(/Extra storage/), {
+        target: { value: "50" },
+      });
+
+      pressBuy();
+
+      expect(buy).toHaveBeenCalledTimes(1);
+      const [input, { onSuccess }] = buy.mock.calls[0];
+      expect(input).toEqual({
+        serverType: "cx23",
+        location: "nbg1",
+        image: "debian-13",
+        backups: true,
+        storageGb: 50,
+        termsAccepted: true,
+        prorationDate: 1_794_000_000,
+        returnTo: "/get-started?template=ghost&path=buy",
+      });
+      onSuccess({ id: "bs_1", stage: "creating", payUrl: null });
+      expect(replace).toHaveBeenCalledWith(
+        "/get-started?template=ghost&path=buy&server=bs_1",
+      );
+    });
+
+    it("goes to the page to pay on when the purchase answers one", () => {
+      const went = vi.fn();
+      vi.stubGlobal("location", {
+        set href(url: string) {
+          went(url);
+        },
+      });
+      show("template=ghost&path=buy");
+
+      pressBuy();
+      const [, { onSuccess }] = buy.mock.calls[0];
+      onSuccess({
+        id: "bs_1",
+        stage: "waiting_for_payment",
+        payUrl: "https://checkout.stripe.com/c/pay/cs_1",
+      });
+
+      expect(went).toHaveBeenCalledWith(
+        "https://checkout.stripe.com/c/pay/cs_1",
+      );
+      expect(replace).not.toHaveBeenCalled();
+    });
   });
 });
