@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { stackRootId } from './stack-root';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { quote } from 'shell-quote';
 // `import type` only, exactly as `databases/common/database-ops.ts` takes them:
 // one three-valued presence union and one shape for what a forced delete admits
@@ -512,22 +512,26 @@ export class ComposeService {
    * hand. A fact for its page to show, never a link that updates it.
    */
   private async templateOf(projectId: string, configName: string) {
-    const [record] = await this.db
+    // A Project holds a handful of Setup records, so the newest that made
+    // this Config name is found here rather than in a jsonb query.
+    const records = await this.db
       .select({
         templateId: setupRecord.templateId,
         revision: setupRecord.revision,
         setupName: setupRecord.setupName,
+        configNames: setupRecord.configNames,
       })
       .from(setupRecord)
-      .where(
-        and(
-          eq(setupRecord.projectId, projectId),
-          sql`${setupRecord.configNames} @> ${JSON.stringify([configName])}::jsonb`,
-        ),
-      )
-      .orderBy(desc(setupRecord.createdAt))
-      .limit(1);
-    return record ?? null;
+      .where(eq(setupRecord.projectId, projectId))
+      .orderBy(desc(setupRecord.createdAt));
+    const made = records.find((one) => one.configNames.includes(configName));
+    return made
+      ? {
+          templateId: made.templateId,
+          revision: made.revision,
+          setupName: made.setupName,
+        }
+      : null;
   }
 
   /**
