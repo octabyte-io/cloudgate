@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Traefik and the Compose stacks on cloudgate-network come back after a reboot
+
+After a reboot of the platform host or a Server, `cloudgate-traefik` and every Compose container on `cloudgate-network` stayed down (`Exited (128)` or `Created`), so nothing answered on ports 80 and 443 until someone ran `docker start` (#105). Docker starts them before the swarm has brought the network up, the start fails with `network cloudgate-network not found`, and Docker never tries again. A new unit, `cloudgate-boot-recover`, runs after every start of Docker, waits up to 3 minutes for the network, and starts exactly the containers whose start failed on it. A Compose stack you stopped stays stopped. `journalctl -u cloudgate-boot-recover -b` says what it started (docs/deploy.md §10).
+
+**What to do on upgrade**: the install installs and enables the unit, so upgrading the platform host is enough there. On each Server, press **Run setup again** once, on the Server's Infrastructure tab: it adds the unit as its step 8 and changes nothing already set up. A Server that has not run setup again keeps the old behaviour on its next reboot; `docker start cloudgate-traefik` and the stack's **Start** bring it back by hand.
+
 ### The console says when MongoDB 8 will not start on a host's kernel
 
 MongoDB 8 (`mongo:8`, `mongo:8.0.x`, `mongo:latest`) exits at start on a Linux kernel from 6.19.0 to 7.0.13, which includes Ubuntu 26.04's first 7.0 kernels, and Swarm restarted it forever while the deploy read done: a MongoDB database, or a Template such as Ackee whose compose file runs one, never came up and nothing said why (#104). Cloudgate now reads each host's real kernel version (off `/proc/version_signature` on Ubuntu, whose `uname -r` reads 7.0.0 for every 7.0 kernel) and says so before anything is deployed: a **Kernel** row with the warning and the fix under a Server's **What is installed** and the platform host's **What this host is running**, and the same warning in the database create form when a MongoDB 8 image is picked, on a MongoDB's Overview, and in a Template's setup when it runs a MongoDB 8. Nothing is refused. `GET /settings/runtime-info` now answers the kernel as its upstream version (`7.0.12`, with the host's own answer in `raw`) and a new `mongoRefusesKernel`; the setup form answers the template's `images` and each Environment's `machine`.

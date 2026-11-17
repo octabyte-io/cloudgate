@@ -1,0 +1,24 @@
+[Unit]
+Description=Cloudgate: start the containers Docker could not start before the swarm network was there
+Documentation=https://github.com/octabyte-io/cloudgate/blob/main/docs/deploy.md
+# Installed by deploy/install.sh on the platform host and by Server setup on
+# each Server (#105); deploy/boot-recover.sh says what it starts and why.
+# Wanted by docker.service (below), so it runs after every start of Docker:
+# at boot, and after a `systemctl restart docker` or a Docker upgrade, which
+# race the swarm the same way.
+After=docker.service
+Wants=docker.service
+
+[Service]
+# oneshot: `systemctl status cloudgate-boot-recover` shows how the last run
+# ended. Nothing is ordered after it, so it delays nothing at boot.
+Type=oneshot
+ExecStart=/usr/local/sbin/cloudgate-boot-recover
+# The script gives up waiting for the swarm at 180 s; this is only a backstop.
+TimeoutStartSec=5min
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cloudgate-boot-recover
+
+[Install]
+WantedBy=docker.service

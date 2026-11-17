@@ -2254,6 +2254,85 @@ exit 0
   });
 
   /**
+   * The systemd units step, cut out of the file as written and run with
+   * `install` and `systemctl` recording each call. It is not under
+   * HOSTED_MODE, so the Self-hosted and the Hosted install both run it, and a
+   * re-run (an upgrade) runs it again.
+   */
+  describe('the systemd units', () => {
+    function units() {
+      const step = code().match(
+        /\nlog "systemd units"\n[\s\S]*?\nsystemctl restart cloudgate-console\n/,
+      );
+      if (!step) throw new Error('no systemd units step in deploy/install.sh');
+      const bin = path.join(scratch, 'bin');
+      fs.writeFileSync(
+        path.join(bin, 'install'),
+        `#!/bin/sh\necho "install $*" >> "${calls}"\n`,
+        { mode: 0o755 },
+      );
+      const ran = spawnSync(
+        'bash',
+        [
+          '-c',
+          `set -euo pipefail; log() { :; }; REPO_ROOT=/opt/cloudgate.next\n${step[0]}`,
+        ],
+        {
+          env: { PATH: `${bin}:${process.env.PATH}` },
+          encoding: 'utf8',
+        },
+      );
+      return { ran, lines: called().trim().split('\n') };
+    }
+
+    it('installs cloudgate-boot-recover and its script, and enables it to run after each start of Docker (#105)', () => {
+      const { ran, lines } = units();
+
+      expect(ran.stderr).toBe('');
+      expect(ran.status).toBe(0);
+      expect(lines).toContain(
+        'install -m 0755 -o root -g root /opt/cloudgate.next/deploy/boot-recover.sh /usr/local/sbin/cloudgate-boot-recover',
+      );
+      expect(lines).toContain(
+        'install -m 0644 /opt/cloudgate.next/deploy/systemd/cloudgate-boot-recover.service /etc/systemd/system/',
+      );
+      const reload = lines.indexOf('systemctl daemon-reload');
+      const enable = lines.indexOf(
+        'systemctl enable cloudgate-backend cloudgate-console cloudgate-boot-recover',
+      );
+      expect(reload).toBeGreaterThan(
+        lines.findIndex((line) =>
+          line.includes('cloudgate-boot-recover.service'),
+        ),
+      );
+      expect(enable).toBeGreaterThan(reload);
+      // Enabled for the next start of Docker, never started by the install.
+      expect(
+        lines.filter(
+          (line) =>
+            /^systemctl (start|restart)/.test(line) &&
+            line.includes('boot-recover'),
+        ),
+      ).toEqual([]);
+    });
+
+    it('ships the script and the unit it installs, the unit running the script where it puts it, after every start of Docker', () => {
+      expect(
+        fs.statSync(path.join(repoRoot, 'deploy/boot-recover.sh')).isFile(),
+      ).toBe(true);
+      const unit = fs.readFileSync(
+        path.join(repoRoot, 'deploy/systemd/cloudgate-boot-recover.service'),
+        'utf8',
+      );
+      expect(unit).toMatch(
+        /^ExecStart=\/usr\/local\/sbin\/cloudgate-boot-recover$/m,
+      );
+      expect(unit).toMatch(/^After=docker\.service$/m);
+      expect(unit).toMatch(/^WantedBy=docker\.service$/m);
+    });
+  });
+
+  /**
    * The Firewall step, cut out of the file as written and run with ufw and
    * sshd shimmed: what it allows, and in what order relative to enabling ufw.
    */

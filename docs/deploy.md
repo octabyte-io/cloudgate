@@ -606,6 +606,13 @@ Both units are `Restart=always`, so a crash restarts and so does an exit nobody 
 
 **A `docker-compose` stack now comes back by itself after `systemctl restart docker` or a host reboot**. It did not before, and the asymmetry was the finding: on a rebooted host all six Swarm services reconverged with fresh task ids and all four non-Swarm containers stayed `exited` carrying `RestartPolicy=no` — the container count went 11 before, 5 at 15 s, 7 at 75 s, and stayed at 7 until they were started by hand. Cloudgate injected no `restart:` key, so a compose container inherited whatever the author's file said, which was usually nothing. It now writes `restart: unless-stopped` into the **converted** compose file — the copy Cloudgate owns, visible on the stack's Converted tab — for every service that does not declare a `restart:` of its own; your own compose file is never rewritten. Three things follow, all deliberate: a service that declares `restart:` keeps it and is your business, `restart: no` included; `unless-stopped` and not `always`, so a stack you press **Stop** on stays stopped across a daemon restart instead of coming back while Cloudgate still reads it as stopped; and a `stack`-type row gets nothing, because `docker stack deploy` ignores `restart:` and warns about it on every deploy while Swarm already reconciles its own tasks from `deploy.restart_policy`'s default `condition: any`.
 
+**After a reboot, `cloudgate-boot-recover` starts what Docker could not** (#105). When Docker starts, it tries each container on a Swarm network (`cloudgate-traefik`, and every Compose container on `cloudgate-network` or `cloudgate-ai`) once, and on a reboot the swarm has often not brought the network up yet: the start fails with `network cloudgate-network not found`, the container stays `Exited (128)` or `Created`, and Docker never tries again, so nothing answered on 80 and 443 until someone ran `docker start`. The install (Self-hosted and Hosted) and Server setup install a oneshot unit, `cloudgate-boot-recover.service`, wanted by `docker.service`, so it runs after every start of Docker: a boot, `systemctl restart docker` or a Docker upgrade. It waits up to 3 minutes for `cloudgate-network` to be found, then runs `docker start` on each container that is exited or created, has a restart policy of `always`, `unless-stopped` or `on-failure`, carries a start error naming a network in `docker inspect`'s `.State.Error`, and is on a Swarm network. A container you stopped has no start error (a successful start clears it, a stop never sets one), so **Stop** on a Compose stack stays stopped, and what **Remove containers** removed is not there to start. It is Docker's own choice it completes, not a new one: a `restart: always` container stopped by hand is one Docker itself starts again when it starts, and so does this. The script is `/usr/local/sbin/cloudgate-boot-recover` (from `deploy/boot-recover.sh`); what it did is in the journal, one line per container:
+
+```bash
+journalctl -u cloudgate-boot-recover -b     # this boot: Started …, Left … stopped, or Nothing to start
+systemctl status cloudgate-boot-recover     # failed when it gave up waiting or a start failed
+```
+
 **Which command demonstrates that, and which one proves nothing.** Use `systemctl stop postgresql` — the meta unit that both `After=` and `Wants=` name. The cluster's own unit is `postgresql@<major>-main.service`, where the number is the Postgres major version: `postgresql@16-main` on Ubuntu 24.04, and `postgresql@18-main` on 26.04, whose archive's `postgresql` is PostgreSQL 18. It carries `PartOf=postgresql.service`, and `PartOf=` propagates a stop *downward* only: stopping the meta unit stops the cluster with it, while stopping the *instance* unit leaves the meta unit `active` and reaches no dependent of it at all. So `systemctl stop postgresql@16-main` (on 24.04) would not have taken the API down even before the unit change, and a passing result there says nothing about the fix. It is still the right command for the other half — the cluster really stops and the pool's connection really dies, which is the pool listener's path and why it is the command named in the paragraph above.
 
 ```bash
@@ -677,8 +684,9 @@ Every Cloudgate version carries its own uninstall. As root:
 bash /opt/cloudgate/deploy/uninstall.sh
 ```
 
-It stops and disables `cloudgate-backend` and `cloudgate-console` (on the Hosted instance also its
-backup timers and a running `cloudgate-update`), removes their unit files and reloads systemd, then
+It stops and disables `cloudgate-backend`, `cloudgate-console` and `cloudgate-boot-recover` (on the
+Hosted instance also its backup timers and a running `cloudgate-update`), removes their unit files
+and `/usr/local/sbin/cloudgate-boot-recover` and reloads systemd, then
 removes the `cloudgate-traefik` container, `/opt/cloudgate` with its `.previous` and `.next`, and
 `/usr/local/share/cloudgate` (Node, OpenTofu and its providers, the Session Manager plugin). On the
 Hosted instance it first removes what `deploy/hosted-update-access.sh` made, so the next deploy of

@@ -8,7 +8,8 @@
 #     bash /opt/cloudgate/deploy/uninstall.sh            # keeps the instance
 #     bash /opt/cloudgate/deploy/uninstall.sh --purge    # removes it too
 #
-# It stops, disables and removes cloudgate-backend and cloudgate-console (and
+# It stops, disables and removes cloudgate-backend, cloudgate-console and
+# cloudgate-boot-recover with the script it runs (and
 # on the Hosted instance its backup units, a running update, and the remote
 # updater deploy/hosted-update-access.sh made), removes the cloudgate-traefik
 # container, /opt/cloudgate with its .previous and .next, and
@@ -71,6 +72,8 @@ LOG_DIR="$ROOT/var/log/cloudgate"
 OLD_SECRETS_FILE="$ROOT/root/cloudgate-live-test/env.migrated"
 # What deploy/hosted-update-access.sh made on the Hosted instance.
 UPDATER="$ROOT/usr/local/sbin/cloudgate-update"
+# What cloudgate-boot-recover.service runs, on every install.
+BOOT_RECOVER="$ROOT/usr/local/sbin/cloudgate-boot-recover"
 SUDOERS_FILE="$ROOT/etc/sudoers.d/cloudgate-deploy"
 DEPLOY_USER=cloudgate-deploy
 DEPLOY_HOME="$ROOT/var/lib/cloudgate-deploy"
@@ -231,13 +234,15 @@ fi
 # on the Hosted instance.
 for unit in cloudgate-backup.timer cloudgate-backup-check.timer \
   cloudgate-backup.service cloudgate-backup-check.service \
-  cloudgate-backend.service cloudgate-console.service; do
+  cloudgate-backend.service cloudgate-console.service \
+  cloudgate-boot-recover.service; do
   if [ -e "$UNIT_DIR/$unit" ]; then
     systemctl disable --now "$unit"
     rm -f "$UNIT_DIR/$unit"
   fi
 done
 systemctl daemon-reload
+rm -f "$BOOT_RECOVER"
 
 if docker container inspect cloudgate-traefik >/dev/null 2>&1; then
   docker rm -f cloudgate-traefik

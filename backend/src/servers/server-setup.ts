@@ -6,6 +6,7 @@ import {
 } from '../common/config/request-metrics';
 import { CLOUDGATE_NETWORK } from './server-audit';
 import { joinAiNetworkProgram } from '../ai-models/ai-network';
+import { bootRecoverProgram } from './boot-recover';
 
 /**
  * Initial server provisioning: required packages, Docker, Swarm init, the
@@ -394,4 +395,7 @@ ${setupTraefikInstance()}
 
 echo -e "7. Setting up the AI model network"
 ${joinAiNetworkProgram('$SUDO_CMD docker')}
+
+echo -e "8. Setting up boot recovery"
+${bootRecoverProgram('$SUDO_CMD')}
 `;

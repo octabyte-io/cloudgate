@@ -266,6 +266,11 @@ const DECLARED: readonly Declared[] = [
     why: "`serverSetupCommand`'s heredocs write a Server's `traefik.yml` and `middlewares.yml` — the stock static config and the redirect middleware, the same bytes on every Server.",
   },
   {
+    file: 'src/servers/boot-recover.ts',
+    verdict: 'outside-platform-tree',
+    why: "`bootRecoverProgram` stages `deploy/boot-recover.sh` and its unit in `mktemp -d`'s `0700` folder and installs them root-owned at `/usr/local/sbin/cloudgate-boot-recover` (`0755`) and `/etc/systemd/system/` (`0644`): the same bytes on every Server, and no secret in either.",
+  },
+  {
     file: 'src/monitoring/access-log.index.ts',
     verdict: 'default-mode',
     why: "The access log's hour index beside it, `{log}.hours`: byte offsets and hour buckets, no request content.",

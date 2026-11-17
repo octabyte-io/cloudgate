@@ -252,6 +252,23 @@ describe('deploy/uninstall.sh', () => {
       expect(systemctl.at(-1)).toBe('systemctl daemon-reload');
     });
 
+    it('disables and removes cloudgate-boot-recover and the script it runs', () => {
+      installed();
+      put('etc/systemd/system/cloudgate-boot-recover.service', '[Unit]\n');
+      put('usr/local/sbin/cloudgate-boot-recover', '#!/bin/sh\n');
+
+      const ran = uninstall();
+
+      expect(ran.status).toBe(0);
+      expect(called()).toContain(
+        'systemctl disable --now cloudgate-boot-recover.service',
+      );
+      expect(exists('etc/systemd/system/cloudgate-boot-recover.service')).toBe(
+        false,
+      );
+      expect(exists('usr/local/sbin/cloudgate-boot-recover')).toBe(false);
+    });
+
     it('stops and disables no Hosted unit on a Self-hosted box', () => {
       installed();
 

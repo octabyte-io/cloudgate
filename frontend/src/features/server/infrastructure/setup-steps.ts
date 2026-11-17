@@ -4,7 +4,7 @@
  * Read in order from the script rather than summarised from it, and the numbering
  * is load-bearing: the script echoes `1. Installing required packages` …
  * `6. Setting up Traefik` as it goes, so the numbers in this list and the numbers
- * in the log are the same six numbers. Somebody watching `4.` scroll past can look
+ * in the log are the same eight numbers. Somebody watching `4.` scroll past can look
  * up and read what step four is.
  */
 export const STEPS = [
@@ -37,5 +37,15 @@ export const STEPS = [
     title: "Write Traefik's config and start it",
     detail:
       "traefik.yml first — providers, entry points, the letsencrypt certificate resolver and request metrics on a loopback-only entry point, with no access log — then a dynamic middlewares.yml defining redirect-to-https, then a container named cloudgate-traefik, restart always, publishing 80, 443 and 443/udp, with the Docker socket mounted so it can watch for new services. No version here on purpose: it is whatever TRAEFIK_VERSION this Cloudgate pins, and the settings path that later recreates the same container reads the same constant.",
+  },
+  {
+    title: "Create the cloudgate-ai overlay",
+    detail:
+      "The attachable overlay every AI model on this Server sits on, apart from cloudgate-network, and Traefik joined to it so the gateway can reach a model's runtime. Traefik is connected, never recreated.",
+  },
+  {
+    title: "Install boot recovery",
+    detail:
+      "A systemd unit, cloudgate-boot-recover, that runs after every start of Docker. On a reboot Docker tries Traefik and each container on a Swarm network before the swarm has the network up, and never tries again; the unit waits for cloudgate-network and starts exactly those, leaving a stack you stopped stopped. Skipped on a Server without systemd.",
   },
 ];

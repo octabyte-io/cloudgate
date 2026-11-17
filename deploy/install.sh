@@ -1278,8 +1278,16 @@ fi
 log "systemd units"
 install -m 0644 "$REPO_ROOT/deploy/systemd/cloudgate-backend.service" /etc/systemd/system/
 install -m 0644 "$REPO_ROOT/deploy/systemd/cloudgate-console.service" /etc/systemd/system/
+# After every start of Docker, starts the containers Docker could not start
+# because the swarm had not brought cloudgate-network up yet: Traefik and the
+# Compose containers on it stayed down after a reboot (#105). Server setup
+# installs the same two files on each Server. Enabled, not started: it runs
+# with the next start of Docker. A root-owned copy at the path a Server has
+# it at too, since a Server has no /opt/cloudgate.
+install -m 0755 -o root -g root "$REPO_ROOT/deploy/boot-recover.sh" /usr/local/sbin/cloudgate-boot-recover
+install -m 0644 "$REPO_ROOT/deploy/systemd/cloudgate-boot-recover.service" /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable cloudgate-backend cloudgate-console
+systemctl enable cloudgate-backend cloudgate-console cloudgate-boot-recover
 # restart, not `enable --now`: on a re-run the units are already active, and
 # place_version has just put another version where they run from.
 systemctl restart cloudgate-backend
