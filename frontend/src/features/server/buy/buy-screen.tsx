@@ -192,6 +192,10 @@ function Chooser({ catalogue }: { catalogue: BoughtServerCatalogue }) {
         />
       }
       asideLabel="Summary"
+      // Stretched, so the rail is as tall as the options and the summary's
+      // own `cols:sticky` has room to stick: under `Cols`' `items-start` the
+      // rail is only as tall as its card, and it scrolls away.
+      className="items-stretch"
     >
       <Suggested
         ordered={ordered}

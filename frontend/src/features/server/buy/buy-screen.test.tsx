@@ -342,6 +342,24 @@ describe("BuyScreen", () => {
     expect(screen.getByText("Pick a size.")).toBeTruthy();
   });
 
+  it("stretches the summary's column to the options' height, so the summary stays in view as they scroll", async () => {
+    await cardOrder();
+
+    const rail = screen.getByRole("complementary", { name: "Summary" });
+    const summary = within(rail).getByRole("heading", { name: "Summary" });
+    // jsdom lays nothing out, so the classes that do it are what is pinned:
+    // a rail only as tall as its card (`items-start`) leaves sticky no room.
+    expect(rail.parentElement!.className).toMatch(/\bitems-stretch\b/);
+    expect(rail.parentElement!.className).not.toMatch(/\bitems-start\b/);
+    expect(summary.closest(".cols\\:sticky")).not.toBeNull();
+    // Under 1040px the grid is one column, the summary after the options.
+    expect(rail.parentElement!.className).toMatch(/(^|\s)grid-cols-1\b/);
+    const locations = screen.getByRole("list", {
+      name: "Locations, nearest first",
+    });
+    expect(rail.previousElementSibling!.contains(locations)).toBe(true);
+  });
+
   it("asks for the terms box once a size is picked", async () => {
     await cardOrder();
     chooseDedicated();
