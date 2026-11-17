@@ -235,14 +235,35 @@ jobs:
   # after a Delete, the ENIs AWS makes, a certificate's DNS validation,
   # running containers, and routing; for the databases, TLS, a real
   # connection or endpoint, and the 7-day restart. Paid LocalStack is not used.
+  #
+  # Its suites are independent (each starts its own moto container), so they
+  # run as parallel jobs, grouped so the longest takes about 20 minutes: run
+  # one after another they took 45 to 58 minutes, the release's longest
+  # wait. A suite added here must be added to one of the groups, or it
+  # never runs.
   moto:
-    name: Moto lane (real tofu and AWS provider)
+    name: Moto lane, ${{ matrix.group.name }} (real tofu and AWS provider)
     runs-on: ubuntu-latest
-    # The database lane alone takes about 10 minutes: each RDS
-    # create and modify waits about 1.5 minutes on the provider. The bucket
-    # and static lanes add about 6 minutes each, which puts the whole
-    # lane at about 35 here, so the backstop is an hour.
-    timeout-minutes: 60
+    # moto-lane alone took 19 minutes on the 0.3.6 release run, so the
+    # backstop is twice that.
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        group:
+          - name: web
+            suites: test/cloud-accounts/moto/moto-lane.moto-spec.ts
+          - name: database
+            suites: test/cloud-accounts/moto/database-lane.moto-spec.ts
+          - name: stack-vm
+            suites: test/cloud-accounts/moto/stack-vm-lane.moto-spec.ts
+          - name: static-bucket-storage
+            suites: >-
+              test/cloud-accounts/moto/static-lane.moto-spec.ts
+              test/cloud-accounts/moto/bucket-lane.moto-spec.ts
+              test/cloud-accounts/moto/state-lock.moto-spec.ts
+              test/object-storage/s3-object-storage.moto-spec.ts
+              test/object-storage/garage.moto-spec.ts
     defaults:
       run:
         shell: bash
@@ -266,20 +287,20 @@ jobs:
 
       - name: Moto lane
         working-directory: backend
-        run: pnpm test:moto
+        run: pnpm test:moto --runTestsByPath ${{ matrix.group.suites }}
 
       - name: Stored plan files are current
         if: ${{ !cancelled() }}
         run: |
           if ! git diff --exit-code --stat -- backend/test/cloud-accounts/fixtures/plans; then
-            echo "::error::The stored plan files differ from what the pinned tofu prints for the generated definitions. Commit the re-saved files (the moto-plans artifact)."
+            echo "::error::The stored plan files differ from what the pinned tofu prints for the generated definitions. Commit the re-saved files (this group's moto-plans artifact)."
             exit 1
           fi
 
       - uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
-          name: moto-plans
+          name: moto-plans-${{ matrix.group.name }}
           path: backend/test/cloud-accounts/fixtures/plans
           if-no-files-found: ignore
 
