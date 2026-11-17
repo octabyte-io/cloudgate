@@ -12,6 +12,7 @@ import {
   appAddress,
   buyStageStates,
   canSetUpOn,
+  freeEnvironmentName,
   freeProjectName,
   isReadyServer,
   launchPhase,
@@ -386,5 +387,17 @@ describe("freeProjectName", () => {
 
   it("numbers the name past every Project that has it, ignoring case", () => {
     expect(freeProjectName("Ghost", ["ghost", "Ghost 2"])).toBe("Ghost 3");
+  });
+});
+
+describe("freeEnvironmentName", () => {
+  it("is production when the Project has none by that name", () => {
+    expect(freeEnvironmentName(["staging"])).toBe("production");
+  });
+
+  it("numbers production past every Environment that has it, ignoring case", () => {
+    expect(freeEnvironmentName(["Production", "production-2"])).toBe(
+      "production-3",
+    );
   });
 });

@@ -143,6 +143,10 @@ vi.mock("./use-get-started", () => ({
     data: reads.servers,
   }),
   useWizardPurchases: () => ({ isPending: false, data: reads.purchases }),
+  useWizardSetupForm: () =>
+    reads.setupForm
+      ? { isPending: false, error: null, data: reads.setupForm }
+      : { isPending: true },
   useWizardServerRoom: () => ({ isPending: false, data: null }),
   useLaunch: () => ({
     plan: { error: null },

@@ -1,103 +1,93 @@
 import { environmentsApi } from "@/lib/api/endpoints/environments";
-import { projectsApi } from "@/lib/api/endpoints/projects";
 import {
   templatesApi,
-  type SetupForm,
   type TemplateSetupResult,
 } from "@/lib/api/endpoints/templates";
 
 /**
- * A refusal the wizard words itself, because no request made it: the
- * Server has no address a generated host can carry.
+ * Where the wizard's setup goes, as step 2's "More options" chose it.
+ *
+ * - A new Project (the default), made with a `production` Environment on
+ *   the Server, as Template setup's "New Project from a template" makes it.
+ * - An existing Project's Environment already on the Server.
+ * - An existing Project with none there: a new Environment on the Server,
+ *   so the setup never lands in an Environment on another Deploy target.
  */
-export class DeployRefusal extends Error {}
-
-/** The Environment a new Project from the wizard gets, as the setup names it. */
-export const WIZARD_ENVIRONMENT = "production";
+export type WizardPlace =
+  | { newProject: { name: string } }
+  | { projectId: string; environmentId: string }
+  | { projectId: string; newEnvironment: string };
 
 /**
- * Sets the template up in a new Project named after the app, on the chosen
- * Server, with `autoApply`: Cloudgate applies the plan itself once the
- * Server is Ready, so nobody presses Apply (the setup flow's own review is
- * for people who know what a plan is; this page's readers do not).
+ * Sets the template up on the chosen Server with what step 2 chose: the
+ * place, the setup name, the asked values and each compose Domain's host.
+ * With `autoApply`: Cloudgate applies the plan itself once the Server is
+ * Ready (ADR-0073), so nobody presses Apply.
  *
- * **Two routes, by whether the template has compose Domains.**
- *
- * - None: one request, the setup's own "New Project from a template"
- *   (#1376), which checks everything before it makes anything.
- * - Some: each needs a host, and only an Environment generates one (its
- *   Server's sslip.io name, ADR-0064), which a Project that does not exist
- *   yet has none of. So the Project and its Environment are made first,
- *   the setup form is read again for the Environment's generated hosts, and
- *   the setup goes into it. A refusal on the way deletes the Project again,
- *   which is what the one-request route does on its own refusal, so either
- *   way a refused deploy leaves nothing behind.
- *
- * Rejected: working the sslip.io host out in the browser. It is the
- * backend's name (a hash and the Server's address, `domains.service.ts`),
- * and a copy here would drift from it.
+ * A new Project or an existing Environment is one request, which the setup
+ * checks whole before it makes anything. A new Environment in an existing
+ * Project is made first, and deleted again when the setup refuses, so a
+ * refused deploy leaves nothing behind either way.
  */
 export async function deployTemplate({
   templateId,
-  form,
-  projectName,
   serverId,
+  place,
+  setupName,
   values,
+  hosts,
 }: {
   templateId: string;
-  /** The new-Project setup form (`setupForm(templateId, null)`). */
-  form: SetupForm;
-  projectName: string;
   serverId: string;
+  place: WizardPlace;
+  setupName: string;
   /** Asked values by input name; an empty one is left out, so its default holds. */
   values: Record<string, string>;
+  /** Each compose Domain's host, by its name; absent with no Domain. */
+  hosts?: Record<string, string>;
 }): Promise<TemplateSetupResult> {
   const deployTarget = { kind: "server" as const, serverId };
+  const chosen = {
+    setupName,
+    values,
+    ...(hosts ? { hosts } : {}),
+    autoApply: true,
+  };
 
-  if (form.domains.length === 0) {
+  if ("newProject" in place) {
     return templatesApi.setUp({
       templateId,
-      newProject: { name: projectName, deployTarget },
-      setupName: form.setupName,
-      values,
-      autoApply: true,
+      newProject: { name: place.newProject.name, deployTarget },
+      ...chosen,
+    });
+  }
+  if ("environmentId" in place) {
+    return templatesApi.setUp({
+      templateId,
+      projectId: place.projectId,
+      environmentId: place.environmentId,
+      ...chosen,
     });
   }
 
-  const project = await projectsApi.create({ name: projectName });
+  const environment = await environmentsApi.create({
+    projectId: place.projectId,
+    name: place.newEnvironment,
+    deployTarget,
+  });
   try {
-    const environment = await environmentsApi.create({
-      projectId: project.projectId,
-      name: WIZARD_ENVIRONMENT,
-      deployTarget,
-    });
-    const setup = await templatesApi.setupForm(templateId, project.projectId);
-    const place = setup.environments.find(
-      (env) => env.environmentId === environment.environmentId,
-    );
-    if (!place?.canTake) {
-      throw new DeployRefusal(
-        place?.reason ?? "This server cannot take this app.",
-      );
-    }
-    if (!place.hosts) {
-      throw new DeployRefusal(
-        "This server has no public address for the app's web address. Set the app up from the Templates page instead, where you can type your own domain.",
-      );
-    }
     return await templatesApi.setUp({
       templateId,
-      projectId: project.projectId,
+      projectId: place.projectId,
       environmentId: environment.environmentId,
-      setupName: setup.setupName,
-      values,
-      hosts: place.hosts,
-      autoApply: true,
+      ...chosen,
     });
   } catch (error) {
-    // Nothing ran in it yet; a failed clean-up leaves an empty Project,
-    // which is not worth hiding the first refusal for.
-    await projectsApi.remove(project.projectId).catch(() => undefined);
+    // Nothing ran in it yet; a failed clean-up leaves an empty Environment,
+    // which is not worth hiding the refusal for.
+    await environmentsApi
+      .remove(environment.environmentId)
+      .catch(() => undefined);
     throw error;
   }
 }

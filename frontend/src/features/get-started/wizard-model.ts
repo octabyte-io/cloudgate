@@ -276,10 +276,27 @@ export function freeProjectName(
   appName: string,
   taken: readonly string[],
 ): string {
+  return freeName(appName, " ", taken);
+}
+
+/**
+ * A name for a new Environment the wizard makes in an existing Project:
+ * `production`, then `production-2`, `production-3`, since an
+ * Environment's name is unique in its Project whatever its case.
+ */
+export function freeEnvironmentName(taken: readonly string[]): string {
+  return freeName("production", "-", taken);
+}
+
+function freeName(
+  base: string,
+  joiner: string,
+  taken: readonly string[],
+): string {
   const used = new Set(taken.map((name) => name.trim().toLowerCase()));
-  if (!used.has(appName.toLowerCase())) return appName;
+  if (!used.has(base.toLowerCase())) return base;
   for (let at = 2; ; at += 1) {
-    const name = `${appName} ${at}`;
+    const name = `${base}${joiner}${at}`;
     if (!used.has(name.toLowerCase())) return name;
   }
 }
