@@ -31,6 +31,7 @@ function size(
   return {
     id,
     family,
+    architecture: family === "arm" ? "arm" : "x86",
     vcpus: 2,
     memoryGb,
     diskGb: 40,

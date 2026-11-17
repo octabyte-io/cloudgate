@@ -41,7 +41,15 @@ function size(
   memoryGb: number,
   offers: CatalogueSize["offers"],
 ): CatalogueSize {
-  return { id, family, vcpus: 2, memoryGb, diskGb: 40, offers };
+  return {
+    id,
+    family,
+    architecture: "x86",
+    vcpus: 2,
+    memoryGb,
+    diskGb: 40,
+    offers,
+  };
 }
 
 const offer = (locationId: string, monthly: number, available = true) => ({
@@ -162,6 +170,8 @@ describe("startingPrice", () => {
       startingPrice({
         locations: [],
         storage: { minGb: 10, maxGb: 100, perGbMonthly: 0.05 },
+        images: [],
+        defaultImage: "ubuntu-24.04",
         sizes: [
           size("a", "shared", 2, [offer("x", 5, false), offer("y", 7)]),
           size("b", "shared", 4, [offer("x", 9)]),
@@ -175,6 +185,8 @@ describe("startingPrice", () => {
       startingPrice({
         locations: [],
         storage: { minGb: 10, maxGb: 100, perGbMonthly: 0.05 },
+        images: [],
+        defaultImage: "ubuntu-24.04",
         sizes: [size("a", "shared", 2, [offer("x", 5, false)])],
       }),
     ).toBeNull();

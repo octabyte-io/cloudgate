@@ -67,7 +67,16 @@ export function useBoughtServerToday(choice: BuyChoice | null) {
       choice?.backups ?? false,
       choice?.storageGb ?? null,
     ),
-    queryFn: () => boughtServersApi.today(choice!),
+    // The Server image costs nothing, so today's charge is asked without it.
+    queryFn: () => {
+      const { serverType, location, backups, storageGb } = choice!;
+      return boughtServersApi.today({
+        serverType,
+        location,
+        backups,
+        storageGb,
+      });
+    },
     enabled: choice !== null && organizationId !== null,
     staleTime: 60_000,
     retry: false,

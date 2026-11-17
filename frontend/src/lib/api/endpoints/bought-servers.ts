@@ -35,6 +35,8 @@ export type CatalogueSize = {
   /** The provider's code for the size. A purchase names it; the page never shows it. */
   id: string;
   family: SizeFamily;
+  /** What a **Server image** must be built for to be made on it. */
+  architecture: ServerArchitecture;
   vcpus: number;
   memoryGb: number;
   diskGb: number;
@@ -42,9 +44,25 @@ export type CatalogueSize = {
   offers: CatalogueOffer[];
 };
 
+export type ServerArchitecture = "x86" | "arm";
+
+/** A **Server image**: an OS and version a Bought Server can be made from. */
+export type CatalogueImage = {
+  /** What Buy names, `ubuntu-24.04`. */
+  id: string;
+  /** `Ubuntu 24.04`. */
+  label: string;
+  /** The architectures it is built for; a size of another cannot use it. */
+  architectures: ServerArchitecture[];
+};
+
 export type BoughtServerCatalogue = {
   locations: CatalogueLocation[];
   sizes: CatalogueSize[];
+  /** Ubuntu first, then Debian, each newest first. */
+  images: CatalogueImage[];
+  /** The image Buy uses when none is picked. */
+  defaultImage: string;
   storage: {
     minGb: number;
     maxGb: number;
@@ -68,6 +86,8 @@ export type BoughtServerStage =
 export type BuyChoice = {
   serverType: string;
   location: string;
+  /** The **Server image**; the backend's default (Ubuntu 24.04) when absent. Not part of today's charge. */
+  image?: string;
   backups?: boolean;
   /** Extra storage in GB; absent for none. */
   storageGb?: number;

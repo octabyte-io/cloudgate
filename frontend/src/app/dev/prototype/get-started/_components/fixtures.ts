@@ -44,6 +44,7 @@ function size(
   return {
     id,
     family,
+    architecture: family === "arm" ? "arm" : "x86",
     vcpus,
     memoryGb,
     diskGb,
@@ -71,6 +72,15 @@ export const CATALOGUE: BoughtServerCatalogue = {
     size("ccx23", "dedicated", [4, 16, 160], 36, 50),
   ],
   storage: { minGb: 10, maxGb: 10240, perGbMonthly: 0.06 },
+  images: [
+    {
+      id: "ubuntu-24.04",
+      label: "Ubuntu 24.04",
+      architectures: ["x86", "arm"],
+    },
+    { id: "debian-13", label: "Debian 13", architectures: ["x86", "arm"] },
+  ],
+  defaultImage: "ubuntu-24.04",
 };
 
 /** Where the prototype takes the customer to be: Singapore, as on staging. */
