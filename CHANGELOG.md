@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.9 (2026-11-18)
+
 ### Traefik and the Compose stacks on cloudgate-network come back after a reboot
 
 After a reboot of the platform host or a Server, `cloudgate-traefik` and every Compose container on `cloudgate-network` stayed down (`Exited (128)` or `Created`), so nothing answered on ports 80 and 443 until someone ran `docker start` (#105). Docker starts them before the swarm has brought the network up, the start fails with `network cloudgate-network not found`, and Docker never tries again. A new unit, `cloudgate-boot-recover`, runs after every start of Docker, waits up to 3 minutes for the network, and starts exactly the containers whose start failed on it. A Compose stack you stopped stays stopped. `journalctl -u cloudgate-boot-recover -b` says what it started (docs/deploy.md §10).
