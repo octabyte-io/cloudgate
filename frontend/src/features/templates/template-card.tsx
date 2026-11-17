@@ -28,6 +28,9 @@ function everywhere(template: TemplateSummary): boolean {
  * Set up at a different height on every card. As a row, the description gets
  * two full-width lines and the tags one line.
  *
+ * **Website, Docs and Source sit under the name**, where a reader looking
+ * the Template up goes first, and leave the bottom line to the tags.
+ *
  * **The logo sits on a tile** rather than bare beside the name: catalogue
  * logos are any shape and colour, and a 24px mark next to 14px text read as an
  * icon glitch. It is a `data:` address from the backend, read out of the
@@ -87,6 +90,25 @@ export function TemplateCard({
                 <span>{runsOnMark(template.runsOn)}</span>
               </span>
             )}
+            {LINKS.some(([key]) => template.links[key]) ? (
+              <span className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-meta">
+                {LINKS.map(([key, label]) => {
+                  const href = template.links[key];
+                  return href ? (
+                    <a
+                      key={key}
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-0.5 rounded-sm text-tx-2 underline-offset-2 transition-colors duration-100 hover:text-tx hover:underline focus-visible:underline"
+                    >
+                      {label}
+                      <Icon name="ext" size={12} />
+                    </a>
+                  ) : null;
+                })}
+              </span>
+            ) : null}
           </span>
           <LinkButton
             href={templatesHref(place, template.id)}
@@ -102,9 +124,9 @@ export function TemplateCard({
           {template.description}
         </p>
 
-        {/* Pushed to the bottom edge, so in a row of two the tags and links of
-            both cards sit on the same line whatever their descriptions. */}
-        <div className="mt-auto flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        {/* Pushed to the bottom edge, so in a row of two the tags of both
+            cards sit on the same line whatever their descriptions. */}
+        <div className="mt-auto flex min-w-0">
           {tags.length > 0 ? (
             // Whole chips on one line: the ones that do not fit wrap below
             // it, out of sight, and the tag filter lists them all.
@@ -119,25 +141,6 @@ export function TemplateCard({
                 </li>
               ))}
             </ul>
-          ) : null}
-          {LINKS.some(([key]) => template.links[key]) ? (
-            <span className="flex flex-none gap-3 text-meta">
-              {LINKS.map(([key, label]) => {
-                const href = template.links[key];
-                return href ? (
-                  <a
-                    key={key}
-                    href={href}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="inline-flex items-center gap-0.5 rounded-sm text-tx-2 underline-offset-2 transition-colors duration-100 hover:text-tx hover:underline focus-visible:underline"
-                  >
-                    {label}
-                    <Icon name="ext" size={12} />
-                  </a>
-                ) : null;
-              })}
-            </span>
           ) : null}
         </div>
       </div>

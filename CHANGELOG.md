@@ -8,7 +8,7 @@
 - The Project is chosen from cards (New Project and each Project with its description) rather than one picker on an empty page; past five Projects it is a picker again. The form follows in the same card once a Project is chosen, beside the three steps from Set up to a running app.
 - A Project with no Environment says so in the form and offers Add an Environment or Use a New Project instead, without asking for values it cannot use.
 - A yes-or-no value is a switch.
-- Catalogue cards show whole tags, as many as fit, and say where a Template runs only when it cannot run everywhere.
+- Catalogue cards show Website, Docs and Source under the name and whole tags below, as many as fit, and say where a Template runs only when it cannot run everywhere.
 
 **What to do on upgrade**: nothing.
 
