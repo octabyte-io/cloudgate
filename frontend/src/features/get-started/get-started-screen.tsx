@@ -87,9 +87,13 @@ export function GetStartedScreen() {
 
   const step = stepOf(state);
   // Buying is the Buy screen's two columns, which need more than the one
-  // calm column every other step reads in.
+  // calm column every other step reads in. Back from Checkout it is not:
+  // the purchase is found and step two follows, in one column.
   const buying =
-    step === "server" && state.path === "buy" && state.serverId === null;
+    step === "server" &&
+    state.path === "buy" &&
+    state.serverId === null &&
+    state.checkout !== "success";
 
   return (
     <Page>
@@ -113,7 +117,11 @@ export function GetStartedScreen() {
               environmentId={state.environmentId}
             />
           ) : step === "details" && state.serverId ? (
-            <DetailsStep template={template} serverId={state.serverId} />
+            <DetailsStep
+              template={template}
+              serverId={state.serverId}
+              bought={state.path === "buy"}
+            />
           ) : (
             <ServerStep template={template} state={state} />
           )}

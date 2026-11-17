@@ -1,4 +1,5 @@
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { FormProvider } from "react-hook-form";
 import { z } from "zod";
 
@@ -8,6 +9,7 @@ import { LinkButton } from "@/components/console/link-button";
 import { Skeleton } from "@/components/console/skeleton";
 import { SubmitButton } from "@/components/console/submit-button";
 import { useApiForm } from "@/components/console/use-api-form";
+import type { BoughtServerStage } from "@/lib/api/endpoints/bought-servers";
 import type { SetupForm, TemplateSummary } from "@/lib/api/endpoints/templates";
 import { errorMessage } from "@/lib/api/error-message";
 import { useInvalidate } from "@/lib/api/use-invalidate";
@@ -18,13 +20,10 @@ import { askedValueProblem } from "../templates/asked-value";
 import { AskedField } from "../templates/setup-fields";
 import { NEW_PROJECT, useSetupForm } from "../templates/use-templates";
 import { DeployRefusal, deployTemplate } from "./deploy-template";
-import { useWizardServers } from "./use-get-started";
+import { ServerGone, ServerProgress } from "./server-progress";
+import { useWizardPurchases, useWizardServers } from "./use-get-started";
 import { AskAdmin } from "./wizard-parts";
-import {
-  canSetUpOn,
-  freeProjectName,
-  isReadyServer,
-} from "./wizard-model";
+import { canSetUpOn, freeProjectName } from "./wizard-model";
 import { wizardHref } from "./wizard-state";
 
 type DetailsValues = { values: string[] };
@@ -37,16 +36,35 @@ type DetailsValues = { values: string[] };
  * app, its `production` Environment on the chosen Server, the setup name
  * (the template's id), and each web address (the Server's generated one).
  * The setup checks every value again, and its word is final.
+ *
+ * Right after Buy the wizard is already here, with the Bought Server's
+ * progress in a strip above the form: the details are filled in while it
+ * is made, Deploy opens once it has a Server row (Setting up), and
+ * Cloudgate applies the setup once it is Ready (ADR-0073).
  */
 export function DetailsStep({
   template,
   serverId,
+  bought,
 }: {
   template: TemplateSummary;
   serverId: string;
+  /**
+   * Whether the Server was just bought here (the buy path): its progress
+   * then sits above the form, and the form is open while it is still made.
+   */
+  bought: boolean;
 }) {
-  const servers = useWizardServers();
+  // On the buy path both are followed until the Server is Ready: the
+  // purchase until its Server row exists (Setting up), the row after.
+  const servers = useWizardServers(bought ? serverId : undefined);
+  const purchases = useWizardPurchases(bought, false);
   const form = useSetupForm(template.id, NEW_PROJECT);
+  const server = servers.data?.find((entry) => entry.serverId === serverId);
+  const purchase = purchases.data?.find((entry) => entry.id === serverId);
+  const stage = useLastStage(
+    bought ? (server?.boughtServer?.stage ?? purchase?.stage ?? null) : null,
+  );
   const error = servers.error ?? form.error;
   if (error) {
     return (
@@ -57,7 +75,7 @@ export function DetailsStep({
       </Card>
     );
   }
-  if (!servers.data || !form.data) {
+  if (!servers.data || !form.data || (bought && purchases.isPending)) {
     return (
       <Card aria-busy="true">
         <Card.Body className="grid gap-3">
@@ -68,8 +86,14 @@ export function DetailsStep({
     );
   }
 
-  const server = servers.data.find((entry) => entry.serverId === serverId);
-  if (!server || !canSetUpOn(server)) {
+  if (stage && GONE.includes(stage)) {
+    return <ServerGone template={template} stage={stage} />;
+  }
+
+  // Before Setting up there is no Server row to set the app up on yet, but
+  // the details can be filled in already; Deploy waits for the row.
+  const beingMade = stage === "waiting_for_payment" || stage === "creating";
+  if (!beingMade && (!server || !canSetUpOn(server))) {
     return (
       <Card>
         <Card.Body className="grid justify-items-start gap-3">
@@ -98,15 +122,44 @@ export function DetailsStep({
     );
   }
 
+  const name = server?.name ?? purchase?.name ?? "Your server";
   return (
-    <DetailsForm
-      template={template}
-      setup={form.data}
-      serverId={serverId}
-      serverName={server.name}
-      serverReady={isReadyServer(server)}
-    />
+    <div className="grid gap-4.5">
+      {stage ? (
+        <ServerProgress
+          template={template}
+          id={serverId}
+          name={name}
+          stage={stage}
+        />
+      ) : null}
+      {/* In the same place whether or not the strip shows, so what was typed
+          stays as the Server moves through its stages. */}
+      <DetailsForm
+        template={template}
+        setup={form.data}
+        serverId={serverId}
+        serverName={name}
+        canDeploy={server !== undefined && canSetUpOn(server)}
+      />
+    </div>
   );
+}
+
+/** A Bought Server that will never take the app. */
+const GONE: readonly BoughtServerStage[] = ["failed", "deleting", "deleted"];
+
+/**
+ * The stage last seen, held while neither read has the Server: the
+ * purchase leaves the purchases list at Setting up, and the Server row is
+ * read a poll later, which must not unmount the form in between.
+ */
+function useLastStage(
+  stage: BoughtServerStage | null,
+): BoughtServerStage | null {
+  const [last, setLast] = useState(stage);
+  if (stage !== null && stage !== last) setLast(stage);
+  return stage ?? last;
 }
 
 function DetailsForm({
@@ -114,13 +167,14 @@ function DetailsForm({
   setup,
   serverId,
   serverName,
-  serverReady,
+  canDeploy,
 }: {
   template: TemplateSummary;
   setup: SetupForm;
   serverId: string;
   serverName: string;
-  serverReady: boolean;
+  /** False while a Bought Server has no Server row yet (before Setting up). */
+  canDeploy: boolean;
 }) {
   const router = useRouter();
   const projects = useProjects();
@@ -230,10 +284,9 @@ function DetailsForm({
                 <dd className="min-w-0 wrap-anywhere text-tx">Made for you</dd>
               </div>
             </dl>
-            {serverReady ? null : (
+            {canDeploy ? null : (
               <p className="text-ui text-tx-2">
-                {serverName} is still being set up. {template.name} starts by
-                itself as soon as it is ready.
+                You can deploy once the server is created.
               </p>
             )}
             {allowed ? null : (
@@ -248,7 +301,7 @@ function DetailsForm({
           <Card.Footer className="flex flex-wrap items-center gap-3">
             <SubmitButton
               pending={form.formState.isSubmitting}
-              disabled={projects.isPending || !allowed}
+              disabled={projects.isPending || !allowed || !canDeploy}
             >
               Deploy {template.name}
             </SubmitButton>

@@ -9,17 +9,21 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { ServerPurchase } from "@/lib/api/endpoints/bought-servers";
 import type { Server } from "@/lib/api/endpoints/servers";
-import type { TemplateSummary } from "@/lib/api/endpoints/templates";
+import type { SetupForm, TemplateSummary } from "@/lib/api/endpoints/templates";
 
 import type { LaunchPhase } from "./wizard-model";
 
 const search = vi.hoisted(() => ({ current: "" }));
 const replace = vi.hoisted(() => vi.fn());
 const buy = vi.hoisted(() => vi.fn());
+const setUp = vi.hoisted(() => vi.fn());
 const reads = vi.hoisted(() => ({
   templates: [] as TemplateSummary[],
   servers: [] as Server[],
+  purchases: [] as ServerPurchase[],
+  setupForm: null as SetupForm | null,
   offered: true,
   canCreate: true,
   phase: { phase: "preparing" } as LaunchPhase,
@@ -101,7 +105,20 @@ vi.mock("../templates/use-templates", () => ({
     error: null,
     data: { templates: reads.templates },
   }),
-  useSetupForm: () => ({ isPending: true }),
+  useSetupForm: () =>
+    reads.setupForm
+      ? { isPending: false, error: null, data: reads.setupForm }
+      : { isPending: true },
+}));
+vi.mock("@/lib/api/endpoints/templates", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/endpoints/templates")>()),
+  templatesApi: { setUp },
+}));
+vi.mock("@/lib/api/use-projects", () => ({
+  useProjects: () => ({ isPending: false, data: [] }),
+}));
+vi.mock("@/lib/api/use-invalidate", () => ({
+  useInvalidate: () => ({ project: vi.fn(), boughtServers: vi.fn() }),
 }));
 vi.mock("@/lib/auth/use-permission", () => ({
   usePermission: () => ({
@@ -125,7 +142,7 @@ vi.mock("./use-get-started", () => ({
     error: null,
     data: reads.servers,
   }),
-  useWizardPurchases: () => ({ isPending: false, data: [] }),
+  useWizardPurchases: () => ({ isPending: false, data: reads.purchases }),
   useWizardServerRoom: () => ({ isPending: false, data: null }),
   useLaunch: () => ({
     plan: { error: null },
@@ -162,6 +179,50 @@ function readyServer(serverId: string, name: string): Server {
   } as Server;
 }
 
+/** A Bought Server whose Server row exists: from Setting up on. */
+function boughtServer(
+  serverId: string,
+  name: string,
+  stage: "setting_up" | "ready",
+  poweredOff: { at: string; reason: string } | null = null,
+): Server {
+  return {
+    ...readyServer(serverId, name),
+    setupRanAt: null,
+    setupOk: null,
+    boughtServer: { stage, poweredOff, deletesOn: null, deletedAt: null },
+  } as Server;
+}
+
+/** A purchase not made yet: before its Server row exists. */
+function purchase(
+  id: string,
+  name: string,
+  stage: "waiting_for_payment" | "creating" | "failed",
+): ServerPurchase {
+  return {
+    id,
+    name,
+    stage,
+    monthlyCents: 700,
+    createdAt: "2026-11-17T00:00:00Z",
+  };
+}
+
+/** Ghost's new-Project setup form: no asked values, no Domains. */
+const GHOST_SETUP: SetupForm = {
+  templateId: "ghost",
+  templateName: "Ghost",
+  revision: "r1",
+  setupName: "ghost",
+  asked: [],
+  domains: [],
+  images: [],
+  environments: [],
+  deployTargets: { server: null, platformHost: null, aws: null, gcp: null },
+  newProjectHosts: null,
+};
+
 function show(query: string) {
   search.current = query;
   const client = new QueryClient();
@@ -175,6 +236,8 @@ function show(query: string) {
 beforeEach(() => {
   reads.templates = [GHOST];
   reads.servers = [];
+  reads.purchases = [];
+  reads.setupForm = null;
   reads.offered = true;
   reads.canCreate = true;
   reads.phase = { phase: "preparing" };
@@ -185,6 +248,7 @@ afterEach(() => {
   cleanup();
   replace.mockReset();
   buy.mockReset();
+  setUp.mockReset();
   vi.unstubAllGlobals();
 });
 
@@ -418,7 +482,7 @@ describe("GetStartedScreen", () => {
       });
       onSuccess({ id: "bs_1", stage: "creating", payUrl: null });
       expect(replace).toHaveBeenCalledWith(
-        "/get-started?template=ghost&path=buy&server=bs_1",
+        "/get-started?template=ghost&path=buy&server=bs_1&step=deploy",
       );
     });
 
@@ -443,6 +507,157 @@ describe("GetStartedScreen", () => {
         "https://checkout.stripe.com/c/pay/cs_1",
       );
       expect(replace).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("after Buy", () => {
+    const DETAILS =
+      "/get-started?template=ghost&path=buy&server=bs_1&step=deploy";
+
+    function currentStep() {
+      const steps = screen.getByRole("navigation", { name: "Steps to deploy" });
+      return within(steps)
+        .getAllByRole("listitem")
+        .find((item) => item.querySelector("[aria-current='step']"))
+        ?.textContent;
+    }
+
+    function strip() {
+      return screen.getByRole("region", { name: "Your server" });
+    }
+
+    it("is on step 2, with the server's stage in a strip above the details", () => {
+      reads.purchases = [purchase("bs_1", "ghost-1", "creating")];
+      reads.setupForm = GHOST_SETUP;
+      show(DETAILS.slice("/get-started?".length));
+
+      expect(currentStep()).toMatch(/Set up Ghost/);
+      expect(strip().textContent).toMatch(
+        /Your server: 1 of 4 steps done, now Creating your server/,
+      );
+      expect(screen.getByRole("form", { name: "Deploy Ghost" })).toBeTruthy();
+    });
+
+    it("says the app starts on its own and the page can be left, with no button to set it up now", () => {
+      reads.servers = [boughtServer("bs_1", "ghost-1", "setting_up")];
+      reads.setupForm = GHOST_SETUP;
+      show(DETAILS.slice("/get-started?".length));
+
+      expect(strip().textContent).toMatch(/now Setting it up/);
+      expect(strip().textContent).toMatch(
+        /Ghost starts on its own once the server is ready\./,
+      );
+      expect(strip().textContent).toMatch(/you can leave this page/);
+      expect(screen.queryByText(/Set up Ghost now/)).toBeNull();
+      expect(screen.queryByText(/No need to wait/)).toBeNull();
+    });
+
+    it("waits for payment in the strip, with the way to finish paying", () => {
+      reads.purchases = [purchase("bs_1", "ghost-1", "waiting_for_payment")];
+      reads.setupForm = GHOST_SETUP;
+      show(DETAILS.slice("/get-started?".length));
+
+      expect(currentStep()).toMatch(/Set up Ghost/);
+      expect(strip().textContent).toMatch(/now Payment/);
+      expect(
+        within(strip()).getByRole("button", { name: "Finish paying" }),
+      ).toBeTruthy();
+    });
+
+    it("says a server that could not be made can't be used, and goes back to choosing one", () => {
+      reads.purchases = [purchase("bs_1", "ghost-1", "failed")];
+      reads.setupForm = GHOST_SETUP;
+      show(DETAILS.slice("/get-started?".length));
+
+      expect(screen.getByText(/We couldn't create this server/)).toBeTruthy();
+      expect(
+        screen
+          .getByRole("link", { name: "Choose a server again" })
+          .getAttribute("href"),
+      ).toBe("/get-started?template=ghost");
+      expect(screen.queryByRole("form", { name: "Deploy Ghost" })).toBeNull();
+    });
+
+    describe("leaving and coming back", () => {
+      it("resumes on step 2 from the bare link while the server is made", () => {
+        reads.purchases = [purchase("bs_1", "ghost-1", "creating")];
+        show("template=ghost");
+
+        expect(replace).toHaveBeenCalledWith(DETAILS);
+      });
+
+      it("resumes on step 2 from the address the buy path had before", () => {
+        reads.servers = [boughtServer("bs_1", "ghost-1", "setting_up")];
+        show("template=ghost&path=buy&server=bs_1");
+
+        expect(replace).toHaveBeenCalledWith(DETAILS);
+        expect(screen.queryByText(/Set up Ghost now/)).toBeNull();
+      });
+
+      it("goes on to step 2 back from Checkout, in the one-column width", () => {
+        reads.purchases = [purchase("bs_1", "ghost-1", "waiting_for_payment")];
+        const { container } = show("template=ghost&path=buy&checkout=success");
+
+        expect(replace).toHaveBeenCalledWith(DETAILS);
+        expect(container.querySelector(".max-w-6xl")).toBeNull();
+      });
+    });
+
+    describe("the app is applied once the server is ready (ADR-0073)", () => {
+      it("cannot be deployed before the server is set up, which has no Server to name yet", () => {
+        reads.purchases = [purchase("bs_1", "ghost-1", "creating")];
+        reads.setupForm = GHOST_SETUP;
+        show(DETAILS.slice("/get-started?".length));
+
+        // An off button stays focusable: Base UI marks it `aria-disabled`.
+        expect(
+          screen
+            .getByRole("button", { name: "Deploy Ghost" })
+            .getAttribute("aria-disabled"),
+        ).toBe("true");
+        expect(
+          screen.getByText("You can deploy once the server is created."),
+        ).toBeTruthy();
+      });
+
+      it("deploys at Setting up with the setup Cloudgate applies by itself", async () => {
+        reads.servers = [boughtServer("bs_1", "ghost-1", "setting_up")];
+        reads.setupForm = GHOST_SETUP;
+        setUp.mockResolvedValue({
+          pendingSetup: { environmentId: "env_1" },
+        });
+        show(DETAILS.slice("/get-started?".length));
+
+        fireEvent.click(screen.getByRole("button", { name: "Deploy Ghost" }));
+
+        await waitFor(() => expect(setUp).toHaveBeenCalledTimes(1));
+        expect(setUp.mock.calls[0][0]).toEqual({
+          templateId: "ghost",
+          newProject: {
+            name: "Ghost",
+            deployTarget: { kind: "server", serverId: "bs_1" },
+          },
+          setupName: "ghost",
+          values: {},
+          autoApply: true,
+        });
+      });
+
+      it("does not take a powered-off server at Setting up", () => {
+        reads.servers = [
+          boughtServer("bs_1", "ghost-1", "setting_up", {
+            at: "2026-11-10T09:00:00Z",
+            reason: "Port scan",
+          }),
+        ];
+        reads.setupForm = GHOST_SETUP;
+        show(DETAILS.slice("/get-started?".length));
+
+        expect(
+          screen.getByText("That server isn’t ready for an app yet."),
+        ).toBeTruthy();
+        expect(screen.queryByRole("form", { name: "Deploy Ghost" })).toBeNull();
+      });
     });
   });
 });

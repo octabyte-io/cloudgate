@@ -104,6 +104,8 @@ function Chooser({
           templateId: template.id,
           path: "buy",
           serverId: result.id,
+          // Straight on to the app's details, the Server's progress above them.
+          deploying: true,
         }),
       );
   }
