@@ -7,7 +7,7 @@ import {
   fromPickerValue,
   PLATFORM_HOST_VALUE,
 } from "../environment/deploy-target";
-import { askedValueProblem, SETUP_NAME } from "./asked-value";
+import { askedValueProblem, isYesNo, SETUP_NAME } from "./asked-value";
 
 /**
  * The setup form's values, as `useApiForm` holds them.
@@ -111,7 +111,11 @@ export function startingValues(
   return {
     environmentId: newProject ? "" : (first?.environmentId ?? ""),
     setupName: form.setupName,
-    values: form.asked.map((input) => input.default ?? ""),
+    // A yes-or-no starts on its default, or on "false": its switch has no
+    // third, empty position to start on.
+    values: form.asked.map(
+      (input) => input.default ?? (isYesNo(input) ? "false" : ""),
+    ),
     hosts: startingHosts(
       form,
       newProject ? targetHosts(form, newProject.firstTarget) : first?.hosts,

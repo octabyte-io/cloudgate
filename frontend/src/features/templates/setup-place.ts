@@ -9,6 +9,9 @@ export interface SetupPlace {
   environmentId: string | null;
 }
 
+/** No place: the catalogue opened on its own. */
+export const NO_PLACE: SetupPlace = { projectId: null, environmentId: null };
+
 /** The place a `/templates` address carries, read from its search params. */
 export function setupPlaceOf(params: {
   get(name: string): string | null;

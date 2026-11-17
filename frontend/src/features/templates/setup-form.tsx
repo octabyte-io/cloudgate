@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type React from "react";
 import { FormProvider } from "react-hook-form";
 
 import {
@@ -10,8 +11,10 @@ import {
   CardHeader,
 } from "@/components/console/card";
 import { Field, FormError } from "@/components/console/field";
+import { LinkButton } from "@/components/console/link-button";
 import { SubmitButton } from "@/components/console/submit-button";
 import { useApiForm } from "@/components/console/use-api-form";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { SetupForm } from "@/lib/api/endpoints/templates";
 import { GET_STARTED_PATH } from "@/lib/auth/routes";
@@ -67,13 +70,22 @@ export function SetupFormView({
   projectId,
   startOn,
   newProject,
+  place,
+  onNewProject,
   onSubmit,
 }: {
+  /** The Environment to start on, when it can take the template. */
+  startOn?: string;
+  /**
+   * The Project choice, drawn as the form's first question so the place the
+   * setup goes is read top to bottom with the rest of it.
+   */
+  place?: React.ReactNode;
+  /** Switches the setup to a new Project, offered when this one has no Environment. */
+  onNewProject?: () => void;
   form: SetupForm;
   /** The existing Project set up into, for the link to add an Environment. */
   projectId?: string;
-  /** The Environment to start on, when it can take the template. */
-  startOn?: string;
   /** The Deploy targets a new Project may pick; absent for an existing one. */
   newProject?: { targets: NewProjectTarget[] };
   /**
@@ -108,16 +120,16 @@ export function SetupFormView({
   const targetCloud =
     newProject?.targets.find((one) => one.value === target)?.cloud ?? null;
   const errors = form.formState.errors;
-  // An existing Project none of whose Environments can take the template:
-  // the form says why and where to go, and asks nothing it cannot use.
-  const nowhere = !creating && !setup.environments.some((env) => env.canTake);
+  // A Project with no Environment has nowhere to set the template up, so the
+  // rest of the form waits for one rather than asking questions it cannot use.
+  const nowhere = !newProject && setup.environments.length === 0;
 
   return (
     // Arrives in place of the skeleton the screen held for it.
-    <Card className="max-w-form animate-fade">
+    <Card className="animate-fade">
       <CardHeader
-        title="Where it goes and what it needs"
-        sub="Setup makes every value once and opens a Plan; nothing runs until you Apply it."
+        title={`Set up ${setup.templateName}`}
+        sub="Set up makes every value once and opens a Plan; nothing runs until you Apply it."
         headingLevel={2}
       />
       <FormProvider {...form}>
@@ -128,6 +140,7 @@ export function SetupFormView({
           aria-label={`Set up ${setup.templateName}`}
         >
           <CardBody className="grid gap-5">
+            {place}
             {newProject ? (
               <>
                 <Field name="newProject.name" label="Project name">
@@ -203,23 +216,28 @@ export function SetupFormView({
                 <legend className="mb-1 text-body font-medium">
                   Environment
                 </legend>
-                {setup.environments.length === 0 ? (
-                  <p className="text-meta text-tx-3">
-                    This Project has no Environment you can read, so there is
-                    nowhere to set {setup.templateName} up yet.{" "}
-                    {projectId ? (
-                      <>
-                        <Link
+                {nowhere ? (
+                  <div className="grid justify-items-start gap-3 rounded-lg border border-dashed border-line-2 bg-panel-2 px-4 py-4">
+                    <p className="text-body text-tx-2">
+                      This Project has no Environment yet, so there is nowhere
+                      to set {setup.templateName} up.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {projectId ? (
+                        <LinkButton
+                          size="sm"
                           href={`/projects/${encodeURIComponent(projectId)}`}
-                          className="font-medium text-brand-tx underline-offset-3 hover:underline focus-visible:underline"
                         >
                           Add an Environment to this Project
-                        </Link>
-                        , then come back, or pick &ldquo;New Project&rdquo;
-                        above to make one with its Environment.
-                      </>
-                    ) : null}
-                  </p>
+                        </LinkButton>
+                      ) : null}
+                      {onNewProject ? (
+                        <Button type="button" size="sm" onClick={onNewProject}>
+                          Use a New Project instead
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
                 ) : null}
                 {setup.environments.map((env) => (
                   <Choice
@@ -283,12 +301,9 @@ export function SetupFormView({
 
             <FormError message={form.rootError} />
           </CardBody>
-          <CardFooter>
-            <SubmitButton
-              type="submit"
-              disabled={nowhere}
-              pending={form.formState.isSubmitting}
-            >
+          {/* Nothing to submit until the Project has an Environment. */}
+          <CardFooter className={nowhere ? "hidden" : undefined}>
+            <SubmitButton type="submit" pending={form.formState.isSubmitting}>
               Set up and review the Plan
             </SubmitButton>
           </CardFooter>

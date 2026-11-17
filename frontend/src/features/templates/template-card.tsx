@@ -2,10 +2,9 @@ import { Chip } from "@/components/console/chip";
 import { LinkButton } from "@/components/console/link-button";
 import type { TemplateSummary } from "@/lib/api/endpoints/templates";
 import { Icon } from "@/lib/design/icons";
-import { cn } from "@/lib/utils";
 
 import { runsOnMark } from "./catalogue";
-import { templatesHref, type SetupPlace } from "./setup-place";
+import { NO_PLACE, templatesHref, type SetupPlace } from "./setup-place";
 
 const LINKS = [
   ["website", "Website"],
@@ -13,8 +12,10 @@ const LINKS = [
   ["source", "Source"],
 ] as const;
 
-/** Tags shown before the rest are counted. */
-const TAGS_SHOWN = 3;
+/** Whether a Template runs on a Server and in both clouds, as most do. */
+function everywhere(template: TemplateSummary): boolean {
+  return template.runsOn.includes("aws") && template.runsOn.includes("gcp");
+}
 
 /**
  * One Template in the catalogue, as a wide row: the logo on the left, the
@@ -33,10 +34,15 @@ const TAGS_SHOWN = 3;
  * catalogue file, so the card makes no request of its own and an SVG logo
  * runs no script — hence a plain `<img>` rather than `next/image`.
  *
- * **Three tags on one line, and the rest counted.** A chip shrinks and
- * truncates rather than wrapping, so every card in a row is the same height;
- * the tag filter is the place to read them all, and the search matches every
- * tag, shown or not.
+ * **Whole tags on one line.** As many chips as fit, each in full; the rest
+ * wrap below the line and are clipped, so every card in a row is the same
+ * height. Truncated chips ("web a…", "no-c…") with a count read as noise and
+ * named nothing. The tag filter lists them all, the search matches every tag,
+ * and the setup screen shows them in full.
+ *
+ * **Where it runs only when it is the exception.** Nearly every Template runs
+ * on a Server or in either cloud, and the same line on every card was read
+ * once and then skipped; a Template a cloud cannot make says so.
  *
  * An `<article>`, not a link: its website, docs and source links live inside
  * it, and a link cannot hold links. **No hover on the card itself** for the
@@ -44,7 +50,7 @@ const TAGS_SHOWN = 3;
  */
 export function TemplateCard({
   template,
-  place = { projectId: null, environmentId: null },
+  place = NO_PLACE,
 }: {
   template: TemplateSummary;
   /** Opened from an Environment, its setup starts there too. */
@@ -75,14 +81,12 @@ export function TemplateCard({
                 </span>
               ) : null}
             </span>
-            <span className="flex min-w-0 items-start gap-1 text-meta text-tx-3">
-              <Icon
-                name={template.runsOn.length > 1 ? "cloud" : "server"}
-                size={13}
-                className="mt-0.5 flex-none"
-              />
-              <span>{runsOnMark(template.runsOn)}</span>
-            </span>
+            {everywhere(template) ? null : (
+              <span className="flex min-w-0 items-start gap-1 text-meta text-tx-3">
+                <Icon name="server" size={13} className="mt-0.5 flex-none" />
+                <span>{runsOnMark(template.runsOn)}</span>
+              </span>
+            )}
           </span>
           <LinkButton
             href={templatesHref(place, template.id)}
@@ -102,32 +106,19 @@ export function TemplateCard({
             both cards sit on the same line whatever their descriptions. */}
         <div className="mt-auto flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
           {tags.length > 0 ? (
-            <span className="flex min-w-0 flex-1 basis-48 items-center gap-1">
-              {tags.slice(0, TAGS_SHOWN).map((tag, index) => (
-                <Chip
-                  key={tag}
-                  // A phone has room for two before the chips truncate to a
-                  // few letters each, so the third waits for `hd`.
-                  className={cn(
-                    "min-w-0 shrink",
-                    index === TAGS_SHOWN - 1 && "hidden hd:inline-flex",
-                  )}
-                  title={tag}
-                >
-                  <span className="truncate">{tag}</span>
-                </Chip>
+            // Whole chips on one line: the ones that do not fit wrap below
+            // it, out of sight, and the tag filter lists them all.
+            <ul
+              aria-label="Tags"
+              title={tags.join(", ")}
+              className="flex h-chip min-w-0 flex-1 basis-48 flex-wrap gap-1 overflow-hidden"
+            >
+              {tags.map((tag) => (
+                <li key={tag} className="flex">
+                  <Chip>{tag}</Chip>
+                </li>
               ))}
-              {tags.length > TAGS_SHOWN - 1 ? (
-                <span className="flex-none text-meta text-tx-3 hd:hidden">
-                  +{tags.length - (TAGS_SHOWN - 1)}
-                </span>
-              ) : null}
-              {tags.length > TAGS_SHOWN ? (
-                <span className="hidden flex-none text-meta text-tx-3 hd:inline">
-                  +{tags.length - TAGS_SHOWN}
-                </span>
-              ) : null}
-            </span>
+            </ul>
           ) : null}
           {LINKS.some(([key]) => template.links[key]) ? (
             <span className="flex flex-none gap-3 text-meta">

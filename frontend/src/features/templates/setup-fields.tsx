@@ -27,33 +27,7 @@ import { SetupDnsRecords } from "./setup-dns-records";
 
 /** The asked value at `at` in the template's list. */
 export function AskedField({ input, at }: { input: AskedInput; at: number }) {
-  const { control } = useFormContext();
-  if (isYesNo(input)) {
-    // A yes or no is a switch, held as the word the template reads, so a
-    // typo like "ture" cannot be sent.
-    return (
-      <Field
-        name={`values.${at}`}
-        label={input.label}
-        hint={input.description ?? undefined}
-        manual
-        orientation="horizontal"
-      >
-        <Controller
-          name={`values.${at}`}
-          control={control}
-          render={({ field }) => (
-            <Switch
-              checked={field.value === "true"}
-              onCheckedChange={(on: boolean) =>
-                field.onChange(on ? "true" : "false")
-              }
-            />
-          )}
-        />
-      </Field>
-    );
-  }
+  if (isYesNo(input)) return <YesNoField input={input} at={at} />;
   return (
     <Field
       name={`values.${at}`}
@@ -75,6 +49,31 @@ export function AskedField({ input, at }: { input: AskedInput; at: number }) {
           }
         />
       )}
+    </Field>
+  );
+}
+
+/** A yes-or-no asked value, as a switch that stores `"true"` or `"false"`. */
+function YesNoField({ input, at }: { input: AskedInput; at: number }) {
+  const { control } = useFormContext();
+  return (
+    <Field
+      name={`values.${at}`}
+      label={input.label}
+      hint={input.description ?? undefined}
+      orientation="horizontal"
+      manual
+    >
+      <Controller
+        name={`values.${at}`}
+        control={control}
+        render={({ field }) => (
+          <Switch
+            checked={field.value === "true"}
+            onCheckedChange={(next) => field.onChange(next ? "true" : "false")}
+          />
+        )}
+      />
     </Field>
   );
 }

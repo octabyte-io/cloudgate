@@ -572,11 +572,6 @@
      it are short by design. */
   --container-auth: 400px;
 
-  /* A console form of short fields on a wide screen (the Template setup
-     form): wide enough for a generated host, narrow enough that a label and
-     its box read as one. */
-  --container-form: 640px;
-
   /* A one-time code, set wide enough that six digits are counted rather than
      read as a number (F06). The second tracking token in the app, and like
      `--tracking-mono` it exists because mono set for a *purpose* — counting, or

@@ -12,24 +12,6 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** Config name rules, as the setup name must follow them. */
 export const SETUP_NAME = /^[a-z][a-z0-9-]{0,62}$/;
 
-/**
- * Whether an asked value is a yes or no: a plain value (no format, not a
- * secret) whose default is `true` or `false`, and whose pattern, if any,
- * takes both. The form asks it with a switch, so it can only be sent as one
- * of the two words the template reads.
- */
-export function isYesNo(input: AskedInput): boolean {
-  if (input.secret || input.format !== null) return false;
-  if (input.default !== "true" && input.default !== "false") return false;
-  if (input.pattern === null) return true;
-  try {
-    const takes = new RegExp(`^(?:${input.pattern})$`, "u");
-    return takes.test("true") && takes.test("false");
-  } catch {
-    return false;
-  }
-}
-
 /** Why `value` cannot be this input's, or null when it can. */
 export function askedValueProblem(
   input: AskedInput,
@@ -71,4 +53,15 @@ function isHttpUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Whether an asked value is a yes or no: its one check takes exactly `true`
+ * or `false` (Vaultwarden's sign-ups, Gitea's registration). Such a value was
+ * a text box holding the word "true", which invited a typo the check then
+ * refused; it is a switch that writes the same word.
+ */
+export function isYesNo(input: AskedInput): boolean {
+  const pattern = (input.pattern ?? "").replace(/^\^?\(?|\)?\$?$/g, "");
+  return pattern === "true|false" || pattern === "false|true";
 }
