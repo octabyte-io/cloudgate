@@ -32,9 +32,12 @@ export function DetailsStep({
   template,
   serverId,
   bought,
+  leftPayment = false,
 }: {
   template: TemplateSummary;
   serverId: string;
+  /** Back from a cancelled Checkout: the strip says the payment page was left. */
+  leftPayment?: boolean;
   /**
    * Whether the Server was just bought here (the buy path): its progress
    * then sits above the form, and the form is open while it is still made.
@@ -123,6 +126,7 @@ export function DetailsStep({
           id={serverId}
           name={name}
           stage={stage}
+          leftPayment={leftPayment}
         />
       ) : null}
       {/* In the same place whether or not the strip shows, so what was typed

@@ -15,6 +15,7 @@ import { useInvalidate } from "@/lib/api/use-invalidate";
 
 import { useCancelPurchase } from "../server/buy/use-bought-servers";
 import { BUY_STAGES, buyStageStates } from "./wizard-model";
+import { StepNote } from "./wizard-parts";
 import { wizardHref } from "./wizard-state";
 
 /** What the strip's first line says the Server is doing, after its name. */
@@ -39,11 +40,14 @@ export function ServerProgress({
   id,
   name,
   stage,
+  leftPayment = false,
 }: {
   template: TemplateSummary;
   id: string;
   name: string;
   stage: BoughtServerStage;
+  /** Back from a cancelled Checkout, with the payment still to finish. */
+  leftPayment?: boolean;
 }) {
   // Only the four stages a buyer follows; a later one (Changing) is the
   // Server's own page's to show.
@@ -78,7 +82,7 @@ export function ServerProgress({
           </p>
         )}
         {stage === "waiting_for_payment" ? (
-          <FinishPaying template={template} id={id} />
+          <FinishPaying template={template} id={id} left={leftPayment} />
         ) : null}
       </Card.Body>
     </Card>
@@ -92,9 +96,12 @@ export function ServerProgress({
 function FinishPaying({
   template,
   id,
+  left,
 }: {
   template: TemplateSummary;
   id: string;
+  /** The person left the payment page before paying (`checkout=cancelled`). */
+  left: boolean;
 }) {
   const router = useRouter();
   const invalidate = useInvalidate();
@@ -111,6 +118,12 @@ function FinishPaying({
 
   return (
     <div className="grid gap-3 border-t border-line pt-3">
+      {left ? (
+        <StepNote tone="info">
+          You left the payment page before paying: finish paying to get the
+          server, or cancel it and nothing is charged.
+        </StepNote>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         {/* `SubmitButton` for its pending state, as `check-inbox` does: the
             label stays and a turning mark says the press was taken. */}

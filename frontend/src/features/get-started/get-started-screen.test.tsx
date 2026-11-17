@@ -568,6 +568,27 @@ describe("GetStartedScreen", () => {
       ).toBeTruthy();
     });
 
+    it("says the payment page was left, back from a cancelled Checkout while payment waits", () => {
+      reads.purchases = [purchase("bs_1", "ghost-1", "waiting_for_payment")];
+      reads.setupForm = GHOST_SETUP;
+      show(`${DETAILS.slice("/get-started?".length)}&checkout=cancelled`);
+
+      expect(strip().textContent).toMatch(
+        /You left the payment page before paying: finish paying to get the server, or cancel it and nothing is charged\./,
+      );
+      expect(
+        within(strip()).getByRole("button", { name: "Finish paying" }),
+      ).toBeTruthy();
+    });
+
+    it("says nothing of a left payment page without a cancelled Checkout", () => {
+      reads.purchases = [purchase("bs_1", "ghost-1", "waiting_for_payment")];
+      reads.setupForm = GHOST_SETUP;
+      show(DETAILS.slice("/get-started?".length));
+
+      expect(strip().textContent).not.toMatch(/You left the payment page/);
+    });
+
     it("says a server that could not be made can't be used, and goes back to choosing one", () => {
       reads.purchases = [purchase("bs_1", "ghost-1", "failed")];
       reads.setupForm = GHOST_SETUP;
@@ -604,6 +625,13 @@ describe("GetStartedScreen", () => {
 
         expect(replace).toHaveBeenCalledWith(DETAILS);
         expect(container.querySelector(".max-w-6xl")).toBeNull();
+      });
+
+      it("goes on to step 2 back from a cancelled Checkout, keeping that the payment page was left", () => {
+        reads.purchases = [purchase("bs_1", "ghost-1", "waiting_for_payment")];
+        show("template=ghost&path=buy&checkout=cancelled");
+
+        expect(replace).toHaveBeenCalledWith(`${DETAILS}&checkout=cancelled`);
       });
     });
 

@@ -59,6 +59,7 @@ export function BuyFlow({
   // Checkout, whose return address cannot name it, and coming back later.
   const router = useRouter();
   const goOn = found !== null && stage !== null;
+  const leftPayment = state.checkout === "cancelled";
   useEffect(() => {
     if (goOn) {
       router.replace(
@@ -67,10 +68,13 @@ export function BuyFlow({
           path: "buy",
           serverId: found,
           deploying: true,
+          // Back from a cancelled Checkout the purchase still waits for
+          // payment, and step two's strip says the payment page was left.
+          checkout: leftPayment ? "cancelled" : undefined,
         }),
       );
     }
-  }, [goOn, found, router, template.id]);
+  }, [goOn, found, leftPayment, router, template.id]);
 
   if (
     goOn ||

@@ -121,6 +121,7 @@ export function GetStartedScreen() {
               template={template}
               serverId={state.serverId}
               bought={state.path === "buy"}
+              leftPayment={state.checkout === "cancelled"}
             />
           ) : (
             <ServerStep template={template} state={state} />

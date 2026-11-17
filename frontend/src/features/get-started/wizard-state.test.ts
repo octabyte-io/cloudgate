@@ -72,6 +72,15 @@ describe("wizardHref", () => {
     });
   });
 
+  it("writes a cancelled Checkout back only when it is passed on", () => {
+    expect(
+      wizardHref({ templateId: "ghost", path: "buy", checkout: "cancelled" }),
+    ).toBe("/get-started?template=ghost&path=buy&checkout=cancelled");
+    expect(wizardHref({ templateId: "ghost", path: "buy" })).toBe(
+      "/get-started?template=ghost&path=buy",
+    );
+  });
+
   it("encodes an id that holds a reserved character", () => {
     expect(wizardHref({ templateId: "a&b" })).toBe(
       "/get-started?template=a%26b",
