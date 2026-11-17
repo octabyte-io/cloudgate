@@ -150,6 +150,7 @@ interface SetupBody {
 
 interface FormBody {
   domains: { name: string; service: string; port: number; path: string }[];
+  images: string[];
   newProjectHosts: {
     servers: Record<string, Record<string, string>>;
     platformHost: Record<string, string> | null;
@@ -158,6 +159,7 @@ interface FormBody {
     environmentId: string;
     canTake: boolean;
     hosts: Record<string, string> | null;
+    machine: { serverId: string | null } | null;
   }[];
 }
 
@@ -336,6 +338,52 @@ describe('Template compose part setup (e2e)', () => {
     expect(form.environments[0].hosts?.ghost).toMatch(
       /^ghost-[0-9a-f]{6}-198-51-100-7\.sslip\.io$/,
     );
+  });
+
+  it('names the images its parts run and the machine each Environment runs them on, so the form can read its kernel (#104)', async () => {
+    const orgs = await request(server)
+      .get('/organizations')
+      .set('Cookie', cookie);
+    const organizationId = (orgs.body as { id: string }[])[0].id;
+    const [edge] = await ctx.db
+      .insert(serverTable)
+      .values({
+        name: 'edge-1',
+        ipAddress: '34.117.42.7',
+        port: 22,
+        organizationId,
+      })
+      .returning();
+    const onEdge = await request(server)
+      .post('/environments')
+      .set('Cookie', cookie)
+      .send({
+        name: 'staging',
+        projectId,
+        deployTarget: { kind: 'server', serverId: edge.serverId },
+      });
+    expect(onEdge.status).toBe(201);
+
+    const res = await request(server)
+      .get('/templates/ghost/setup')
+      .query({ projectId })
+      .set('Cookie', cookie);
+
+    expect(res.status).toBe(200);
+    const form = res.body as FormBody;
+    // The compose file's one image; `db` is a postgres entry, which runs the
+    // engine's own image and names none.
+    expect(form.images).toEqual(['ghost:5.96-alpine']);
+    expect(
+      Object.fromEntries(
+        form.environments.map((env) => [env.environmentId, env.machine]),
+      ),
+    ).toEqual({
+      [environmentId]: { serverId: null },
+      [(onEdge.body as { environmentId: string }).environmentId]: {
+        serverId: edge.serverId,
+      },
+    });
   });
 
   it('prefills each compose Domain for a new Project on every deploy Server and the platform host, whose Environment does not exist yet', async () => {

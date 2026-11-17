@@ -46,6 +46,7 @@ const FORM: SetupForm = {
       reason: null,
       hosts: { ghost: "ghost-ghost-1a2b3c-198-51-100-7.sslip.io" },
       cloudDomains: null,
+      machine: { serverId: null },
     },
     {
       environmentId: "env-bare",
@@ -54,6 +55,7 @@ const FORM: SetupForm = {
       reason: null,
       hosts: null,
       cloudDomains: null,
+      machine: { serverId: null },
     },
     {
       environmentId: "env-aws",
@@ -67,9 +69,11 @@ const FORM: SetupForm = {
           kind: "load-balancer",
         },
       },
+      machine: null,
     },
   ],
   deployTargets: { server: null, platformHost: null, aws: null, gcp: null },
+  images: [],
   newProjectHosts: null,
 };
 

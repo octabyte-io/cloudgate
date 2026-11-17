@@ -10,6 +10,12 @@ import { execByServer } from '../docker-ops/server-access';
 import { RemoteExecService } from '../remote/remote-exec.service';
 import { DOCKER_VERSION, TRAEFIK_VERSION } from '../servers/server-setup';
 import { getCloudgateImageTag } from './docker-resource.service';
+import {
+  kernelVersionText,
+  mongoRefusesKernel,
+  upstreamKernelVersion,
+} from './kernel-version';
+import type { KernelVersion } from './kernel-version';
 import { runtimeProbeCommand } from './runtime-probe';
 import type { RuntimeProbeRaw } from './runtime-probe';
 import { CLOUDGATE_VERSION } from './version';
@@ -96,8 +102,17 @@ export interface RuntimeInfo {
   swarm: Probe<string>;
   /** `PRETTY_NAME` out of `/etc/os-release`. */
   operatingSystem: Probe<string>;
-  /** `uname -sr`. */
+  /**
+   * The upstream kernel version, `7.0.12`, read off `/proc/version_signature`
+   * where the host has one and `uname -r` otherwise; `raw` is that answer.
+   */
   kernel: Probe<string>;
+  /**
+   * Whether MongoDB 8 refuses to start on this host's kernel, 6.19.0 to 7.0.13
+   * (`kernel-version.ts`, #104). Null when the kernel was not read. Decided
+   * here, once, so no console screen carries its own copy of the range.
+   */
+  mongoRefusesKernel: boolean | null;
   /** The probed host's own uptime, whole seconds. */
   uptimeSeconds: Probe<number>;
   /** Whether `cloudgate-network` exists on the probed host. */
@@ -213,6 +228,8 @@ export class RuntimeInfoService {
       this.probePostgres(),
     ]);
 
+    const kernelVersion = upstreamKernelVersion(probe.raw?.kernel ?? '');
+
     return {
       serverId,
       observedAt: new Date().toISOString(),
@@ -240,11 +257,13 @@ export class RuntimeInfoService {
         probe.raw?.os,
         probe.reason ?? '/etc/os-release has no PRETTY_NAME on this host',
       ),
-      kernel: probeString(
-        null,
+      kernel: kernelProbe(
         probe.raw?.kernel,
+        kernelVersion,
         probe.reason ?? 'uname did not answer on this host',
       ),
+      mongoRefusesKernel:
+        kernelVersion === null ? null : mongoRefusesKernel(kernelVersion),
       uptimeSeconds: probeNumber(
         probe.raw?.uptimeSeconds,
         probe.reason ?? '/proc/uptime is not readable on this host',
@@ -426,6 +445,34 @@ function probeString(
     ...(observed ? {} : { reason }),
     scope: 'host',
     drift: declared !== null && observed !== null && declared !== observed,
+  };
+}
+
+/**
+ * The kernel as its upstream version, with the host's own words as `raw`. An
+ * answer with no version in it keeps `raw` and reads null, as a Traefik image
+ * with no tag does: guessing one would decide MongoDB's fate off nothing.
+ */
+function kernelProbe(
+  value: string | undefined,
+  version: KernelVersion | null,
+  reason: string,
+): Probe<string> {
+  const raw = value?.trim() || null;
+  return {
+    declared: null,
+    observed: version === null ? null : kernelVersionText(version),
+    raw,
+    ...(version !== null
+      ? {}
+      : {
+          reason:
+            raw === null
+              ? reason
+              : 'the kernel this host named carries no version',
+        }),
+    scope: 'host',
+    drift: false,
   };
 }
 

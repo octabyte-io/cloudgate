@@ -46,7 +46,11 @@ export interface RuntimeProbeRaw {
   traefik: string;
   /** `PRETTY_NAME` out of `/etc/os-release`. */
   os: string;
-  /** `uname -sr`. */
+  /**
+   * `/proc/version_signature` where the host has one (Ubuntu), else
+   * `uname -r`: Ubuntu's release hides the upstream version the signature
+   * names (`kernel-version.ts`, #104).
+   */
   kernel: string;
   /** The host's uptime in whole seconds, from `/proc/uptime`. */
   uptimeSeconds: string;
@@ -113,7 +117,12 @@ if have docker; then
   fi
 fi
 
-KERNEL=$(uname -sr 2>/dev/null)
+# Ubuntu's release reads 7.0.0-<abi> for every 7.0 kernel; its signature's
+# last field is the upstream version MongoDB 8's refusal is about (#104).
+KERNEL=$(cat /proc/version_signature 2>/dev/null)
+if [ -z "$KERNEL" ]; then
+  KERNEL=$(uname -r 2>/dev/null)
+fi
 
 # grep-and-cut rather than sourcing /etc/os-release: the file is designed to be
 # sourced, but the setup script already reads ID out of it this way and a probe

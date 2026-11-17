@@ -9,6 +9,7 @@ import type { PanelProps } from "@/lib/shell/tab-registry";
 import { installationFindings } from "../infrastructure/audit-findings";
 import { FindingList } from "../infrastructure/finding-list";
 import { ServerGpuSupportCard } from "../infrastructure/gpu-support-card";
+import { kernelFindings } from "../infrastructure/kernel-finding";
 import { ReachabilityCard } from "../infrastructure/reachability-card";
 import { SetupCard } from "../infrastructure/setup-card";
 import { IngressRow, ingressNote, useRuntimeInfo } from "../runtime-info";
@@ -44,6 +45,9 @@ function Infrastructure({ server }: { server: Server }) {
   // One query, two tabs: the Access tab reads the same result for its two privilege
   // findings, off the same cache key, so opening both costs one SSH session.
   const audit = useServerAudit(server.serverId, server.sshKeyId !== null);
+  // The aside's own query, under the same key: the Kernel row costs no
+  // second round trip to the host.
+  const runtime = useRuntimeInfo(server.serverId);
 
   return (
     <>
@@ -53,7 +57,10 @@ function Infrastructure({ server }: { server: Server }) {
         title="What is installed"
         lede="Read off the host by the readiness script, not from anything Cloudgate stored."
         query={audit}
-        findings={installationFindings}
+        findings={(found) => [
+          ...installationFindings(found),
+          ...kernelFindings(runtime.data),
+        ]}
         footer={
           server.sshKeyId === null
             ? "There is no SSH key on this Server, so the script cannot be run at all. Choose a key on the Access tab."

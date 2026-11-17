@@ -4,6 +4,11 @@ import { FormProvider } from "react-hook-form";
 
 import { Field, FormError } from "@/components/console/field";
 import { Modal } from "@/components/console/modal";
+import {
+  MongoKernelNote,
+  isMongo8Image,
+  useMongoRefusedKernel,
+} from "@/components/console/mongo-kernel";
 import { Picker } from "@/components/console/picker";
 import { ResourceField } from "@/components/console/resource-field";
 import { Stepper } from "@/components/console/stepper";
@@ -86,6 +91,19 @@ export function Details({
   });
 
   const values = form.watch() as DatabaseFormValues;
+  // Before Create, not after a silent restart loop (#104): the host picked,
+  // asked for its kernel only once a MongoDB 8 image is in the field. Nothing
+  // chosen where nothing is assumed reads no host.
+  const target =
+    serverId === "" && !picker.optional
+      ? undefined
+      : picker.serverIdOf(serverId);
+  const refusedKernel = useMongoRefusedKernel(
+    target,
+    // An empty field is the engine's default image, `mongo:8`.
+    kind === "mongo" &&
+      isMongo8Image(values.dockerImage.trim() || descriptor.defaultImage),
+  );
 
   return (
     <FormProvider {...form}>
@@ -153,6 +171,16 @@ export function Details({
                 onValueChange={setServerId}
               />
             </Field>
+
+            {refusedKernel ? (
+              <MongoKernelNote
+                kernel={refusedKernel}
+                host={target === null ? "this Cloudgate host" : "this Server"}
+              >
+                Or run <code className="font-mono">mongo:7</code>, which
+                starts on it.
+              </MongoKernelNote>
+            ) : null}
           </div>
 
           <FormError message={form.rootError} />

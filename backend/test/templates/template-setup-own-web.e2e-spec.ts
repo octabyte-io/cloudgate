@@ -260,6 +260,7 @@ describe('Template setup of an own web’s URL (e2e)', () => {
           reason: null,
           hosts: null,
           cloudDomains: null,
+          machine: { serverId: null },
         },
       ]);
     });
@@ -343,6 +344,7 @@ describe('Template setup of an own web’s URL (e2e)', () => {
           reason,
           hosts: null,
           cloudDomains: null,
+          machine: { serverId: null },
         },
       ]);
 
@@ -397,6 +399,8 @@ describe('Template setup of an own web’s URL (e2e)', () => {
         reason,
         hosts: null,
         cloudDomains: null,
+        // No kernel reading reaches a Stack VM (#104).
+        machine: null,
       });
 
       const res = await setUp(cloudId);

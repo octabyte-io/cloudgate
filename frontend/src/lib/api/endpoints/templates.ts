@@ -76,6 +76,12 @@ export interface SetupEnvironment {
    * on a Server or the platform host.
    */
   cloudDomains: { pointsAt: CloudPointTarget | null } | null;
+  /**
+   * The machine its parts run on, whose kernel the form reads (#104): a
+   * Server, or the platform host as `serverId` null. Null in a Cloud
+   * Environment.
+   */
+  machine: { serverId: string | null } | null;
 }
 
 /** What a cloud Domain's host points at: a load balancer, or a fixed IP. */
@@ -130,6 +136,8 @@ export interface SetupForm {
   asked: AskedInput[];
   /** The compose Domains the setup picks a host for. */
   domains: SetupDomain[];
+  /** Every image the template's parts run, as written. */
+  images: string[];
   environments: SetupEnvironment[];
   deployTargets: DeployTargetRefusals;
   /**

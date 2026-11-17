@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { CLOUDS } from "../environment/deploy-target";
 import type { NewProjectTarget } from "./new-project-targets";
 import { AskedField, DomainHostFields } from "./setup-fields";
+import { SetupKernelNote } from "./setup-kernel-note";
 import {
   SETUP_LABELS,
   setupChoice,
@@ -295,6 +296,12 @@ export function SetupFormView({
                           (env) => env.environmentId === environmentId,
                         )?.cloudDomains ?? null)
                   }
+                />
+
+                <SetupKernelNote
+                  setup={setup}
+                  environmentId={environmentId}
+                  newProjectTarget={newProject ? target : null}
                 />
               </>
             )}

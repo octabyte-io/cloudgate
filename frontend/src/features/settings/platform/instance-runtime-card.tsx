@@ -3,6 +3,7 @@ import { useId } from "react";
 import { Card } from "@/components/console/card";
 import { Dash } from "@/components/console/dash";
 import { KVList, KVRow } from "@/components/console/kv-list";
+import { MongoKernelNote } from "@/components/console/mongo-kernel";
 import { isRefusal, useRuntimeInfo } from "@/lib/api/use-runtime-info";
 import { useArrival } from "@/components/console/use-arrival";
 
@@ -161,6 +162,17 @@ export function RuntimeCard() {
                   />
                 ))}
               </KVList>
+              {/* Under the machine's own readings, where its Kernel row is
+                  (#104): only while MongoDB 8 would refuse it. */}
+              {group.scope === "host" &&
+              runtime.data?.mongoRefusesKernel &&
+              runtime.data.kernel.observed ? (
+                <MongoKernelNote
+                  className="mt-3"
+                  kernel={runtime.data.kernel.observed}
+                  host="this machine"
+                />
+              ) : null}
             </div>
           );
         })}

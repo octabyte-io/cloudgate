@@ -61,6 +61,7 @@ const FORM: SetupForm = {
         "It ships a config file for app, and a Service in a Cloud account has no container to mount it in",
       hosts: null,
       cloudDomains: null,
+      machine: { serverId: null },
     },
     {
       environmentId: "env-prod",
@@ -69,10 +70,12 @@ const FORM: SetupForm = {
       reason: null,
       hosts: null,
       cloudDomains: null,
+      machine: { serverId: null },
     },
   ],
   domains: [],
   deployTargets: { server: null, platformHost: null, aws: null, gcp: null },
+  images: [],
   newProjectHosts: null,
 };
 
@@ -89,6 +92,7 @@ const STACKED: SetupForm = {
       reason: null,
       hosts: { ghost: "ghost-ghost-1a2b3c-198-51-100-7.sslip.io" },
       cloudDomains: null,
+      machine: { serverId: null },
     },
     {
       environmentId: "env-bare",
@@ -97,6 +101,7 @@ const STACKED: SetupForm = {
       reason: null,
       hosts: null,
       cloudDomains: null,
+      machine: { serverId: null },
     },
   ],
 };
@@ -571,6 +576,7 @@ describe("SetupFormView", () => {
               kind: "load-balancer",
             },
           },
+          machine: null,
         },
         {
           environmentId: "env-gcp",
@@ -579,6 +585,7 @@ describe("SetupFormView", () => {
           reason: null,
           hosts: null,
           cloudDomains: { pointsAt: null },
+          machine: null,
         },
       ],
     };

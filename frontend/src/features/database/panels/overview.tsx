@@ -31,6 +31,7 @@ import { DatabaseSwitchCard } from "../existing/switch-card";
 import { DATABASE_KIND, imageField } from "../kinds";
 import { DatabaseActions } from "../lifecycle/database-actions";
 import { DatabaseCloudDeleteCard } from "../lifecycle/database-cloud-delete-card";
+import { MongoKernelBanner } from "../mongo-kernel-banner";
 import { DATABASE_UPDATE_REFUSAL, useUpdateDatabase } from "../use-database";
 
 /**
@@ -164,6 +165,8 @@ function Body({ row, kind }: { row: Database; kind: DatabaseKind }) {
           />
         </Banner>
       ) : null}
+
+      <MongoKernelBanner database={row} kind={kind} />
 
       <SettingsCard
         title="Identity"

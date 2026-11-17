@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { ServerAudit } from "@/lib/api/endpoints/servers";
 import type { Tone } from "@/lib/design/status";
 
@@ -29,8 +31,12 @@ export type AuditFinding = {
   reading: string;
   /** `ok` when the host is ready; `warn` or `bad` when it is not. */
   tone: Tone;
-  /** What this means and what to do. Absent when there is nothing to do. */
-  fix?: string;
+  /**
+   * What this means and what to do. Absent when there is nothing to do. A
+   * node rather than a string so a command in it is set as `<code>`, not
+   * fenced in backticks nothing renders (the kernel finding's).
+   */
+  fix?: ReactNode;
 };
 
 /** The four facts about what setup put on the machine. */

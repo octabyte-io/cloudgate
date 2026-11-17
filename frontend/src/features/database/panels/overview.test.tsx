@@ -5,7 +5,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Database } from "@/lib/api/endpoints/databases";
 import type { PanelProps } from "@/lib/shell/tab-registry";
@@ -37,28 +37,56 @@ vi.mock("../use-database", async (original) => ({
 }));
 vi.mock("../container-log", () => ({ ContainerLog: () => null }));
 
-const row = vi.hoisted(() => ({
+const POSTGRES = {
   databaseId: "db-1",
   environmentId: "env-1",
+  serverId: null as string | null,
   name: "ui-pg",
   description: null,
   dockerImage: "postgres:18",
   applicationStatus: "done",
+};
+const shown = vi.hoisted(() => ({
+  kind: "postgres",
+  row: {} as Record<string, unknown>,
 }));
 vi.mock("../database-panel", () => ({
   DatabasePanel: ({
     children,
   }: {
-    children: (row: Database, kind: "postgres") => React.ReactNode;
-  }) => <>{children(row as unknown as Database, "postgres")}</>,
+    children: (row: Database, kind: string) => React.ReactNode;
+  }) => <>{children(shown.row as unknown as Database, shown.kind)}</>,
+}));
+
+// The host's kernel reading, by Server id (`""` the platform host): the
+// boundary is GET /settings/runtime-info.
+const kernels = vi.hoisted(() => ({ refused: {} as Record<string, string> }));
+vi.mock("@/lib/api/use-runtime-info", () => ({
+  useRuntimeInfo: (
+    serverId: string | null,
+    { enabled = true }: { enabled?: boolean } = {},
+  ) => {
+    const kernel = enabled ? kernels.refused[serverId ?? ""] : undefined;
+    return {
+      data: kernel
+        ? { kernel: { observed: kernel }, mongoRefusesKernel: true }
+        : undefined,
+    };
+  },
 }));
 
 const { DATABASE_UPDATE_REFUSAL } = await import("../use-database");
 const { default: Panel } = await import("./overview");
 
+beforeEach(() => {
+  shown.kind = "postgres";
+  shown.row = { ...POSTGRES };
+});
+
 afterEach(() => {
   cleanup();
   refused.current = new Set();
+  kernels.refused = {};
   update.mutateAsync.mockClear();
 });
 
@@ -112,5 +140,47 @@ describe("a database's Identity card", () => {
         dockerImage: "postgres:18",
       }),
     );
+  });
+});
+
+/**
+ * A MongoDB 8 on a kernel from 6.19 to 7.0.13 restarts forever while its
+ * status reads done (#104); the Overview says why, above the output.
+ */
+describe("a MongoDB's Overview on a kernel MongoDB 8 refuses", () => {
+  const mongo = (dockerImage: string) => {
+    shown.kind = "mongo";
+    shown.row = {
+      ...POSTGRES,
+      name: "ackee-mongo",
+      serverId: "srv-2604",
+      dockerImage,
+    };
+  };
+
+  it("says it will not start there, and how to update the kernel", () => {
+    kernels.refused["srv-2604"] = "7.0.12";
+    mongo("mongo:8");
+    render(<Panel {...props} />);
+
+    expect(document.body.textContent).toContain(
+      "This MongoDB will not start on its host.",
+    );
+    expect(document.body.textContent).toContain(
+      "MongoDB 8 will not start on its Server's kernel, Linux 7.0.12",
+    );
+  });
+
+  it("says nothing for a mongo:7 on the same kernel, or a postgres", () => {
+    kernels.refused["srv-2604"] = "7.0.12";
+    mongo("mongo:7");
+    render(<Panel {...props} />);
+    expect(document.body.textContent).not.toContain("MongoDB 8 will not start");
+    cleanup();
+
+    shown.kind = "postgres";
+    shown.row = { ...POSTGRES, serverId: "srv-2604" };
+    render(<Panel {...props} />);
+    expect(document.body.textContent).not.toContain("MongoDB 8 will not start");
   });
 });

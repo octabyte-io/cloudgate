@@ -43,7 +43,8 @@ function payload(over: Partial<RuntimeInfo> = {}): RuntimeInfo {
     docker: probe("29.7.2", { declared: "29.9.3", drift: true }),
     swarm: probe("active"),
     operatingSystem: probe("Ubuntu 24.04.2 LTS"),
-    kernel: probe("Linux 6.8.0-45-generic"),
+    kernel: probe("6.8.12", { raw: "Ubuntu 6.8.0-45.45-generic 6.8.12" }),
+    mongoRefusesKernel: false,
     uptimeSeconds: probe(3_564_000),
     cloudgateNetwork: probe(true),
     directory: { path: "/etc/cloudgate", freeBytes: 10, totalBytes: 20 },
@@ -247,5 +248,29 @@ describe("RuntimeCard", () => {
 
     expect(document.querySelector('[aria-busy="true"]')).not.toBe(null);
     expect(document.body.textContent).not.toContain("Not known");
+  });
+
+  it("warns under the machine's readings that MongoDB 8 will not start on its kernel, and how to update it (#104)", () => {
+    const text = said(
+      answered({
+        kernel: probe("7.0.12", { raw: "Ubuntu 7.0.0-30.30-generic 7.0.12" }),
+        mongoRefusesKernel: true,
+      }),
+    );
+
+    expect(group("host")).toContain("7.0.12");
+    expect(document.querySelector('[role="note"]')?.textContent).toContain(
+      "MongoDB 8 will not start on this machine's kernel, Linux 7.0.12",
+    );
+    expect(text).toContain("sudo apt update && sudo apt full-upgrade");
+  });
+
+  it("says nothing about MongoDB on a kernel it starts on, or one not read", () => {
+    said(answered({ kernel: probe("7.0.14"), mongoRefusesKernel: false }));
+    expect(document.querySelector('[role="note"]')).toBe(null);
+    cleanup();
+
+    said(answered({ kernel: probe<string>(null), mongoRefusesKernel: null }));
+    expect(document.querySelector('[role="note"]')).toBe(null);
   });
 });

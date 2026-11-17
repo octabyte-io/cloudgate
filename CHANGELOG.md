@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### The console says when MongoDB 8 will not start on a host's kernel
+
+MongoDB 8 (`mongo:8`, `mongo:8.0.x`, `mongo:latest`) exits at start on a Linux kernel from 6.19.0 to 7.0.13, which includes Ubuntu 26.04's first 7.0 kernels, and Swarm restarted it forever while the deploy read done: a MongoDB database, or a Template such as Ackee whose compose file runs one, never came up and nothing said why (#104). Cloudgate now reads each host's real kernel version (off `/proc/version_signature` on Ubuntu, whose `uname -r` reads 7.0.0 for every 7.0 kernel) and says so before anything is deployed: a **Kernel** row with the warning and the fix under a Server's **What is installed** and the platform host's **What this host is running**, and the same warning in the database create form when a MongoDB 8 image is picked, on a MongoDB's Overview, and in a Template's setup when it runs a MongoDB 8. Nothing is refused. `GET /settings/runtime-info` now answers the kernel as its upstream version (`7.0.12`, with the host's own answer in `raw`) and a new `mongoRefusesKernel`; the setup form answers the template's `images` and each Environment's `machine`.
+
+**What to do on upgrade**: on a host whose kernel is in the range, update the kernel and reboot: on Ubuntu, `sudo apt update && sudo apt full-upgrade`, then `sudo reboot` (`Ubuntu 7.0.0-43.43-generic 7.0.14` starts MongoDB 8). Until then `mongo:7` starts on it. A script reading `kernel.observed` from `GET /settings/runtime-info` gets `7.0.12` where it got `Linux 7.0.0-30-generic`.
+
 ### A Template setup shows the DNS record for your own domain, and checks it
 
 In a Template's setup, typing your own domain in place of the generated sslip.io host on a Server or this Cloudgate host gave no record to make and no way to check it: the hint said only to point its DNS at the Server. The field now shows the record the Add a domain dialog shows, an A record with its Name (`@` for a bare domain) and the address it points at, with **Check DNS** beside it. A failed check says so and does not hold Set up back, since the record can be fixed after the Plan is applied. With no public address recorded for this Cloudgate host, the panel says to set it under **Settings → Instance**. The hint names the address too: "add an A record for it pointing at 203.0.113.10". An sslip.io host still needs no record and shows none. In a Cloud Environment the records are shown as before, with a line saying the stack's Domains tab checks them once Apply has made the Stack VM.

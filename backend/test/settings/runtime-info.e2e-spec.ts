@@ -63,7 +63,7 @@ const probeDocument = (over: Partial<RuntimeProbeRaw> = {}): string =>
     swarm: 'active',
     traefik: 'traefik:v3.6.7',
     os: 'Ubuntu 24.04.1 LTS',
-    kernel: 'Linux 6.8.0-31-generic',
+    kernel: 'Ubuntu 6.8.0-31.31-generic 6.8.1',
     uptimeSeconds: '864000',
     network: 'true',
     diskFreeKib: '10485760',
@@ -177,7 +177,14 @@ describe('Runtime info (e2e)', () => {
         drift: false,
       });
       expect(body.operatingSystem.observed).toBe('Ubuntu 24.04.1 LTS');
-      expect(body.kernel.observed).toBe('Linux 6.8.0-31-generic');
+      expect(body.kernel).toEqual({
+        declared: null,
+        observed: '6.8.1',
+        raw: 'Ubuntu 6.8.0-31.31-generic 6.8.1',
+        scope: 'host',
+        drift: false,
+      });
+      expect(body.mongoRefusesKernel).toBe(false);
       expect(body.uptimeSeconds.observed).toBe(864_000);
       expect(body.cloudgateNetwork.observed).toBe(true);
       expect(body.directory.freeBytes).toBe(10_485_760 * 1024);
@@ -230,7 +237,8 @@ describe('Runtime info (e2e)', () => {
         "docker info --format '{{.Swarm.LocalNodeState}}'",
       );
       expect(script).toContain('docker network inspect cloudgate-network');
-      expect(script).toContain('uname -sr');
+      expect(script).toContain('/proc/version_signature');
+      expect(script).toContain('uname -r');
       expect(script).toContain('PRETTY_NAME');
       expect(script).toContain('/proc/uptime');
       expect(script).toContain('df -Pk');
@@ -398,6 +406,70 @@ describe('Runtime info (e2e)', () => {
     });
   });
 
+  describe('the kernel MongoDB 8 refuses (#104)', () => {
+    // Both signatures as Ubuntu 26.04 wrote them on 2026-11-17, before and
+    // after `apt full-upgrade`: `uname -r` was `7.0.0-<abi>-generic` for both.
+    const affected = 'Ubuntu 7.0.0-30.30-generic 7.0.12';
+    const fixed = 'Ubuntu 7.0.0-43.43-generic 7.0.14';
+
+    it('reads the upstream version off a Server whose kernel MongoDB 8 refuses, and says so', async () => {
+      const session = await signUp(httpServer, owner);
+      const serverId = await ownServer(session.cookie);
+      remoteExec.execAsyncRemote.mockResolvedValue(
+        ok(probeDocument({ kernel: affected })),
+      );
+
+      const body = (await read(session.cookie, serverId)).body as RuntimeInfo;
+      expect(body.kernel).toEqual({
+        declared: null,
+        observed: '7.0.12',
+        raw: affected,
+        scope: 'host',
+        drift: false,
+      });
+      expect(body.mongoRefusesKernel).toBe(true);
+    });
+
+    it('says MongoDB 8 starts once the same Ubuntu release is on the fixed kernel', async () => {
+      const session = await signUp(httpServer, owner);
+      const serverId = await ownServer(session.cookie);
+      remoteExec.execAsyncRemote.mockResolvedValue(
+        ok(probeDocument({ kernel: fixed })),
+      );
+
+      const body = (await read(session.cookie, serverId)).body as RuntimeInfo;
+      expect(body.kernel.observed).toBe('7.0.14');
+      expect(body.mongoRefusesKernel).toBe(false);
+    });
+
+    it("reads uname's release on a host with no signature", async () => {
+      const session = await signUp(httpServer, owner);
+      remoteExec.execAsync.mockResolvedValue(
+        ok(probeDocument({ kernel: '6.19.3-arch1-1' })),
+      );
+
+      const body = (await read(session.cookie)).body as RuntimeInfo;
+      expect(body.kernel.observed).toBe('6.19.3');
+      expect(body.kernel.raw).toBe('6.19.3-arch1-1');
+      expect(body.mongoRefusesKernel).toBe(true);
+    });
+
+    it('keeps an answer it cannot read as raw, and decides nothing off it', async () => {
+      const session = await signUp(httpServer, owner);
+      remoteExec.execAsync.mockResolvedValue(
+        ok(probeDocument({ kernel: 'not a kernel' })),
+      );
+
+      const body = (await read(session.cookie)).body as RuntimeInfo;
+      expect(body.kernel.observed).toBeNull();
+      expect(body.kernel.raw).toBe('not a kernel');
+      expect(body.kernel.reason).toBe(
+        'the kernel this host named carries no version',
+      );
+      expect(body.mongoRefusesKernel).toBeNull();
+    });
+  });
+
   describe('degradation', () => {
     it('reports Docker and Traefik as null with a reason and still answers 200', async () => {
       const session = await signUp(httpServer, owner);
@@ -445,7 +517,7 @@ describe('Runtime info (e2e)', () => {
       // The rest of the inventory is intact — that is the whole point of
       // degrading per field rather than failing the response.
       expect(body.operatingSystem.observed).toBe('Ubuntu 24.04.1 LTS');
-      expect(body.kernel.observed).toBe('Linux 6.8.0-31-generic');
+      expect(body.kernel.observed).toBe('6.8.1');
       expect(body.uptimeSeconds.observed).toBe(864_000);
       expect(body.directory.freeBytes).toBe(10_485_760 * 1024);
       expect(body.postgres.observed).toMatch(/^\d+/);
@@ -471,6 +543,8 @@ describe('Runtime info (e2e)', () => {
       expect(body.swarm.reason).toBe(unreachable);
       expect(body.operatingSystem.reason).toBe(unreachable);
       expect(body.kernel.reason).toBe(unreachable);
+      // A kernel nobody read is not one MongoDB starts on, nor one it refuses.
+      expect(body.mongoRefusesKernel).toBeNull();
       expect(body.uptimeSeconds.reason).toBe(unreachable);
       expect(body.cloudgateNetwork.reason).toBe(unreachable);
       expect(body.directory.freeBytes).toBeNull();

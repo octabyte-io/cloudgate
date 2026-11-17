@@ -35,12 +35,21 @@ import { keys } from "./keys";
  * `retry: false` because the interesting failure is the 403, and a role does not
  * change between three attempts — it only makes the refusal slower to read.
  */
-export function useRuntimeInfo(serverId: string | null) {
+export function useRuntimeInfo(
+  serverId: string | null,
+  /**
+   * `enabled: false` asks nothing: a create form reads a host's kernel only
+   * once what it is creating could be refused by it (#104), since every read
+   * is a shell round trip on that host.
+   */
+  { enabled = true }: { enabled?: boolean } = {},
+) {
   return useQuery({
     queryKey: keys.instanceRuntimeInfo(serverId),
     queryFn: () => settingsApi.runtimeInfo(serverId),
     staleTime: 45_000,
     retry: false,
+    enabled,
   });
 }
 

@@ -260,7 +260,17 @@ export interface RuntimeInfo {
   docker: Probe<string>;
   swarm: Probe<string>;
   operatingSystem: Probe<string>;
+  /**
+   * The upstream kernel version, `7.0.12`: Ubuntu's own release hides it, so
+   * it is read off `/proc/version_signature` there; `raw` is the host's answer.
+   */
   kernel: Probe<string>;
+  /**
+   * Whether MongoDB 8 refuses to start on this host's kernel (6.19.0 to
+   * 7.0.13, #104); null when the kernel was not read. The backend decides it,
+   * so no screen carries its own copy of the range.
+   */
+  mongoRefusesKernel: boolean | null;
   uptimeSeconds: Probe<number>;
   cloudgateNetwork: Probe<boolean>;
   directory: {

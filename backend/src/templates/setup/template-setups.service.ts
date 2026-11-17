@@ -72,6 +72,7 @@ import {
   templateDomainHttps,
 } from './setup-domains';
 import type { SetupDomain } from './setup-domains';
+import { templateImages } from './setup-images';
 import {
   fillFileText,
   isSecretInput,
@@ -107,6 +108,13 @@ export interface SetupEnvironment {
    * setup's Plan makes. Null on a Server or the platform host.
    */
   readonly cloudDomains: { readonly pointsAt: PointTarget | null } | null;
+  /**
+   * The machine its parts run on, whose kernel the form reads (#104): a
+   * Server, or the platform host as `serverId` null. Null in a Cloud
+   * Environment, whose Stack VM Cloudgate makes and no kernel reading
+   * reaches.
+   */
+  readonly machine: { readonly serverId: string | null } | null;
 }
 
 /** One value the setup form asks for, and its one check. */
@@ -131,6 +139,8 @@ export interface SetupForm {
   readonly asked: readonly AskedInput[];
   /** The compose Domains the form asks a host for, each by its name. */
   readonly domains: readonly SetupDomain[];
+  /** Every image its parts run, as written (`templateImages`). */
+  readonly images: readonly string[];
   /** The Project's Environments; none for a new Project. */
   readonly environments: readonly SetupEnvironment[];
   /**
@@ -295,6 +305,10 @@ export class TemplateSetups {
           reason === null && domains.length > 0
             ? await this.cloudDomainsOf(env)
             : null,
+        machine:
+          env.deployTarget.kind === 'cloud'
+            ? null
+            : { serverId: serverIdOf(env.deployTarget) },
       });
     }
     return {
@@ -304,6 +318,7 @@ export class TemplateSetups {
       setupName: template.id,
       asked: askedInputs(template),
       domains,
+      images: templateImages(template),
       environments: readable,
       deployTargets: deployTargetRefusals(template, {
         hosted: this.instanceMode.isHosted,
