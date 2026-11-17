@@ -573,4 +573,59 @@ describe("SetupFormView", () => {
       ).toBeTruthy();
     });
   });
+
+  it("asks a yes or no as a switch and sends the word the template reads", async () => {
+    const onSubmit = renderForm(vi.fn(), {
+      ...FORM,
+      asked: [
+        FORM.asked[0],
+        {
+          name: "SIGNUPS_ALLOWED",
+          label: "Allow sign-ups",
+          description: null,
+          default: "true",
+          required: true,
+          secret: false,
+          format: null,
+          pattern: null,
+        },
+      ],
+    });
+
+    const toggle = screen.getByRole("switch", { name: "Allow sign-ups" });
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(toggle);
+    fireEvent.change(screen.getByLabelText("Admin email"), {
+      target: { value: "ada@example.com" },
+    });
+    submit();
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0][0].values).toEqual({
+      ADMIN_EMAIL: "ada@example.com",
+      SIGNUPS_ALLOWED: "false",
+    });
+  });
+
+  it("asks nothing and offers no Set up in a Project with no Environment to take it", () => {
+    renderForm(vi.fn(), { ...FORM, environments: [] });
+
+    expect(screen.getByText(/has no Environment you can read/)).toBeTruthy();
+    expect(screen.queryByLabelText("Setup name")).toBeNull();
+    expect(screen.queryByLabelText("Admin email")).toBeNull();
+    const button = screen.getByRole("button", { name: /Set up and review/ });
+    expect(
+      button.hasAttribute("disabled") ||
+        button.getAttribute("aria-disabled") === "true",
+    ).toBe(true);
+  });
+
+  it("starts on the Environment it was opened from", () => {
+    render(
+      <SetupFormView form={STACKED} startOn="env-bare" onSubmit={vi.fn()} />,
+    );
+    expect(
+      (screen.getByRole("radio", { name: /bare/ }) as HTMLInputElement).checked,
+    ).toBe(true);
+  });
 });

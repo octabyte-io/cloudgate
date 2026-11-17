@@ -32,6 +32,11 @@ export type KVRowProps = Omit<React.ComponentProps<"div">, "children"> & {
   title?: string;
   /** A trailing control — copy, edit. Never the value itself. */
   action?: React.ReactNode;
+  /**
+   * A name read and copied whole (a stack name, a Config name): it breaks
+   * onto a second line rather than ending in "…".
+   */
+  wrap?: boolean;
 };
 
 /**
@@ -46,6 +51,7 @@ export function KVRow({
   mono,
   title,
   action,
+  wrap,
   ...props
 }: KVRowProps) {
   return (
@@ -61,7 +67,8 @@ export function KVRow({
       <dd
         title={title}
         className={cn(
-          "min-w-0 flex-1 truncate text-right text-tx",
+          "min-w-0 flex-1 text-right text-tx",
+          wrap ? "wrap-anywhere" : "truncate",
           mono && "font-mono text-meta tracking-mono",
         )}
       >

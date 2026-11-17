@@ -101,8 +101,13 @@ export function setupSchema(
 export function startingValues(
   form: SetupForm,
   newProject: { firstTarget: string } | null,
+  /** The Environment it was opened from, started on when it can take it. */
+  startOn?: string,
 ): SetupValues {
-  const first = form.environments.find((env) => env.canTake);
+  const first =
+    form.environments.find(
+      (env) => env.canTake && env.environmentId === startOn,
+    ) ?? form.environments.find((env) => env.canTake);
   return {
     environmentId: newProject ? "" : (first?.environmentId ?? ""),
     setupName: form.setupName,

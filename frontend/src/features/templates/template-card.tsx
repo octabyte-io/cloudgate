@@ -5,6 +5,7 @@ import { Icon } from "@/lib/design/icons";
 import { cn } from "@/lib/utils";
 
 import { runsOnMark } from "./catalogue";
+import { templatesHref, type SetupPlace } from "./setup-place";
 
 const LINKS = [
   ["website", "Website"],
@@ -41,7 +42,14 @@ const TAGS_SHOWN = 3;
  * it, and a link cannot hold links. **No hover on the card itself** for the
  * same reason — the Set up button and the links are what answer the pointer.
  */
-export function TemplateCard({ template }: { template: TemplateSummary }) {
+export function TemplateCard({
+  template,
+  place = { projectId: null, environmentId: null },
+}: {
+  template: TemplateSummary;
+  /** Opened from an Environment, its setup starts there too. */
+  place?: SetupPlace;
+}) {
   const { tags } = template;
 
   return (
@@ -77,7 +85,7 @@ export function TemplateCard({ template }: { template: TemplateSummary }) {
             </span>
           </span>
           <LinkButton
-            href={`/templates?template=${encodeURIComponent(template.id)}`}
+            href={templatesHref(place, template.id)}
             size="sm"
             className="flex-none"
             aria-label={`Set up ${template.name}`}

@@ -65,12 +65,15 @@ export const EMPTY_PROJECT_NOTE =
 export function SetupFormView({
   form: setup,
   projectId,
+  startOn,
   newProject,
   onSubmit,
 }: {
   form: SetupForm;
   /** The existing Project set up into, for the link to add an Environment. */
   projectId?: string;
+  /** The Environment to start on, when it can take the template. */
+  startOn?: string;
   /** The Deploy targets a new Project may pick; absent for an existing one. */
   newProject?: { targets: NewProjectTarget[] };
   /**
@@ -91,6 +94,7 @@ export function SetupFormView({
               "",
           }
         : null,
+      startOn,
     ),
     labelOf: (name) => SETUP_LABELS[name],
     onSubmit: async (values) => {
@@ -104,12 +108,15 @@ export function SetupFormView({
   const targetCloud =
     newProject?.targets.find((one) => one.value === target)?.cloud ?? null;
   const errors = form.formState.errors;
+  // An existing Project none of whose Environments can take the template:
+  // the form says why and where to go, and asks nothing it cannot use.
+  const nowhere = !creating && !setup.environments.some((env) => env.canTake);
 
   return (
     // Arrives in place of the skeleton the screen held for it.
-    <Card className="animate-fade">
+    <Card className="max-w-form animate-fade">
       <CardHeader
-        title={`Set up ${setup.templateName}`}
+        title="Where it goes and what it needs"
         sub="Setup makes every value once and opens a Plan; nothing runs until you Apply it."
         headingLevel={2}
       />
@@ -237,43 +244,51 @@ export function SetupFormView({
               </fieldset>
             )}
 
-            <Field
-              name="setupName"
-              label="Setup name"
-              hint={`Each part is named ${setupName || "<setup name>"}-<part>; a clash adds -2 to the whole name.`}
-            >
-              <Input autoComplete="off" />
-            </Field>
+            {nowhere ? null : (
+              <>
+                <Field
+                  name="setupName"
+                  label="Setup name"
+                  hint={`Each part is named ${setupName || "<setup name>"}-<part>; a clash adds -2 to the whole name.`}
+                >
+                  <Input autoComplete="off" />
+                </Field>
 
-            {setup.asked.map((input, at) => (
-              <AskedField key={input.name} input={input} at={at} />
-            ))}
+                {setup.asked.map((input, at) => (
+                  <AskedField key={input.name} input={input} at={at} />
+                ))}
 
-            <DomainHostFields
-              domains={setup.domains}
-              generated={
-                newProject
-                  ? targetHosts(setup, target)
-                  : (setup.environments.find(
-                      (env) => env.environmentId === environmentId,
-                    )?.hosts ?? null)
-              }
-              cloud={
-                newProject
-                  ? // A new Project's network is made by its first Plan.
-                    targetCloud
-                    ? { pointsAt: null }
-                    : null
-                  : (setup.environments.find(
-                      (env) => env.environmentId === environmentId,
-                    )?.cloudDomains ?? null)
-              }
-            />
+                <DomainHostFields
+                  domains={setup.domains}
+                  generated={
+                    newProject
+                      ? targetHosts(setup, target)
+                      : (setup.environments.find(
+                          (env) => env.environmentId === environmentId,
+                        )?.hosts ?? null)
+                  }
+                  cloud={
+                    newProject
+                      ? // A new Project's network is made by its first Plan.
+                        targetCloud
+                        ? { pointsAt: null }
+                        : null
+                      : (setup.environments.find(
+                          (env) => env.environmentId === environmentId,
+                        )?.cloudDomains ?? null)
+                  }
+                />
+              </>
+            )}
 
             <FormError message={form.rootError} />
           </CardBody>
           <CardFooter>
-            <SubmitButton type="submit" pending={form.formState.isSubmitting}>
+            <SubmitButton
+              type="submit"
+              disabled={nowhere}
+              pending={form.formState.isSubmitting}
+            >
               Set up and review the Plan
             </SubmitButton>
           </CardFooter>

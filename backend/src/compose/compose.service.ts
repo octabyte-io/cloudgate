@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { stackRootId } from './stack-root';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { quote } from 'shell-quote';
 // `import type` only, exactly as `databases/common/database-ops.ts` takes them:
 // one three-valued presence union and one shape for what a forced delete admits
@@ -44,7 +44,13 @@ import { withoutSecrets } from '../common/service-read-relations';
 import { cleanAppName, generateAppName } from '../db/columns';
 import { DRIZZLE } from '../db/drizzle.module';
 import type { DrizzleDB } from '../db/drizzle.module';
-import { compose, environment, project, volumeBackup } from '../db/schema';
+import {
+  compose,
+  environment,
+  project,
+  setupRecord,
+  volumeBackup,
+} from '../db/schema';
 import {
   claimServiceConfigName,
   mintServiceConfigName,
@@ -493,7 +499,35 @@ export class ComposeService {
       // Its Stack VM as its page shows it, on a stack in a Cloud account
       // (ADR-0070, #1372); `null` on a Server and the platform host.
       stackVmFacts: await this.stackVms.factsOf(found),
+      template: await this.templateOf(
+        found.environment.project.projectId,
+        found.configName,
+      ),
     };
+  }
+
+  /**
+   * The Template a stack was set up from (ADR-0065): the Project's newest
+   * Setup record that made its Config name, or `null` for a stack written by
+   * hand. A fact for its page to show, never a link that updates it.
+   */
+  private async templateOf(projectId: string, configName: string) {
+    const [record] = await this.db
+      .select({
+        templateId: setupRecord.templateId,
+        revision: setupRecord.revision,
+        setupName: setupRecord.setupName,
+      })
+      .from(setupRecord)
+      .where(
+        and(
+          eq(setupRecord.projectId, projectId),
+          sql`${setupRecord.configNames} @> ${JSON.stringify([configName])}::jsonb`,
+        ),
+      )
+      .orderBy(desc(setupRecord.createdAt))
+      .limit(1);
+    return record ?? null;
   }
 
   /**

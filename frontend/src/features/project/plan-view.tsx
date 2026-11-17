@@ -174,6 +174,101 @@ export function PlanView({
   const waiting = awsWaitLine(plan, cloudName);
   const stopped = plan.stoppedDeployment ?? null;
 
+  // An applied plan's Results list what ran, so its steps fold away.
+  const applied = plan.results != null;
+  const steps = (
+    <>
+      {creates.length > 0 ? (
+        <Section title="Creates">
+          {creates.map((step) => (
+            <StepRow
+              key={
+                step.action === "network-create"
+                  ? `network-${step.cloudAccountId}-${step.region}`
+                  : `create-${step.configName}`
+              }
+              step={step}
+              serverNames={serverNames}
+              cloudAccountNames={cloudAccountNames}
+              environmentId={confirming ? plan.environmentId : undefined}
+            />
+          ))}
+        </Section>
+      ) : null}
+
+      <ExistingLookups plan={plan} />
+
+      {changes.length > 0 ? (
+        <Section title="Changes">
+          {changes.map((step) => (
+            <StepRow
+              key={
+                step.action === "network-change"
+                  ? `network-${step.environmentNetworkId}`
+                  : `change-${step.configName}`
+              }
+              step={step}
+              serverNames={serverNames}
+              cloudAccountNames={cloudAccountNames}
+              stopped={
+                step.action === "change" &&
+                stopped?.configName === step.configName
+                  ? stopped
+                  : undefined
+              }
+            />
+          ))}
+        </Section>
+      ) : null}
+
+      {upgrades.length > 0 ? (
+        <Section
+          title="Major upgrades"
+          className="rounded-lg border border-warn-line bg-warn-tint p-3 text-warn"
+        >
+          <p className="text-meta">
+            A postgres is offline while it upgrades and a redis may drop
+            connections briefly; an upgrade cannot be undone.
+          </p>
+          {upgrades.map((step) => (
+            <div key={`upgrade-${step.configName}`} className="grid gap-2">
+              <p className="text-body font-medium">
+                {step.configName}: {step.majorUpgrade?.from} →{" "}
+                {step.majorUpgrade?.to}
+              </p>
+              <StepRow step={step} serverNames={serverNames} />
+              {confirming ? (
+                <ConfirmByName
+                  confirmKey={step.configName}
+                  word={step.name}
+                  value={names[step.configName] ?? ""}
+                  matches={matches(step)}
+                  onChange={(value) => type(step.configName, value)}
+                />
+              ) : null}
+            </div>
+          ))}
+        </Section>
+      ) : null}
+
+      {destroys.length > 0 ? (
+        <DestroysSection
+          destroys={destroys}
+          serverNames={serverNames}
+          cloudAccountNames={cloudAccountNames}
+          confirming={confirming}
+          typed={names}
+          matches={matches}
+          onType={type}
+          ticked={deleteFilesOf}
+          onTick={tick}
+        />
+      ) : null}
+
+      {drift.length > 0 ? <DriftSection entries={drift} /> : null}
+    </>
+  );
+
   return (
     <PlanCloudName value={cloudName}>
       <div className="grid gap-4">
@@ -245,94 +340,18 @@ export function PlanView({
           </p>
         ) : null}
 
-        {creates.length > 0 ? (
-          <Section title="Creates">
-            {creates.map((step) => (
-              <StepRow
-                key={
-                  step.action === "network-create"
-                    ? `network-${step.cloudAccountId}-${step.region}`
-                    : `create-${step.configName}`
-                }
-                step={step}
-                serverNames={serverNames}
-                cloudAccountNames={cloudAccountNames}
-                environmentId={confirming ? plan.environmentId : undefined}
-              />
-            ))}
-          </Section>
-        ) : null}
-
-        <ExistingLookups plan={plan} />
-
-        {changes.length > 0 ? (
-          <Section title="Changes">
-            {changes.map((step) => (
-              <StepRow
-                key={
-                  step.action === "network-change"
-                    ? `network-${step.environmentNetworkId}`
-                    : `change-${step.configName}`
-                }
-                step={step}
-                serverNames={serverNames}
-                cloudAccountNames={cloudAccountNames}
-                stopped={
-                  step.action === "change" &&
-                  stopped?.configName === step.configName
-                    ? stopped
-                    : undefined
-                }
-              />
-            ))}
-          </Section>
-        ) : null}
-
-        {upgrades.length > 0 ? (
-          <Section
-            title="Major upgrades"
-            className="rounded-lg border border-warn-line bg-warn-tint p-3 text-warn"
-          >
-            <p className="text-meta">
-              A postgres is offline while it upgrades and a redis may drop
-              connections briefly; an upgrade cannot be undone.
-            </p>
-            {upgrades.map((step) => (
-              <div key={`upgrade-${step.configName}`} className="grid gap-2">
-                <p className="text-body font-medium">
-                  {step.configName}: {step.majorUpgrade?.from} →{" "}
-                  {step.majorUpgrade?.to}
-                </p>
-                <StepRow step={step} serverNames={serverNames} />
-                {confirming ? (
-                  <ConfirmByName
-                    confirmKey={step.configName}
-                    word={step.name}
-                    value={names[step.configName] ?? ""}
-                    matches={matches(step)}
-                    onChange={(value) => type(step.configName, value)}
-                  />
-                ) : null}
-              </div>
-            ))}
-          </Section>
-        ) : null}
-
-        {destroys.length > 0 ? (
-          <DestroysSection
-            destroys={destroys}
-            serverNames={serverNames}
-            cloudAccountNames={cloudAccountNames}
-            confirming={confirming}
-            typed={names}
-            matches={matches}
-            onType={type}
-            ticked={deleteFilesOf}
-            onTick={tick}
-          />
-        ) : null}
-
-        {drift.length > 0 ? <DriftSection entries={drift} /> : null}
+        {applied ? (
+          // Once applied, Results above say what ran; the steps as they were
+          // reviewed stay one click away rather than repeating every line.
+          <details className="group grid gap-4">
+            <summary className="w-fit cursor-pointer text-meta text-brand-tx">
+              Show the Plan as it was reviewed
+            </summary>
+            <div className="mt-4 grid gap-4">{steps}</div>
+          </details>
+        ) : (
+          steps
+        )}
 
         {confirming ? (
           <div className="flex flex-wrap items-center justify-end gap-2.5">

@@ -44,6 +44,7 @@ vi.mock("../domains/compose-domains-aside", () => ({
   ComposeDomainsAside: () => null,
 }));
 vi.mock("../lifecycle/compose-actions", () => ({ ComposeActions: () => null }));
+vi.mock("../domains/open-app-button", () => ({ OpenAppButton: () => null }));
 vi.mock("../source/compose-source-card", () => ({
   ComposeSourceCard: () => null,
 }));

@@ -17,6 +17,7 @@ import { timeAgo, timeExact } from "@/lib/format/time";
 
 import { filterTemplates, PAGE_SIZE, tagCounts } from "./catalogue";
 import { CatalogueToolbar } from "./catalogue-toolbar";
+import type { SetupPlace } from "./setup-place";
 import { TemplateGrid } from "./template-grid";
 
 /**
@@ -47,7 +48,10 @@ export function CatalogueView({
   onTags,
   page,
   onPage,
+  place,
 }: {
+  /** Where each setup starts, when the catalogue was opened from an Environment. */
+  place?: SetupPlace;
   templates: TemplateSummary[];
   /** The saved copy the list came from; absent until it has arrived. */
   copy?: CatalogueCopy;
@@ -177,10 +181,14 @@ export function CatalogueView({
                 search: that changes on every keystroke, and typing does not
                 animate.
               */}
-              <div key={`${page}|${[...tags].join(",")}`} className="animate-fade">
+              <div
+                key={`${page}|${[...tags].join(",")}`}
+                className="animate-fade"
+              >
                 <TemplateGrid
                   templates={visible}
                   total={templates.length}
+                  place={place}
                   onClear={() => {
                     onQuery("");
                     onTags(new Set());

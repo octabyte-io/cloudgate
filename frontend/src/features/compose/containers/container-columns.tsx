@@ -41,23 +41,33 @@ export function containerColumns({
       className: "font-mono",
       // A Swarm task's name — `<stack>_<service>.1.<task id>` — was 370px on its
       // own and put the row's Actions behind the scroll at 1512px. The
-      // column takes what the others leave and both lines end in an ellipsis.
+      // column takes what the others leave, and both lines wrap within it
+      // rather than end in an ellipsis: a container name is read and copied.
       truncate: true,
-      compare: (a, b) => (a.service ?? a.name).localeCompare(b.service ?? b.name),
+      compare: (a, b) =>
+        (a.service ?? a.name).localeCompare(b.service ?? b.name),
       cell: (row) => (
         <span className="flex min-w-0 flex-col">
-          <span className="truncate" title={row.service ?? row.name}>
+          <span
+            className="whitespace-normal wrap-anywhere"
+            title={row.service ?? row.name}
+          >
             {row.service ?? row.name}
           </span>
           {row.service ? (
-            <span className="truncate text-meta text-tx-3" title={row.name}>
+            <span
+              className="text-meta whitespace-normal wrap-anywhere text-tx-3"
+              title={row.name}
+            >
               {row.containerId ? row.name : "nothing running"}
             </span>
           ) : (
             // No declared service matched this container's name — the file may not
             // be readable, or the container may be a leftover from an older
             // deploy. Either way, saying so beats attributing it to a guess.
-            <span className="text-meta text-tx-3">not matched to a service</span>
+            <span className="text-meta text-tx-3">
+              not matched to a service
+            </span>
           )}
         </span>
       ),

@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useFormContext, useWatch } from "react-hook-form";
+import { Controller, useFormContext, useWatch } from "react-hook-form";
 
 import { Field } from "@/components/console/field";
 import { PasswordInput } from "@/components/console/password-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import type {
   AskedInput,
   SetupDomain,
@@ -15,6 +16,7 @@ import type {
 import { Icon } from "@/lib/design/icons";
 import { settingsHref } from "@/lib/settings/sections";
 
+import { isYesNo } from "./asked-value";
 import { SetupDnsRecords } from "./setup-dns-records";
 
 /**
@@ -25,6 +27,33 @@ import { SetupDnsRecords } from "./setup-dns-records";
 
 /** The asked value at `at` in the template's list. */
 export function AskedField({ input, at }: { input: AskedInput; at: number }) {
+  const { control } = useFormContext();
+  if (isYesNo(input)) {
+    // A yes or no is a switch, held as the word the template reads, so a
+    // typo like "ture" cannot be sent.
+    return (
+      <Field
+        name={`values.${at}`}
+        label={input.label}
+        hint={input.description ?? undefined}
+        manual
+        orientation="horizontal"
+      >
+        <Controller
+          name={`values.${at}`}
+          control={control}
+          render={({ field }) => (
+            <Switch
+              checked={field.value === "true"}
+              onCheckedChange={(on: boolean) =>
+                field.onChange(on ? "true" : "false")
+              }
+            />
+          )}
+        />
+      </Field>
+    );
+  }
   return (
     <Field
       name={`values.${at}`}

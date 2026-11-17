@@ -2,6 +2,7 @@ import { EmptyState } from "@/components/console/empty-state";
 import { Button } from "@/components/ui/button";
 import type { TemplateSummary } from "@/lib/api/endpoints/templates";
 
+import type { SetupPlace } from "./setup-place";
 import { TemplateCard } from "./template-card";
 
 /**
@@ -22,7 +23,10 @@ export function TemplateGrid({
   templates,
   total,
   onClear,
+  place,
 }: {
+  /** Where each card's setup starts, when opened from an Environment. */
+  place?: SetupPlace;
   templates: TemplateSummary[];
   /** Everything in the catalogue, for the sentence when nothing matches. */
   total: number;
@@ -54,7 +58,7 @@ export function TemplateGrid({
       className="grid grid-cols-1 gap-3 cols:grid-cols-2"
     >
       {templates.map((template) => (
-        <TemplateCard key={template.id} template={template} />
+        <TemplateCard key={template.id} template={template} place={place} />
       ))}
     </div>
   );

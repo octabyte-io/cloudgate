@@ -19,6 +19,7 @@ import { environmentPlanHref } from "@/lib/format/plan-href";
 import { newProjectTargets } from "./new-project-targets";
 import { SetupFormView } from "./setup-form";
 import { SetupPasteView } from "./setup-paste";
+import { templatesHref, type SetupPlace } from "./setup-place";
 import { NEW_PROJECT, useSetupForm, useSetUpTemplate } from "./use-templates";
 
 /**
@@ -32,13 +33,26 @@ import { NEW_PROJECT, useSetupForm, useSetUpTemplate } from "./use-templates";
  * host (never on the Hosted instance, ADR-0053), the deploy Servers, and on
  * the Hosted instance the Cloud accounts the caller may read.
  */
-export function TemplateSetup({ templateId }: { templateId: string }) {
+export function TemplateSetup({
+  templateId,
+  place = { projectId: null, environmentId: null },
+}: {
+  templateId: string;
+  /** The Project and Environment it was opened from, to start on. */
+  place?: SetupPlace;
+}) {
   const router = useRouter();
   const projects = useProjects();
   const [picked, setPicked] = useState<string | null>(null);
+  // Opened from an Environment, it starts on that Environment's Project.
+  const fromPlace =
+    place.projectId !== null &&
+    projects.data?.some((one) => one.projectId === place.projectId)
+      ? place.projectId
+      : null;
   // With no Project yet there is only one choice, so it starts on it.
   const projectId =
-    picked ?? (projects.data?.length === 0 ? NEW_PROJECT : null);
+    picked ?? fromPlace ?? (projects.data?.length === 0 ? NEW_PROJECT : null);
   const form = useSetupForm(templateId, projectId);
   const setUp = useSetUpTemplate();
   const creating = projectId === NEW_PROJECT;
@@ -58,7 +72,7 @@ export function TemplateSetup({ templateId }: { templateId: string }) {
     // Fades in where the catalogue stood: the same screen, its body replaced.
     <div className="grid animate-fade gap-4">
       <div>
-        <LinkButton href="/templates" size="sm">
+        <LinkButton href={templatesHref(place)} size="sm">
           All templates
         </LinkButton>
       </div>
@@ -102,6 +116,11 @@ export function TemplateSetup({ templateId }: { templateId: string }) {
           key={projectId}
           form={form.data}
           projectId={creating ? undefined : projectId}
+          startOn={
+            projectId === place.projectId
+              ? (place.environmentId ?? undefined)
+              : undefined
+          }
           newProject={
             creating
               ? {
