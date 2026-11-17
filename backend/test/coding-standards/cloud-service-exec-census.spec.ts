@@ -377,6 +377,10 @@ const CENSUS: Readonly<Record<string, Verdict>> = {
     verdict: MACHINE,
     why: "A Server's own setup.",
   },
+  'servers/servers.service.ts#untilSshAnswers': {
+    verdict: MACHINE,
+    why: "A Bought Server's own SSH, probed with `true` until it answers before its first Setup run.",
+  },
   'bought-servers/bought-server-change-steps.service.ts#growFilesystem': {
     verdict: MACHINE,
     why: "A Bought Server's own filesystem, grown on it after its extra storage is grown (#1395).",
