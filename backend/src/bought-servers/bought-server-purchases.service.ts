@@ -76,6 +76,8 @@ export interface BuyInput {
   serverType: string;
   location: string;
   name?: string;
+  /** The **Server image**; Ubuntu 24.04 when left out. */
+  image?: string;
   /** Backups, as their own line, on from the moment the machine is made. */
   backups?: boolean;
   /** Extra storage in GB, as its own line: attached once the machine is made, mounted by setup. */
@@ -409,7 +411,7 @@ export class BoughtServerPurchases
           'The amount shown is out of date. Look at the new amount, then buy again',
       });
     }
-    const { size, city, lines } = await this.priced(input);
+    const { size, city, lines, image } = await this.priced(input);
     const first = await this.isFirstServer(organizationId);
 
     const [row] = await this.db
@@ -419,6 +421,7 @@ export class BoughtServerPurchases
         name: input.name?.trim() || `${city} ${size.vcpus} vCPU`,
         serverType: input.serverType,
         location: input.location,
+        image,
         backups: input.backups ?? false,
         storageGb: input.storageGb ?? null,
         diskGb: size.diskGb,
@@ -1170,9 +1173,16 @@ export class BoughtServerPurchases
   private async priced(choice: {
     serverType: string;
     location: string;
+    image?: string;
     backups?: boolean;
     storageGb?: number;
-  }): Promise<{ size: CatalogueSize; city: string; lines: LineToSell[] }> {
+  }): Promise<{
+    size: CatalogueSize;
+    city: string;
+    lines: LineToSell[];
+    /** The **Server image** to make it from, checked against the size. */
+    image: string;
+  }> {
     const catalogue = await this.catalogue.catalogue();
     const location = catalogue.locations.find((l) => l.id === choice.location);
     const size = catalogue.sizes.find((s) => s.id === choice.serverType);
@@ -1189,8 +1199,22 @@ export class BoughtServerPurchases
         message: `That size can't be bought in ${location.city} right now. Pick another size or location`,
       });
     }
+    const image = choice.image ?? catalogue.defaultImage;
+    if (
+      !catalogue.images.some(
+        (offered) =>
+          offered.id === image &&
+          offered.architectures.includes(size.architecture),
+      )
+    ) {
+      throw new BadRequestException({
+        code: 'IMAGE_NOT_OFFERED',
+        message: "That image can't be used for this server. Pick another image",
+      });
+    }
     return {
       size,
+      image,
       city: location.city,
       lines: [
         { kind: 'server', monthlyCents: offer.monthly * 100 },

@@ -1,4 +1,5 @@
 import type {
+  HetznerImage,
   HetznerLocation,
   HetznerPricing,
   HetznerServerType,
@@ -46,6 +47,8 @@ export interface CatalogueOffer {
 export interface CatalogueSize {
   id: string;
   family: SizeFamily;
+  /** What a **Server image** must be built for to be made on it. */
+  architecture: 'x86' | 'arm';
   vcpus: number;
   memoryGb: number;
   diskGb: number;
@@ -53,9 +56,23 @@ export interface CatalogueSize {
   offers: CatalogueOffer[];
 }
 
+/** One **Server image**: an OS and version a Bought Server can be made from. */
+export interface CatalogueImage {
+  /** What Buy names, `ubuntu-24.04`. */
+  id: string;
+  /** `Ubuntu 24.04`. */
+  label: string;
+  /** The architectures it is built for; a size of another cannot use it. */
+  architectures: Array<'x86' | 'arm'>;
+}
+
 export interface BoughtServerCatalogue {
   locations: CatalogueLocation[];
   sizes: CatalogueSize[];
+  /** Ubuntu first, then Debian, each newest first. */
+  images: CatalogueImage[];
+  /** The image a Buy that names none is made from. */
+  defaultImage: string;
   storage: {
     minGb: number;
     maxGb: number;
@@ -87,11 +104,69 @@ function familyOf(type: HetznerServerType): SizeFamily {
   return type.name.startsWith('cpx') ? 'amd' : 'shared';
 }
 
+/** The **Server image** a Buy that names none is made from. */
+export const BOUGHT_SERVER_IMAGE = 'ubuntu-24.04';
+
+/**
+ * The OS flavours offered, in the order they are listed: only those Server
+ * setup installs Docker on (`server-setup.ts` automates the Debian family
+ * only), so a Server is never sold that its setup cannot finish.
+ */
+const OFFERED_FLAVORS = ['ubuntu', 'debian'];
+
+/**
+ * The provider's system images as **Server images**: Ubuntu and Debian only,
+ * one entry per name with every architecture it is built for, Ubuntu first
+ * and each flavour newest first.
+ */
+export function shapeImages(images: readonly HetznerImage[]): CatalogueImage[] {
+  const byName = new Map<
+    string,
+    { image: HetznerImage; architectures: Array<'x86' | 'arm'> }
+  >();
+  for (const image of images) {
+    if (!OFFERED_FLAVORS.includes(image.osFlavor)) continue;
+    const entry = byName.get(image.name);
+    if (entry) {
+      if (!entry.architectures.includes(image.architecture)) {
+        entry.architectures.push(image.architecture);
+      }
+    } else {
+      byName.set(image.name, { image, architectures: [image.architecture] });
+    }
+  }
+  const version = (image: HetznerImage) =>
+    (image.osVersion ?? '').split('.').map(Number);
+  const newer = (a: HetznerImage, b: HetznerImage) => {
+    const [x, y] = [version(a), version(b)];
+    for (let i = 0; i < Math.max(x.length, y.length); i++) {
+      const diff = (y[i] ?? 0) - (x[i] ?? 0);
+      if (diff) return diff;
+    }
+    return 0;
+  };
+  return [...byName.values()]
+    .sort(
+      (a, b) =>
+        OFFERED_FLAVORS.indexOf(a.image.osFlavor) -
+          OFFERED_FLAVORS.indexOf(b.image.osFlavor) || newer(a.image, b.image),
+    )
+    .map(({ image, architectures }) => ({
+      id: image.name,
+      label: image.description,
+      architectures: (['x86', 'arm'] as const).filter((arch) =>
+        architectures.includes(arch),
+      ),
+    }));
+}
+
 /** Every size with its prices in each Location it is sold, from the USD account's answers. */
 export function shapeCatalogue(input: {
   serverTypes: HetznerServerType[];
   locations: HetznerLocation[];
   pricing: HetznerPricing;
+  /** The provider's system images; none when only prices are being shaped. */
+  images?: HetznerImage[];
   markupPercent: number;
   now: Date;
 }): BoughtServerCatalogue {
@@ -134,6 +209,7 @@ export function shapeCatalogue(input: {
       return {
         id: type.name,
         family: familyOf(type),
+        architecture: type.architecture,
         vcpus: type.cores,
         memoryGb: type.memoryGb,
         diskGb: type.diskGb,
@@ -158,6 +234,8 @@ export function shapeCatalogue(input: {
       longitude: location.longitude,
     })),
     sizes,
+    images: shapeImages(input.images ?? []),
+    defaultImage: BOUGHT_SERVER_IMAGE,
     storage: {
       minGb: STORAGE_MIN_GB,
       maxGb: STORAGE_MAX_GB,

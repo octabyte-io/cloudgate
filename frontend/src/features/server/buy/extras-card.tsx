@@ -35,7 +35,7 @@ export function ExtrasCard({
 
   return (
     <Card>
-      <Card.Header title="3. Extras" headingLevel={2} />
+      <Card.Header title="4. Extras" headingLevel={2} />
       <Card.Body className="grid gap-4">
         <div className="flex items-start justify-between gap-3">
           <div className="grid gap-1">

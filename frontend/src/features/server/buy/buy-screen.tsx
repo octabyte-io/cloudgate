@@ -17,8 +17,16 @@ import type {
 import { errorMessage } from "@/lib/api/error-message";
 
 import { BuySummary, type SummaryLine } from "./buy-summary";
-import { FAMILIES, offerIn, shortSizeLabel, storageMonthly } from "./buy-model";
+import {
+  FAMILIES,
+  chosenImage,
+  imagesFor,
+  offerIn,
+  shortSizeLabel,
+  storageMonthly,
+} from "./buy-model";
 import { ExtrasCard } from "./extras-card";
+import { ImageCard } from "./image-card";
 import {
   ChosenDistance,
   LocationCards,
@@ -98,6 +106,7 @@ function Chooser({ catalogue }: { catalogue: BoughtServerCatalogue }) {
       )?.value ?? "shared",
   );
   const [sizeId, setSizeId] = useState<string | null>(null);
+  const [imageId, setImageId] = useState<string | null>(null);
   const [backups, setBackups] = useState(false);
   const [storageGb, setStorageGb] = useState<number | null>(null);
 
@@ -109,6 +118,9 @@ function Chooser({ catalogue }: { catalogue: BoughtServerCatalogue }) {
     catalogue.locations.find((entry) => entry.id === locationId) ?? null;
   const size = catalogue.sizes.find((entry) => entry.id === sizeId) ?? null;
   const offer = size && location ? offerIn(size, location.id) : undefined;
+  // The image picked stays picked while the size can run it; a size of
+  // another architecture falls back to the default.
+  const image = chosenImage(catalogue, size, imageId);
 
   function chooseLocation(next: string) {
     setLocationId(next);
@@ -144,7 +156,7 @@ function Chooser({ catalogue }: { catalogue: BoughtServerCatalogue }) {
   const lines: SummaryLine[] = [];
   if (size && location && offer) {
     lines.push({
-      label: `Server, ${shortSizeLabel(size)}, ${location.city}`,
+      label: `Server, ${shortSizeLabel(size)}, ${location.city}${image ? `, ${image.label}` : ""}`,
       monthly: offer.monthly,
     });
     if (backups)
@@ -174,15 +186,18 @@ function Chooser({ catalogue }: { catalogue: BoughtServerCatalogue }) {
               ? "Pick a location."
               : !offer
                 ? "Pick a size."
-                : storageGb !== null && !storageOk
+                : !image
+                  ? "Pick an operating system."
+                  : storageGb !== null && !storageOk
                   ? `Extra storage is a whole number of GB from ${catalogue.storage.minGb} to ${catalogue.storage.maxGb.toLocaleString("en-US")}. Leave it empty for none.`
                   : null
           }
           choice={
-            size && location && offer?.available
+            size && location && offer?.available && image
               ? {
                   serverType: size.id,
                   location: location.id,
+                  image: image.id,
                   backups,
                   ...(storageOk ? { storageGb } : {}),
                 }
@@ -246,6 +261,12 @@ function Chooser({ catalogue }: { catalogue: BoughtServerCatalogue }) {
           />
         </Card.Body>
       </Card>
+
+      <ImageCard
+        images={imagesFor(catalogue, size)}
+        chosen={image}
+        onChoose={setImageId}
+      />
 
       <ExtrasCard
         backups={backups}

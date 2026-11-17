@@ -1597,6 +1597,13 @@
       "when": 1794537685151,
       "tag": "0227_drop-uploaded",
       "breakpoints": true
+    },
+    {
+      "idx": 228,
+      "version": "7",
+      "when": 1794947624873,
+      "tag": "0228_bought-server-image",
+      "breakpoints": true
     }
   ]
 }

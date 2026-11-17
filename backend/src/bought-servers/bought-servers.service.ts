@@ -12,6 +12,7 @@ import type { BoughtServerCatalogue } from './catalogue';
 import { HETZNER_PRICES } from './hetzner/hetzner-cloud.port';
 import type {
   HetznerCloudPort,
+  HetznerImage,
   HetznerLocation,
   HetznerPricing,
   HetznerServerType,
@@ -22,6 +23,8 @@ export interface PriceList {
   serverTypes: HetznerServerType[];
   locations: HetznerLocation[];
   pricing: HetznerPricing;
+  /** The system images; the same in every account, so read from this one too. */
+  images: HetznerImage[];
 }
 
 /**
@@ -105,12 +108,13 @@ export class BoughtServersService {
   }
 
   private async read(): Promise<PriceList> {
-    const [serverTypes, locations, pricing] = await Promise.all([
+    const [serverTypes, locations, pricing, images] = await Promise.all([
       this.prices.listServerTypes(),
       this.prices.listLocations(),
       this.prices.getPricing(),
+      this.prices.listImages(),
     ]);
-    for (const answer of [serverTypes, locations, pricing]) {
+    for (const answer of [serverTypes, locations, pricing, images]) {
       if (!answer.ok) {
         this.logger.error(
           `The prices account refused a catalogue read: ${answer.code}: ${answer.message}`,
@@ -118,7 +122,7 @@ export class BoughtServersService {
         throw new ServiceUnavailableException(PRICES_UNREADABLE);
       }
     }
-    if (!serverTypes.ok || !locations.ok || !pricing.ok) {
+    if (!serverTypes.ok || !locations.ok || !pricing.ok || !images.ok) {
       throw new ServiceUnavailableException(PRICES_UNREADABLE);
     }
     // A token for the wrong account would sell at EUR figures as dollars.
@@ -132,6 +136,7 @@ export class BoughtServersService {
       serverTypes: serverTypes.value,
       locations: locations.value,
       pricing: pricing.value,
+      images: images.value,
     };
   }
 }

@@ -113,6 +113,7 @@ describe('shapeCatalogue', () => {
     expect(size).toEqual({
       id: 'cpx22',
       family: 'amd',
+      architecture: 'x86',
       vcpus: 3,
       memoryGb: 4,
       diskGb: 80,

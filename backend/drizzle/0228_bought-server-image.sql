@@ -1,0 +1,1 @@
+ALTER TABLE "bought_server" ADD COLUMN "image" text DEFAULT 'ubuntu-24.04' NOT NULL;

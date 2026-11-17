@@ -1,4 +1,6 @@
 import type {
+  BoughtServerCatalogue,
+  CatalogueImage,
   CatalogueOffer,
   CatalogueSize,
   SizeFamily,
@@ -84,4 +86,41 @@ export function tidyUsd(amount: number): number {
 /** Extra storage's monthly price at `sizeGb`. */
 export function storageMonthly(sizeGb: number, perGbMonthly: number): number {
   return tidyUsd(sizeGb * perGbMonthly);
+}
+
+/** The **Server image** a Buy that names none is made from. */
+export const DEFAULT_IMAGE = "ubuntu-24.04";
+
+/**
+ * The **Server images** that can be picked for this size: those built for
+ * its architecture, or every one before a size is picked.
+ */
+export function imagesFor(
+  catalogue: Pick<BoughtServerCatalogue, "images">,
+  size: Pick<CatalogueSize, "architecture"> | null,
+): CatalogueImage[] {
+  const images = catalogue.images ?? [];
+  const architecture = size?.architecture;
+  return architecture
+    ? images.filter((image) => image.architectures.includes(architecture))
+    : images;
+}
+
+/**
+ * The image that stands chosen: the one picked while the size can use it,
+ * else the default, else the first the size can use; null when none can.
+ */
+export function chosenImage(
+  catalogue: Pick<BoughtServerCatalogue, "images" | "defaultImage">,
+  size: Pick<CatalogueSize, "architecture"> | null,
+  picked: string | null,
+): CatalogueImage | null {
+  const usable = imagesFor(catalogue, size);
+  const defaultId = catalogue.defaultImage ?? DEFAULT_IMAGE;
+  return (
+    usable.find((image) => image.id === picked) ??
+    usable.find((image) => image.id === defaultId) ??
+    usable[0] ??
+    null
+  );
 }

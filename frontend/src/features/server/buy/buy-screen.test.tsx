@@ -104,6 +104,7 @@ const CATALOGUE: BoughtServerCatalogue = {
     {
       id: "cx23",
       family: "shared",
+      architecture: "x86",
       vcpus: 2,
       memoryGb: 4,
       diskGb: 40,
@@ -115,6 +116,7 @@ const CATALOGUE: BoughtServerCatalogue = {
     {
       id: "cx33",
       family: "shared",
+      architecture: "x86",
       vcpus: 4,
       memoryGb: 8,
       diskGb: 80,
@@ -123,8 +125,20 @@ const CATALOGUE: BoughtServerCatalogue = {
       ],
     },
     {
+      id: "cax11",
+      family: "arm",
+      architecture: "arm",
+      vcpus: 2,
+      memoryGb: 4,
+      diskGb: 40,
+      offers: [
+        { locationId: "fsn1", available: true, monthly: 6, backupsMonthly: 2 },
+      ],
+    },
+    {
       id: "ccx13",
       family: "dedicated",
+      architecture: "x86",
       vcpus: 2,
       memoryGb: 8,
       diskGb: 80,
@@ -146,6 +160,14 @@ const CATALOGUE: BoughtServerCatalogue = {
     },
   ],
   storage: { minGb: 10, maxGb: 10240, perGbMonthly: 0.09204 },
+  // Debian 11 is built for x86 only, so the Arm size cannot offer it.
+  images: [
+    { id: "ubuntu-24.04", label: "Ubuntu 24.04", architectures: ["x86", "arm"] },
+    { id: "ubuntu-22.04", label: "Ubuntu 22.04", architectures: ["x86", "arm"] },
+    { id: "debian-13", label: "Debian 13", architectures: ["x86", "arm"] },
+    { id: "debian-11", label: "Debian 11", architectures: ["x86"] },
+  ],
+  defaultImage: "ubuntu-24.04",
 };
 
 class Boundary extends Component<
@@ -514,9 +536,79 @@ describe("BuyScreen", () => {
     expect(api.buy.mock.calls[0][0]).toEqual({
       serverType: "ccx13",
       location: "fsn1",
+      image: "ubuntu-24.04",
       backups: false,
       termsAccepted: true,
       prorationDate: TODAY.prorationDate,
+    });
+  });
+
+  describe("the operating system", () => {
+    /** Base UI's trigger opens on `mousedown`, so a bare click is what opens it. */
+    async function openImages(): Promise<string[]> {
+      fireEvent.click(screen.getByRole("combobox"));
+      await waitFor(() =>
+        expect(screen.queryAllByRole("option").length).toBeGreaterThan(0),
+      );
+      return screen
+        .getAllByRole("option")
+        .map((option) => option.textContent ?? "");
+    }
+
+    async function chooseImage(name: string) {
+      await openImages();
+      const option = screen.getByRole("option", { name });
+      fireEvent.pointerDown(option, { pointerType: "mouse" });
+      fireEvent.click(option, { detail: 1 });
+      await waitFor(() =>
+        expect(screen.queryAllByRole("option")).toHaveLength(0),
+      );
+    }
+
+    it("is Ubuntu 24.04 unless another is picked, and is named in the summary", async () => {
+      await cardOrder();
+      chooseDedicated();
+
+      expect(screen.getByRole("combobox").textContent).toMatch(/Ubuntu 24\.04/);
+      expect(
+        screen.getByText("Server, 2 vCPU · 8 GB, Falkenstein, Ubuntu 24.04"),
+      ).toBeTruthy();
+    });
+
+    it("buys the Server with the image picked", async () => {
+      await cardOrder();
+      chooseDedicated();
+      await chooseImage("Debian 13");
+      fireEvent.click(screen.getByRole("checkbox"));
+      await waitFor(() =>
+        expect(buyButton().getAttribute("aria-disabled")).not.toBe("true"),
+      );
+
+      fireEvent.click(buyButton());
+
+      await waitFor(() => expect(push).toHaveBeenCalledWith("/servers"));
+      expect(api.buy.mock.calls[0][0]).toMatchObject({
+        serverType: "ccx13",
+        image: "debian-13",
+      });
+    });
+
+    it("offers only the images built for an Arm size, and falls back to the default when the picked one cannot run there", async () => {
+      await cardOrder();
+      chooseDedicated();
+      await chooseImage("Debian 11");
+
+      fireEvent.click(screen.getByRole("button", { name: "Shared Arm" }));
+      fireEvent.click(
+        screen.getByRole("radio", { name: "2 vCPU · 4 GB RAM · 40 GB disk" }),
+      );
+
+      expect(screen.getByRole("combobox").textContent).toMatch(/Ubuntu 24\.04/);
+      expect(await openImages()).toEqual([
+        "Ubuntu 24.04",
+        "Ubuntu 22.04",
+        "Debian 13",
+      ]);
     });
   });
 
