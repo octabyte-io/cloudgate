@@ -5,6 +5,10 @@ import type { TemplateSummary } from "@/lib/api/endpoints/templates";
 import { Icon } from "@/lib/design/icons";
 
 import { runsOnMark } from "./catalogue";
+import { TemplateHomeLogo, TemplateHomeName } from "./template-home";
+
+const TILE =
+  "grid size-16 flex-none place-items-center rounded-xl border border-line bg-panel shadow-panel max-hd:size-12";
 
 const LINKS = [
   ["website", "Website"],
@@ -24,6 +28,10 @@ const LINKS = [
  * name, one paragraph and where to read more. This is that, at the console's
  * scale: the `h1` is the Template's name, and every tag is shown in full,
  * because here, unlike in a grid of 500, there is room.
+ *
+ * **Its logo and name open the Template's website** in a new tab, as they do
+ * on the catalogue card (`TemplateHomeName`), so the two agree on what
+ * clicking a Template's name does.
  *
  * `template` is the catalogue's entry, read from the copy the catalogue
  * screen already holds; until it arrives the name is the setup form's and
@@ -53,24 +61,32 @@ export function TemplateIntro({
         </LinkButton>
       </div>
       <div className="flex min-w-0 items-start gap-4">
-        <span className="grid size-16 flex-none place-items-center rounded-xl border border-line bg-panel shadow-panel max-hd:size-12">
-          {template ? (
-            // A `data:` address from the catalogue file, so no request and no
-            // script, hence a plain `<img>` (see `TemplateCard`).
-            // eslint-disable-next-line @next/next/no-img-element
+        {template ? (
+          <TemplateHomeLogo template={template} className={TILE}>
+            {/* A `data:` address from the catalogue file, so no request and
+                no script, hence a plain `<img>` (see `TemplateCard`). */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={template.logo}
               alt=""
               className="size-10 object-contain max-hd:size-7.5"
             />
-          ) : (
+          </TemplateHomeLogo>
+        ) : (
+          <span className={TILE}>
             <Icon name="book" size={24} className="text-tx-4" />
-          )}
-        </span>
+          </span>
+        )}
         <div className="grid min-w-0 flex-1 gap-1.75">
           <div className="flex flex-wrap items-baseline gap-x-2.75 gap-y-1">
             <h1 className="text-disp wrap-anywhere text-tx max-hd:text-sect">
-              {template?.name ?? fallbackName}
+              {template ? (
+                <TemplateHomeName template={template}>
+                  {template.name}
+                </TemplateHomeName>
+              ) : (
+                fallbackName
+              )}
             </h1>
             {template?.version ? (
               <Chip variant="mono">{template.version}</Chip>

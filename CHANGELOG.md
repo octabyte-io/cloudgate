@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### A stack's actions stay on the page, and a Template's name opens its website
+
+- While a Compose stack has nothing on its deploy target yet, the sentence saying why Start and Stop are off sat inside the row of buttons and pushed **Remove containers** off the page. It is now a line under the row, which the off buttons point at for screen readers. The same goes for a database that was never deployed and for Deploy with no source chosen.
+- On the Template catalogue and a Template's setup page, its logo and name open its website in a new tab (its docs, or its source, when it has no website).
+
+**What to do on upgrade**: nothing.
+
 ### A generated Domain added by hand is served over HTTPS on a public address
 
 **Generate one for me** in the Add a domain dialog filled in an sslip.io host but left **Serve over HTTPS** off and the certificate at None, so the Domain was plain HTTP even on a public address. A Template's setup serves the same host over HTTPS with Let's Encrypt. Generate now does the same when this server's address is public, and leaves HTTPS off for a private one; anything changed after Generate is kept (#103).

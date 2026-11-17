@@ -111,6 +111,8 @@ describe("CatalogueView", () => {
         .map((link) => [link.textContent, link.getAttribute("href")]),
     );
     expect(links).toEqual({
+      // The name opens the website too (template-home.test.tsx).
+      "Uptime Kuma (website, opens in a new tab)": "https://uptime.kuma.pet",
       "Set up": "/templates?template=uptime-kuma",
       Website: "https://uptime.kuma.pet",
       Docs: "https://github.com/louislam/uptime-kuma/wiki",

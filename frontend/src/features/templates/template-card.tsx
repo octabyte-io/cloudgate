@@ -4,6 +4,7 @@ import type { TemplateSummary } from "@/lib/api/endpoints/templates";
 import { Icon } from "@/lib/design/icons";
 
 import { runsOnMark } from "./catalogue";
+import { TemplateHomeLogo, TemplateHomeName } from "./template-home";
 import { NO_PLACE, templatesHref, type SetupPlace } from "./setup-place";
 
 const LINKS = [
@@ -47,6 +48,12 @@ function everywhere(template: TemplateSummary): boolean {
  * on a Server or in either cloud, and the same line on every card was read
  * once and then skipped; a Template a cloud cannot make says so.
  *
+ * **The logo and the name open the Template's website** (else its docs,
+ * else its source; see `templateHome`), in a new tab: they are what a pointer
+ * aims at first, and clicking them used to do nothing. They are two links to
+ * one page side by side, never one link around the text column, which holds
+ * Set up and the other links. The logo's is out of the tab order.
+ *
  * An `<article>`, not a link: its website, docs and source links live inside
  * it, and a link cannot hold links. **No hover on the card itself** for the
  * same reason — the Set up button and the links are what answer the pointer.
@@ -66,18 +73,24 @@ export function TemplateCard({
       aria-label={template.name}
       className="flex min-w-0 gap-3.5 rounded-xl border border-line bg-panel p-4 shadow-panel"
     >
-      <span className="grid size-11 flex-none place-items-center rounded-lg border border-line bg-panel-2">
+      <TemplateHomeLogo
+        template={template}
+        className="grid size-11 flex-none place-items-center rounded-lg border border-line bg-panel-2"
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={template.logo} alt="" className="size-6.5 object-contain" />
-      </span>
+      </TemplateHomeLogo>
 
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex items-start justify-between gap-3">
           <span className="flex min-w-0 flex-col">
             <span className="flex min-w-0 items-baseline gap-2">
-              <span className="truncate text-body font-semibold text-tx">
+              <TemplateHomeName
+                template={template}
+                className="truncate text-body font-semibold text-tx"
+              >
                 {template.name}
-              </span>
+              </TemplateHomeName>
               {template.version ? (
                 <span className="truncate font-mono text-meta text-tx-3">
                   {template.version}
