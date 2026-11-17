@@ -383,6 +383,23 @@ describe('Buying a Server (e2e)', () => {
       );
     });
 
+    it('makes the machine from Ubuntu 24.04 when no image is picked', async () => {
+      await buy();
+
+      const [row] = await rows();
+      expect(row.image).toBe('ubuntu-24.04');
+      expect(ctx.hetzner.machines.servers()[0].image).toBe('ubuntu-24.04');
+    });
+
+    it('makes the machine from the Server image picked at Buy, and stores it', async () => {
+      const res = await buy(owner.cookie, { image: 'debian-13' });
+
+      expect(res.status).toBe(201);
+      const [row] = await rows();
+      expect(row.image).toBe('debian-13');
+      expect(ctx.hetzner.machines.servers()[0].image).toBe('debian-13');
+    });
+
     it('lists the Server among the Servers once it is made', async () => {
       const res = await buy();
       const list = await request(http)
@@ -394,6 +411,34 @@ describe('Buying a Server (e2e)', () => {
         (list.body as Array<{ serverId: string }>).map((s) => s.serverId),
       ).toEqual([(res.body as { id: string }).id]);
     });
+  });
+
+  describe('a Server image that is not offered', () => {
+    it.each([
+      ['one setup cannot finish on', 'rocky-9'],
+      ['one the provider does not list', 'ubuntu-12.04'],
+      // The fake builds Debian 11 for x86 only; the cax11 is Arm.
+      ['one not built for the size', 'debian-11'],
+    ])(
+      'is refused before anything is written or charged: %s',
+      async (_case, image) => {
+        const res = await buy(owner.cookie, {
+          serverType: 'cax11',
+          location: 'fsn1',
+          image,
+        });
+
+        expect(res.status).toBe(400);
+        expect(res.body).toMatchObject({
+          code: 'IMAGE_NOT_OFFERED',
+          message:
+            "That image can't be used for this server. Pick another image",
+        });
+        expect(await rows()).toEqual([]);
+        expect(createPrice).not.toHaveBeenCalled();
+        expect(providerCreates()).toEqual([]);
+      },
+    );
   });
 
   describe('a payment waiting for 3D Secure', () => {

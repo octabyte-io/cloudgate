@@ -38,9 +38,6 @@ import type { GivenBack } from './give-back';
 import { BillingConfig } from '../cloud/billing/billing.config';
 import { MAX_CREATE_TRIES, nextStep } from './stages';
 
-/** The image every Bought Server starts from; the ordinary Server setup does the rest. */
-export const BOUGHT_SERVER_IMAGE = 'ubuntu-24.04';
-
 /** The labels on every provider resource of a Bought Server (ADR-0071). */
 export const ORGANIZATION_LABEL = 'cloudgate-organization';
 export const SERVER_LABEL = 'cloudgate-server';
@@ -247,7 +244,8 @@ export class BoughtServerStages implements OnApplicationBootstrap {
       name: machineNameOf(row.id),
       serverType: row.serverType,
       location: row.location,
-      image: BOUGHT_SERVER_IMAGE,
+      // The Server image picked at Buy; the ordinary Server setup does the rest.
+      image: row.image,
       sshPublicKey: publicKey,
       labels: labelsOf(row),
     });

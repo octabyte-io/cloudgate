@@ -114,6 +114,23 @@ export interface HetznerPricing {
   serverBackupPercentage: string;
 }
 
+/**
+ * `GET /images?type=system&status=available`, one entry: an operating system
+ * image a machine can be made from. Each is built for one architecture, so
+ * the same name is listed once for `x86` and once for `arm`.
+ */
+export interface HetznerImage {
+  /** `ubuntu-24.04`: what a create names. */
+  name: string;
+  /** `ubuntu`, `debian`, `rocky`, … as the provider labels it. */
+  osFlavor: string;
+  /** `24.04`; null when the provider states none. */
+  osVersion: string | null;
+  /** `Ubuntu 24.04`. */
+  description: string;
+  architecture: 'x86' | 'arm';
+}
+
 /** An asynchronous task the provider started, and how it stands. */
 export interface HetznerAction {
   id: number;
@@ -160,7 +177,7 @@ export interface CreateServerRequest {
   name: string;
   serverType: string;
   location: string;
-  /** The image to start from, `ubuntu-24.04`. */
+  /** The image to start from, `ubuntu-24.04`, built for the size's architecture. */
   image: string;
   /**
    * The Server's public key, the only credential the provider is given
@@ -195,6 +212,8 @@ export interface HetznerCloudPort {
   listLocations(): Promise<HetznerAnswer<HetznerLocation[]>>;
   /** The account's price list beside the server types: Primary IPs, Volumes, backups. */
   getPricing(): Promise<HetznerAnswer<HetznerPricing>>;
+  /** Every system image that can be made from now, of every OS and architecture. */
+  listImages(): Promise<HetznerAnswer<HetznerImage[]>>;
 
   /**
    * Makes a machine with this public key and these labels. The key is

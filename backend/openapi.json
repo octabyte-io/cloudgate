@@ -25632,6 +25632,11 @@
             "type": "string",
             "maxLength": 100
           },
+          "image": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
           "backups": {
             "type": "boolean"
           },

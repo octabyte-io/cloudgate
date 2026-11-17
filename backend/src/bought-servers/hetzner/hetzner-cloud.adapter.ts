@@ -6,6 +6,7 @@ import type {
   HetznerAction,
   HetznerAnswer,
   HetznerCloudPort,
+  HetznerImage,
   HetznerLocation,
   HetznerPricing,
   HetznerServer,
@@ -61,6 +62,23 @@ export class HetznerCloudAdapter implements HetznerCloudPort {
     const answer = await this.call<{ pricing: ApiPricing }>('GET', '/pricing');
     return answer.ok
       ? { ok: true, value: pricingOf(answer.value.pricing) }
+      : answer;
+  }
+
+  /** Only available system images; deprecated ones are left out by the provider's default. */
+  async listImages(): Promise<HetznerAnswer<HetznerImage[]>> {
+    const answer = await this.everyPage<ApiImage>('/images', 'images', {
+      type: 'system',
+      status: 'available',
+    });
+    return answer.ok
+      ? {
+          ok: true,
+          value: answer.value.flatMap((api) => {
+            const image = imageOf(api);
+            return image ? [image] : [];
+          }),
+        }
       : answer;
   }
 
@@ -384,6 +402,15 @@ interface ApiPricing {
   server_backup: { percentage: string };
 }
 
+interface ApiImage {
+  /** Set only on system images. */
+  name: string | null;
+  description: string;
+  os_flavor: string;
+  os_version: string | null;
+  architecture: 'x86' | 'arm';
+}
+
 interface ApiAction {
   id: number;
   command: string;
@@ -466,6 +493,17 @@ function pricingOf(api: ApiPricing): HetznerPricing {
     ),
     volumePerGbMonthNet: api.volume.price_per_gb_month.net,
     serverBackupPercentage: api.server_backup.percentage,
+  };
+}
+
+function imageOf(api: ApiImage): HetznerImage | null {
+  if (!api.name) return null;
+  return {
+    name: api.name,
+    osFlavor: api.os_flavor,
+    osVersion: api.os_version,
+    description: api.description,
+    architecture: api.architecture,
   };
 }
 

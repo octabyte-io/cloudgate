@@ -33,6 +33,11 @@ export class TodayQueryDto extends createZodDto(todayQuerySchema) {}
 /** `POST /bought-servers`: Buy. */
 export const buySchema = choiceSchema.extend({
   name: z.string().trim().max(100).optional(),
+  /**
+   * The **Server image**, by the catalogue's id; Ubuntu 24.04 when left out.
+   * Refused unless the catalogue offers it for the size's architecture.
+   */
+  image: z.string().trim().min(1).max(100).optional(),
   /** Backups: their own line, and on from the moment the machine is made. */
   backups: z.boolean().optional(),
   /** Extra storage in GB: its own line, attached and mounted once setup finishes. */

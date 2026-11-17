@@ -6,6 +6,7 @@ import type {
   HetznerAction,
   HetznerAnswer,
   HetznerCloudPort,
+  HetznerImage,
   HetznerLocation,
   HetznerPricing,
   HetznerServer,
@@ -50,6 +51,7 @@ export interface FakeCatalogue {
   locations: HetznerLocation[];
   serverTypes: HetznerServerType[];
   pricing: HetznerPricing;
+  images: HetznerImage[];
 }
 
 /**
@@ -184,6 +186,24 @@ function location(
   };
 }
 
+/**
+ * System images as `GET /images?type=system&status=available` lists them:
+ * each name once per architecture it is built for, and other systems beside
+ * Ubuntu and Debian, which the catalogue must leave out. Debian 11 is built
+ * for x86 only here, so a spec can pick an image an Arm size cannot use.
+ */
+const BOTH = ['x86', 'arm'] as const;
+const IMAGES: Array<
+  [string, string, string, string, ReadonlyArray<'x86' | 'arm'>]
+> = [
+  ['ubuntu-22.04', 'ubuntu', '22.04', 'Ubuntu 22.04', BOTH],
+  ['ubuntu-24.04', 'ubuntu', '24.04', 'Ubuntu 24.04', BOTH],
+  ['debian-11', 'debian', '11', 'Debian 11', ['x86']],
+  ['debian-12', 'debian', '12', 'Debian 12', BOTH],
+  ['debian-13', 'debian', '13', 'Debian 13', BOTH],
+  ['rocky-9', 'rocky', '9', 'Rocky Linux 9', BOTH],
+];
+
 /** The seeded catalogue of an account in `currency`. */
 export function seededCatalogue(currency: 'USD' | 'EUR'): FakeCatalogue {
   const column = currency === 'USD' ? 0 : 1;
@@ -222,6 +242,16 @@ export function seededCatalogue(currency: 'USD' | 'EUR'): FakeCatalogue {
       volumePerGbMonthNet: currency === 'USD' ? '0.0767' : '0.0572',
       serverBackupPercentage: '20.0000',
     },
+    images: IMAGES.flatMap(
+      ([name, osFlavor, osVersion, description, architectures]) =>
+        architectures.map((architecture) => ({
+          name,
+          osFlavor,
+          osVersion,
+          description,
+          architecture,
+        })),
+    ),
   };
 }
 
@@ -333,6 +363,12 @@ export class FakeHetznerCloud implements HetznerCloudPort {
     );
   }
 
+  listImages(): Promise<HetznerAnswer<HetznerImage[]>> {
+    return this.answer('listImages', [], () =>
+      structuredClone(this.catalogue.images),
+    );
+  }
+
   createServer(
     request: CreateServerRequest,
   ): Promise<HetznerAnswer<CreatedServer>> {
@@ -346,6 +382,13 @@ export class FakeHetznerCloud implements HetznerCloudPort {
       }
       if (!listed.available) {
         return refusal(HETZNER_RESOURCE_UNAVAILABLE, 'not available for order');
+      }
+      // An image is built for one architecture, as the provider's are.
+      const image = this.catalogue.images.find(
+        (i) => i.name === request.image && i.architecture === type.architecture,
+      );
+      if (!image) {
+        return refusal('invalid_input', 'image not found for architecture');
       }
       if ([...this.machines.values()].some((m) => m.name === request.name)) {
         return refusal('uniqueness_error', 'server name is already used');

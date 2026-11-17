@@ -40,9 +40,12 @@ interface Catalogue {
     vcpus: number;
     memoryGb: number;
     diskGb: number;
+    architecture: string;
     offers: Offer[];
   }>;
   storage: { minGb: number; maxGb: number; perGbMonthly: number };
+  images: Array<{ id: string; label: string; architectures: string[] }>;
+  defaultImage: string;
 }
 
 /**
@@ -161,6 +164,38 @@ describe('Bought Server catalogue (e2e)', () => {
     });
     // Read from the prices account only; nothing asked the machines account.
     expect(ctx.hetzner.machines.calls).toEqual([]);
+  });
+
+  it('offers only the Ubuntu and Debian images, newest first, with the architectures each is built for', async () => {
+    const res = await request(http)
+      .get('/bought-servers/catalogue')
+      .set('Cookie', owner.cookie);
+    const catalogue = res.body as Catalogue;
+
+    // Rocky is listed by the provider, but setup installs Docker only on
+    // Ubuntu and Debian, so it is never offered.
+    expect(catalogue.images).toEqual([
+      {
+        id: 'ubuntu-24.04',
+        label: 'Ubuntu 24.04',
+        architectures: ['x86', 'arm'],
+      },
+      {
+        id: 'ubuntu-22.04',
+        label: 'Ubuntu 22.04',
+        architectures: ['x86', 'arm'],
+      },
+      { id: 'debian-13', label: 'Debian 13', architectures: ['x86', 'arm'] },
+      { id: 'debian-12', label: 'Debian 12', architectures: ['x86', 'arm'] },
+      { id: 'debian-11', label: 'Debian 11', architectures: ['x86'] },
+    ]);
+    expect(catalogue.defaultImage).toBe('ubuntu-24.04');
+    expect(
+      catalogue.sizes.find((size) => size.id === 'cax11')?.architecture,
+    ).toBe('arm');
+    expect(
+      catalogue.sizes.find((size) => size.id === 'cpx22')?.architecture,
+    ).toBe('x86');
   });
 
   it('names no provider anywhere in what it answers', async () => {

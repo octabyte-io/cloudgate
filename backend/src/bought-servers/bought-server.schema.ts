@@ -125,6 +125,12 @@ export const boughtServer = pgTable('bought_server', {
   /** The provider's Location code, `fsn1`. */
   location: text('location').notNull(),
   backups: boolean('backups').notNull().default(false),
+  /**
+   * The **Server image** picked at Buy, the provider's name for it
+   * (`ubuntu-24.04`). A row bought before it was stored reads the default,
+   * which is what every machine was made from then.
+   */
+  image: text('image').notNull().default('ubuntu-24.04'),
   /** Extra storage in GB, null for none. */
   storageGb: integer('storage_gb'),
   /**
