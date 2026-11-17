@@ -1,41 +1,19 @@
-# The Docker-backed lanes — `test:db` and the e2e suite, and in a job of its
-# own the moto lane (`test:moto`, described at that job) — on a GitHub runner,
-# once per release rather than once per push, beside the Google validate lane
-# (`test:google-validate`, described at its job), which needs no Docker.
+# The release run, on a pushed `v*` tag: the checks a version must pass
+# before `publish-version.yml` publishes it (ADR-0082) and the Hosted
+# instance upgrades to it (ADR-0081). Both wait on this run's conclusion.
 #
-# `ci.yml` runs on every push to main and leaves these two out. What they cost
-# here was measured before deciding where they run: three runs on e3f13de
-# (2026-09-10) took **1124, 1195 and 1275 s** of e2e on this 2-vCPU runner,
-# against ~300 s on the 16 GB Mac, and about 21 minutes of job each. Memory
-# fits — jest peaked at 4.6–5.0 GB and the machine never had less than 1.9 GB
-# available — so it is the time, not the box, that keeps this off every push.
+# - **The e2e suite and `test:db`** are not run again here. They run, split
+#   eight ways, on every push to `main` (`e2e-shards.yml`), and a release tag
+#   points at a commit on `main` (`deploy/version-gate.sh` refuses any other).
+#   The `shards` job below waits for that commit's `E2E` run and passes only
+#   when it passed. This run used to repeat the whole suite on one 2-vCPU
+#   runner, 34 to 43 minutes for the same answer.
+# - **The moto lane** (`moto`) and **the Google validate lane**
+#   (`google-validate`) run only here; each is described at its job.
 #
-# So it runs when a release is cut: on a pushed `v*` tag —
-# `git tag v0.2.0 && git push origin v0.2.0`. Push the tag that way before
-# publishing a GitHub Release on it, so the run exists before the
-# announcement: a red run cannot un-push a tag, so it is read, not enforced.
-# `workflow_dispatch` is there to run it on a commit before tagging
-# (`gh workflow run e2e.yml`).
-#
-# Those three runs were red, and on two causes, both fixed before this became
-# the release check: `app.e2e-spec.ts` needed the `backend/.env`
-# only a working copy has, and one of the six `startLegacyDatabase` suites per
-# run died on a drop racing its own pool's close (see `endAndWait` in
-# `test/utils/migrations-up-to.ts`). That second one is the shape of the
-# "one random suite two runs in three" docs/testing.md records, so
-# every suite that fails here is still re-run by itself, and the job summary
-# sorts the failures: red alone too (a real finding) or green alone (a flake,
-# or an OOM, which the summary names separately because it also passes alone).
-#
-# The preset's `maxWorkers` is a number sized to the machine
-# (`backend/test/utils/worker-budget.js`), not a percentage, so this 2-vCPU
-# runner gets two workers and not jest's in-band mode, which is what red the
-# unit lane here with every test green (02af102).
-#
-# Every push to main, `build/**` branch and pull request now also runs this
-# e2e suite and the `test:db` lane, split eight ways, in `e2e-shards.yml`.
-# This run stays as the release's single-runner record, with its memory
-# sampling, beside the moto and Google validate lanes.
+# Push the tag before publishing anything on it, so the run exists first:
+# `git tag v0.2.0 && git push origin v0.2.0`. `workflow_dispatch` runs the
+# release checks on a commit before tagging (`gh workflow run e2e.yml`).
 name: E2E (release)
 
 on:
@@ -44,165 +22,55 @@ on:
   workflow_dispatch:
 
 jobs:
-  e2e:
-    name: E2E and test:db lanes
+  # The eight-shard E2E on this commit (`e2e-shards.yml`) must have passed.
+  # A push to `main` starts it; when that run was cancelled by a newer push
+  # (its concurrency group is the branch), or there is none, this starts one
+  # on the tag itself and waits for it. A run that failed fails the release:
+  # re-run its failed shards (`gh run rerun --failed <id>`), then this job.
+  shards:
+    name: E2E shards passed on this commit
     runs-on: ubuntu-latest
-    # The stall watchdog ends a wedged run with 124 after five silent minutes;
-    # this is only the backstop behind it.
-    timeout-minutes: 45
+    # A shard run takes about 10 minutes; one started here waits behind any
+    # already queued.
+    timeout-minutes: 75
+    permissions:
+      actions: write
+      contents: read
     defaults:
       run:
-        # Explicit, because only `shell: bash` gets `-o pipefail`, and the run
-        # below is piped through `tee`.
         shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SHA: ${{ github.sha }}
+      REF: ${{ github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-
-      # Some suites run real shell commands that write a Deployment's log under
-      # the platform host's root, which every lane relocates to
-      # /var/lib/cloudgate-test-platform-root (backend/test/utils/platform-root.ts).
-      # The runner's user cannot create it, so those suites failed with
-      # "mkdir: … Permission denied"; a root user passes them as is.
-      - name: A platform root the runner can write
+      - name: Wait for the E2E run on this commit
         run: |
-          sudo mkdir -p /var/lib/cloudgate-test-platform-root
-          sudo chown "$(id -u):$(id -g)" /var/lib/cloudgate-test-platform-root
-
-      # Everything this job writes goes in one directory, which is what the
-      # artifact at the end uploads.
-      - name: Runner
-        run: |
-          echo "OUT=$RUNNER_TEMP/e2e-out" >> "$GITHUB_ENV"
-          mkdir -p "$RUNNER_TEMP/e2e-out"
-          {
-            echo "## Runner"
-            echo '```'
-            echo "vCPUs: $(nproc)"
-            free -m
-            docker version --format 'docker server {{.Server.Version}}'
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      # Every 5 s: the machine's used and available memory, the sum of every
-      # jest process's RSS and the largest single one. Read back by the summary.
-      - name: Sample memory
-        run: |
-          nohup bash -c '
-            while :; do
-              read -r used avail < <(free -m | awk "/^Mem:/ {print \$3, \$7}")
-              read -r sum max < <(ps -eo rss=,args= | awk "/jest/ && !/awk/ {s+=\$1; if (\$1>m) m=\$1} END {printf \"%d %d\n\", s/1024, m/1024}")
-              echo "$(date +%s) $used $avail $sum $max"
-              sleep 5
-            done' > "$OUT/mem.log" 2>&1 &
-          echo $! > "$RUNNER_TEMP/sampler.pid"
-
-      - name: test:db lane
-        working-directory: backend
-        run: pnpm test:db 2>&1 | tee "$OUT/db.log"
-
-      # `pnpm exec jest --config` rather than `pnpm test:e2e`, only to add the
-      # JSON report the re-run step reads; the config is the script's own.
-      - name: E2E suite
-        id: e2e
-        if: ${{ !cancelled() }}
-        working-directory: backend
-        run: |
-          start=$(date +%s)
-          set +e
-          pnpm exec jest --config ./test/jest-e2e.json \
-            --json --outputFile="$OUT/e2e.json" \
-            2>&1 | tee "$OUT/e2e.log"
-          code=${PIPESTATUS[0]}
-          set -e
-          echo "code=$code" >> "$GITHUB_OUTPUT"
-          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
-          # Not the job's verdict: the next step's is. A suite red here and
-          # green alone is the known teardown flake, as e2e-shards.yml treats it.
-          exit 0
-
-      # At most 20, each alone, in the order the full run reported them. A
-      # wedge (124) usually leaves no JSON report behind, so it re-runs nothing
-      # and the summary says so.
-      #
-      # This step is the E2E verdict, and Publish Cloudgate version waits on
-      # it (ADR-0082): the run is red when a suite is red alone too, when the
-      # full run left no report, or when more than 20 failed, and green when
-      # every failed suite passed alone, the rule e2e-shards.yml already uses.
-      - name: Re-run each failed suite alone
-        id: rerun
-        if: ${{ !cancelled() && steps.e2e.outputs.code != '0' }}
-        working-directory: backend
-        run: |
-          : > "$OUT/rerun.txt"
-          if [ ! -s "$OUT/e2e.json" ]; then
-            echo "no JSON report — the run did not finish" >> "$OUT/rerun.txt"
-            exit 1
-          fi
-          jq -r '.testResults[] | select(.status == "failed") | .name' \
-            "$OUT/e2e.json" > "$OUT/failed-all.txt"
-          if [ ! -s "$OUT/failed-all.txt" ]; then
-            echo "the run exited ${{ steps.e2e.outputs.code }} with no failed suite in its report" >> "$OUT/rerun.txt"
-            exit 1
-          fi
-          if [ "$(wc -l < "$OUT/failed-all.txt")" -gt 20 ]; then
-            echo "$(wc -l < "$OUT/failed-all.txt") suites failed, more than the 20 re-run alone" >> "$OUT/rerun.txt"
-            exit 1
-          fi
-          cp "$OUT/failed-all.txt" "$OUT/failed.txt"
-          while read -r file; do
-            rel=${file#"$PWD/"}
-            if pnpm exec jest --config ./test/jest-e2e.json --runTestsByPath "$file" \
-                > "$OUT/rerun-${rel//\//_}.log" 2>&1; then
-              echo "green alone  $rel" >> "$OUT/rerun.txt"
-            else
-              echo "RED ALONE    $rel" >> "$OUT/rerun.txt"
+          started=""
+          while :; do
+            runs="$(gh api "repos/$GH_REPO/actions/workflows/e2e-shards.yml/runs?head_sha=$SHA&per_page=50" \
+              --jq '.workflow_runs[] | "\(.id) \(.status) \(.conclusion // "-") \(.event)"')"
+            echo "$(date -u +%H:%M:%S) E2E runs on $SHA:"; echo "${runs:-  none}"
+            if grep -q ' completed success ' <<<"$runs"; then
+              echo "E2E passed on $SHA."; exit 0
             fi
-          done < "$OUT/failed.txt"
-          ! grep -q '^RED ALONE' "$OUT/rerun.txt"
-
-      - name: Summary
-        if: ${{ !cancelled() }}
-        run: |
-          kill "$(cat "$RUNNER_TEMP/sampler.pid")" 2>/dev/null || true
-          {
-            echo "## E2E"
-            echo "- exit code: \`${{ steps.e2e.outputs.code }}\`$([ '${{ steps.e2e.outputs.code }}' = 124 ] && echo ' — the stall watchdog (a wedge)')"
-            echo "- wall clock: ${{ steps.e2e.outputs.seconds }} s"
-            if [ -s "$OUT/e2e.json" ]; then
-              jq -r '"- suites: \(.numPassedTestSuites) passed, \(.numFailedTestSuites) failed of \(.numTotalTestSuites)",
-                     "- tests: \(.numPassedTests) passed, \(.numFailedTests) failed of \(.numTotalTests)"' \
-                "$OUT/e2e.json"
+            if grep -qv ' completed ' <<<"$runs" && [ -n "$runs" ]; then
+              sleep 30; continue
             fi
-            oom=$(grep -c 'ran out of memory' "$OUT/e2e.log" || true)
-            echo "- \`ran out of memory\` lines: ${oom:-0}"
-            if [ -s "$OUT/rerun.txt" ]; then
-              echo
-              echo "### Failed suites, re-run alone"
-              echo '```'
-              cat "$OUT/rerun.txt"
-              echo '```'
+            if grep -q ' completed failure ' <<<"$runs"; then
+              echo "::error::E2E failed on $SHA, so this version is not published. Re-run its failed shards, then this job."
+              exit 1
             fi
-            if [ -s "$OUT/mem.log" ]; then
-              echo
-              echo "### Memory (MB, sampled every 5 s)"
-              awk 'NR==1 || $2>u {u=$2} NR==1 || $3<a {a=$3} $4>s {s=$4} $5>m {m=$5}
-                   END {printf "- machine used, peak: %d\n- machine available, low: %d\n- all jest processes, peak: %d\n- one jest process, peak: %d\n", u, a, s, m}' \
-                "$OUT/mem.log"
+            if [ -n "$started" ]; then
+              echo "::error::The E2E run started on $REF ended without passing."
+              exit 1
             fi
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: e2e-logs
-          path: ${{ runner.temp }}/e2e-out
-          if-no-files-found: ignore
+            echo "No E2E run on $SHA passed or is running (none, or cancelled by a newer push); starting one on $REF."
+            gh workflow run e2e-shards.yml --ref "$REF"
+            started=1
+            sleep 30
+          done
 
   # The moto lane: the generated definitions for the
   # sample `web` and its Environment network, run by the real pinned OpenTofu

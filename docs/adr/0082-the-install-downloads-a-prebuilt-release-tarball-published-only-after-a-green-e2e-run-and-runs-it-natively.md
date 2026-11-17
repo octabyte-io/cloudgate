@@ -16,6 +16,10 @@ Every install and upgrade cloned the repository into `/opt/cloudgate` and built 
 
 **The console reads the API's public address at runtime.** `NEXT_PUBLIC_API_URL` was inlined into the client bundle at build time, which is what tied a build to one box. The console server now reads the address from its environment when it starts and hands it to each page, so one build serves every instance and changing the address is a restart, not a rebuild. `BACKEND_INTERNAL_ORIGIN` stays build-time: it is always loopback on an install.
 
+## Amended 2026-11-17: the release run checks the E2E run on its commit instead of repeating it
+
+`E2E (release)` no longer runs the e2e suite and `test:db` itself. They run, split eight ways, on every push to `main` (`e2e-shards.yml`), and a release tag points at a commit on `main` (`deploy/version-gate.sh`). Its `shards` job waits for that commit's `E2E` run and passes only when it passed; when the run was cancelled by a newer push, or there is none, it starts one on the tag and waits for that. The rule above is unchanged: a version is published only when the e2e suite passed on its exact commit. Only where it ran changed. What this gives up is the one-runner record of the whole suite's memory the release run kept; each shard still sees its own eighth. The release run had taken 34 to 43 minutes to repeat the answer the push already had.
+
 ## Considered Options
 
 - **Docker images on ghcr.io for the backend and console.** Rejected: the backend drives the host's Docker, Traefik, OpenTofu and SSH, so containerising it changes how the whole platform host works, not just how it is delivered.
