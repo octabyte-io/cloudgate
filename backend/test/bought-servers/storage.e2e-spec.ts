@@ -21,6 +21,8 @@ import { STRIPE_API } from '../../src/cloud/billing/stripe-api';
 import type { StripeApi } from '../../src/cloud/billing/stripe-api';
 import { MailService } from '../../src/mail/mail.service';
 import { RemoteExecService } from '../../src/remote/remote-exec.service';
+import { serverSetupCommand } from '../../src/servers/server-setup';
+import { SSH_ANSWERS_PROBE } from '../../src/servers/servers.service';
 import { fakeStripe } from '../utils/fake-stripe';
 import { givenPlan } from '../utils/hosted-plan';
 import {
@@ -359,11 +361,14 @@ describe('Extra storage on a Bought Server (e2e)', () => {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
       expect(await row(id)).toMatchObject({ stage: 'ready' });
-      const calls = execAsyncRemote.mock.calls;
-      expect(calls).toHaveLength(2);
-      expect(calls[1].slice(0, 2)).toEqual([
-        id,
-        storageCommand(volume().id, 100),
+      // The run first asks the machine whether it accepts SSH; that probe
+      // runs nothing, so only the setup and the mount are counted.
+      const commands = execAsyncRemote.mock.calls
+        .filter(([, command]) => command !== SSH_ANSWERS_PROBE)
+        .map(([serverId, command]) => [serverId, command]);
+      expect(commands).toEqual([
+        [id, serverSetupCommand()],
+        [id, storageCommand(volume().id, 100)],
       ]);
     });
 
