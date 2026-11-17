@@ -185,6 +185,42 @@ describe("ComposeActions in an empty state", () => {
       );
     },
   );
+
+  it("offers Start, the way back its sentence names, on a stopped stack", () => {
+    render(
+      withQuery(
+        <ComposeActions
+          compose={stack("docker-compose", { composeStatus: "stopped" })}
+          size="sm"
+          deployOnly
+        />,
+      ),
+    );
+
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "Start",
+    ]);
+  });
+
+  it.each([
+    ["a stopped Swarm stack, which has no Start", "stack", "stopped"],
+    ["a stack meant to be up", "docker-compose", "done"],
+    ["a stack whose last Deployment failed", "docker-compose", "error"],
+  ] as const)("offers Deploy on %s", (_case, type, composeStatus) => {
+    render(
+      withQuery(
+        <ComposeActions
+          compose={stack(type, { composeStatus })}
+          size="sm"
+          deployOnly
+        />,
+      ),
+    );
+
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "Deploy",
+    ]);
+  });
 });
 
 /**

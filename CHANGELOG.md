@@ -17,7 +17,7 @@ On a Compose stack whose containers were all up, **Start** stayed on and did not
 
 ### Remove containers shows that it ran
 
-On a Compose stack, **Remove containers** removed the containers and left the page looking as it had: Stop and Remove containers stayed on, the Containers tab still listed every service, and the button went back to idle on any tab other than the one it was pressed on, so a second press sent a second removal. While it runs, the button shows it is working on every tab and cannot be pressed again. Once it has run, a toast says the containers are removed, the status reads **stopped**, Stop and Remove containers are off with a line saying why (Start recreates the containers), and the Containers tab shows its empty state. Remove containers is also off on a stack that was never deployed.
+On a Compose stack, **Remove containers** removed the containers and left the page looking as it had: Stop and Remove containers stayed on, the Containers tab still listed every service, and the button went back to idle on any tab other than the one it was pressed on, so a second press sent a second removal. While it runs, the button shows it is working on every tab and cannot be pressed again. Once it has run, a toast says the containers are removed, the status reads **stopped**, Stop and Remove containers are off with a line saying why (Start recreates the containers), and the Containers tab shows its empty state. Remove containers is also off on a stack that was never deployed. The empty Containers and Logs tabs of a stopped stack offer **Start**, the way back their sentence names, where they offered Deploy.
 
 **What to do on upgrade**: nothing.
 

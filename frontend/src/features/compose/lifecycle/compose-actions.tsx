@@ -336,42 +336,54 @@ export function ComposeActions({
     </Button>
   );
 
-  if (deployOnly) return deploy;
+  const startButton = (
+    <Button
+      size={size}
+      aria-disabled={busy || neverDeployed || undefined}
+      title={
+        neverDeployed
+          ? COMPOSE_NEVER_DEPLOYED
+          : "Runs docker compose up over the code already on the deploy target. It does not clone or build."
+      }
+      aria-describedby={neverDeployed ? reasonId : undefined}
+      aria-busy={working("start") || undefined}
+      onClick={
+        busy || neverDeployed
+          ? undefined
+          : () =>
+              void run(
+                "start",
+                actions.start,
+                `${compose.name} is starting from the code already on the deploy target.`,
+              )
+      }
+    >
+      <ActionIcon
+        name="play"
+        pending={working("start")}
+        size={glyph}
+      />
+      Start
+    </Button>
+  );
+
+  /**
+   * An empty tab offers the way back its sentence names (`whyNothingRuns`):
+   * a stopped stack is told Start brings its containers back up, so Start is
+   * the button, not Deploy, which would also rebuild. A Swarm stack has no
+   * Start, and every other state is waiting for a Deploy.
+   */
+  if (deployOnly) {
+    return compose.composeStatus === "stopped" && !swarm
+      ? startButton
+      : deploy;
+  }
 
   return (
     <>
       {deploy}
 
-      {second === "start" ? (
-        <Button
-          size={size}
-          aria-disabled={busy || neverDeployed || undefined}
-          title={
-            neverDeployed
-              ? COMPOSE_NEVER_DEPLOYED
-              : "Runs docker compose up over the code already on the deploy target. It does not clone or build."
-          }
-          aria-describedby={neverDeployed ? reasonId : undefined}
-          aria-busy={working("start") || undefined}
-          onClick={
-            busy || neverDeployed
-              ? undefined
-              : () =>
-                  void run(
-                    "start",
-                    actions.start,
-                    `${compose.name} is starting from the code already on the deploy target.`,
-                  )
-          }
-        >
-          <ActionIcon
-            name="play"
-            pending={working("start")}
-            size={glyph}
-          />
-          Start
-        </Button>
-      ) : null}
+      {second === "start" ? startButton : null}
 
       {second === "restart" ? (
         <Button
