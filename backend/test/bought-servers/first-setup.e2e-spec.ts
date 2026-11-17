@@ -27,11 +27,15 @@ import { STRIPE_API } from '../../src/cloud/billing/stripe-api';
 import type { StripeApi } from '../../src/cloud/billing/stripe-api';
 import { MailService } from '../../src/mail/mail.service';
 import { PermissionService } from '../../src/rbac/permission.service';
+import { ExecError } from '../../src/remote/exec-error';
 import { RemoteExecService } from '../../src/remote/remote-exec.service';
 import { server } from '../../src/servers/server.schema';
 import { serverSetupCommand } from '../../src/servers/server-setup';
 import { ServerSetupRuns } from '../../src/servers/server-setup-runs';
-import { ServersService } from '../../src/servers/servers.service';
+import {
+  SSH_ANSWERS_PROBE,
+  ServersService,
+} from '../../src/servers/servers.service';
 import { SshKeysService } from '../../src/ssh-keys/ssh-keys.service';
 import { fakeStripe } from '../utils/fake-stripe';
 import { givenPlan } from '../utils/hosted-plan';
@@ -92,6 +96,8 @@ describe('A Bought Server is set up by itself (e2e)', () => {
   let carried: string[] = [];
   let priceCount = 0;
   let held: HeldRun[] = [];
+  /** SSH attempts the machine still refuses, as a machine still booting does. */
+  let booting = 0;
 
   const subscriptionNow = (): Stripe.Subscription =>
     ({
@@ -152,8 +158,18 @@ describe('A Bought Server is set up by itself (e2e)', () => {
   });
 
   const execAsyncRemote = jest.fn(
-    (serverId: string, command: string, onData?: (chunk: string) => void) =>
-      new Promise<void>((resolve, reject) => {
+    (serverId: string, command: string, onData?: (chunk: string) => void) => {
+      if (booting > 0) {
+        booting -= 1;
+        return Promise.reject(
+          new ExecError(
+            'SSH connection error: Timed out while waiting for handshake',
+            { command, serverId, connectionFailed: true },
+          ),
+        );
+      }
+      if (command === SSH_ANSWERS_PROBE) return Promise.resolve();
+      return new Promise<void>((resolve, reject) => {
         held.push({
           serverId,
           command,
@@ -161,8 +177,14 @@ describe('A Bought Server is set up by itself (e2e)', () => {
           finish: () => resolve(),
           fail: reject,
         });
-      }),
+      });
+    },
   );
+  /** The Setup runs asked for, leaving out the probes that wait for SSH. */
+  const setupCalls = () =>
+    execAsyncRemote.mock.calls.filter(
+      ([, command]) => command !== SSH_ANSWERS_PROBE,
+    );
   const exec = {
     execAsync: jest.fn(),
     execAsyncRemote,
@@ -239,6 +261,7 @@ describe('A Bought Server is set up by itself (e2e)', () => {
   beforeEach(async () => {
     for (const run of held) run.finish();
     held = [];
+    booting = 0;
     await ctx.resetDb();
     jest.clearAllMocks();
     mail.clear();
@@ -260,12 +283,33 @@ describe('A Bought Server is set up by itself (e2e)', () => {
       const id = await buy();
 
       await eventually(() => held.length === 1);
-      expect(execAsyncRemote).toHaveBeenCalledTimes(1);
+      expect(setupCalls()).toHaveLength(1);
       expect(held[0]).toMatchObject({
         serverId: id,
         command: serverSetupCommand(),
       });
       expect((await rowOf(id)).setupStarts).toBe(1);
+    });
+
+    it('waits for a machine still booting to accept SSH, then runs setup', async () => {
+      booting = 2;
+      const id = await buy();
+
+      await eventually(() => held.length === 1);
+      expect(held[0]).toMatchObject({
+        serverId: id,
+        command: serverSetupCommand(),
+      });
+      expect((await rowOf(id)).stage).toBe('setting_up');
+      expect((await rowOf(id)).setupStarts).toBe(1);
+
+      held[0].finish();
+      await readyRow(id);
+      expect(await serverOf(id)).toMatchObject({
+        setupOk: true,
+        setupMessage: null,
+      });
+      expect(toOperators()).toEqual([]);
     });
 
     it('shows Setting up on the Server until the run ends', async () => {
@@ -370,7 +414,7 @@ describe('A Bought Server is set up by itself (e2e)', () => {
       await stages.resumeSetups();
       await restarted().resumeSetups();
 
-      expect(execAsyncRemote).toHaveBeenCalledTimes(1);
+      expect(setupCalls()).toHaveLength(1);
     });
   });
 
@@ -530,7 +574,7 @@ describe('A Bought Server is set up by itself (e2e)', () => {
       await stages.advance(id);
       await stages.resumeSetups();
 
-      expect(execAsyncRemote).toHaveBeenCalledTimes(1);
+      expect(setupCalls()).toHaveLength(1);
       expect((await rowOf(id)).setupStarts).toBe(1);
     });
 
@@ -564,7 +608,7 @@ describe('A Bought Server is set up by itself (e2e)', () => {
       await restarted().resumeSetups();
 
       // No third run, by itself or otherwise.
-      expect(execAsyncRemote).toHaveBeenCalledTimes(2);
+      expect(setupCalls()).toHaveLength(2);
       await readyRow(id);
       expect(await serverOf(id)).toMatchObject({
         setupOk: false,
@@ -660,7 +704,7 @@ describe('A Bought Server is set up by itself (e2e)', () => {
       ).rejects.toMatchObject({
         response: { code: BOUGHT_SERVER_NOT_READY_CODE },
       });
-      expect(execAsyncRemote).toHaveBeenCalledTimes(1);
+      expect(setupCalls()).toHaveLength(1);
     });
   });
 });

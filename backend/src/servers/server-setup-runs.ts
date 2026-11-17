@@ -1,6 +1,7 @@
 import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import type { PermissionCtx } from '../rbac/permission.service';
 import { ServersService } from './servers.service';
+import type { SetupOptions } from './servers.service';
 
 /** The two lines a client can key on. The setup script prints `✅` on lines of
  *  its own, so an outcome needs a prefix nothing else in the output uses. */
@@ -97,11 +98,13 @@ export class ServerSetupRuns {
    * Starts a run on the Server unless one is in flight, and answers how the
    * run in flight (this one or the earlier) ends; it never rejects.
    * `started` says which. `ctx` is whose run it is: the Server is read in
-   * that Organization, as `POST /servers/:id/setup` reads it.
+   * that Organization, as `POST /servers/:id/setup` reads it. `options`
+   * go to `ServersService.setup`.
    */
   start(
     serverId: string,
     ctx: PermissionCtx,
+    options?: SetupOptions,
   ): { started: boolean; ended: Promise<SetupRunOutcome> } {
     const inFlight = this.runs.get(serverId);
     if (inFlight) return { started: false, ended: inFlight.ended };
@@ -114,7 +117,7 @@ export class ServerSetupRuns {
       ended: new Promise((resolve) => (settle = resolve)),
     };
     this.runs.set(serverId, run);
-    void this.provision(serverId, ctx, run).then(settle);
+    void this.provision(serverId, ctx, run, options).then(settle);
     return { started: true, ended: run.ended };
   }
 
@@ -139,9 +142,15 @@ export class ServerSetupRuns {
     serverId: string,
     ctx: PermissionCtx,
     run: SetupRun,
+    options?: SetupOptions,
   ): Promise<SetupRunOutcome> {
     try {
-      await this.servers.setup(ctx, serverId, (chunk) => this.emit(run, chunk));
+      await this.servers.setup(
+        ctx,
+        serverId,
+        (chunk) => this.emit(run, chunk),
+        options,
+      );
       this.finish(run, `\n${SETUP_FINISHED_LINE}\n`, true);
       return { ok: true, message: null };
     } catch (error) {

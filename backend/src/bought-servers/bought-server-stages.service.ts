@@ -561,11 +561,17 @@ export class BoughtServerStages implements OnApplicationBootstrap {
     if (!claimed) return false;
 
     // Whose run it is: the customer who pressed Buy, in their Organization,
-    // as `POST /servers/:id/setup` would read the Server for them.
-    const { ended } = this.setupRuns.start(row.serverId, {
-      user: { id: row.termsAcceptedBy },
-      session: { activeOrganizationId: row.organizationId },
-    });
+    // as `POST /servers/:id/setup` would read the Server for them. The
+    // machine's address is known before it has booted, so the run first
+    // waits for it to accept SSH rather than failing on the first handshake.
+    const { ended } = this.setupRuns.start(
+      row.serverId,
+      {
+        user: { id: row.termsAcceptedBy },
+        session: { activeOrganizationId: row.organizationId },
+      },
+      { waitForSsh: true },
+    );
     void ended.then((outcome) => this.setupEnded(row, outcome));
     return false;
   }

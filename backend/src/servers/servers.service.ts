@@ -71,6 +71,29 @@ import {
  */
 export const MAX_NAMED_PER_CATEGORY = 10;
 
+/** The command that asks a machine whether it accepts SSH yet, and runs nothing. */
+export const SSH_ANSWERS_PROBE = 'true';
+
+/**
+ * How long a Setup run that waits for SSH ({@link SetupOptions.waitForSsh})
+ * keeps asking: a new machine's API answers with an address well before its
+ * SSH daemon does, and a first boot takes a minute or two.
+ */
+export const SSH_WAIT_MS = 10 * 60 * 1000;
+
+/** The pause between two SSH attempts while waiting: 1s, doubling, at most 15s. */
+const sshWaitPause = (attempt: number) => Math.min(1000 * 2 ** attempt, 15_000);
+
+export interface SetupOptions {
+  /**
+   * Wait for the machine to accept SSH before the run, retrying only a
+   * connection that never reached a shell (`isTransportFailure`), for at most
+   * {@link SSH_WAIT_MS}. For a machine just made, whose first SSH attempt
+   * would otherwise fail the run while it boots.
+   */
+  waitForSsh?: boolean;
+}
+
 /**
  * One clause of a delete refusal — `2 services (application "Web App",
  * postgres "Orders DB")` — or `null` when the category is empty so the caller
@@ -530,10 +553,13 @@ export class ServersService {
     ctx: PermissionCtx,
     serverId: string,
     onData?: (data: string) => void,
+    options?: SetupOptions,
   ) {
     const current = await this.findOne(ctx, serverId);
     const command = current.command || serverSetupCommand();
     try {
+      if (options?.waitForSsh)
+        await this.untilSshAnswers(current.serverId, onData);
       await this.remoteExec.execAsyncRemote(current.serverId, command, onData);
       const storage = await this.extraStorageOf(current.serverId);
       if (storage) {
@@ -557,6 +583,33 @@ export class ServersService {
     await this.recordSetup(current.serverId, null);
     await this.recordRequestMetrics(current.serverId);
     return { status: 'ok' as const };
+  }
+
+  /**
+   * Returns once the machine accepts SSH and runs a command. A failure that
+   * reached a shell, or a transport failure past {@link SSH_WAIT_MS}, is
+   * thrown as it is, so the run fails with the machine's own words.
+   */
+  private async untilSshAnswers(
+    serverId: string,
+    onData?: (data: string) => void,
+  ): Promise<void> {
+    const giveUpAt = Date.now() + SSH_WAIT_MS;
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        await this.remoteExec.execAsyncRemote(serverId, SSH_ANSWERS_PROBE);
+        return;
+      } catch (error) {
+        const pause = sshWaitPause(attempt);
+        if (!isTransportFailure(error) || Date.now() + pause > giveUpAt) {
+          throw error;
+        }
+        if (attempt === 0) {
+          onData?.('Waiting for the machine to accept SSH…\n');
+        }
+        await new Promise((resolve) => setTimeout(resolve, pause));
+      }
+    }
   }
 
   /** The extra storage of the Bought Server behind this Server, once its Volume is made; null for any other Server. */
