@@ -611,4 +611,14 @@ describe("SetupFormView", () => {
       ).toBeTruthy();
     });
   });
+
+  it("starts on the Environment it was opened from", () => {
+    render(
+      <SetupFormView form={STACKED} startOn="env-bare" onSubmit={vi.fn()} />,
+    );
+    expect(
+      (screen.getByRole("radio", { name: /bare/ }) as HTMLInputElement)
+        .checked,
+    ).toBe(true);
+  });
 });

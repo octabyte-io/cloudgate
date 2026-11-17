@@ -68,11 +68,14 @@ export const EMPTY_PROJECT_NOTE =
 export function SetupFormView({
   form: setup,
   projectId,
+  startOn,
   newProject,
   place,
   onNewProject,
   onSubmit,
 }: {
+  /** The Environment to start on, when it can take the template. */
+  startOn?: string;
   /**
    * The Project choice, drawn as the form's first question so the place the
    * setup goes is read top to bottom with the rest of it.
@@ -103,6 +106,7 @@ export function SetupFormView({
               "",
           }
         : null,
+      startOn,
     ),
     labelOf: (name) => SETUP_LABELS[name],
     onSubmit: async (values) => {

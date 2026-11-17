@@ -8,6 +8,7 @@ import { DataTable } from "@/components/console/data-table";
 import { EmptyState } from "@/components/console/empty-state";
 import { Page } from "@/components/console/page";
 import { PageHeader } from "@/components/console/page-header";
+import { LinkButton } from "@/components/console/link-button";
 import { Skeleton } from "@/components/console/skeleton";
 import { Button } from "@/components/ui/button";
 import { CreateAiModelModal } from "@/features/application/create/create-ai-model-modal";
@@ -15,6 +16,7 @@ import { CreateApplicationModal } from "@/features/application/create/create-app
 import { CreateComposeModal } from "@/features/compose/create/create-compose-modal";
 import { CreateDatabaseModal } from "@/features/database/create/create-database-modal";
 import { DraftServiceModal } from "@/features/integrations/ai/draft-service-modal";
+import { templatesHref } from "@/features/templates/setup-place";
 import { errorMessage } from "@/lib/api/error-message";
 import { useEnvironmentHealth } from "@/lib/api/use-service-health";
 import { useActiveMemberRole } from "@/lib/auth/client";
@@ -174,6 +176,18 @@ export default function Panel({ id, label, icon }: PanelProps) {
               <Icon name="spark" size={15} />
               Draft one with AI
             </Button>
+            {/* The catalogue, opened so its setup starts on this Environment. */}
+            {environment.data ? (
+              <LinkButton
+                href={templatesHref({
+                  projectId: environment.data.projectId,
+                  environmentId: id,
+                })}
+              >
+                <Icon name="book" size={15} />
+                Set up a template
+              </LinkButton>
+            ) : null}
             {canCreate.allowed ? (
               <Button
                 aria-disabled={ready ? undefined : true}

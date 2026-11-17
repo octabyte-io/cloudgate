@@ -194,6 +194,19 @@ export interface ComposeDetail extends Compose {
    * `null` on a Server and on this Cloudgate host.
    */
   stackVmFacts: StackVmFacts | null;
+  /**
+   * The Template it was set up from (ADR-0065), by its Setup record;
+   * `null` for a stack written by hand. Absent from an older backend.
+   */
+  template?: ComposeTemplate | null;
+}
+
+/** Which Template a stack was set up from, and under which setup name. */
+export interface ComposeTemplate {
+  /** The Template's id: its catalogue folder name. */
+  templateId: string;
+  revision: string;
+  setupName: string;
 }
 
 /** The sizes a Stack VM is set to, as the Project config names them. */

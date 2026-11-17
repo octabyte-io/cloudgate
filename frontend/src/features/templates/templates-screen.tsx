@@ -7,6 +7,7 @@ import { Page } from "@/components/console/page";
 import { PageHeader } from "@/components/console/page-header";
 
 import { CatalogueView } from "./catalogue-view";
+import { setupPlaceOf } from "./setup-place";
 import { TemplateSetup } from "./template-setup";
 import { useTemplateCatalogue } from "./use-templates";
 
@@ -27,7 +28,10 @@ export function TemplatesScreen() {
   const [query, setQuery] = useState("");
   const [tags, setTags] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(0);
-  const templateId = useSearchParams().get("template");
+  const params = useSearchParams();
+  const templateId = params.get("template");
+  // Opened from an Environment's "Set up a template", the setup starts there.
+  const from = setupPlaceOf(params);
 
   return (
     <Page>
@@ -40,6 +44,7 @@ export function TemplatesScreen() {
             (template) => template.id === templateId,
           )}
           cataloguePending={catalogue.isPending}
+          from={from}
         />
       ) : (
         <>
@@ -60,6 +65,7 @@ export function TemplatesScreen() {
             onTags={setTags}
             page={page}
             onPage={setPage}
+            place={from}
           />
         </>
       )}

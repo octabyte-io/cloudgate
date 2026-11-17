@@ -34,7 +34,10 @@ export function TemplateIntro({
   template,
   fallbackName,
   pending,
+  back = "/templates",
 }: {
+  /** The catalogue to go back to, keeping where it was opened from. */
+  back?: string;
   template: TemplateSummary | undefined;
   fallbackName: string;
   pending: boolean;
@@ -44,12 +47,7 @@ export function TemplateIntro({
   return (
     <header className="mb-5.5 grid gap-4">
       <div>
-        <LinkButton
-          href="/templates"
-          size="sm"
-          variant="qt"
-          className="-ml-2.5"
-        >
+        <LinkButton href={back} size="sm" variant="qt" className="-ml-2.5">
           <Icon name="back" size={14} />
           All templates
         </LinkButton>

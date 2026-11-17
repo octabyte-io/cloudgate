@@ -343,7 +343,10 @@ function makeDb(table: PgTable, capture: { relations?: unknown }): DrizzleDB {
   // secret is never read back is `test/ai-models/ai-model-create.e2e-spec.ts`'s.
   const select = () => ({
     from: () => ({
-      where: () => ({ limit: () => Promise.resolve([]) }),
+      where: () => ({
+        limit: () => Promise.resolve([]),
+        orderBy: () => Promise.resolve([]),
+      }),
     }),
   });
   return { query: queries, select } as unknown as DrizzleDB;

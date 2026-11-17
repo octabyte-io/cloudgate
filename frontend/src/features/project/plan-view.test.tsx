@@ -1004,3 +1004,68 @@ describe("PlanView", () => {
     });
   });
 });
+
+describe("an applied Template setup", () => {
+  it("leads with Results and folds the reviewed steps away rather than listing them twice", () => {
+    render(
+      <PlanView
+        plan={{
+          ...base,
+          status: "applied",
+          steps: [
+            {
+              action: "create",
+              configName: "shop-db",
+              kind: "mysql",
+              placement: { kind: "server", serverId: "srv-1" },
+              fields: [],
+            },
+          ],
+          results: [
+            {
+              configName: "shop-db",
+              action: "create",
+              status: "applied",
+              message: null,
+              serviceType: "mysql",
+              serviceId: "db-1",
+              domain: null,
+              deploy: null,
+              leftovers: null,
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("region", { name: "Results" })).toBeTruthy();
+    const creates = screen.getByRole("region", { name: "Creates" });
+    expect(creates.closest("details")?.open).toBe(false);
+    expect(screen.getByText("Show the Plan as it was reviewed")).toBeTruthy();
+  });
+
+  it("says once which setups are held back here, naming each one's parts", () => {
+    const held = (templateId: string, part: string) => ({
+      kind: "setup-held-back" as const,
+      configName: part,
+      configNames: [part],
+      templateId,
+      setupName: templateId,
+      message: `${part} is held back here`,
+    });
+    render(
+      <PlanView
+        plan={{
+          ...base,
+          notes: [held("gitea", "gitea-app"), held("umami", "umami-app")],
+        }}
+      />,
+    );
+
+    const note = screen.getByLabelText("Held back here");
+    expect(note.textContent).toMatch(/2 Templates were set up/);
+    expect(note.textContent).toMatch(/gitea-app from the gitea template/);
+    expect(note.textContent).toMatch(/umami-app from the umami template/);
+    expect(screen.queryByText("gitea-app is held back here")).toBeNull();
+  });
+});

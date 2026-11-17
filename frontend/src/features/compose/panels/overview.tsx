@@ -21,6 +21,7 @@ import { HealthFactRow } from "@/components/console/service-health-state";
 
 import { ComposeFactsCard } from "../compose-facts-card";
 import { ComposeDomainsAside } from "../domains/compose-domains-aside";
+import { OpenAppButton } from "../domains/open-app-button";
 import { ComposePanel } from "../compose-panel";
 import { ComposeFileCard } from "../editor/compose-file-card";
 import { ComposeActions } from "../lifecycle/compose-actions";
@@ -94,6 +95,7 @@ export default function Panel(props: PanelProps) {
           actions={
             <>
               {/* To the Shell tab, wherever there is one. */}
+              <OpenAppButton composeId={row.composeId} />
               <OpenShellButton />
               <ComposeActions compose={row} />
             </>

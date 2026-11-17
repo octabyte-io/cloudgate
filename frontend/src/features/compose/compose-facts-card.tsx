@@ -75,13 +75,29 @@ export function ComposeFactsCard({
             value={compose.appName}
             title={compose.appName}
             mono
+            wrap
           />
           <KVRow
             label="Config name"
             value={compose.configName}
             title="Its fixed key in the Project config. Renaming the Service does not change it."
             mono
+            wrap
           />
+          {compose.template ? (
+            <KVRow
+              label="Template"
+              title={`Set up as ${compose.template.setupName}`}
+              value={
+                <Link
+                  href={`/templates?template=${encodeURIComponent(compose.template.templateId)}`}
+                  className="font-medium text-brand-tx underline-offset-3 hover:underline focus-visible:underline"
+                >
+                  {compose.template.templateId}
+                </Link>
+              }
+            />
+          ) : null}
           <KVRow label="Source" value={source.label} title={source.label} />
           {source.detail ? (
             <KVRow

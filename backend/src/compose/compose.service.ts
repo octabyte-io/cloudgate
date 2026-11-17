@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { stackRootId } from './stack-root';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { quote } from 'shell-quote';
 // `import type` only, exactly as `databases/common/database-ops.ts` takes them:
 // one three-valued presence union and one shape for what a forced delete admits
@@ -44,7 +44,13 @@ import { withoutSecrets } from '../common/service-read-relations';
 import { cleanAppName, generateAppName } from '../db/columns';
 import { DRIZZLE } from '../db/drizzle.module';
 import type { DrizzleDB } from '../db/drizzle.module';
-import { compose, environment, project, volumeBackup } from '../db/schema';
+import {
+  compose,
+  environment,
+  project,
+  setupRecord,
+  volumeBackup,
+} from '../db/schema';
 import {
   claimServiceConfigName,
   mintServiceConfigName,
@@ -493,7 +499,39 @@ export class ComposeService {
       // Its Stack VM as its page shows it, on a stack in a Cloud account
       // (ADR-0070, #1372); `null` on a Server and the platform host.
       stackVmFacts: await this.stackVms.factsOf(found),
+      template: await this.templateOf(
+        found.environment.project.projectId,
+        found.configName,
+      ),
     };
+  }
+
+  /**
+   * The Template a stack was set up from (ADR-0065): the Project's newest
+   * Setup record that made its Config name, or `null` for a stack written by
+   * hand. A fact for its page to show, never a link that updates it.
+   */
+  private async templateOf(projectId: string, configName: string) {
+    // A Project holds a handful of Setup records, so the newest that made
+    // this Config name is found here rather than in a jsonb query.
+    const records = await this.db
+      .select({
+        templateId: setupRecord.templateId,
+        revision: setupRecord.revision,
+        setupName: setupRecord.setupName,
+        configNames: setupRecord.configNames,
+      })
+      .from(setupRecord)
+      .where(eq(setupRecord.projectId, projectId))
+      .orderBy(desc(setupRecord.createdAt));
+    const made = records.find((one) => one.configNames.includes(configName));
+    return made
+      ? {
+          templateId: made.templateId,
+          revision: made.revision,
+          setupName: made.setupName,
+        }
+      : null;
   }
 
   /**

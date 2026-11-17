@@ -11,6 +11,7 @@ import {
   licenseKey,
   member,
   organizationRole,
+  setupRecord,
   volumeBackup,
 } from '../../src/db/schema';
 import { cloudgateDirectoryOn } from '../../src/common/config/cloudgate-directory';
@@ -318,6 +319,40 @@ describe('Compose (e2e)', () => {
       });
       expect(found.environment.projectId).toBe(project.projectId);
       expect(found.environment.project.projectId).toBe(project.projectId);
+    });
+
+    it('names the Template a stack was set up from, and none for one written by hand', async () => {
+      const { ownerCtx, project, environment } = await setUpEnvironment();
+      const made = await compose.create(ownerCtx, {
+        name: 'Vaultwarden',
+        appName: 'vaultwarden-stack',
+        environmentId: environment.environmentId,
+        composeFile: WORDPRESS_COMPOSE,
+      });
+      const byHand = await compose.create(ownerCtx, {
+        name: 'Wordpress',
+        appName: 'wordpress-stack',
+        environmentId: environment.environmentId,
+        composeFile: WORDPRESS_COMPOSE,
+      });
+      await ctx.db.insert(setupRecord).values({
+        projectId: project.projectId,
+        templateId: 'vaultwarden',
+        revision: 'abc1234',
+        setupName: 'vaultwarden',
+        configNames: [made.configName, 'vaultwarden-db'],
+      });
+
+      expect(
+        (await compose.findOne(ownerCtx, made.composeId)).template,
+      ).toEqual({
+        templateId: 'vaultwarden',
+        revision: 'abc1234',
+        setupName: 'vaultwarden',
+      });
+      expect(
+        (await compose.findOne(ownerCtx, byHand.composeId)).template,
+      ).toBeNull();
     });
 
     /**

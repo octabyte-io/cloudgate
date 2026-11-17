@@ -20,6 +20,7 @@ import { newProjectTargets } from "./new-project-targets";
 import { ProjectChoice } from "./project-choice";
 import { SetupFormView } from "./setup-form";
 import { SetupPasteView } from "./setup-paste";
+import { NO_PLACE, templatesHref, type SetupPlace } from "./setup-place";
 import { SetupSteps } from "./setup-steps";
 import { TemplateIntro } from "./template-intro";
 import { NEW_PROJECT, useSetupForm, useSetUpTemplate } from "./use-templates";
@@ -45,7 +46,10 @@ export function TemplateSetup({
   templateId,
   template,
   cataloguePending,
+  from = NO_PLACE,
 }: {
+  /** The Project and Environment it was opened from, to start on. */
+  from?: SetupPlace;
   templateId: string;
   /** The catalogue's entry, for the header; absent until it arrives. */
   template: TemplateSummary | undefined;
@@ -54,9 +58,15 @@ export function TemplateSetup({
   const router = useRouter();
   const projects = useProjects();
   const [picked, setPicked] = useState<string | null>(null);
+  // Opened from an Environment, it starts on that Environment's Project.
+  const fromProject =
+    from.projectId !== null &&
+    projects.data?.some((one) => one.projectId === from.projectId)
+      ? from.projectId
+      : null;
   // With no Project yet there is only one choice, so it starts on it.
   const projectId =
-    picked ?? (projects.data?.length === 0 ? NEW_PROJECT : null);
+    picked ?? fromProject ?? (projects.data?.length === 0 ? NEW_PROJECT : null);
   const form = useSetupForm(templateId, projectId);
   const setUp = useSetUpTemplate();
   const creating = projectId === NEW_PROJECT;
@@ -93,6 +103,7 @@ export function TemplateSetup({
         template={template}
         fallbackName={name}
         pending={cataloguePending}
+        back={templatesHref(from)}
       />
       <Cols aside={<SetupSteps />} asideLabel="How setup works">
         {pasted ? (
@@ -132,6 +143,11 @@ export function TemplateSetup({
             form={form.data}
             place={place}
             projectId={creating ? undefined : projectId}
+            startOn={
+              projectId === from.projectId
+                ? (from.environmentId ?? undefined)
+                : undefined
+            }
             onNewProject={() => pick(NEW_PROJECT)}
             newProject={
               creating
