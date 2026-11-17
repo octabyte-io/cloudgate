@@ -414,7 +414,7 @@ describe("GetStartedScreen", () => {
         "Suggested",
         "1. Location",
         "2. Size in Nuremberg",
-        "3. Operating system",
+        "3. Server image",
         "4. Extras",
       ]) {
         expect(screen.getByRole("heading", { name })).toBeTruthy();

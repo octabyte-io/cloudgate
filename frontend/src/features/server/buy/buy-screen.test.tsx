@@ -569,7 +569,7 @@ describe("BuyScreen", () => {
     });
   });
 
-  describe("the operating system", () => {
+  describe("the Server image", () => {
     /** Base UI's trigger opens on `mousedown`, so a bare click is what opens it. */
     async function openImages(): Promise<string[]> {
       fireEvent.click(screen.getByRole("combobox"));
@@ -590,6 +590,18 @@ describe("BuyScreen", () => {
         expect(screen.queryAllByRole("option")).toHaveLength(0),
       );
     }
+
+    it("is asked as the Server image, with no reason under it", async () => {
+      await cardOrder();
+
+      expect(
+        screen.getByRole("heading", { name: "3. Server image" }),
+      ).toBeTruthy();
+      expect(
+        screen.getByRole("combobox", { name: "Server image" }),
+      ).toBeTruthy();
+      expect(screen.queryByText(/so those are the ones offered/)).toBeNull();
+    });
 
     it("is Ubuntu 24.04 unless another is picked, and is named in the summary", async () => {
       await cardOrder();

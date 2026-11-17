@@ -14,7 +14,7 @@ import type { BuyForm } from "./use-buy-form";
 
 /**
  * Every option of one Buy, in the order both buy forms show them:
- * Suggested, then 1. Location, 2. Size, 3. Operating system and 4. Extras.
+ * Suggested, then 1. Location, 2. Size, 3. Server image and 4. Extras.
  * The Location card's body is the caller's: the Buy screen's has the map,
  * the wizard's only the cards.
  */

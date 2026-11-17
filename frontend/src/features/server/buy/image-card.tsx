@@ -7,6 +7,11 @@ import type { CatalogueImage } from "@/lib/api/endpoints/bought-servers";
  * version offered now, Ubuntu 24.04 unless another is picked. Only the
  * images built for the chosen size's architecture are listed, so an Arm
  * size never offers one it cannot run.
+ *
+ * Only Ubuntu and Debian are offered because Server setup installs Docker
+ * only on them (CONTEXT.md, Server image); that reason stays here, not on
+ * the card (design-system rule 8). The heading names the field, so its
+ * label is for a screen reader only, as the other cards have none.
  */
 export function ImageCard({
   images,
@@ -19,14 +24,10 @@ export function ImageCard({
 }) {
   return (
     <Card>
-      <Card.Header
-        title="3. Operating system"
-        sub="Cloudgate sets up Ubuntu and Debian, so those are the ones offered."
-        headingLevel={2}
-      />
+      <Card.Header title="3. Server image" headingLevel={2} />
       <Card.Body className="grid gap-1.5">
-        <label htmlFor="server-image" className="text-body font-medium text-tx">
-          Image
+        <label htmlFor="server-image" className="sr-only">
+          Server image
         </label>
         <Picker
           id="server-image"
