@@ -9,6 +9,12 @@
 
 **What to do on upgrade**: nothing.
 
+### Remove containers shows that it ran
+
+On a Compose stack, **Remove containers** removed the containers and left the page looking as it had: Stop and Remove containers stayed on, the Containers tab still listed every service, and the button went back to idle on any tab other than the one it was pressed on, so a second press sent a second removal. While it runs, the button shows it is working on every tab and cannot be pressed again. Once it has run, a toast says the containers are removed, the status reads **stopped**, Stop and Remove containers are off with a line saying why (Start recreates the containers), and the Containers tab shows its empty state. Remove containers is also off on a stack that was never deployed.
+
+**What to do on upgrade**: nothing.
+
 ### A generated Domain added by hand is served over HTTPS on a public address
 
 **Generate one for me** in the Add a domain dialog filled in an sslip.io host but left **Serve over HTTPS** off and the certificate at None, so the Domain was plain HTTP even on a public address. A Template's setup serves the same host over HTTPS with Let's Encrypt. Generate now does the same when this server's address is public, and leaves HTTPS off for a private one; anything changed after Generate is kept (#103).

@@ -1,4 +1,9 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+  useMutation,
+  useMutationState,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import { useForgetVisited } from "@/components/shell/recents";
 import {
@@ -13,6 +18,8 @@ import { useRefetchWhenSettled } from "@/lib/api/use-refetch-when-settled";
 import { useActiveOrganizationId } from "@/lib/auth/client";
 import { roleRefusal } from "@/lib/auth/use-permission";
 import { newestLive } from "@/lib/format/deployment-facts";
+
+import { stackMembersKey } from "./containers/stack-members";
 
 /**
  * Everything the Compose screens read and write.
@@ -237,6 +244,41 @@ export function useComposeDeployments(composeId: string) {
   });
 }
 
+/** The lifecycle actions a Compose row runs, by the name its pending state uses. */
+export type ComposeLifecycleAction =
+  | "deploy"
+  | "start"
+  | "stop"
+  | "restart"
+  | "remove-containers";
+
+const lifecycleKey = (composeId: string, action: ComposeLifecycleAction) =>
+  ["compose-lifecycle", composeId, action] as const;
+
+/**
+ * Which lifecycle action of this stack is running now, wherever it was
+ * pressed, or `null`.
+ *
+ * Read from the mutation cache rather than from one row's own `useMutation`,
+ * because the row is rendered in every tab's header and in an empty state, and
+ * each of those had its own idea of "busy": a removal pressed on Overview left
+ * the Containers tab's Remove containers live, and a second press sent a
+ * second `rm --stop --force` behind the first.
+ */
+export function useComposeLifecyclePending(
+  composeId: string,
+): ComposeLifecycleAction | null {
+  const running = useMutationState({
+    filters: {
+      mutationKey: ["compose-lifecycle", composeId],
+      status: "pending",
+    },
+    select: (mutation) =>
+      mutation.options.mutationKey?.[2] as ComposeLifecycleAction,
+  });
+  return running[0] ?? null;
+}
+
 /**
  * Deploy, start, stop, remove containers, delete.
  *
@@ -257,10 +299,13 @@ export function useComposeDeployments(composeId: string) {
 export function useComposeActions(composeId: string, environmentId?: string) {
   const invalidate = useInvalidate();
   const forgetVisited = useForgetVisited();
+  const queryClient = useQueryClient();
+  const { organizationId } = useActiveOrganizationId();
   const refresh = () => invalidate.compose({ composeId, environmentId });
 
   return {
     deploy: useMutation({
+      mutationKey: lifecycleKey(composeId, "deploy"),
       mutationFn: (title?: string) =>
         deploymentsApi.deployCompose(composeId, title ? { title } : undefined),
       onSuccess: async () => {
@@ -269,15 +314,18 @@ export function useComposeActions(composeId: string, environmentId?: string) {
       },
     }),
     start: useMutation({
+      mutationKey: lifecycleKey(composeId, "start"),
       mutationFn: () => composeApi.start(composeId),
       onSettled: refresh,
     }),
     /** `docker compose restart`, for a stack on a Stack VM. */
     restart: useMutation({
+      mutationKey: lifecycleKey(composeId, "restart"),
       mutationFn: () => composeApi.restart(composeId),
       onSettled: refresh,
     }),
     stop: useMutation({
+      mutationKey: lifecycleKey(composeId, "stop"),
       mutationFn: () => composeApi.stop(composeId),
       onSettled: refresh,
     }),
@@ -290,7 +338,14 @@ export function useComposeActions(composeId: string, environmentId?: string) {
      * Offered only for a `docker-compose` stack — see `compose-actions.tsx`.
      */
     removeContainers: useMutation({
+      mutationKey: lifecycleKey(composeId, "remove-containers"),
       mutationFn: () => composeApi.removeContainers(composeId),
+      // The removal answered: no container of this stack is left. Said here
+      // before the refresh reads Docker again, so the action row and the
+      // Containers tab turn over with the toast rather than a read later.
+      onSuccess: (row) => {
+        queryClient.setQueryData(stackMembersKey(organizationId, row), []);
+      },
       onSettled: refresh,
     }),
     /** `deleteVolumes` only reaches a `docker-compose` stack — see the dialog. */

@@ -11,7 +11,12 @@ import {
   composeDeclaresNoServices,
   composeFileIsEmpty,
 } from "../editor/yaml-check";
-import { useComposeActions, wasRefused } from "../use-compose";
+import { useStackMembers } from "../containers/stack-members";
+import {
+  useComposeActions,
+  useComposeLifecyclePending,
+  wasRefused,
+} from "../use-compose";
 // The Application row's pending glyph, so every Service kind's lifecycle row
 // says "working" the same way.
 import { ActionIcon } from "../../application/lifecycle/action-icon";
@@ -20,9 +25,13 @@ import { RemoveContainersModal } from "./remove-containers-modal";
 /** Why Restart is off for a role without `deployment: ['create']`. */
 const RESTART_REFUSAL = roleRefusal("restart this stack's containers");
 
-/** Why Start and Stop are off on a stack no Deploy has run. */
+/** Why Start, Stop and Remove containers are off on a stack no Deploy has run. */
 export const COMPOSE_NEVER_DEPLOYED =
-  "Nothing of this stack is on its deploy target yet, so there is nothing to start or stop. Deploy puts it there.";
+  "Nothing of this stack is on its deploy target yet, so there is nothing to start, stop or remove. Deploy puts it there.";
+
+/** Why Stop and Remove containers are off once its containers are removed. */
+export const COMPOSE_CONTAINERS_REMOVED =
+  "This stack's containers are removed, so there is nothing to stop or remove. Start recreates them.";
 
 /**
  * Deploy, Start, Stop, Remove containers — four controls, and a fifth,
@@ -89,18 +98,17 @@ export function ComposeActions({
 }) {
   const actions = useComposeActions(compose.composeId, compose.environmentId);
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
+  // What is running for this stack, pressed in this row or in any other.
+  const pending = useComposeLifecyclePending(compose.composeId);
+  const working = (label: string) => busyLabel === label || pending === label;
   const [confirmRemove, setConfirmRemove] = useState(false);
   const reasonId = useId();
 
   // One at a time: all four run docker against the same project, and two at
   // once is a race whose loser leaves `composeStatus` describing the other one.
-  const busy =
-    busyLabel !== null ||
-    actions.deploy.isPending ||
-    actions.start.isPending ||
-    actions.stop.isPending ||
-    actions.restart.isPending ||
-    actions.removeContainers.isPending;
+  // Across every row of the stack, not only this one: see
+  // `useComposeLifecyclePending`.
+  const busy = busyLabel !== null || pending !== null;
   const glyph = size === "sm" ? 14 : 15;
 
   const swarm = compose.composeType === "stack";
@@ -153,6 +161,26 @@ export function ComposeActions({
   const neverDeployed = compose.composeStatus === "idle";
 
   /**
+   * Stop and Remove containers are off once a stopped stack has no container
+   * left — after Remove containers, whose success writes `[]` to the
+   * membership this reads, or a later visit that asks Docker. Start stays
+   * on: it recreates them from the project directory, the round trip
+   * ADR-0011 names (Remove containers → restore → Start). Asked only of a
+   * stopped `docker-compose` stack on a Server; a Stack VM's membership is
+   * not read from its VM, and a Swarm stack has neither control.
+   */
+  const askDocker =
+    compose.composeStatus === "stopped" && !swarm && !runsOnStackVm(compose);
+  const members = useStackMembers(compose, { enabled: askDocker });
+  const removed = askDocker && members.data?.length === 0;
+  const nothingThere = neverDeployed || removed;
+  const reason = neverDeployed
+    ? COMPOSE_NEVER_DEPLOYED
+    : removed
+      ? COMPOSE_CONTAINERS_REMOVED
+      : undefined;
+
+  /**
    * Run one, and be honest about the ambiguous failure — F11's rule, and it bites
    * harder here. `start`, `stop` and `remove-containers` run docker **inside the
    * request**, and
@@ -164,11 +192,12 @@ export function ComposeActions({
     label: string,
     mutation: { mutateAsync: (input: void) => Promise<unknown> },
     done: string,
+    description?: string,
   ) => {
     setBusyLabel(label);
     try {
       await mutation.mutateAsync();
-      toast.done(done);
+      toast.done(done, description ? { description } : undefined);
     } catch (error) {
       if (wasRefused(error)) toast.error(error);
       else
@@ -186,7 +215,7 @@ export function ComposeActions({
       size={size}
       variant="pri"
       aria-disabled={busy || nothingToDeploy || undefined}
-      aria-busy={busyLabel === "deploy" || undefined}
+      aria-busy={working("deploy") || undefined}
       title={
         emptyFile
           ? "There is nothing to deploy yet — the compose file is empty. Write it on the Overview tab first."
@@ -215,7 +244,7 @@ export function ComposeActions({
     >
       <ActionIcon
         name="rocket"
-        pending={busyLabel === "deploy"}
+        pending={working("deploy")}
         size={glyph}
       />
       Deploy
@@ -238,7 +267,7 @@ export function ComposeActions({
               : "Runs docker compose up over the code already on the deploy target. It does not clone or build."
           }
           aria-describedby={neverDeployed ? reasonId : undefined}
-          aria-busy={busyLabel === "start" || undefined}
+          aria-busy={working("start") || undefined}
           onClick={
             busy || neverDeployed
               ? undefined
@@ -252,7 +281,7 @@ export function ComposeActions({
         >
           <ActionIcon
             name="play"
-            pending={busyLabel === "start"}
+            pending={working("start")}
             size={glyph}
           />
           Start
@@ -261,18 +290,18 @@ export function ComposeActions({
 
       <Button
         size={size}
-        aria-disabled={busy || neverDeployed || undefined}
+        aria-disabled={busy || nothingThere || undefined}
         title={
-          neverDeployed
-            ? COMPOSE_NEVER_DEPLOYED
+          reason
+            ? reason
             : swarm
               ? "docker stack rm — the services are removed. Deploy recreates them."
               : "docker compose stop — the containers stop and stay."
         }
-        aria-describedby={neverDeployed ? reasonId : undefined}
-        aria-busy={busyLabel === "stop" || undefined}
+        aria-describedby={reason ? reasonId : undefined}
+        aria-busy={working("stop") || undefined}
         onClick={
-          busy || neverDeployed
+          busy || nothingThere
             ? undefined
             : () =>
                 void run(
@@ -284,7 +313,7 @@ export function ComposeActions({
                 )
         }
       >
-        <ActionIcon pending={busyLabel === "stop"} size={glyph} />
+        <ActionIcon pending={working("stop")} size={glyph} />
         Stop
       </Button>
 
@@ -300,7 +329,7 @@ export function ComposeActions({
                 : "docker compose restart — the containers restart. The Stack VM keeps running."
           }
           aria-describedby={neverDeployed ? reasonId : undefined}
-          aria-busy={busyLabel === "restart" || undefined}
+          aria-busy={working("restart") || undefined}
           onClick={
             restartRefused || busy || neverDeployed
               ? undefined
@@ -312,7 +341,7 @@ export function ComposeActions({
                   )
           }
         >
-          <ActionIcon pending={busyLabel === "restart"} size={glyph} />
+          <ActionIcon pending={working("restart")} size={glyph} />
           Restart
         </Button>
       ) : null}
@@ -320,23 +349,26 @@ export function ComposeActions({
       {swarm ? null : (
         <Button
           size={size}
-          aria-disabled={busy || undefined}
-          title="docker compose rm --stop --force — the containers are removed. Start recreates them."
-          aria-busy={actions.removeContainers.isPending || undefined}
-          onClick={busy ? undefined : () => setConfirmRemove(true)}
+          aria-disabled={busy || nothingThere || undefined}
+          title={
+            reason ??
+            "docker compose rm --stop --force — the containers are removed. Start recreates them."
+          }
+          aria-describedby={reason ? reasonId : undefined}
+          aria-busy={working("remove-containers") || undefined}
+          onClick={
+            busy || nothingThere ? undefined : () => setConfirmRemove(true)
+          }
         >
-          <ActionIcon
-            pending={actions.removeContainers.isPending}
-            size={glyph}
-          />
+          <ActionIcon pending={working("remove-containers")} size={glyph} />
           Remove containers
         </Button>
       )}
 
       {/* Last, under every button: `ActionReason` says why it is not between
           Stop and Remove containers. */}
-      {neverDeployed ? (
-        <ActionReason id={reasonId}>{COMPOSE_NEVER_DEPLOYED}</ActionReason>
+      {reason ? (
+        <ActionReason id={reasonId}>{reason}</ActionReason>
       ) : null}
 
       {/* Mounted here rather than beside the button, and only while open: this
@@ -352,10 +384,12 @@ export function ComposeActions({
             void run(
               "remove-containers",
               actions.removeContainers,
+              // The action's own words, past tense, as Stop's toast is.
+              `${compose.name}'s containers are removed.`,
               // "Named" is doing work: an unnamed mount's volume also
               // stays, but Start does not re-attach it, so "its volumes stay
               // and Start brings it back" read as a promise about the data.
-              `${compose.name} has no containers now. Its named volumes and project directory stay, and Start brings it back.`,
+              "Its named volumes and project directory stay. Start recreates the containers.",
             );
           }}
         />

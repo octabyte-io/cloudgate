@@ -10,6 +10,7 @@ import { useActiveOrganizationId } from "@/lib/auth/client";
 
 import { useComposeServices } from "../use-compose";
 import { joinContainers, type StackContainer } from "./join-containers";
+import { useStackMembers } from "./stack-members";
 
 /**
  * The containers a stack actually produced, joined to the services its file
@@ -53,16 +54,7 @@ export function useStackContainers(compose: ComposeDetail) {
   // A converge is in flight, so what is running is changing under the table.
   const live = compose.composeStatus === "running";
 
-  const members = useQuery({
-    queryKey: keys.docker.byApp(
-      organizationId,
-      serverId,
-      compose.appName,
-      appType,
-    ),
-    queryFn: () =>
-      dockerApi.containersByApp({ appName: compose.appName, appType, serverId }),
-    enabled,
+  const members = useStackMembers(compose, {
     refetchInterval: live ? 4_000 : false,
   });
 
@@ -95,14 +87,16 @@ export function useStackContainers(compose: ComposeDetail) {
   const declared = useComposeServices(compose.composeId);
 
   return {
-    rows: joinContainers({
-      appName: compose.appName,
-      swarm: appType === "stack",
-      declared: declared.data,
-      members: members.data,
-      listing: listing.data ?? undefined,
-      tasks: tasks.data,
-    }),
+    rows: nothingThere(compose, members.data)
+      ? []
+      : joinContainers({
+          appName: compose.appName,
+          swarm: appType === "stack",
+          declared: declared.data,
+          members: members.data,
+          listing: listing.data ?? undefined,
+          tasks: tasks.data,
+        }),
     /** The membership read is the one the table cannot do without. */
     isPending: members.isPending,
     error: members.error,
@@ -179,4 +173,23 @@ export function listingProblem(
     return "Docker on this host would not list its containers, so they come back empty.";
   }
   return null;
+}
+
+/**
+ * A stack taken down on purpose, or never deployed, with no container of it
+ * left on its deploy target: the table is empty, so the tab says why and what
+ * brings it back (`whyNothingRuns`) rather than listing every declared service
+ * against an empty column. The join stays for a stack meant to be up, where
+ * "the file says there is a worker and there is no worker" is the answer. It
+ * used to stay for a removed one too, and after Remove containers the tab
+ * showed the same rows as before with their state cells blank.
+ */
+export function nothingThere(
+  compose: Pick<ComposeDetail, "composeStatus">,
+  members: readonly unknown[] | undefined,
+): boolean {
+  return (
+    members?.length === 0 &&
+    (compose.composeStatus === "stopped" || compose.composeStatus === "idle")
+  );
 }

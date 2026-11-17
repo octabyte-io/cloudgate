@@ -181,7 +181,7 @@ describe("ComposeActions in an empty state", () => {
         "Deploy",
       ]);
       expect(document.body.textContent).not.toContain(
-        "nothing to start or stop",
+        "nothing to start",
       );
     },
   );
