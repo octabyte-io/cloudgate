@@ -31,27 +31,37 @@ export function TemplatesScreen() {
 
   return (
     <Page>
-      <PageHeader
-        title="Templates"
-        icon="book"
-        lede="Ready-made apps from the Template catalogue, to set up in one of your Environments."
-      />
       {templateId ? (
-        <TemplateSetup templateId={templateId} />
-      ) : (
-        <CatalogueView
-          templates={catalogue.data?.templates ?? []}
-          copy={catalogue.data?.copy}
-          pending={catalogue.isPending}
-          error={catalogue.error}
-          onRetry={() => void catalogue.refetch()}
-          query={query}
-          onQuery={setQuery}
-          tags={tags}
-          onTags={setTags}
-          page={page}
-          onPage={setPage}
+        // The setup opens on the Template itself (`TemplateIntro`), not on
+        // the catalogue's header.
+        <TemplateSetup
+          templateId={templateId}
+          template={catalogue.data?.templates.find(
+            (template) => template.id === templateId,
+          )}
+          cataloguePending={catalogue.isPending}
         />
+      ) : (
+        <>
+          <PageHeader
+            title="Templates"
+            icon="book"
+            lede="Ready-made apps from the Template catalogue, to set up in one of your Environments."
+          />
+          <CatalogueView
+            templates={catalogue.data?.templates ?? []}
+            copy={catalogue.data?.copy}
+            pending={catalogue.isPending}
+            error={catalogue.error}
+            onRetry={() => void catalogue.refetch()}
+            query={query}
+            onQuery={setQuery}
+            tags={tags}
+            onTags={setTags}
+            page={page}
+            onPage={setPage}
+          />
+        </>
       )}
     </Page>
   );

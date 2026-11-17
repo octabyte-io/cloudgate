@@ -3,12 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Card } from "@/components/console/card";
+import { Cols } from "@/components/console/cols";
 import { EmptyState } from "@/components/console/empty-state";
-import { Field } from "@/components/console/field";
-import { LinkButton } from "@/components/console/link-button";
-import { Picker } from "@/components/console/picker";
 import { Skeleton } from "@/components/console/skeleton";
 import { errorMessage } from "@/lib/api/error-message";
+import type { TemplateSummary } from "@/lib/api/endpoints/templates";
 import { useCloudAccounts } from "@/lib/api/use-cloud-accounts";
 import { useInstanceMode } from "@/lib/api/use-instance-mode";
 import { useProjects } from "@/lib/api/use-projects";
@@ -17,22 +17,40 @@ import { usePermission } from "@/lib/auth/use-permission";
 import { environmentPlanHref } from "@/lib/format/plan-href";
 
 import { newProjectTargets } from "./new-project-targets";
+import { ProjectChoice } from "./project-choice";
 import { SetupFormView } from "./setup-form";
 import { SetupPasteView } from "./setup-paste";
+import { SetupSteps } from "./setup-steps";
+import { TemplateIntro } from "./template-intro";
 import { NEW_PROJECT, useSetupForm, useSetUpTemplate } from "./use-templates";
 
 /**
- * Setting one Template up (`/templates?template=<id>`): pick an existing
- * Project, or a new one (#1376), then the form for it. Submit goes to the
- * Environment's Plan, on the Project's Config tab, where it is reviewed and
- * Applied like any other; on a repository-kept config, to the entries to
- * paste into its file, whose next push makes the Plan (#1378).
+ * Setting one Template up (`/templates?template=<id>`): the Template itself
+ * at the top, then the form, whose first question is the Project: an
+ * existing one, or a new one (#1376). Submit goes to the Environment's Plan,
+ * on the Project's Config tab, where it is reviewed and Applied like any
+ * other; on a repository-kept config, to the entries to paste into its file,
+ * whose next push makes the Plan (#1378).
+ *
+ * **The form is one card from the first question on.** Before a Project is
+ * chosen the card holds only that question, with a line saying what follows,
+ * so the screen reads as the start of a form and not as a page that failed
+ * to load. The aside says where the setup leads.
  *
  * A new Project's Deploy targets are the Environment form's: the platform
  * host (never on the Hosted instance, ADR-0053), the deploy Servers, and on
  * the Hosted instance the Cloud accounts the caller may read.
  */
-export function TemplateSetup({ templateId }: { templateId: string }) {
+export function TemplateSetup({
+  templateId,
+  template,
+  cataloguePending,
+}: {
+  templateId: string;
+  /** The catalogue's entry, for the header; absent until it arrives. */
+  template: TemplateSummary | undefined;
+  cataloguePending: boolean;
+}) {
   const router = useRouter();
   const projects = useProjects();
   const [picked, setPicked] = useState<string | null>(null);
@@ -54,84 +72,98 @@ export function TemplateSetup({ templateId }: { templateId: string }) {
   const targetsPending =
     servers.isPending || (readsClouds && cloudAccounts.isPending);
 
+  const name = template?.name ?? form.data?.templateName ?? templateId;
+  const pick = (next: string) => {
+    setPicked(next);
+    setUp.reset();
+  };
+  const place = (
+    <ProjectChoice
+      projects={projects.data}
+      pending={projects.isPending}
+      value={projectId}
+      onChange={pick}
+    />
+  );
+
   return (
     // Fades in where the catalogue stood: the same screen, its body replaced.
-    <div className="grid animate-fade gap-4">
-      <div>
-        <LinkButton href="/templates" size="sm">
-          All templates
-        </LinkButton>
-      </div>
-      {/* The console's `Picker`, not a native select, so it is the height,
-          focus ring and popup of every other choice in the app. */}
-      <Field name="projectId" label="Project" manual className="max-w-md">
-        <Picker
-          value={projectId ?? ""}
-          onValueChange={(next) => {
-            setPicked(next || null);
-            setUp.reset();
-          }}
-          placeholder="Choose a Project"
-          pending={projects.isPending}
-          options={[
-            { value: NEW_PROJECT, label: "New Project" },
-            ...(projects.data ?? []).map((project) => ({
-              value: project.projectId,
-              label: project.name,
-            })),
-          ]}
-        />
-      </Field>
-      {pasted ? (
-        // The setup's answer, arriving where its form stood.
-        <div className="grid animate-rise">
-          <SetupPasteView
-            result={pasted}
-            templateName={form.data?.templateName ?? templateId}
+    <div className="animate-fade">
+      <TemplateIntro
+        template={template}
+        fallbackName={name}
+        pending={cataloguePending}
+      />
+      <Cols aside={<SetupSteps />} asideLabel="How setup works">
+        {pasted ? (
+          // The setup's answer, arriving where its form stood.
+          <div className="grid animate-rise">
+            <SetupPasteView result={pasted} templateName={name} />
+          </div>
+        ) : projectId === null ? (
+          <Card>
+            <Card.Header
+              title={`Set up ${name}`}
+              sub="Set up makes every value once and opens a Plan; nothing runs until you Apply it."
+              headingLevel={2}
+            />
+            <Card.Body className="grid gap-4">
+              {place}
+              <p className="text-meta text-tx-3">
+                Choose a Project to see where in it {name} can go, and the
+                values it asks for.
+              </p>
+            </Card.Body>
+          </Card>
+        ) : form.isPending || (creating && targetsPending) ? (
+          <Skeleton className="h-96" />
+        ) : form.error ? (
+          <Card>
+            <Card.Body className="grid gap-4">
+              {place}
+              <EmptyState icon="alert" title="The setup form could not be read">
+                {errorMessage(form.error)}
+              </EmptyState>
+            </Card.Body>
+          </Card>
+        ) : (
+          <SetupFormView
+            key={projectId}
+            form={form.data}
+            place={place}
+            projectId={creating ? undefined : projectId}
+            onNewProject={() => pick(NEW_PROJECT)}
+            newProject={
+              creating
+                ? {
+                    targets: newProjectTargets(
+                      servers.data,
+                      readsClouds ? cloudAccounts.data : [],
+                      form.data.deployTargets,
+                      { platformHost: !hosted },
+                    ),
+                  }
+                : undefined
+            }
+            onSubmit={async (choice) => {
+              const result = await setUp.mutateAsync(
+                "newProject" in choice
+                  ? { templateId, ...choice }
+                  : { templateId, projectId, ...choice },
+              );
+              // A repository-kept config's answer stays here, as the entries
+              // to paste.
+              if (result.paste) return;
+              router.push(
+                environmentPlanHref(
+                  result.setupRecord.projectId,
+                  result.pendingSetup.environmentId,
+                ),
+              );
+            }}
           />
-        </div>
-      ) : projectId === null ? null : form.isPending ||
-        (creating && targetsPending) ? (
-        <Skeleton className="h-64" />
-      ) : form.error ? (
-        <EmptyState icon="alert" title="The setup form could not be read">
-          {errorMessage(form.error)}
-        </EmptyState>
-      ) : (
-        <SetupFormView
-          key={projectId}
-          form={form.data}
-          projectId={creating ? undefined : projectId}
-          newProject={
-            creating
-              ? {
-                  targets: newProjectTargets(
-                    servers.data,
-                    readsClouds ? cloudAccounts.data : [],
-                    form.data.deployTargets,
-                    { platformHost: !hosted },
-                  ),
-                }
-              : undefined
-          }
-          onSubmit={async (choice) => {
-            const result = await setUp.mutateAsync(
-              "newProject" in choice
-                ? { templateId, ...choice }
-                : { templateId, projectId, ...choice },
-            );
-            // A repository-kept config's answer stays here, as the entries
-            // to paste.
-            if (result.paste) return;
-            router.push(
-              environmentPlanHref(
-                result.setupRecord.projectId,
-                result.pendingSetup.environmentId,
-              ),
-            );
-          }}
-        />
-      )}
+        )}
+      </Cols>
     </div>
   );
 }

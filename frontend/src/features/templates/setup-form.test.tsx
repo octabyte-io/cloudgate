@@ -422,15 +422,25 @@ describe("SetupFormView", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("points a Project with no Environment at the page that adds one, instead of asking to pick one", async () => {
+  it("points a Project with no Environment at the page that adds one, or at a New Project, instead of asking anything else", async () => {
     const onSubmit = vi.fn();
+    const onNewProject = vi.fn();
     render(
       <SetupFormView
-        form={{ ...FORM, asked: [], environments: [] }}
+        form={{ ...FORM, environments: [] }}
         projectId="prj-1"
         onSubmit={onSubmit}
+        onNewProject={onNewProject}
       />,
     );
+
+    // With nowhere to go, the values are not asked.
+    expect(screen.queryByLabelText("Admin email")).toBeNull();
+    expect(screen.queryByLabelText("Setup name")).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Use a New Project instead" }),
+    );
+    expect(onNewProject).toHaveBeenCalled();
 
     expect(
       screen
@@ -440,6 +450,34 @@ describe("SetupFormView", () => {
     submit();
     await waitFor(() => expect(onSubmit).not.toHaveBeenCalled());
     expect(screen.queryByText("Pick an Environment")).toBeNull();
+  });
+
+  it("asks a yes-or-no value as a switch, starting on no and sending true or false", async () => {
+    const onSubmit = renderForm(vi.fn(), {
+      ...FORM,
+      asked: [
+        {
+          name: "SIGNUPS_ALLOWED",
+          label: "Allow sign-ups",
+          description: null,
+          default: null,
+          required: true,
+          secret: false,
+          format: null,
+          pattern: "^(true|false)$",
+        },
+      ],
+    });
+
+    const toggle = screen.getByRole("switch", { name: "Allow sign-ups" });
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(toggle);
+    submit();
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0][0].values).toEqual({
+      SIGNUPS_ALLOWED: "true",
+    });
   });
 
   it("puts back the Environment's generated host after it was cleared", async () => {

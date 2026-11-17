@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### A Template's setup opens on the Template
+
+- Setting up a Template opens on it: its logo, name, version, description, links and every tag, with a way back to all templates, instead of the catalogue's header.
+- The Project is chosen from cards (New Project and each Project with its description) rather than one picker on an empty page; past five Projects it is a picker again. The form follows in the same card once a Project is chosen, beside the three steps from Set up to a running app.
+- A Project with no Environment says so in the form and offers Add an Environment or Use a New Project instead, without asking for values it cannot use.
+- A yes-or-no value is a switch.
+- Catalogue cards show whole tags, as many as fit, and say where a Template runs only when it cannot run everywhere.
+
+**What to do on upgrade**: nothing.
+
 ### The install fills in the public address sslip.io Domains need
 
 On a fresh install, Settings, Instance's public address was empty, so generating a free sslip.io Domain for something on the platform host only said to set it, and a Domain made anyway did not resolve. The install now finds this host's public IP (the public host it was given when that is a public IP, otherwise the address `api.ipify.org`, `checkip.amazonaws.com` or `ipv4.icanhazip.com` sees, with a 5-second limit each) and the backend writes it into that setting at boot, only while the setting has never been set. An address you saved, or cleared, is kept. `CLOUDGATE_PUBLIC_IP=<ip>` names the address instead, and `CLOUDGATE_PUBLIC_IP=none` turns this off (`docs/deploy.md` §2).
