@@ -1,5 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -86,5 +92,28 @@ describe("DeployButton", () => {
 
     expect(await screen.findByText("edge-1 is in maintenance.")).toBeDefined();
     expect(document.body.textContent).not.toContain("Deployment queued.");
+  });
+
+  it("says why it is off under the button, and is described by that sentence", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <DeployButton
+          applicationId={APPLICATION_ID}
+          unavailable="No source is chosen yet."
+        />
+      </QueryClientProvider>,
+    );
+
+    const deploy = screen.getByRole("button", { name: "Deploy" });
+    const reason = await screen.findByText("No source is chosen yet.", {
+      selector: "p",
+    });
+    await waitFor(() =>
+      expect(deploy.getAttribute("aria-describedby")).toBe(reason.id),
+    );
+    expect(reason.classList.contains("w-full")).toBe(true);
   });
 });

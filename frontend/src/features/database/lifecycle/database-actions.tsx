@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 
+import { ActionReason } from "@/components/console/action-reason";
 import { Modal } from "@/components/console/modal";
 import { toast } from "@/components/console/toast";
 import { Button } from "@/components/ui/button";
@@ -181,11 +182,12 @@ export function DatabaseActions({
             variant={label === "Rebuild" ? "dngr" : undefined}
             aria-disabled
             title={EXISTING_NOT_MANAGED}
+            aria-describedby={reasonId}
           >
             {label}
           </Button>
         ))}
-        <span className="text-meta text-tx-3">{EXISTING_NOT_MANAGED}</span>
+        <ActionReason id={reasonId}>{EXISTING_NOT_MANAGED}</ActionReason>
       </>
     );
   }
@@ -261,12 +263,6 @@ export function DatabaseActions({
         Stop
       </Button>
 
-      {neverDeployed ? (
-        <span id={reasonId} className="text-meta text-tx-3">
-          {DATABASE_NEVER_DEPLOYED}
-        </span>
-      ) : null}
-
       <Button
         size={size}
         variant="dngr"
@@ -281,6 +277,11 @@ export function DatabaseActions({
         />
         Rebuild
       </Button>
+
+      {/* Last, under every button — see `ActionReason`. */}
+      {neverDeployed ? (
+        <ActionReason id={reasonId}>{DATABASE_NEVER_DEPLOYED}</ActionReason>
+      ) : null}
 
       {stopConfirm ? (
         <Modal open={confirmingStop} onOpenChange={setConfirmingStop}>

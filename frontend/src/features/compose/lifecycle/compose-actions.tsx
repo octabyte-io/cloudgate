@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 
+import { ActionReason } from "@/components/console/action-reason";
 import { toast } from "@/components/console/toast";
 import { Button } from "@/components/ui/button";
 import { runsOnStackVm, type ComposeDetail } from "@/lib/api/endpoints/compose";
@@ -143,7 +144,7 @@ export function ComposeActions({
 
   /**
    * Start and Stop are off before the first Deploy, with the reason
-   * beside them, the way Deploy is off over an empty file. `idle` is the
+   * under the row, the way Deploy is off over an empty file. `idle` is the
    * never-deployed default now that Stop writes `stopped`: Start would
    * run `up -d` in a directory that does not exist, and the backend's
    * `notDeployedRefusal` would say so after the press. A stack stopped by an
@@ -316,12 +317,6 @@ export function ComposeActions({
         </Button>
       ) : null}
 
-      {neverDeployed ? (
-        <span id={reasonId} className="text-meta text-tx-3">
-          {COMPOSE_NEVER_DEPLOYED}
-        </span>
-      ) : null}
-
       {swarm ? null : (
         <Button
           size={size}
@@ -337,6 +332,12 @@ export function ComposeActions({
           Remove containers
         </Button>
       )}
+
+      {/* Last, under every button: `ActionReason` says why it is not between
+          Stop and Remove containers. */}
+      {neverDeployed ? (
+        <ActionReason id={reasonId}>{COMPOSE_NEVER_DEPLOYED}</ActionReason>
+      ) : null}
 
       {/* Mounted here rather than beside the button, and only while open: this
           row is rendered in four panels' headers, and a dialog that stays

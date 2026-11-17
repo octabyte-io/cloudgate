@@ -103,7 +103,7 @@ describe("ComposeActions", () => {
 
 /**
  * A stack no Deploy has run has nothing on its deploy target to start
- * or stop, so both are off with the reason beside them, the way Deploy is off
+ * or stop, so both are off with the reason under the row, the way Deploy is off
  * over an empty file.
  */
 describe("ComposeActions before the first Deploy", () => {
@@ -121,6 +121,27 @@ describe("ComposeActions before the first Deploy", () => {
     }
     expect(named("Deploy")?.getAttribute("aria-disabled")).toBeNull();
     expect(screen.getByText(/Deploy puts it there/)).toBeTruthy();
+  });
+
+  it("puts the reason under the whole row, after its last button, and describes Start and Stop by it", () => {
+    render(
+      withQuery(
+        <ComposeActions
+          compose={stack("docker-compose", { composeStatus: "idle" })}
+        />,
+      ),
+    );
+
+    const reason = screen.getByText(/Deploy puts it there/);
+    const buttons = screen.getAllByRole("button");
+    expect(buttons.at(-1)?.textContent).toBe("Remove containers");
+    expect(
+      buttons.at(-1)!.compareDocumentPosition(reason) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    for (const name of ["Start", "Stop"]) {
+      expect(named(name)?.getAttribute("aria-describedby")).toBe(reason.id);
+    }
   });
 
   it("leaves them live on a stack that has been deployed", () => {

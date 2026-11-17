@@ -1,6 +1,7 @@
 import { useId } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ActionReason } from "@/components/console/action-reason";
 import { toast } from "@/components/console/toast";
 import type { Deployment } from "@/lib/api/endpoints/deployments";
 import { hasSource } from "@/lib/format/source";
@@ -61,7 +62,7 @@ export function DeployButton({
   block?: boolean;
   /**
    * Why it cannot run now — {@link deployUnavailable}. Renders it off with the
-   * reason beside it, `DangerZone`'s `unavailable` pattern.
+   * reason under it (`ActionReason`), `DangerZone`'s `unavailable` pattern.
    */
   unavailable?: string | null;
 }) {
@@ -110,9 +111,7 @@ export function DeployButton({
   return (
     <>
       {button}
-      <span id={reasonId} className="text-meta text-tx-3">
-        {off}
-      </span>
+      <ActionReason id={reasonId}>{off}</ActionReason>
     </>
   );
 }

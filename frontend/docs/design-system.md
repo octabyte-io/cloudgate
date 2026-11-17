@@ -889,6 +889,7 @@ geometry rather than to change what they are — extend the `cva`, never fork th
 | `meta-strip` | The `--panel-2` strip above a table, inside the card. Figures go in a `<strong>` — the strip is a sentence and the numbers are what people scan for. |
 | `banner` | `Banner` (collapsible, count badge) + `BannerRow` (tone bullet with its word in an `sr-only` span, action that drops full-width under the text at 620px). Copy is `wrap-anywhere`. |
 | `page-header` | Title, icon, badges, lede, strap, actions. The title block asks for 340px so the two halves wrap apart on their own; under 620px the actions go full-width and share the row. |
+| `action-reason` | `ActionReason` — the sentence saying why an action row's controls are off, which F03's rule has the off buttons point at through `aria-describedby`. **Rendered last, after every button**, on a line of its own (`w-full`) and taking none of the row's width (`contain-inline-size`). It was a bare `<span>` between Stop and Remove containers: `PageHeader`'s actions size to their max-content, so the row grew to the sentence on one line and pushed its last button off the page. Used by the Compose, database and Application Deploy rows. |
 | `cols` | Main + `w-aside` rail, one column under 1040px with the rail second **in DOM order** — no `order` juggling, so eye and screen reader get the same sequence at both widths. |
 | `section-heading` | Heading, lede and its controls on one line, wrapping at 240px of heading rather than squeezing. |
 | **Status** | |

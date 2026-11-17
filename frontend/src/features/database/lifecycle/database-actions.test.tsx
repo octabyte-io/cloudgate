@@ -140,6 +140,18 @@ describe("DatabaseActions in a Cloud account", () => {
       fireEvent.click(button(name));
     }
     expect(screen.queryByRole("button", { name: /Deploy/ })).toBeNull();
+    // The sentence on screen, after the row, is what each one is described by.
+    const reason = screen.getByText(
+      "Cloudgate uses this database but doesn't manage it.",
+      { selector: "p" },
+    );
+    for (const name of ["Start", "Stop", "Rebuild"]) {
+      expect(button(name).getAttribute("aria-describedby")).toBe(reason.id);
+    }
+    expect(
+      button("Rebuild").compareDocumentPosition(reason) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(actions.current.start.mutateAsync).not.toHaveBeenCalled();
     expect(actions.current.stop.mutateAsync).not.toHaveBeenCalled();
     expect(actions.current.rebuild.mutateAsync).not.toHaveBeenCalled();
@@ -217,7 +229,7 @@ describe("DatabaseActions in a Cloud account", () => {
 
 /**
  * A database no Deploy has created has no service to scale, so Start
- * and Stop are off with the reason beside them, and Deploy stays live.
+ * and Stop are off with the reason under the row, and Deploy stays live.
  */
 describe("DatabaseActions before the first Deploy", () => {
   it("turns Start and Stop off, saying Deploy creates the service, and calls neither", () => {
@@ -231,6 +243,19 @@ describe("DatabaseActions before the first Deploy", () => {
     expect(actions.current.start.mutateAsync).not.toHaveBeenCalled();
     expect(actions.current.stop.mutateAsync).not.toHaveBeenCalled();
     expect(button("Deploy").getAttribute("aria-disabled")).toBeNull();
+  });
+
+  it("puts the reason after Rebuild, under the whole row, and describes Start and Stop by it", () => {
+    renderActions("postgres", null, { applicationStatus: "idle" });
+
+    const reason = screen.getByText(/Deploy creates it/);
+    expect(
+      button("Rebuild").compareDocumentPosition(reason) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    for (const name of ["Start", "Stop"]) {
+      expect(button(name).getAttribute("aria-describedby")).toBe(reason.id);
+    }
   });
 
   it("offers both once the database has been deployed and stopped", () => {
