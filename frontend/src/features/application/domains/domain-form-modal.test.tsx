@@ -426,6 +426,94 @@ describe("DomainTlsFields", () => {
 });
 
 /**
+ * Generate on the hand-add dialog serves its host by the rule a Template
+ * setup applies to the same kind of host (#103): HTTPS with Let's Encrypt on a
+ * public address, plain HTTP on a private one. The backend says which, in the
+ * same answer that carries the host, so the dialog holds no copy of the rule.
+ */
+describe("DomainFormModal's Generate one for me", () => {
+  const pressed = () =>
+    screen
+      .getByRole("group", { name: "Certificate" })
+      .querySelector("[aria-pressed=true]")?.textContent;
+  const httpsSwitch = () => screen.getAllByRole("switch")[1];
+  const host = () => (screen.getByLabelText(/Host/) as HTMLInputElement).value;
+
+  function addAndGenerate(https: boolean) {
+    vi.spyOn(settingsApi, "ip").mockResolvedValue("2.31.119.168");
+    vi.spyOn(domainsApi, "generate").mockResolvedValue({
+      host: "blog-0a1b2c-2-31-119-168.sslip.io",
+      https,
+    });
+    const create = vi.fn(async () => {});
+    render(
+      withQuery(
+        <DomainFormModal
+          appName="blog"
+          serverIp={null}
+          serverId={null}
+          domain={null}
+          open
+          onOpenChange={() => {}}
+          create={create}
+          update={vi.fn(async () => {})}
+        />,
+      ),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /Generate one for me/ }),
+    );
+    return { create };
+  }
+
+  it("serves a host generated on a public address over HTTPS with Let's Encrypt", async () => {
+    const { create } = addAndGenerate(true);
+
+    await waitFor(() =>
+      expect(host()).toBe("blog-0a1b2c-2-31-119-168.sslip.io"),
+    );
+    expect(httpsSwitch().getAttribute("aria-checked")).toBe("true");
+    expect(pressed()).toBe("Let's Encrypt");
+
+    fireEvent.click(screen.getByRole("button", { name: "Add domain" }));
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ https: true, certificateType: "letsencrypt" }),
+    );
+  });
+
+  it("leaves HTTPS off for a host generated on a private address", async () => {
+    const { create } = addAndGenerate(false);
+
+    await waitFor(() =>
+      expect(host()).toBe("blog-0a1b2c-2-31-119-168.sslip.io"),
+    );
+    expect(httpsSwitch().getAttribute("aria-checked")).toBe("false");
+    expect(pressed()).toBe("None");
+
+    fireEvent.click(screen.getByRole("button", { name: "Add domain" }));
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ https: false, certificateType: "none" }),
+    );
+  });
+
+  it("keeps a certificate chosen after Generate", async () => {
+    const { create } = addAndGenerate(true);
+
+    await waitFor(() => expect(pressed()).toBe("Let's Encrypt"));
+    fireEvent.click(screen.getByRole("button", { name: "Stored certificate" }));
+    expect(pressed()).toBe("Stored certificate");
+
+    fireEvent.click(screen.getByRole("button", { name: "Add domain" }));
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ https: true, certificateType: "stored" }),
+    );
+  });
+});
+
+/**
  * The toast after an add: it said "answering on it now" to an
  * Application that had never run.
  */

@@ -1177,7 +1177,7 @@ describe('Domains (e2e)', () => {
         });
 
         expect(res.status).toBe(200);
-        expect(res.text).toMatch(
+        expect((res.body as { host: string }).host).toMatch(
           /^blog-app-[0-9a-f]{6}-203-0-113-10\.sslip\.io$/,
         );
       });
@@ -1198,10 +1198,13 @@ describe('Domains (e2e)', () => {
         // Only the random hash differs: both answers carry the instance's own
         // address, which is what "no server row is the platform host" looks
         // like here.
-        expect(explicit.text.replace(/-[0-9a-f]{6}-/, '-')).toBe(
-          omitted.text.replace(/-[0-9a-f]{6}-/, '-'),
+        const [named, left] = [explicit, omitted].map(
+          (res) => (res.body as { host: string }).host,
         );
-        expect(explicit.text).not.toBe(omitted.text);
+        expect(named.replace(/-[0-9a-f]{6}-/, '-')).toBe(
+          left.replace(/-[0-9a-f]{6}-/, '-'),
+        );
+        expect(named).not.toBe(left);
       });
 
       it('embeds the server IP when a real serverId travels over HTTP', async () => {
@@ -1218,9 +1221,55 @@ describe('Domains (e2e)', () => {
         });
 
         expect(res.status).toBe(200);
-        expect(res.text).toMatch(
+        expect((res.body as { host: string }).host).toMatch(
           /^blog-app-[0-9a-f]{6}-192-168-1-10\.sslip\.io$/,
         );
+      });
+
+      /**
+       * The hand-add dialog serves a generated host by the rule a Template
+       * setup applies to the same host (#103): the answer says whether it
+       * is served over HTTPS, from `generatedHostHttps`, so the console
+       * holds no copy of the public-address rule.
+       */
+      it('says a host generated on a public address is served over HTTPS', async () => {
+        const { ownerSession } = await setUpApplication();
+        await recordInstanceAddress('2.31.119.168');
+
+        const res = await generate(ownerSession.cookie, {
+          appName: 'blog-app',
+          serverId: null,
+        });
+
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual({
+          host: expect.stringMatching(
+            /^blog-app-[0-9a-f]{6}-2-31-119-168\.sslip\.io$/,
+          ) as unknown,
+          https: true,
+        });
+      });
+
+      it('says a host generated on a private address stays plain HTTP', async () => {
+        const { ownerSession, organizationId } = await setUpApplication();
+        await ctx.db.$client.query(
+          `insert into server (server_id, name, ip_address, port, created_at, organization_id)
+           values ('srv-lan', 'lan box', '192.168.1.10', 22, $1, $2)`,
+          [new Date().toISOString(), organizationId],
+        );
+
+        const res = await generate(ownerSession.cookie, {
+          appName: 'blog-app',
+          serverId: 'srv-lan',
+        });
+
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual({
+          host: expect.stringMatching(
+            /^blog-app-[0-9a-f]{6}-192-168-1-10\.sslip\.io$/,
+          ) as unknown,
+          https: false,
+        });
       });
 
       it('refuses a serverId that is neither a string nor null', async () => {

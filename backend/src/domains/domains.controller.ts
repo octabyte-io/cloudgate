@@ -62,7 +62,7 @@ export class DomainsController {
     @CurrentSession() session: Session,
     @Body() body: GenerateDomainDto,
   ) {
-    return this.domainsService.generateDomain(
+    return this.domainsService.generateServedDomain(
       toCtx(user, session),
       body.appName,
       body.serverId,

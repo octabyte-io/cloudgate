@@ -154,6 +154,15 @@ export type UpdateDomainInput = Partial<
 >;
 
 /**
+ * `POST /domains/generate`'s answer: an `sslip.io` host, and whether it is
+ * served over HTTPS (its address is public, so Let's Encrypt can reach it).
+ */
+export interface GeneratedHost {
+  host: string;
+  https: boolean;
+}
+
+/**
  * What the resolver found, and whether it is what this Server wants.
  *
  * A host behind a CDN comes back **valid with a warning**: the proxy's address
@@ -200,9 +209,11 @@ export const domainsApi = {
    * A host on `sslip.io` carrying the Server's address, so a service is
    * reachable before anyone owns a domain.
    *
-   * **`postText`, not `post`.** `generateDomain` returns `Promise<string>`, so
-   * Nest sends `text/plain` and JSON-parsing it yields `undefined` — which is how
-   * an undefined host reached a form field and crashed the dialog.
+   * The answer says whether the host is served over HTTPS, by the rule a
+   * Template setup applies to the same host: on a public address, where
+   * Let's Encrypt can reach it (#103). The dialog defaults HTTPS from it, so
+   * the console holds no copy of that rule. It was a bare host, sent as
+   * text, before.
    *
    * `serverId` is passed through as-is, null included. It used to be spread
    * conditionally to strip the null, because the DTO spelled the field
@@ -211,7 +222,7 @@ export const domainsApi = {
    * it back.
    */
   generate: (appName: string, serverId?: string | null) =>
-    api.postText("/domains/generate", { appName, serverId }),
+    api.post<GeneratedHost>("/domains/generate", { appName, serverId }),
 
   /**
    * Resolve a host and compare it with where it should point. `serverIp` is

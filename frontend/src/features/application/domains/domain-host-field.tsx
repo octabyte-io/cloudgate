@@ -22,7 +22,8 @@ import {
  * - **Generate** asks `POST /domains/generate` for an `sslip.io` host carrying the
  *   Server's address, so a service is reachable before anyone owns a domain. It
  *   mints a new random host each time, which is why it is a button and not a
- *   default value.
+ *   default value. The answer also says whether that host is served over
+ *   HTTPS (its address is public), which turns HTTPS on with Let's Encrypt.
  * - **Check DNS** asks `POST /domains/validate` what the host resolves to. It is
  *   never automatic: it reaches a resolver, and someone typing a hostname
  *   character by character does not want a lookup per keystroke.
@@ -128,7 +129,18 @@ export function DomainHostField({
                 appName,
                 serverId,
               });
-              form.setValue("host", generated, { shouldValidate: true });
+              form.setValue("host", generated.host, { shouldValidate: true });
+              // Served as a Template setup serves the same host (#103): the
+              // backend says whether its address is public, so HTTPS with
+              // Let's Encrypt is the default here and nothing in the console
+              // repeats that rule. Set once, now; a choice made after this
+              // stands, and a certificate already picked is kept.
+              if (generated.https) {
+                form.setValue("https", true);
+                if (form.getValues("certificateType") === "none") {
+                  form.setValue("certificateType", "letsencrypt");
+                }
+              }
               validate.reset();
             } catch (error) {
               toast.error(error);

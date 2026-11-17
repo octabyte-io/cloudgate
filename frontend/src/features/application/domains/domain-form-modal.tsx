@@ -229,7 +229,7 @@ export function DomainFormModal({
               </>
             )}
 
-            <DomainTlsFields certificateType={storedCertificate} />
+            <DomainTlsFields />
 
             <FormError message={form.rootError} />
           </Modal.Body>

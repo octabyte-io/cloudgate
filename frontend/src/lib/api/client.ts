@@ -190,10 +190,11 @@ export const api = {
   /**
    * The same, for a POST that answers with a bare string.
    *
-   * `POST /domains/generate` is the one: `generateDomain` returns
-   * `Promise<string>` and the route sets no type of its own, so it goes out as
+   * `POST /domains/generate` was the first: `generateDomain` returned
+   * `Promise<string>` and the route set no type of its own, so it went out as
    * Express's default `text/html`, and `post<string>` handed back `undefined` —
    * which reached a form field and crashed the dialog on `undefined.trim()`.
+   * That route answers JSON now (#103); `POST /patches/repo/ensure` is the one.
    * F02's own note about `getText` was right and one method short.
    * **A route typed `Promise<string>` in Nest needs one of these two.**
    */

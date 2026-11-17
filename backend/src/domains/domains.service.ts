@@ -1381,6 +1381,23 @@ export class DomainsService {
   }
 
   /**
+   * `POST /domains/generate`'s answer: {@link generateDomain}'s host, and
+   * whether it is served over HTTPS by the rule a Template setup applies to
+   * the same host ({@link generatedHostHttps}), so the hand-add dialog
+   * defaults HTTPS and Let's Encrypt from this one rule rather than a copy
+   * of it (#103).
+   */
+  async generateServedDomain(
+    ctx: PermissionCtx,
+    appName: string,
+    serverId?: string | null,
+    composeId?: string | null,
+  ): Promise<{ host: string; https: boolean }> {
+    const host = await this.generateDomain(ctx, appName, serverId, composeId);
+    return { host, https: await this.generatedHostHttps(ctx, serverId) };
+  }
+
+  /**
    * {@link generateDomain}'s host for a Service the same operation is
    * creating (a Project config plan's `web`), under that create's own
    * statement rather than `domain: create` (US67), as

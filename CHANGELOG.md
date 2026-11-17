@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### A generated Domain added by hand is served over HTTPS on a public address
+
+**Generate one for me** in the Add a domain dialog filled in an sslip.io host but left **Serve over HTTPS** off and the certificate at None, so the Domain was plain HTTP even on a public address. A Template's setup serves the same host over HTTPS with Let's Encrypt. Generate now does the same when this server's address is public, and leaves HTTPS off for a private one; anything changed after Generate is kept (#103).
+
+**What to do on upgrade**: nothing in the console. `POST /domains/generate` now answers JSON, `{ "host": "…", "https": true }`, instead of the host as plain text; a script calling it directly reads `host` from the body.
+
 ## 0.3.8 (2026-11-17)
 
 ### A generated ed25519 SSH key is always well-formed

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
 import { Field } from "@/components/console/field";
@@ -74,20 +73,15 @@ const HTTPS_OFF_HINT =
  * control is off until HTTPS is on again; a stored domain saved that way
  * opens showing None, and the dialog sends None for it.
  *
- * The three are one group because they are one decision, and the state that decides
- * which field is on screen belongs to it rather than to the dialog: nothing else in
- * the form reads it.
+ * The three are one group because they are one decision. The choice is read off
+ * the form rather than kept here: Generate one for me sets HTTPS and Let's
+ * Encrypt for a host on a public address (`domain-host-field.tsx`, #103), and a
+ * copy held in this component's state kept showing None under it.
  */
-export function DomainTlsFields({
-  certificateType,
-}: {
-  /** The stored answer, for a domain being edited. */
-  certificateType: CertificateType;
-}) {
+export function DomainTlsFields() {
   const form = useFormContext<DomainValues>();
   const https = form.watch("https");
-  const [certificate, setCertificate] =
-    useState<CertificateType>(certificateType);
+  const certificate = form.watch("certificateType");
   const shown = https ? certificate : "none";
 
   return (
@@ -111,11 +105,9 @@ export function DomainTlsFields({
                 // turning it on picks the answer almost everyone wants and
                 // leaves it visible to change.
                 if (next && certificate === "none") {
-                  setCertificate("letsencrypt");
                   form.setValue("certificateType", "letsencrypt");
                 }
                 if (!next) {
-                  setCertificate("none");
                   form.setValue("certificateType", "none");
                 }
               }}
@@ -140,10 +132,7 @@ export function DomainTlsFields({
               className="h-auto flex-wrap"
               value={https ? field.value : "none"}
               disabled={!https}
-              onChange={(next) => {
-                field.onChange(next);
-                setCertificate(next);
-              }}
+              onChange={(next) => field.onChange(next)}
               options={[
                 { value: "none", label: "None" },
                 { value: "letsencrypt", label: "Let's Encrypt" },
