@@ -1,8 +1,6 @@
 import type {
   BoughtServerCatalogue,
   BoughtServerStage,
-  CatalogueLocation,
-  CatalogueSize,
 } from "@/lib/api/endpoints/bought-servers";
 import type {
   EnvironmentDeployment,
@@ -15,8 +13,6 @@ import {
   notReadyYet,
   type Server,
 } from "@/lib/api/endpoints/servers";
-
-import { SUGGESTED_MEMORY_GB, offerIn } from "../server/buy/buy-model";
 
 /**
  * The get-started wizard's decisions, as pure functions over what the API
@@ -119,45 +115,6 @@ export function startingPrice(catalogue: BoughtServerCatalogue): number | null {
     }
   }
   return lowest;
-}
-
-export { SUGGESTED_MEMORY_GB };
-
-/**
- * The size the wizard suggests in a Location: the cheapest shared one with
- * enough memory that can be bought there now, else the cheapest one that
- * can. Undefined when nothing can be bought there.
- */
-export function suggestedSize(
-  sizes: readonly CatalogueSize[],
-  locationId: string,
-): CatalogueSize | undefined {
-  const buyable = sizes
-    .filter((size) => offerIn(size, locationId)?.available)
-    .sort(
-      (a, b) =>
-        (offerIn(a, locationId)?.monthly ?? 0) -
-        (offerIn(b, locationId)?.monthly ?? 0),
-    );
-  return (
-    buyable.find(
-      (size) =>
-        size.family === "shared" && size.memoryGb >= SUGGESTED_MEMORY_GB,
-    ) ?? buyable[0]
-  );
-}
-
-/**
- * The Location the wizard suggests: the nearest one where a size can be
- * bought now, from a list already ordered nearest first.
- */
-export function suggestedLocation(
-  ordered: readonly { location: CatalogueLocation }[],
-  sizes: readonly CatalogueSize[],
-): CatalogueLocation | undefined {
-  return ordered.find(({ location }) =>
-    sizes.some((size) => offerIn(size, location.id)?.available),
-  )?.location;
 }
 
 /** How a deploy the wizard started is going. */

@@ -27,8 +27,7 @@ const DOING: Partial<Record<BoughtServerStage, string>> = {
 
 /**
  * A Bought Server's progress, as a strip above step two's details: something
- * happening on its own, not a step to take (spec #106, the prototype's ready
- * variant A). The app starts by itself once the Server is Ready, because
+ * happening on its own, not a step to take (spec #106). The app starts by itself once the Server is Ready, because
  * Cloudgate applies the wizard's setup then (ADR-0073); nothing here presses
  * anything for it.
  *

@@ -18,8 +18,6 @@ import {
   launchPhase,
   serverBeingMade,
   startingPrice,
-  suggestedLocation,
-  suggestedSize,
 } from "./wizard-model";
 
 function server(over: Partial<Server>): Server {
@@ -191,45 +189,6 @@ describe("startingPrice", () => {
         sizes: [size("a", "shared", 2, [offer("x", 5, false)])],
       }),
     ).toBeNull();
-  });
-});
-
-describe("suggestedSize", () => {
-  const sizes = [
-    size("small", "shared", 2, [offer("fsn1", 5)]),
-    size("arm", "arm", 4, [offer("fsn1", 6)]),
-    size("mid", "shared", 4, [offer("fsn1", 9)]),
-    size("big", "shared", 8, [offer("fsn1", 15)]),
-    size("gone", "shared", 4, [offer("fsn1", 7, false)]),
-  ];
-
-  it("is the cheapest shared size with 4 GB that can be bought there", () => {
-    expect(suggestedSize(sizes, "fsn1")?.id).toBe("mid");
-  });
-
-  it("falls back to the cheapest size on sale when none has enough memory", () => {
-    expect(
-      suggestedSize([size("small", "shared", 2, [offer("fsn1", 5)])], "fsn1")
-        ?.id,
-    ).toBe("small");
-  });
-
-  it("is nothing where no size is on sale", () => {
-    expect(suggestedSize(sizes, "ash")).toBeUndefined();
-  });
-});
-
-describe("suggestedLocation", () => {
-  it("is the nearest Location where a size is on sale", () => {
-    const near = { id: "near", city: "A", country: "DE", latitude: 0, longitude: 0 };
-    const far = { id: "far", city: "B", country: "FI", latitude: 0, longitude: 0 };
-
-    expect(
-      suggestedLocation(
-        [{ location: near }, { location: far }],
-        [size("a", "shared", 4, [offer("near", 5, false), offer("far", 6)])],
-      )?.id,
-    ).toBe("far");
   });
 });
 

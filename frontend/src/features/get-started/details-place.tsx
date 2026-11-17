@@ -14,7 +14,7 @@ import type { WizardPlace } from "./deploy-template";
 /**
  * Step 2's "Where it goes": the Project (Template setup's `ProjectChoice`)
  * and the setup name, folded behind More options with their defaults said
- * in one line (the prototype's details variant B). The line stays when
+ * in one line (spec #106). The line stays when
  * unfolded: with the Server it names, it is what Deploy makes, said before
  * it is pressed, standing in for the Plan review nobody here is asked to
  * do (ADR-0073).
