@@ -432,7 +432,7 @@ describe('Buying a Server (e2e)', () => {
         expect(res.body).toMatchObject({
           code: 'IMAGE_NOT_OFFERED',
           message:
-            "That image can't be used for this server. Pick another image",
+            "That Server image can't be used for this size. Pick another.",
         });
         expect(await rows()).toEqual([]);
         expect(createPrice).not.toHaveBeenCalled();

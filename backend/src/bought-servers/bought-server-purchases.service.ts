@@ -1209,7 +1209,7 @@ export class BoughtServerPurchases
     ) {
       throw new BadRequestException({
         code: 'IMAGE_NOT_OFFERED',
-        message: "That image can't be used for this server. Pick another image",
+        message: "That Server image can't be used for this size. Pick another.",
       });
     }
     return {
