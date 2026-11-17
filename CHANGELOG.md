@@ -2,7 +2,23 @@
 
 ## Unreleased
 
-## 0.3.7 (2026-11-17)
+## 0.3.8 (2026-11-17)
+
+### A generated ed25519 SSH key is always well-formed
+
+About one ed25519 key in 256 that Cloudgate generated (an SSH key's **Generate** path) came out with a 31-byte key in both halves: a public line no Server's `authorized_keys` accepts, and a private key Cloudgate could not read back. The SSH library dropped the key's leading zero byte. Cloudgate now makes the key with Node's crypto and writes both halves itself. RSA keys were not affected.
+
+**What to do on upgrade**: nothing. A key generated before this that a Server refuses can be deleted and generated again.
+
+### A failed builds-concurrency read no longer ends the backend
+
+When a build ended, the build queue read the licence's builds concurrency from the database before starting the next one, and a failed read (Postgres away) rejected unhandled, which ends the process. A failed read now runs one build at a time, and the queue starts nothing once the backend is shutting down.
+
+**What to do on upgrade**: nothing.
+
+## 0.3.7 (2026-11-17, not published)
+
+0.3.7 was tagged but never published: its Moto lane went red on a test that left a CloudFront id moto names all in letters unnumbered. Everything below ships in 0.3.8.
 
 ### A Template's setup opens on the Template
 
