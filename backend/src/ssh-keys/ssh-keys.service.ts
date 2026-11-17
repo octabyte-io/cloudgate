@@ -11,6 +11,7 @@ import type {
   UpdateSshKeyDto,
 } from './dto/ssh-key.dto';
 import type { SshKey } from './ssh-key.schema';
+import { generateEd25519KeyPair } from './ed25519-key-pair';
 
 /** An SSH key as exposed over the API — the private key never leaves the server. */
 export type SanitizedSshKey = Omit<SshKey, 'privateKey'>;
@@ -114,13 +115,14 @@ export class SshKeysService {
    * in {@link generatedKeyComment} of the key's name, so the line an operator
    * installs on a host says which key it is. Only this path sets a comment — an
    * imported keypair keeps whatever the operator's own line already ends in.
+   * ed25519 comes from {@link generateEd25519KeyPair}, not ssh2's generator,
+   * which writes a malformed pair about one time in 256; ssh2's RSA output
+   * frames its DER integers as they are and is sound.
    */
   private generateKeyPair(name: string, type: SshKeyType = 'rsa') {
     const comment = generatedKeyComment(name);
-    const keys =
-      type === 'rsa'
-        ? sshUtils.generateKeyPairSync('rsa', { bits: 4096, comment })
-        : sshUtils.generateKeyPairSync('ed25519', { comment });
+    if (type !== 'rsa') return generateEd25519KeyPair(comment);
+    const keys = sshUtils.generateKeyPairSync('rsa', { bits: 4096, comment });
     return { publicKey: keys.public, privateKey: keys.private };
   }
 

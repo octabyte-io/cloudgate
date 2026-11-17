@@ -1,21 +1,15 @@
 import { utils as sshUtils } from 'ssh2';
 import type { ParsedKey } from 'ssh2';
 
+import { generateEd25519KeyPair } from '../ssh-keys/ed25519-key-pair';
+
 /**
  * A stack's own Stack VM SSH key (ADR-0070): an ed25519 pair, made once with
  * the stack. Only the private half is kept (`stack_vm_key`); the public half
  * is read back from it whenever the Stack VM's definition is written.
  */
 export function makeStackVmKey(configName: string): string {
-  // ssh2 now and then writes an OpenSSH private key its own parser refuses
-  // ("Malformed OpenSSH private key"); a key SSH could never use is made
-  // again rather than kept.
-  for (;;) {
-    const made = sshUtils.generateKeyPairSync('ed25519', {
-      comment: `cloudgate-stack-vm-${configName}`,
-    }).private;
-    if (!(sshUtils.parseKey(made) instanceof Error)) return made;
-  }
+  return generateEd25519KeyPair(`cloudgate-stack-vm-${configName}`).privateKey;
 }
 
 /** The public half of a Stack VM key, as an `authorized_keys` line. */

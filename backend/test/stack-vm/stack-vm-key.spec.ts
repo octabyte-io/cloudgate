@@ -1,5 +1,6 @@
 import { utils as sshUtils } from 'ssh2';
 
+import { generateEd25519KeyPair } from '../../src/ssh-keys/ed25519-key-pair';
 import {
   makeStackVmKey,
   stackVmPublicKey,
@@ -21,10 +22,10 @@ describe('makeStackVmKey', () => {
 
 describe('stackVmPublicKey', () => {
   it('reads the authorized_keys line back from the private half', () => {
-    const pair = sshUtils.generateKeyPairSync('ed25519');
+    const pair = generateEd25519KeyPair('stack');
 
-    expect(stackVmPublicKey(pair.private)).toBe(
-      pair.public.split(' ').slice(0, 2).join(' '),
+    expect(stackVmPublicKey(pair.privateKey)).toBe(
+      pair.publicKey.split(' ').slice(0, 2).join(' '),
     );
   });
 });

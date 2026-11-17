@@ -8,6 +8,7 @@ import {
   unverifiedHostKey,
 } from '../../src/remote/host-key';
 import type { ServerConnection } from '../../src/remote/server-key.provider';
+import { generateEd25519KeyPair } from '../../src/ssh-keys/ed25519-key-pair';
 
 /**
  * A real SSH server in the test process, standing in for a remote Server's
@@ -82,16 +83,13 @@ function keyOf(material: string): ParsedKey {
 }
 
 /**
- * An ed25519 key pair ssh2 can read back. ssh2 1.17's `generateKeyPairSync`
- * now and then writes an OpenSSH private key its own parser refuses
- * ("Malformed OpenSSH private key"), which reddened a random test here; a pair
- * that does not parse is generated again.
+ * An ed25519 key pair, through the helper production uses: ssh2 1.17's own
+ * `generateKeyPairSync('ed25519')` writes a pair its parser refuses about one
+ * time in 256, which reddened a random test here.
  */
-function parseableKeyPair(): { private: string; public: string } {
-  for (;;) {
-    const pair = utils.generateKeyPairSync('ed25519');
-    if (!(utils.parseKey(pair.private) instanceof Error)) return pair;
-  }
+function keyPair(): { private: string; public: string } {
+  const { publicKey, privateKey } = generateEd25519KeyPair();
+  return { private: privateKey, public: publicKey };
 }
 
 export async function startSshForwardServer(
@@ -101,9 +99,9 @@ export async function startSshForwardServer(
   } = {},
 ): Promise<SshForwardServer> {
   const username = options.username ?? 'deploy';
-  const hostKey = parseableKeyPair();
-  const clientKey = parseableKeyPair();
-  const wrongKey = parseableKeyPair();
+  const hostKey = keyPair();
+  const clientKey = keyPair();
+  const wrongKey = keyPair();
   const accepted: ParsedKey[] = [keyOf(clientKey.public)];
 
   const closeWaiters: (() => void)[] = [];

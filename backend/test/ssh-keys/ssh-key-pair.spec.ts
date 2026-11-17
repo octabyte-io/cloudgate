@@ -1,6 +1,7 @@
 import { generateKeyPairSync } from 'node:crypto';
 import { utils as sshUtils } from 'ssh2';
 import { createSshKeySchema } from '../../src/ssh-keys/dto/ssh-key.dto';
+import { generateEd25519KeyPair } from '../../src/ssh-keys/ed25519-key-pair';
 
 /**
  * "Paste one I have" stored anything as a key. `hello this is not a key`
@@ -13,8 +14,14 @@ import { createSshKeySchema } from '../../src/ssh-keys/dto/ssh-key.dto';
  * refusal names.
  */
 
-const ed25519 = sshUtils.generateKeyPairSync('ed25519', { comment: 'a' });
-const otherEd25519 = sshUtils.generateKeyPairSync('ed25519', { comment: 'b' });
+// Through the helper production uses: ssh2's own ed25519 generator writes a
+// pair its parser refuses about one time in 256, which reddened this file.
+const toHalves = ({ publicKey, privateKey }: Record<string, string>) => ({
+  public: publicKey,
+  private: privateKey,
+});
+const ed25519 = toHalves(generateEd25519KeyPair('a'));
+const otherEd25519 = toHalves(generateEd25519KeyPair('b'));
 const rsa = sshUtils.generateKeyPairSync('rsa', { bits: 2048, comment: 'c' });
 
 /** Issues as `path: message`, so a failure shows which field was blamed. */
@@ -165,11 +172,23 @@ describe('createSshKeySchema — a pasted keypair', () => {
     });
 
     it('when the private half is protected by a passphrase', () => {
-      const locked = sshUtils.generateKeyPairSync('ed25519', {
-        passphrase: 'hunter2',
-        cipher: 'aes256-ctr',
-        rounds: 16,
-      });
+      // `ssh-keygen -t ed25519 -N hunter2`, written once: Cloudgate never makes
+      // a protected key, and ssh2's generator is not sound for ed25519.
+      const locked = {
+        public:
+          'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPS+XayhvhVByv8NDnEAz4G8OUkBdDGQx5fo99M4G6G9 locked',
+        private: [
+          '-----BEGIN OPENSSH PRIVATE KEY-----',
+          'b3BlbnNzaC1rZXktdjEAAAAACmFlczI1Ni1jdHIAAAAGYmNyeXB0AAAAGAAAABAVz499Ub',
+          'J1F7sANR2iGNBjAAAAGAAAAAEAAAAzAAAAC3NzaC1lZDI1NTE5AAAAIPS+XayhvhVByv8N',
+          'DnEAz4G8OUkBdDGQx5fo99M4G6G9AAAAkD+MyOvB2N9JC7v7Yow4xQsD/P4YoeTE388qbQ',
+          'eU2N+WqkcjzN8GOSocWzzlePLITFKBYEmyJOJms0SZzrLGksLynBdSB0db2QuBrZW4/gG4',
+          'UoC2QtLDhmmjaPaKY5LTKhElboAH2C8FbPzewiMXJz+aSA0kVMTxdS7B2rkcQjMmqVAR+Q',
+          'Jgj2grK6PNLOyVUw==',
+          '-----END OPENSSH PRIVATE KEY-----',
+          '',
+        ].join('\n'),
+      };
 
       expect(
         issuesOf({ publicKey: locked.public, privateKey: locked.private }),

@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { utils as sshUtils } from 'ssh2';
+import { generateEd25519KeyPair } from '../../src/ssh-keys/ed25519-key-pair';
 import { SshKeysService } from '../../src/ssh-keys/ssh-keys.service';
 import { createTestApp, TestAppContext } from '../utils/test-app';
 import { createOrganization } from '../utils/test-auth';
@@ -20,14 +20,8 @@ const owner = {
  * refuses. `privateKeyMaterial` is a line from inside the private half's body,
  * the bytes the "never leaves the server" tests look for on the wire.
  */
-const generatedPair = sshUtils.generateKeyPairSync('ed25519', {
-  comment: 'test',
-});
-const suppliedKeyPair = {
-  publicKey: generatedPair.public,
-  privateKey: generatedPair.private,
-};
-const privateKeyMaterial = generatedPair.private.split('\n')[2];
+const suppliedKeyPair = generateEd25519KeyPair('test');
+const privateKeyMaterial = suppliedKeyPair.privateKey.split('\n')[2];
 
 async function signUp(
   server: App,
@@ -253,7 +247,7 @@ describe('SSH keys (e2e)', () => {
    * the field that is wrong, and the table is still empty afterwards.
    */
   describe('POST /ssh-keys refuses a pasted pair it cannot use', () => {
-    const otherPair = sshUtils.generateKeyPairSync('ed25519');
+    const otherPair = generateEd25519KeyPair();
 
     it.each([
       [
@@ -276,7 +270,7 @@ describe('SSH keys (e2e)', () => {
       [
         'halves from two different pairs',
         {
-          publicKey: otherPair.public,
+          publicKey: otherPair.publicKey,
           privateKey: suppliedKeyPair.privateKey,
         },
         ['privateKey'],
