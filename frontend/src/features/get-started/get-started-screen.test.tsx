@@ -143,10 +143,7 @@ vi.mock("./use-get-started", () => ({
     data: reads.servers,
   }),
   useWizardPurchases: () => ({ isPending: false, data: reads.purchases }),
-  useWizardSetupForm: () =>
-    reads.setupForm
-      ? { isPending: false, error: null, data: reads.setupForm }
-      : { isPending: true },
+  WAIT_POLL_MS: 4_000,
   useWizardServerRoom: () => ({ isPending: false, data: null }),
   useLaunch: () => ({
     plan: { error: null },
@@ -547,17 +544,20 @@ describe("GetStartedScreen", () => {
       ["creating", "ghost-1 is being created"],
       ["setting_up", "ghost-1 is being set up"],
       ["ready", "ghost-1 is ready to use"],
-    ] as const)("heads the strip at %s with a sentence about the server", (stage, headline) => {
-      if (stage === "setting_up" || stage === "ready") {
-        reads.servers = [boughtServer("bs_1", "ghost-1", stage)];
-      } else {
-        reads.purchases = [purchase("bs_1", "ghost-1", stage)];
-      }
-      reads.setupForm = GHOST_SETUP;
-      show(DETAILS.slice("/get-started?".length));
+    ] as const)(
+      "heads the strip at %s with a sentence about the server",
+      (stage, headline) => {
+        if (stage === "setting_up" || stage === "ready") {
+          reads.servers = [boughtServer("bs_1", "ghost-1", stage)];
+        } else {
+          reads.purchases = [purchase("bs_1", "ghost-1", stage)];
+        }
+        reads.setupForm = GHOST_SETUP;
+        show(DETAILS.slice("/get-started?".length));
 
-      expect(within(strip()).getByText(headline)).toBeTruthy();
-    });
+        expect(within(strip()).getByText(headline)).toBeTruthy();
+      },
+    );
 
     it("says the app starts on its own and the page can be left, with no button to set it up now", () => {
       reads.servers = [boughtServer("bs_1", "ghost-1", "setting_up")];

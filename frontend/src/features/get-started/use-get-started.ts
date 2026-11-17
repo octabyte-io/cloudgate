@@ -10,41 +10,10 @@ import {
 } from "@/lib/api/endpoints/pending-setups";
 import { projectConfigApi } from "@/lib/api/endpoints/project-config";
 import { serversApi } from "@/lib/api/endpoints/servers";
-import { templatesApi } from "@/lib/api/endpoints/templates";
 import { keys } from "@/lib/api/keys";
 import { useActiveOrganizationId } from "@/lib/auth/client";
 
-import { NEW_PROJECT } from "../templates/use-templates";
 import { launchPhase, serverBeingMade } from "./wizard-model";
-
-/**
- * The new-Project setup form step 2 reads, under Template setup's own key.
- * With `follow` it is asked again while the template has a compose Domain
- * and the form has no generated host on `serverId` yet: a Bought Server
- * gets one only once its Server row exists (Setting up), so a form read
- * before then starts its web address empty.
- */
-export function useWizardSetupForm(
-  templateId: string,
-  serverId: string,
-  follow: boolean,
-) {
-  const { organizationId } = useActiveOrganizationId();
-  return useQuery({
-    queryKey: keys.templates.setupForm(organizationId, templateId, NEW_PROJECT),
-    queryFn: () => templatesApi.setupForm(templateId, null),
-    enabled: organizationId !== null,
-    refetchInterval: (query) => {
-      const form = query.state.data;
-      const waiting =
-        follow &&
-        form !== undefined &&
-        form.newProjectHosts !== null &&
-        !(serverId in form.newProjectHosts.servers);
-      return waiting ? WAIT_POLL_MS : false;
-    },
-  });
-}
 
 /**
  * The get-started wizard's reads, each one the console's own read under the

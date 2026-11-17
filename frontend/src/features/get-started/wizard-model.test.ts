@@ -7,6 +7,7 @@ import type {
 } from "@/lib/api/endpoints/environments";
 import type { Plan, PlanStepResult } from "@/lib/api/endpoints/project-config";
 import type { Server } from "@/lib/api/endpoints/servers";
+import type { SetupForm } from "@/lib/api/endpoints/templates";
 
 import {
   appAddress,
@@ -18,6 +19,7 @@ import {
   launchPhase,
   serverBeingMade,
   startingPrice,
+  waitsForGeneratedHost,
 } from "./wizard-model";
 
 function server(over: Partial<Server>): Server {
@@ -358,5 +360,31 @@ describe("freeEnvironmentName", () => {
     expect(freeEnvironmentName(["Production", "production-2"])).toBe(
       "production-3",
     );
+  });
+});
+
+describe("waitsForGeneratedHost", () => {
+  const form = (servers: Record<string, Record<string, string>> | null) =>
+    ({
+      newProjectHosts:
+        servers === null ? null : { servers, platformHost: null },
+    }) as SetupForm;
+
+  it("waits while the new-Project form has no host generated on the Server", () => {
+    expect(waitsForGeneratedHost(form({}), "srv_1")).toBe(true);
+  });
+
+  it("stops once the Server has its generated host", () => {
+    expect(
+      waitsForGeneratedHost(
+        form({ srv_1: { ghost: "ghost-1.sslip.io" } }),
+        "srv_1",
+      ),
+    ).toBe(false);
+  });
+
+  it("does not wait before the form is read, or for a form with no new-Project hosts", () => {
+    expect(waitsForGeneratedHost(undefined, "srv_1")).toBe(false);
+    expect(waitsForGeneratedHost(form(null), "srv_1")).toBe(false);
   });
 });

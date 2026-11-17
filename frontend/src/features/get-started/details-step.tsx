@@ -10,12 +10,13 @@ import { useProjects } from "@/lib/api/use-projects";
 
 import { DetailsForm } from "./details-form";
 import { ServerGone, ServerProgress } from "./server-progress";
+import { NEW_PROJECT, useSetupForm } from "../templates/use-templates";
 import {
   useWizardPurchases,
   useWizardServers,
-  useWizardSetupForm,
+  WAIT_POLL_MS,
 } from "./use-get-started";
-import { canSetUpOn } from "./wizard-model";
+import { canSetUpOn, waitsForGeneratedHost } from "./wizard-model";
 import { wizardHref } from "./wizard-state";
 
 /**
@@ -48,7 +49,12 @@ export function DetailsStep({
   // purchase until its Server row exists (Setting up), the row after.
   const servers = useWizardServers(bought ? serverId : undefined);
   const purchases = useWizardPurchases(bought, false);
-  const form = useWizardSetupForm(template.id, serverId, bought);
+  // The new-Project form, asked again on the buy path until it has the
+  // Bought Server's generated host.
+  const form = useSetupForm(template.id, NEW_PROJECT, {
+    askAgain: (read) =>
+      bought && waitsForGeneratedHost(read, serverId) ? WAIT_POLL_MS : false,
+  });
   const projects = useProjects();
   const server = servers.data?.find((entry) => entry.serverId === serverId);
   const purchase = purchases.data?.find((entry) => entry.id === serverId);

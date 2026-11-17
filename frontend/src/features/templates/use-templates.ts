@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 
 import {
   templatesApi,
+  type SetupForm,
   type TemplateSetupInput,
 } from "@/lib/api/endpoints/templates";
 import { keys } from "@/lib/api/keys";
@@ -31,8 +32,18 @@ export function useTemplateCatalogue() {
 /**
  * The setup form for one template: in one Project, or ({@link NEW_PROJECT})
  * for a new one. Idle until either is picked.
+ *
+ * `askAgain`, given the form read so far, says how many milliseconds until
+ * it is read again, or `false` for not again; the get-started wizard asks
+ * again while a Bought Server's generated host is still to come.
  */
-export function useSetupForm(templateId: string, projectId: string | null) {
+export function useSetupForm(
+  templateId: string,
+  projectId: string | null,
+  {
+    askAgain,
+  }: { askAgain?: (form: SetupForm | undefined) => number | false } = {},
+) {
   const { organizationId } = useActiveOrganizationId();
   return useQuery({
     queryKey: keys.templates.setupForm(
@@ -46,6 +57,9 @@ export function useSetupForm(templateId: string, projectId: string | null) {
         projectId === NEW_PROJECT ? null : (projectId ?? ""),
       ),
     enabled: organizationId !== null && projectId !== null,
+    refetchInterval: askAgain
+      ? (query) => askAgain(query.state.data)
+      : undefined,
   });
 }
 

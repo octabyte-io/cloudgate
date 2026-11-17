@@ -83,11 +83,7 @@ vi.mock("./use-get-started", () => ({
     data: reads.servers,
   }),
   useWizardPurchases: () => ({ isPending: false, data: [] }),
-  useWizardSetupForm: () => ({
-    isPending: false,
-    error: null,
-    data: reads.forms["new-project"],
-  }),
+  WAIT_POLL_MS: 4_000,
 }));
 
 const { DetailsStep } = await import("./details-step");
@@ -394,8 +390,7 @@ describe("DetailsStep, Deploy", () => {
 });
 
 describe("DetailsStep, what the role allows", () => {
-  const button = () =>
-    screen.getByRole("button", { name: "Deploy Ghost" });
+  const button = () => screen.getByRole("button", { name: "Deploy Ghost" });
   const asked = () => screen.queryByText(/Ask your organization/);
 
   function chooseWebsite(environments: SetupEnvironment[]) {

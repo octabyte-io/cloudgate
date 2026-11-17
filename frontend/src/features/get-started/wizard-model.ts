@@ -13,6 +13,7 @@ import {
   notReadyYet,
   type Server,
 } from "@/lib/api/endpoints/servers";
+import type { SetupForm } from "@/lib/api/endpoints/templates";
 
 /**
  * The get-started wizard's decisions, as pure functions over what the API
@@ -34,6 +35,24 @@ export function isReadyServer(server: Server): boolean {
 
 export function readyServers(servers: readonly Server[]): Server[] {
   return servers.filter(isReadyServer);
+}
+
+/**
+ * Whether step 2's new-Project setup form is worth asking again: it has
+ * no generated host on the Server yet. A Bought Server gets one only once
+ * its Server row exists (Setting up), so a form read before then starts
+ * its web address empty. A form with no new-Project hosts (the template
+ * has no compose Domain) never gets one, so it is not waited for.
+ */
+export function waitsForGeneratedHost(
+  form: SetupForm | undefined,
+  serverId: string,
+): boolean {
+  return (
+    form !== undefined &&
+    form.newProjectHosts !== null &&
+    !(serverId in form.newProjectHosts.servers)
+  );
 }
 
 /**
