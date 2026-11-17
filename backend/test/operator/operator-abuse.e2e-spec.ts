@@ -24,6 +24,7 @@ import { STRIPE_API } from '../../src/cloud/billing/stripe-api';
 import type { StripeApi } from '../../src/cloud/billing/stripe-api';
 import { member } from '../../src/db/schema';
 import { MailService } from '../../src/mail/mail.service';
+import { RemoteExecService } from '../../src/remote/remote-exec.service';
 import { server } from '../../src/servers/server.schema';
 import { sshKey } from '../../src/ssh-keys/ssh-key.schema';
 import { fakeStripe } from '../utils/fake-stripe';
@@ -539,6 +540,25 @@ describe('The Operator acts on abuse (e2e)', () => {
 
       await powerOn(bought.id).expect(204);
       expect(await deployRefusal(ctx.db, [bought.id])).toBeNull();
+
+      // Taken, the deploy writes its log on the Server first, which this
+      // suite's made-up key cannot reach; that write is stood in for.
+      const writeLog = jest
+        .spyOn(ctx.app.get(RemoteExecService), 'execAsyncRemote')
+        .mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 });
+      try {
+        const taken = await request(http)
+          .post(`/applications/${applicationId}/deployments`)
+          .set('Cookie', grace.cookie)
+          .send({});
+
+        expect(taken.body).not.toMatchObject({
+          code: BOUGHT_SERVER_NOT_READY_CODE,
+        });
+        expect(taken.status).toBe(201);
+      } finally {
+        writeLog.mockRestore();
+      }
     });
 
     it('marks nothing when the provider refuses, and says so to the Operator', async () => {
