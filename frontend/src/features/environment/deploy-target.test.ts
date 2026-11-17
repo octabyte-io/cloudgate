@@ -108,6 +108,36 @@ describe("deploy target picker values", () => {
     ]);
   });
 
+  it("greys out a Ready Bought Server an operator powered off, saying so", () => {
+    const options = deployTargetOptions(
+      [
+        {
+          serverId: "srv_1",
+          name: "bought-1",
+          ipAddress: "203.0.113.20",
+          serverType: "deploy",
+          boughtServer: {
+            stage: "ready",
+            poweredOff: { at: "2026-11-10T09:00:00.000Z", reason: "Port scan" },
+            deletesOn: null,
+            deletedAt: null,
+          },
+        },
+      ] as never,
+      [],
+      { platformHost: false },
+    );
+
+    expect(options).toEqual([
+      {
+        value: "srv_1",
+        label: "bought-1",
+        detail: "Powered off",
+        disabled: true,
+      },
+    ]);
+  });
+
   it("leaves the platform host out on the Hosted instance", () => {
     const options = deployTargetOptions(
       [{ serverId: "srv_1", name: "worker-1", serverType: "deploy" }] as never,

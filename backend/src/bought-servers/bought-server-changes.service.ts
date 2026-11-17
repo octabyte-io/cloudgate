@@ -690,7 +690,7 @@ export class BoughtServerChanges {
       throw new ConflictException({
         code: NOT_CHANGEABLE_CODE,
         message:
-          "This Server was powered off by Cloudgate, so it can't be changed",
+          "This Server was powered off by an operator, so it can't be changed",
       });
     }
   }
