@@ -62,8 +62,19 @@ vi.mock("@/lib/api/use-projects", () => ({
 vi.mock("@/lib/api/use-invalidate", () => ({
   useInvalidate: () => ({ project: vi.fn() }),
 }));
+/** The statements the caller's role holds, as `resource:action`; null for all. */
+const grants = vi.hoisted(() => ({ held: null as string[] | null }));
 vi.mock("@/lib/auth/use-permission", () => ({
-  usePermission: () => ({ allowed: true, pending: false, role: "owner" }),
+  usePermission: (asked: Record<string, string[]>) => ({
+    allowed: Object.entries(asked).every(([resource, actions]) =>
+      actions.every(
+        (action) =>
+          grants.held === null || grants.held.includes(`${resource}:${action}`),
+      ),
+    ),
+    pending: false,
+    role: grants.held === null ? "owner" : "member",
+  }),
 }));
 vi.mock("./use-get-started", () => ({
   useWizardServers: () => ({
@@ -184,6 +195,7 @@ const deploy = () =>
   fireEvent.click(screen.getByRole("button", { name: "Deploy Ghost" }));
 
 beforeEach(() => {
+  grants.held = null;
   reads.servers = [SERVER];
   reads.projects = [];
   reads.forms = { "new-project": NEW_FORM };
@@ -378,5 +390,84 @@ describe("DetailsStep, Deploy", () => {
       projectId: "prj_9",
       environmentId: "env_new",
     });
+  });
+});
+
+describe("DetailsStep, what the role allows", () => {
+  const button = () =>
+    screen.getByRole("button", { name: "Deploy Ghost" });
+  const asked = () => screen.queryByText(/Ask your organization/);
+
+  function chooseWebsite(environments: SetupEnvironment[]) {
+    reads.projects = [WEBSITE];
+    reads.forms.prj_9 = { ...NEW_FORM, newProjectHosts: null, environments };
+    show();
+    fireEvent.click(screen.getByRole("button", { name: "More options" }));
+    fireEvent.click(screen.getByRole("button", { name: /Website/ }));
+  }
+
+  it("asks for a role that can create a Project, for a new one, and offers an existing one", () => {
+    grants.held = ["service:create", "environment:create"];
+    reads.projects = [WEBSITE];
+    show();
+
+    expect(asked()).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Your role can’t create a Project, so pick an existing one under More options, or an owner or an admin can deploy Ghost.",
+      ),
+    ).toBeTruthy();
+    expect(button().getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("does not offer an existing Project where there is none", () => {
+    grants.held = ["service:create"];
+    show();
+
+    expect(
+      screen.getByText(
+        "Your role can’t create a Project, so an owner or an admin can deploy Ghost.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("deploys into an existing Project's Environment without asking to create anything", () => {
+    grants.held = ["service:create"];
+    chooseWebsite([environment("env_9", "production", "srv_1")]);
+
+    expect(asked()).toBeNull();
+    expect(button().getAttribute("aria-disabled")).not.toBe("true");
+  });
+
+  it("deploys into a new Environment in an existing Project with environment: create alone", () => {
+    grants.held = ["service:create", "environment:create"];
+    chooseWebsite([environment("env_other", "production", "srv_2")]);
+
+    expect(asked()).toBeNull();
+    expect(button().getAttribute("aria-disabled")).not.toBe("true");
+  });
+
+  it("asks for a role that can create an Environment, for an existing Project with none on the server", () => {
+    grants.held = ["service:create"];
+    chooseWebsite([environment("env_other", "production", "srv_2")]);
+
+    expect(
+      screen.getByText(
+        "Your role can’t create an Environment, which the Website Project needs on ghost-1, so an owner or an admin can deploy Ghost.",
+      ),
+    ).toBeTruthy();
+    expect(button().getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("asks for a role that can add Services, wherever it goes", () => {
+    grants.held = ["project:create", "environment:create"];
+    show();
+
+    expect(
+      screen.getByText(
+        "Your role can’t add Services, so an owner or an admin can deploy Ghost.",
+      ),
+    ).toBeTruthy();
+    expect(button().getAttribute("aria-disabled")).toBe("true");
   });
 });

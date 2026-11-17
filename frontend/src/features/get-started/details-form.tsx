@@ -64,16 +64,32 @@ export function DetailsForm({
     template.id,
     projectId === NEW_PROJECT ? null : projectId,
   );
-  // The setup's own route asks `service: create`; a new Project asks
-  // `project: create` and `environment: create` of the same person.
+  // What the chosen place asks of the role, as the setup asks it: its own
+  // route `service: create` wherever it goes (Template setup's form leaves
+  // that to the route), a new Project `project: create` and
+  // `environment: create`, and a new Environment in an existing Project
+  // `environment: create`, which `POST /environments` asks first.
   const canSetUp = usePermission({ service: ["create"] });
   const canMakeProject = usePermission({
     project: ["create"],
     environment: ["create"],
   });
-  const allowed = canSetUp.allowed && canMakeProject.allowed;
+  const canMakeEnvironment = usePermission({ environment: ["create"] });
 
   const place = placeIn(projectId, existing.data, serverId);
+  const missing = !canSetUp.allowed
+    ? "service"
+    : place === null || "environmentId" in place
+      ? null
+      : "newProject" in place
+        ? canMakeProject.allowed
+          ? null
+          : "project"
+        : canMakeEnvironment.allowed
+          ? null
+          : "environment";
+  const allowed = missing === null;
+  const projectName = projects.find((one) => one.projectId === projectId)?.name;
   const onEnvironment =
     place && "environmentId" in place
       ? (existing.data?.environments.find(
@@ -188,13 +204,21 @@ export function DetailsForm({
                 You can deploy once the server is created.
               </p>
             )}
-            {allowed ? null : (
+            {missing === "service" ? (
               <AskAdmin>
-                Deploying an app makes a new Project, which your role
-                can&rsquo;t do. An owner or an admin can deploy {template.name}{" "}
-                from this page.
+                {`Your role can’t add Services, so an owner or an admin can deploy ${template.name}.`}
               </AskAdmin>
-            )}
+            ) : missing === "project" ? (
+              <AskAdmin>
+                {projects.length > 0
+                  ? `Your role can’t create a Project, so pick an existing one under More options, or an owner or an admin can deploy ${template.name}.`
+                  : `Your role can’t create a Project, so an owner or an admin can deploy ${template.name}.`}
+              </AskAdmin>
+            ) : missing === "environment" ? (
+              <AskAdmin>
+                {`Your role can’t create an Environment, which the ${projectName ?? "chosen"} Project needs on ${serverName}, so an owner or an admin can deploy ${template.name}.`}
+              </AskAdmin>
+            ) : null}
             <FormError message={form.rootError} />
           </Card.Body>
           <Card.Footer className="flex flex-wrap items-center gap-3">
