@@ -97,7 +97,7 @@ type PowerOffValues = z.infer<typeof powerOffSchema>;
 /**
  * Power a Bought Server off at once, for an attack still going on. The
  * reason is required: the customer's Server shows "Powered off by
- * Cloudgate: <reason>". Recorded in both audit logs.
+ * an operator" with "Reason: <reason>". Recorded in both audit logs.
  */
 function PowerOffModal({
   server,
@@ -133,7 +133,7 @@ function PowerOffModal({
             <Field
               name="reason"
               label="Reason"
-              hint="Shown on the customer's Server as “Powered off by Cloudgate: …”."
+              hint="Shown on the customer's Server as “Reason: …”, under “Powered off by an operator”."
             >
               <Textarea rows={3} />
             </Field>

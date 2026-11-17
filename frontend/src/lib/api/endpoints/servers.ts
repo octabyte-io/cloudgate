@@ -143,7 +143,7 @@ export interface Server {
    * data and backups and only forgets any other.
    *
    * `poweredOff` is an Operator's power-off for abuse (#1401) and the
-   * reason, which every tab shows as "Powered off by Cloudgate: <reason>";
+   * reason, which every tab shows as "Powered off by an operator" with "Reason: <reason>";
    * only an Operator powers it back on. `deletesOn` is the day it is due for
    * deletion, while a payment for it is failing (the red bar,
    * `BoughtServerNotice`); `deletedAt` is when its machine was deleted, for

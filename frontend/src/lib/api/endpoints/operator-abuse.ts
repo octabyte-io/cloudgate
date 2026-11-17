@@ -46,7 +46,7 @@ export const operatorAbuseApi = {
 
   /**
    * Powers the Bought Server's machine off at once; its Server page shows
-   * "Powered off by Cloudgate: <reason>". 409 when already off or when it
+   * "Powered off by an operator" with "Reason: <reason>". 409 when already off or when it
    * has no running machine, 502 when the provider refuses.
    */
   powerOff: (boughtServerId: string, reason: string) =>

@@ -25,7 +25,7 @@ export interface ServerPurchase {
   stage: BoughtServerStage;
   /**
    * An Operator's power-off for abuse (#1401), which the Server's page shows
-   * as "Powered off by Cloudgate: <reason>"; null while it is not. Only an
+   * as "Powered off by an operator" with "Reason: <reason>"; null while it is not. Only an
    * Operator powers it back on.
    */
   poweredOff: { at: Date; reason: string } | null;

@@ -11,7 +11,7 @@ const serverWith = (boughtServer: Server["boughtServer"]) =>
   ({ serverId: "bs-web", name: "web-1", boughtServer }) as Server;
 
 describe("PoweredOffNotice", () => {
-  it("says a Bought Server was powered off by Cloudgate, and why", () => {
+  it("says a Bought Server was powered off by an operator, why, and where to ask", () => {
     render(
       <PoweredOffNotice
         server={serverWith({
@@ -23,12 +23,19 @@ describe("PoweredOffNotice", () => {
       />,
     );
 
-    expect(screen.getByRole("status").textContent).toContain(
-      "Powered off by Cloudgate: Port scan",
+    const notice = screen.getByRole("status");
+    expect(notice.textContent).toContain("Powered off by an operator");
+    expect(notice.textContent).toContain("Reason: Port scan");
+    expect(notice.textContent).toContain(
+      "Only an operator can power it back on.",
     );
-    expect(screen.getByRole("status").textContent).toContain(
-      "Only Cloudgate can power it back on.",
-    );
+    expect(
+      screen
+        .getByRole("link", { name: "support@octabyte.io" })
+        .getAttribute("href"),
+    ).toBe("mailto:support@octabyte.io");
+    // Spaced from the cards below it, as the notices beside it are.
+    expect(notice.className).toContain("mb-4");
   });
 
   it("says nothing for one that is running, or for a Server of the customer's own", () => {
