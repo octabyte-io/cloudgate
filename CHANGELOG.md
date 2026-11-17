@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.7 (2026-11-17)
+
 ### A Template's setup opens on the Template
 
 - Setting up a Template opens on it: its logo, name, version, description, links and every tag, with a way back to all templates, instead of the catalogue's header.
