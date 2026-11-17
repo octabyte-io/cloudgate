@@ -542,16 +542,34 @@ describe("GetStartedScreen", () => {
       expect(screen.getByRole("form", { name: "Deploy Ghost" })).toBeTruthy();
     });
 
+    it.each([
+      ["waiting_for_payment", "ghost-1 is waiting for your payment"],
+      ["creating", "ghost-1 is being created"],
+      ["setting_up", "ghost-1 is being set up"],
+      ["ready", "ghost-1 is ready to use"],
+    ] as const)("heads the strip at %s with a sentence about the server", (stage, headline) => {
+      if (stage === "setting_up" || stage === "ready") {
+        reads.servers = [boughtServer("bs_1", "ghost-1", stage)];
+      } else {
+        reads.purchases = [purchase("bs_1", "ghost-1", stage)];
+      }
+      reads.setupForm = GHOST_SETUP;
+      show(DETAILS.slice("/get-started?".length));
+
+      expect(within(strip()).getByText(headline)).toBeTruthy();
+    });
+
     it("says the app starts on its own and the page can be left, with no button to set it up now", () => {
       reads.servers = [boughtServer("bs_1", "ghost-1", "setting_up")];
       reads.setupForm = GHOST_SETUP;
       show(DETAILS.slice("/get-started?".length));
 
       expect(strip().textContent).toMatch(/now Setting it up/);
-      expect(strip().textContent).toMatch(
-        /Ghost starts on its own once the server is ready\./,
-      );
-      expect(strip().textContent).toMatch(/you can leave this page/);
+      expect(
+        within(strip()).getByText(
+          "Ghost starts on its own once the server is ready, so you can leave after Deploy.",
+        ),
+      ).toBeTruthy();
       expect(screen.queryByText(/Set up Ghost now/)).toBeNull();
       expect(screen.queryByText(/No need to wait/)).toBeNull();
     });

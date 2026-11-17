@@ -18,12 +18,17 @@ import { BUY_STAGES, buyStageStates } from "./wizard-model";
 import { StepNote } from "./wizard-parts";
 import { wizardHref } from "./wizard-state";
 
-/** What the strip's first line says the Server is doing, after its name. */
+/**
+ * The strip's first line, a sentence about the Server at each stage. The
+ * segmented bar under it keeps #111's stage labels (Payment, Creating your
+ * server, Setting it up, Ready to use); this line says the same in words
+ * that read after the Server's name.
+ */
 const DOING: Partial<Record<BoughtServerStage, string>> = {
-  waiting_for_payment: "waiting for your payment",
-  creating: "being created",
-  setting_up: "setting it up",
-  ready: "ready to use",
+  waiting_for_payment: "is waiting for your payment",
+  creating: "is being created",
+  setting_up: "is being set up",
+  ready: "is ready to use",
 };
 
 /**
@@ -66,7 +71,7 @@ export function ServerProgress({
       <Card.Body className="grid gap-2.5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <p className="min-w-0 text-body font-medium wrap-anywhere text-tx">
-            {`${name}: ${doing}`}
+            {`${name} ${doing}`}
           </p>
           {ready ? null : (
             <p className="text-meta text-tx-3">
@@ -77,8 +82,7 @@ export function ServerProgress({
         <SegmentedProgress label="Your server" steps={steps} />
         {ready ? null : (
           <p className="text-meta wrap-anywhere text-tx-2">
-            {template.name} starts on its own once the server is ready. After
-            you press Deploy, you can leave this page.
+            {`${template.name} starts on its own once the server is ready, so you can leave after Deploy.`}
           </p>
         )}
         {stage === "waiting_for_payment" ? (
