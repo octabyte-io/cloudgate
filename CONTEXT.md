@@ -315,6 +315,18 @@ _Avoid_: Extra server, seat
 A Server an Organization on the Hosted instance buys from Cloudgate. Octabyte owns the machine and pays its provider, and the Organization pays Octabyte monthly in advance on its one Hosted plan invoice. It counts as a Server, has no trial, and is deleted with its data and backups once it stops being paid for. The provider is never named to the customer (ADR-0071). It shows one stage at a time: Waiting for payment, Creating, Setting up, Ready, Changing, Deleting, Deleted, or Failed (paid but never made, so refunded). Nothing can be deployed to it until it is Ready. A deletion date set by a failed payment, a suspension or a coming lapse is a warning on a Ready server, not a stage; while it shows, nothing that costs more can be bought. Deleted for non-payment, its record stays, marked Deleted, with its Services still listed.
 _Avoid_: VPS, purchased server, managed server, Hetzner server; Server alone where the difference from a customer's own machine matters
 
+**Server family**:
+The kind of machine a **Bought Server** is, which decides its cores and price: **Standard** (shared Intel or AMD cores, the cheapest), **Performance** (shared AMD cores, faster), **Arm** (shared Arm cores, cheapest per core, for images that run on Arm) or **Dedicated** (cores reserved for it). Shared cores are shared with other machines on the same host.
+_Avoid_: Shared, Shared Arm, Shared AMD, cx, cpx, cax, ccx
+
+**Server image**:
+The operating system and version a **Bought Server** is made from, picked at Buy: Ubuntu or Debian, any version the provider offers now, Ubuntu 24.04 unless another is picked. Only these are offered because Server setup installs Docker only on them.
+_Avoid_: OS template, distro, snapshot
+
+**Closest and Cheapest**:
+The two **Bought Server** suggestions the Buy form opens with: the nearest place where the app fits, and the place and size anywhere that fits it for the least money. Picking one sets the place and size; every other place and size stays one click away.
+_Avoid_: Recommended, best value
+
 **Server markup**:
 The percentage an Operator sets that Cloudgate adds to the provider's cost to price a **Bought Server**, its backups and its extra storage. It is never shown to customers (ADR-0071).
 _Avoid_: Margin, commission, fee
