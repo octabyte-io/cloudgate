@@ -318,7 +318,10 @@ export function useComposeActions(composeId: string, environmentId?: string) {
       mutationFn: () => composeApi.start(composeId),
       onSettled: refresh,
     }),
-    /** `docker compose restart`, for a stack on a Stack VM. */
+    /**
+     * `docker compose restart`, in Start's place while a `docker-compose`
+     * stack's containers are up; on a Stack VM the VM keeps running.
+     */
     restart: useMutation({
       mutationKey: lifecycleKey(composeId, "restart"),
       mutationFn: () => composeApi.restart(composeId),

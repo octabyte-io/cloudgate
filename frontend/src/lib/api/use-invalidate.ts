@@ -282,9 +282,17 @@ export function useInvalidate() {
        * subtree goes rather than one app's slice, because a container listing is
        * keyed by host and app *type* and a stack that has just been deleted no
        * longer tells us which of those it was.
+       *
+       * **Marked stale and re-read, but not waited for.** A stack's action row
+       * reads its membership too now (Start or Restart), so the read is
+       * mounted on every tab, and a lifecycle press's `onSettled` returns this
+       * promise: waiting for Docker would hold the button pending and its
+       * toast back behind a read of the deploy target that is not the action's,
+       * as long as that host takes to answer.
        */
-      compose: (options?: { composeId?: string; environmentId?: string }) =>
-        Promise.all([
+      compose: (options?: { composeId?: string; environmentId?: string }) => {
+        void invalidate(keys.docker.all(organizationId));
+        return Promise.all([
           options?.composeId
             ? invalidate(keys.compose.detail(organizationId, options.composeId))
             : invalidate(keys.compose.all(organizationId)),
@@ -298,9 +306,9 @@ export function useInvalidate() {
                 keys.environments.detail(organizationId, options.environmentId),
               )
             : Promise.resolve(),
-          invalidate(keys.docker.all(organizationId)),
           projectConfigs(),
-        ]),
+        ]);
+      },
 
       /**
        * A stack was deployed. The **stack row goes too** — its `composeStatus`

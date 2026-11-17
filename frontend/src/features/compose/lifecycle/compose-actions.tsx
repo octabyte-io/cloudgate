@@ -1,17 +1,20 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+
+import { useQueryClient } from "@tanstack/react-query";
 
 import { ActionReason } from "@/components/console/action-reason";
 import { toast } from "@/components/console/toast";
 import { Button } from "@/components/ui/button";
 import { runsOnStackVm, type ComposeDetail } from "@/lib/api/endpoints/compose";
 import type { Deployment } from "@/lib/api/endpoints/deployments";
+import { useActiveOrganizationId } from "@/lib/auth/client";
 import { roleRefusal, usePermission } from "@/lib/auth/use-permission";
 
 import {
   composeDeclaresNoServices,
   composeFileIsEmpty,
 } from "../editor/yaml-check";
-import { useStackMembers } from "../containers/stack-members";
+import { stackMembersKey, useStackMembers } from "../containers/stack-members";
 import {
   useComposeActions,
   useComposeLifecyclePending,
@@ -21,9 +24,64 @@ import {
 // says "working" the same way.
 import { ActionIcon } from "../../application/lifecycle/action-icon";
 import { RemoveContainersModal } from "./remove-containers-modal";
+import { startOrRestart } from "./start-or-restart";
 
 /** Why Restart is off for a role without `deployment: ['create']`. */
 const RESTART_REFUSAL = roleRefusal("restart this stack's containers");
+
+/**
+ * What Deploy does to a stack that is already deployed, as its title. Said
+ * because the row now offers Restart beside it, and the two read alike to
+ * someone after "make it pick up my change". Not "new images": `up -d
+ * --build` pulls only an image that is missing, so a moved tag stays as it
+ * was unless the file's `pull_policy` says otherwise. A Swarm stack has no
+ * build, so its sentence stops before that half.
+ */
+export const COMPOSE_DEPLOY_AGAIN =
+  "Deploys the compose file as it is now, with every change since the last Deployment. Services with a build are built again; an image already on the deploy target is pulled again only if its pull_policy says so.";
+export const COMPOSE_DEPLOY_AGAIN_SWARM =
+  "Deploys the compose file as it is now, with every change since the last Deployment.";
+
+/**
+ * Reads the stack's membership again when its status moves — a Deploy that
+ * finished, a stop made on another tab — so Start or Restart follows the
+ * containers rather than a read from before the change. Not on mount: the
+ * read's own cache decides that, and four rows mounting at once would each
+ * cancel the others' fetch.
+ */
+function useRereadOnStatusChange(
+  compose: Pick<
+    ComposeDetail,
+    "composeStatus" | "appName" | "serverId" | "composeType"
+  >,
+  enabled: boolean,
+) {
+  const queryClient = useQueryClient();
+  const { organizationId } = useActiveOrganizationId();
+  const last = useRef(compose.composeStatus);
+  const { composeStatus, appName, serverId, composeType } = compose;
+  useEffect(() => {
+    if (last.current === composeStatus) return;
+    last.current = composeStatus;
+    if (!enabled) return;
+    void queryClient.invalidateQueries({
+      queryKey: stackMembersKey(organizationId, {
+        appName,
+        serverId,
+        composeType,
+      }),
+      exact: true,
+    });
+  }, [
+    composeStatus,
+    enabled,
+    queryClient,
+    organizationId,
+    appName,
+    serverId,
+    composeType,
+  ]);
+}
 
 /** Why Start, Stop and Remove containers are off on a stack no Deploy has run. */
 export const COMPOSE_NEVER_DEPLOYED =
@@ -34,8 +92,9 @@ export const COMPOSE_CONTAINERS_REMOVED =
   "This stack's containers are removed, so there is nothing to stop or remove. Start recreates them.";
 
 /**
- * Deploy, Start, Stop, Remove containers — four controls, and a fifth,
- * Restart, only for a stack on its own Stack VM (see below).
+ * Deploy, Start or Restart, Stop, Remove containers — four controls, the
+ * second of which is Restart while the stack's containers are up and Start
+ * otherwise (`startOrRestart`).
  *
  * This comment used to say there was no fourth, on the strength of the phase
  * brief's question about a compose redeploy or rebuild route. That half still
@@ -66,11 +125,16 @@ export const COMPOSE_CONTAINERS_REMOVED =
  *   for Start's reason exactly: there `docker stack rm` is already what Stop
  *   runs, so this would be a second button doing the first one's job.
  *
- * - **Restart**, on a Stack VM only (ADR-0070), is `docker compose restart`
- *   through the cloud's tunnel: the containers restart and the VM does not.
- *   A stack on a Server restarts a container from the Containers tab, which
- *   reaches a Server's Docker but not a Stack VM's, so it gets no fifth button.
- *   On a Stack VM, Stop also stops the VM and Start starts it first.
+ * - **Restart** is `docker compose restart`: the containers restart and
+ *   nothing else does, on a Stack VM never the VM (ADR-0070). It takes
+ *   Start's place while the containers are up, where Start was `up -d` over
+ *   running containers: a press that did nothing and looked as live as the
+ *   rest. It was once offered on a Stack VM only, as a fifth button beside
+ *   Start, on the argument that a Server's stack restarts a container from
+ *   the Containers tab; that is one container at a time, and the route has
+ *   always served a Server's stack too. Absent for a Swarm stack with Start:
+ *   its route refuses that type the same way, naming Deploy. On a Stack VM,
+ *   Stop also stops the VM and Start starts it first.
  *
  * Which is why two of the four are behind `swarm ? null : …` and neither is
  * rendered off with a reason — a control that would do nothing for a type is
@@ -112,10 +176,7 @@ export function ComposeActions({
   const glyph = size === "sm" ? 14 : 15;
 
   const swarm = compose.composeType === "stack";
-  /**
-   * A stack on its own Stack VM (ADR-0070) restarts its containers here: the
-   * Containers tab's per-container Restart reaches a Server, not a Stack VM.
-   */
+  /** A stack on its own Stack VM (ADR-0070), whose Restart leaves the VM up. */
   const onStackVm = runsOnStackVm(compose) && !swarm;
   // Restart asks what its route asks, `deployment: ['create']`.
   const canRestart = usePermission({ deployment: ["create"] });
@@ -161,18 +222,38 @@ export function ComposeActions({
   const neverDeployed = compose.composeStatus === "idle";
 
   /**
-   * Stop and Remove containers are off once a stopped stack has no container
-   * left — after Remove containers, whose success writes `[]` to the
-   * membership this reads, or a later visit that asks Docker. Start stays
-   * on: it recreates them from the project directory, the round trip
-   * ADR-0011 names (Remove containers → restore → Start). Asked only of a
-   * stopped `docker-compose` stack on a Server; a Stack VM's membership is
-   * not read from its VM, and a Swarm stack has neither control.
+   * Which containers of the stack Docker has, and in what state. Two
+   * questions read it:
+   *
+   * - Stop and Remove containers are off once a stopped stack has no
+   *   container left — after Remove containers, whose success writes `[]` to
+   *   the membership this reads, or a later visit that asks Docker. Start
+   *   stays on: it recreates them from the project directory, the round trip
+   *   ADR-0011 names (Remove containers → restore → Start).
+   * - Start or Restart: every container up is Restart (`startOrRestart`).
+   *
+   * Asked of a deployed `docker-compose` stack on a Server; a Stack VM's
+   * membership is not read from its VM, and a Swarm stack has neither
+   * control. It is the Containers tab's read, under one key, so the two agree.
    */
-  const askDocker =
-    compose.composeStatus === "stopped" && !swarm && !runsOnStackVm(compose);
-  const members = useStackMembers(compose, { enabled: askDocker });
-  const removed = askDocker && members.data?.length === 0;
+  const askDocker = !neverDeployed && !swarm && !runsOnStackVm(compose);
+  const members = useStackMembers(compose, {
+    enabled: askDocker,
+    // A Deploy is converging, so what is up is changing under the row.
+    refetchInterval: compose.composeStatus === "running" ? 4_000 : false,
+  });
+  useRereadOnStatusChange(compose, askDocker);
+  const removed =
+    askDocker &&
+    compose.composeStatus === "stopped" &&
+    members.data?.length === 0;
+  const second = swarm
+    ? null
+    : startOrRestart({
+        composeStatus: compose.composeStatus,
+        stackVm: onStackVm,
+        members: askDocker ? members.data : undefined,
+      });
   const nothingThere = neverDeployed || removed;
   const reason = neverDeployed
     ? COMPOSE_NEVER_DEPLOYED
@@ -221,7 +302,11 @@ export function ComposeActions({
           ? "There is nothing to deploy yet — the compose file is empty. Write it on the Overview tab first."
           : noServices
             ? "There is nothing to deploy — the compose file declares no services. Add one on the Overview tab first."
-            : undefined
+            : neverDeployed
+              ? undefined
+              : swarm
+                ? COMPOSE_DEPLOY_AGAIN_SWARM
+                : COMPOSE_DEPLOY_AGAIN
       }
       onClick={
         busy || nothingToDeploy
@@ -257,7 +342,7 @@ export function ComposeActions({
     <>
       {deploy}
 
-      {swarm ? null : (
+      {second === "start" ? (
         <Button
           size={size}
           aria-disabled={busy || neverDeployed || undefined}
@@ -286,7 +371,43 @@ export function ComposeActions({
           />
           Start
         </Button>
-      )}
+      ) : null}
+
+      {second === "restart" ? (
+        <Button
+          size={size}
+          aria-disabled={restartRefused || busy || undefined}
+          title={
+            restartRefused
+              ? RESTART_REFUSAL
+              : onStackVm
+                ? "docker compose restart — the containers restart. The Stack VM keeps running."
+                : "docker compose restart — the containers restart. Nothing is cloned or built."
+          }
+          aria-busy={working("restart") || undefined}
+          onClick={
+            restartRefused || busy
+              ? undefined
+              : () =>
+                  void run(
+                    "restart",
+                    actions.restart,
+                    onStackVm
+                      ? `${compose.name}'s containers are restarting. Its Stack VM keeps running.`
+                      : `${compose.name}'s containers are restarting.`,
+                  )
+          }
+        >
+          {/* The Application row's Restart glyph, in the slot Start's
+              play glyph holds. */}
+          <ActionIcon
+            name="refresh"
+            pending={working("restart")}
+            size={glyph}
+          />
+          Restart
+        </Button>
+      ) : null}
 
       <Button
         size={size}
@@ -316,35 +437,6 @@ export function ComposeActions({
         <ActionIcon pending={working("stop")} size={glyph} />
         Stop
       </Button>
-
-      {onStackVm ? (
-        <Button
-          size={size}
-          aria-disabled={restartRefused || busy || neverDeployed || undefined}
-          title={
-            restartRefused
-              ? RESTART_REFUSAL
-              : neverDeployed
-                ? COMPOSE_NEVER_DEPLOYED
-                : "docker compose restart — the containers restart. The Stack VM keeps running."
-          }
-          aria-describedby={neverDeployed ? reasonId : undefined}
-          aria-busy={working("restart") || undefined}
-          onClick={
-            restartRefused || busy || neverDeployed
-              ? undefined
-              : () =>
-                  void run(
-                    "restart",
-                    actions.restart,
-                    `${compose.name}'s containers are restarting. Its Stack VM keeps running.`,
-                  )
-          }
-        >
-          <ActionIcon pending={working("restart")} size={glyph} />
-          Restart
-        </Button>
-      ) : null}
 
       {swarm ? null : (
         <Button

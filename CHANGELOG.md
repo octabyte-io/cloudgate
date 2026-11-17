@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### A running Compose stack offers Restart where Start was
+
+On a Compose stack whose containers were all up, **Start** stayed on and did nothing when pressed. While every container of a stack is running, that button is now **Restart**, which restarts the containers without a clone or a build; with any container stopped or removed, it is Start again. Restart was offered only on a stack on its own Stack VM before, as a fifth button beside Start. A Swarm stack has neither, as before: Deploy restarts it. Once a stack is deployed, hovering **Deploy** says what it does again: deploys the compose file as it is now, building again what has a build, and pulling an image already there only if its `pull_policy` says so.
+
+**What to do on upgrade**: nothing.
+
 ### A stack's actions stay on the page, and a Template's name opens its website
 
 - While a Compose stack has nothing on its deploy target yet, the sentence saying why Start and Stop are off sat inside the row of buttons and pushed **Remove containers** off the page. It is now a line under the row, which the off buttons point at for screen readers. The same goes for a database that was never deployed and for Deploy with no source chosen.

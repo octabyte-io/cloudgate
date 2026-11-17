@@ -188,41 +188,91 @@ describe("ComposeActions in an empty state", () => {
 });
 
 /**
- * A stack on its own Stack VM (ADR-0070, #1370) gets Restart: its
- * containers restart through the cloud's tunnel and the VM does not. A
- * stack on a Server restarts a container from the Containers tab, as it
- * always has, so it gets no fifth control.
+ * Restart is no longer a Stack VM's fifth button: it takes Start's slot on
+ * any `docker-compose` stack whose containers are up, and the cases are in
+ * `compose-actions-restart.test.tsx`. What stays here is the rule that the
+ * row never offers both.
  */
-describe("ComposeActions on a Stack VM", () => {
-  it("offers Restart, saying it leaves the Stack VM running", () => {
-    render(
-      withQuery(
-        <ComposeActions
-          compose={stack("docker-compose", {
-            composeStatus: "done",
-            cloudAccountId: "acct-1",
-          })}
-        />,
-      ),
-    );
-
-    expect(named("Restart")?.getAttribute("title")).toBe(
-      "docker compose restart — the containers restart. The Stack VM keeps running.",
-    );
-  });
-
-  it("offers no Restart on a stack on a Server", () => {
-    render(
-      withQuery(
-        <ComposeActions
-          compose={stack("docker-compose", {
-            composeStatus: "done",
-            cloudAccountId: null,
-          })}
-        />,
-      ),
-    );
-
-    expect(named("Restart")).toBe(null);
+describe("ComposeActions: Start and Restart share one slot", () => {
+  it.each([
+    ["on a Server", null],
+    ["on a Stack VM", "acct-1"],
+  ])("never offers both %s", (_, cloudAccountId) => {
+    for (const composeStatus of ["idle", "done", "error", "stopped"] as const) {
+      render(
+        withQuery(
+          <ComposeActions
+            compose={stack("docker-compose", { composeStatus, cloudAccountId })}
+          />,
+        ),
+      );
+      expect(
+        [named("Start"), named("Restart")].filter((b) => b !== null),
+      ).toHaveLength(1);
+      cleanup();
+    }
   });
 });
+
+/**
+ * Once a stack is deployed, Deploy sits beside Restart, and the two read
+ * alike to someone who wants a change picked up. Its title says what it
+ * does then. Before the first Deploy there is nothing to compare it with.
+ */
+describe("ComposeActions: Deploy's title once deployed", () => {
+  it("says it deploys the file as it is now, and what it does to images", () => {
+    render(
+      withQuery(
+        <ComposeActions
+          compose={stack("docker-compose", { composeStatus: "done" })}
+        />,
+      ),
+    );
+
+    expect(named("Deploy")?.getAttribute("title")).toBe(
+      "Deploys the compose file as it is now, with every change since the last Deployment. Services with a build are built again; an image already on the deploy target is pulled again only if its pull_policy says so.",
+    );
+  });
+
+  it("drops the build half for a Swarm stack", () => {
+    render(
+      withQuery(
+        <ComposeActions compose={stack("stack", { composeStatus: "done" })} />,
+      ),
+    );
+
+    expect(named("Deploy")?.getAttribute("title")).toBe(
+      "Deploys the compose file as it is now, with every change since the last Deployment.",
+    );
+  });
+
+  it("has no title on a stack never deployed", () => {
+    render(
+      withQuery(
+        <ComposeActions
+          compose={stack("docker-compose", { composeStatus: "idle" })}
+        />,
+      ),
+    );
+
+    expect(named("Deploy")?.hasAttribute("title")).toBe(false);
+  });
+
+  it("keeps the empty file's reason over the hint", () => {
+    render(
+      withQuery(
+        <ComposeActions
+          compose={stack("docker-compose", {
+            composeStatus: "done",
+            composeFile: "",
+          })}
+        />,
+      ),
+    );
+
+    expect(named("Deploy")?.getAttribute("title")).toMatch(
+      /the compose file is empty/,
+    );
+  });
+});
+
