@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useFormContext, useWatch } from "react-hook-form";
+import { Controller, useFormContext, useWatch } from "react-hook-form";
 
 import { Field } from "@/components/console/field";
 import { PasswordInput } from "@/components/console/password-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import type {
   AskedInput,
   SetupDomain,
@@ -15,6 +16,7 @@ import type {
 import { Icon } from "@/lib/design/icons";
 import { settingsHref } from "@/lib/settings/sections";
 
+import { isYesNo } from "./asked-value";
 import { SetupDnsRecords } from "./setup-dns-records";
 
 /**
@@ -25,6 +27,7 @@ import { SetupDnsRecords } from "./setup-dns-records";
 
 /** The asked value at `at` in the template's list. */
 export function AskedField({ input, at }: { input: AskedInput; at: number }) {
+  if (isYesNo(input)) return <YesNoField input={input} at={at} />;
   return (
     <Field
       name={`values.${at}`}
@@ -46,6 +49,31 @@ export function AskedField({ input, at }: { input: AskedInput; at: number }) {
           }
         />
       )}
+    </Field>
+  );
+}
+
+/** A yes-or-no asked value, as a switch that stores `"true"` or `"false"`. */
+function YesNoField({ input, at }: { input: AskedInput; at: number }) {
+  const { control } = useFormContext();
+  return (
+    <Field
+      name={`values.${at}`}
+      label={input.label}
+      hint={input.description ?? undefined}
+      orientation="horizontal"
+      manual
+    >
+      <Controller
+        name={`values.${at}`}
+        control={control}
+        render={({ field }) => (
+          <Switch
+            checked={field.value === "true"}
+            onCheckedChange={(next) => field.onChange(next ? "true" : "false")}
+          />
+        )}
+      />
     </Field>
   );
 }

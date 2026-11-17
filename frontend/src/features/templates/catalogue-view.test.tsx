@@ -93,7 +93,7 @@ const cards = () =>
   );
 
 describe("CatalogueView", () => {
-  it("shows each Template's logo, name, version, description, where it runs, tags, links and its setup", () => {
+  it("shows each Template's logo, name, version, description, tags, links and its setup", () => {
     render(<Harness templates={[KUMA]} />);
 
     const card = screen.getByRole("article", { name: "Uptime Kuma" });
@@ -102,9 +102,8 @@ describe("CatalogueView", () => {
     expect(
       within(card).getByText("A self-hosted monitoring tool."),
     ).toBeTruthy();
-    expect(
-      within(card).getByText("Runs on a Server or in a cloud"),
-    ).toBeTruthy();
+    // Running everywhere is the rule, so the card leaves it unsaid.
+    expect(within(card).queryByText(/^Runs on/)).toBeNull();
     expect(within(card).getByText("monitoring")).toBeTruthy();
     const links = Object.fromEntries(
       within(card)

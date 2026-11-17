@@ -54,3 +54,14 @@ function isHttpUrl(value: string): boolean {
     return false;
   }
 }
+
+/**
+ * Whether an asked value is a yes or no: its one check takes exactly `true`
+ * or `false` (Vaultwarden's sign-ups, Gitea's registration). Such a value was
+ * a text box holding the word "true", which invited a typo the check then
+ * refused; it is a switch that writes the same word.
+ */
+export function isYesNo(input: AskedInput): boolean {
+  const pattern = (input.pattern ?? "").replace(/^\^?\(?|\)?\$?$/g, "");
+  return pattern === "true|false" || pattern === "false|true";
+}
