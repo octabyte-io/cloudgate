@@ -176,16 +176,22 @@ const NOT_READY: Record<Exclude<BoughtServerStage, "ready">, string> = {
 };
 
 /**
- * Why nothing can be deployed to this Server yet, in a word for a picker
- * ("Setting up"), or `null` when it can be. Only a Bought Server is ever held
- * back, until it is Ready (spec #1387); the API refuses a deploy to one
- * before then, so a picker greys it out rather than offer a choice that fails.
+ * Why nothing can be deployed to this Server now, in a word for a picker
+ * ("Setting up", "Powered off"), or `null` when it can be. Only a Bought
+ * Server is ever held back: until it is Ready (spec #1387), and while an
+ * Operator has it powered off (#1401). The API refuses a deploy to one then,
+ * so a picker greys it out rather than offer a choice that fails. Every
+ * Server picker calls this (`server-pickers-census.test.ts`).
  */
 export function notReadyYet(server: {
   boughtServer?: Server["boughtServer"];
 }): string | null {
-  const stage = server.boughtServer?.stage;
-  return stage && stage !== "ready" ? NOT_READY[stage] : null;
+  const bought = server.boughtServer;
+  if (!bought) return null;
+  // Powered off first, as the API's refusal says: an Operator can power one
+  // off while it is still Setting up.
+  if (bought.poweredOff) return "Powered off";
+  return bought.stage === "ready" ? null : NOT_READY[bought.stage];
 }
 
 /**

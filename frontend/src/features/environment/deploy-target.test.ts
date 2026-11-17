@@ -108,6 +108,36 @@ describe("deploy target picker values", () => {
     ]);
   });
 
+  it("greys out a Bought Server an operator powered off, Ready or Setting up, saying so", () => {
+    const poweredOff = { at: "2026-11-10T09:00:00.000Z", reason: "Port scan" };
+    const options = deployTargetOptions(
+      (["ready", "setting_up"] as const).map((stage, index) => ({
+        serverId: `srv_${index + 1}`,
+        name: `bought-${index + 1}`,
+        ipAddress: "203.0.113.20",
+        serverType: "deploy",
+        boughtServer: { stage, poweredOff, deletesOn: null, deletedAt: null },
+      })) as never,
+      [],
+      { platformHost: false },
+    );
+
+    expect(options).toEqual([
+      {
+        value: "srv_1",
+        label: "bought-1",
+        detail: "Powered off",
+        disabled: true,
+      },
+      {
+        value: "srv_2",
+        label: "bought-2",
+        detail: "Powered off",
+        disabled: true,
+      },
+    ]);
+  });
+
   it("leaves the platform host out on the Hosted instance", () => {
     const options = deployTargetOptions(
       [{ serverId: "srv_1", name: "worker-1", serverType: "deploy" }] as never,

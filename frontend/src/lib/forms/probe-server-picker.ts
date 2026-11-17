@@ -1,5 +1,6 @@
 import type { FieldSpec } from "@/components/console/form-spec";
 import type { PickerOption } from "@/components/console/picker";
+import { notReadyYet } from "@/lib/api/endpoints/servers";
 import { useInstanceMode } from "@/lib/api/use-instance-mode";
 import { useServers } from "@/lib/api/use-servers";
 
@@ -27,11 +28,17 @@ export function useProbeServerPicker(): ProbeFrom | null {
   const servers = useServers();
   if (!hosted) return null;
   return {
-    options: (servers.data ?? []).map((server) => ({
-      value: server.serverId,
-      label: server.name,
-      detail: server.ipAddress,
-    })),
+    // A Bought Server not Ready or powered off cannot run the test, so it
+    // is greyed out, saying why, as every Server picker does.
+    options: (servers.data ?? []).map((server) => {
+      const notReady = notReadyYet(server);
+      return {
+        value: server.serverId,
+        label: server.name,
+        detail: notReady ?? server.ipAddress,
+        disabled: notReady !== null,
+      };
+    }),
     pending: servers.isPending,
   };
 }

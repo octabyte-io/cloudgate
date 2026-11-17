@@ -30,12 +30,17 @@ export interface ServerFacts {
   readonly setupInFlight: boolean;
   /** Its Bought Server's stage; null for a Server of the customer's own. */
   readonly boughtStage: BoughtServerStage | null;
+  /** Whether an Operator has its Bought Server powered off (#1401). */
+  readonly poweredOff: boolean;
 }
 
 /**
  * The rule, pure. A Server is ready once it is set up: its last Setup run
  * finished, none is going now, and, when it is a Bought Server, it is
- * Ready (spec #1387). A failed or never-run setup keeps the setup waiting
+ * Ready (spec #1387) and not powered off by an Operator (#1401), since a
+ * deploy to it is refused until then (`deployRefusal`). A powered-off one
+ * keeps the setup waiting, as an Operator can power it back on. A failed
+ * or never-run setup keeps the setup waiting
  * rather than giving it up, since a press of *Run setup* can still make the
  * Server ready; a Bought Server that failed to be made or is being deleted
  * will never be.
@@ -66,6 +71,12 @@ export function readinessFrom(
     return {
       kind: 'gone',
       reason: `${name} is being deleted, so there is nowhere to deploy this app`,
+    };
+  }
+  if (facts.poweredOff) {
+    return {
+      kind: 'waiting',
+      waitingFor: `${name} is powered off by an operator`,
     };
   }
   if (boughtStage !== null && boughtStage !== 'ready') {
@@ -108,6 +119,7 @@ export async function readinessOf(
       setupOk: server.setupOk,
       setupMessage: server.setupMessage,
       boughtStage: boughtServer.stage,
+      poweredOffAt: boughtServer.poweredOffAt,
     })
     .from(server)
     .leftJoin(boughtServer, eq(boughtServer.serverId, server.serverId))
@@ -122,6 +134,7 @@ export async function readinessOf(
           setupMessage: found.setupMessage,
           setupInFlight: setupInFlight(target.serverId),
           boughtStage: found.boughtStage ?? null,
+          poweredOff: found.poweredOffAt !== null,
         }
       : null,
   );

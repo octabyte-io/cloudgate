@@ -1,5 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import { and, eq, inArray, ne } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, ne, or } from 'drizzle-orm';
 import type { DrizzleDB } from '../db/drizzle.module';
 import { server } from '../servers/server.schema';
 import { boughtServer } from './bought-server.schema';
@@ -9,8 +9,8 @@ import type { BoughtServerStage } from './bought-server.schema';
 /**
  * Whether a Server can be deployed to yet, as far as it is a **Bought
  * Server**: nothing is deployed to one until it is Ready (spec #1387,
- * CONTEXT.md). A Server of the customer's own has no stage and is never
- * held back here.
+ * CONTEXT.md), nor while an Operator has it powered off (#1401). A Server
+ * of the customer's own has no stage and is never held back here.
  *
  * Plain functions over the database rather than a service, because the
  * callers are the deploy paths of three modules that the Bought Servers
@@ -102,8 +102,9 @@ export async function withPurchase<T extends { serverId: string }>(
 
 /**
  * Refuses a deploy to any of these Servers that is a Bought Server not yet
- * Ready, with a 409 naming it. `null` (the platform host) and an absent id
- * are skipped, so a caller passes its run and build Server ids as they are.
+ * Ready, or one an Operator powered off, with a 409 naming it. `null` (the
+ * platform host) and an absent id are skipped, so a caller passes its run
+ * and build Server ids as they are.
  */
 export async function refuseDeployUntilReady(
   db: DrizzleDB,
@@ -120,8 +121,8 @@ export async function refuseDeployUntilReady(
 
 /**
  * The sentence a deploy to these Servers is refused with, or null when none
- * of them is a Bought Server short of Ready: for the queued claim, which
- * writes it on the Deployment instead of throwing.
+ * of them is a Bought Server short of Ready or powered off: for the queued
+ * claim, which writes it on the Deployment instead of throwing.
  */
 export async function deployRefusal(
   db: DrizzleDB,
@@ -130,14 +131,36 @@ export async function deployRefusal(
   const ids = [...new Set(serverIds.filter((id): id is string => Boolean(id)))];
   if (ids.length === 0) return null;
   const [held] = await db
-    .select({ name: server.name, stage: boughtServer.stage })
+    .select({
+      name: server.name,
+      stage: boughtServer.stage,
+      poweredOffAt: boughtServer.poweredOffAt,
+    })
     .from(boughtServer)
     .innerJoin(server, eq(server.serverId, boughtServer.serverId))
     .where(
-      and(inArray(boughtServer.serverId, ids), ne(boughtServer.stage, 'ready')),
+      and(
+        inArray(boughtServer.serverId, ids),
+        or(
+          ne(boughtServer.stage, 'ready'),
+          isNotNull(boughtServer.poweredOffAt),
+        ),
+      ),
     )
     .limit(1);
-  return held ? notReadyMessage(held.name, held.stage) : null;
+  if (!held) return null;
+  return held.poweredOffAt
+    ? poweredOffMessage(held.name)
+    : notReadyMessage(held.name, held.stage);
+}
+
+/**
+ * The refusal's words for a Bought Server an Operator powered off (#1401):
+ * its machine is off, so a deploy could only fail on it, and only an
+ * Operator powers it back on.
+ */
+export function poweredOffMessage(serverName: string): string {
+  return `${serverName} is powered off by an operator: deploy to it once it is powered back on`;
 }
 
 /** The refusal's words: what the Server is doing, and what to wait for. */

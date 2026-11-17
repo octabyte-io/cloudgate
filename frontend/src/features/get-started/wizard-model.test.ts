@@ -94,6 +94,17 @@ describe("canSetUpOn", () => {
     expect(canSetUpOn(bought("ready"))).toBe(true);
   });
 
+  it("refuses a Bought Server an operator powered off, at any stage", () => {
+    const poweredOff = { at: "2026-11-10T09:00:00Z", reason: "Port scan" };
+    for (const stage of ["setting_up", "ready"] as const) {
+      const off = server({
+        boughtServer: { stage, poweredOff, deletesOn: null, deletedAt: null },
+      });
+      expect(canSetUpOn(off)).toBe(false);
+      expect(isReadyServer(off)).toBe(false);
+    }
+  });
+
   it("takes an own Server only once its setup finished", () => {
     expect(canSetUpOn(server({}))).toBe(false);
     expect(canSetUpOn(server({ setupRanAt: "x", setupOk: true }))).toBe(true);

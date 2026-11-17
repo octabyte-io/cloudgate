@@ -5,9 +5,11 @@ import { App } from 'supertest/types';
 import {
   application,
   auditLog,
+  boughtServer,
   pendingSetup,
   plan as planTable,
   server as serverTable,
+  user,
   webServerSettings,
 } from '../../src/db/schema';
 import { DEPLOYMENT_QUEUE } from '../../src/deployment-queue/queue.port';
@@ -281,6 +283,54 @@ describe('Template setup with autoApply (e2e)', () => {
       .where(eq(application.configName, 'kuma-app'));
     expect(app.serverId).toBe(serverId);
     expect(await ctx.db.select().from(pendingSetup)).toEqual([]);
+  });
+
+  it('waits while its Bought Server is powered off by an operator, then applies once it is on', async () => {
+    const serverId = await ownServer(true);
+    const [person] = await ctx.db.select({ id: user.id }).from(user);
+    await ctx.db.insert(boughtServer).values({
+      id: serverId,
+      organizationId,
+      serverId,
+      name: 'web-1',
+      stage: 'ready',
+      serverType: 'cpx22',
+      location: 'hel1',
+      termsAcceptedBy: person.id,
+      termsAcceptedAt: new Date(),
+      poweredOffAt: new Date(),
+      poweredOffReason: 'Port scan',
+    });
+    const res = await setUp({
+      newProject: {
+        name: 'status',
+        deployTarget: { kind: 'server', serverId },
+      },
+    });
+    expect(res.status).toBe(201);
+    const body = res.body as SetupBody;
+    const { environmentId, pendingSetupId } = body.pendingSetup;
+
+    expect(body.plan.status).toBe('open');
+    expect(await ctx.db.select().from(application)).toEqual([]);
+    expect((await listed(environmentId)).pendingSetups).toEqual([
+      expect.objectContaining({
+        pendingSetupId,
+        autoApply: {
+          status: 'waiting',
+          waitingFor: 'web-1 is powered off by an operator',
+          message: null,
+        },
+      }),
+    ]);
+
+    await ctx.db
+      .update(boughtServer)
+      .set({ poweredOffAt: null, poweredOffReason: null })
+      .where(eq(boughtServer.serverId, serverId));
+    await ctx.app.get(PendingSetupAutoApply).tick();
+
+    expect((await planOf(environmentId)).status).toBe('applied');
   });
 
   it('gives up, saying why, when the plan holds more than the setup, and leaves the plan open', async () => {

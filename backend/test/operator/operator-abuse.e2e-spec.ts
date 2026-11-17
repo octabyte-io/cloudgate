@@ -16,6 +16,10 @@ import {
   boughtServerLine,
 } from '../../src/bought-servers/bought-server.schema';
 import type { BoughtServerStage } from '../../src/bought-servers/bought-server.schema';
+import {
+  BOUGHT_SERVER_NOT_READY_CODE,
+  deployRefusal,
+} from '../../src/bought-servers/server-readiness';
 import { STRIPE_API } from '../../src/cloud/billing/stripe-api';
 import type { StripeApi } from '../../src/cloud/billing/stripe-api';
 import { member } from '../../src/db/schema';
@@ -454,7 +458,7 @@ describe('The Operator acts on abuse (e2e)', () => {
       expect(change.status).toBe(409);
       expect(change.body).toMatchObject({
         message:
-          "This Server was powered off by Cloudgate, so it can't be changed",
+          "This Server was powered off by an operator, so it can't be changed",
       });
 
       expect(ctx.hetzner.machines.callsTo('powerOn')).toEqual([]);
@@ -481,6 +485,60 @@ describe('The Operator acts on abuse (e2e)', () => {
         ]),
       );
       expect((await powerOn(bought.id)).status).toBe(409);
+    });
+
+    it('refuses a deploy to it while it is off, saying so, and takes one again once it is on', async () => {
+      const bought = await givenBoughtServer();
+      const project = await request(http)
+        .post('/projects')
+        .set('Cookie', grace.cookie)
+        .send({ name: 'shop' })
+        .expect(201);
+      const environment = await request(http)
+        .post('/environments')
+        .set('Cookie', grace.cookie)
+        .send({
+          name: 'production',
+          projectId: (project.body as { projectId: string }).projectId,
+          deployTarget: { kind: 'server', serverId: bought.id },
+        })
+        .expect(201);
+      const created = await request(http)
+        .post('/applications')
+        .set('Cookie', grace.cookie)
+        .send({
+          name: 'web',
+          appName: 'web',
+          environmentId: (environment.body as { environmentId: string })
+            .environmentId,
+          serverId: bought.id,
+        })
+        .expect(201);
+      const { applicationId } = created.body as { applicationId: string };
+      await request(http)
+        .patch(`/applications/${applicationId}`)
+        .set('Cookie', grace.cookie)
+        .send({ sourceType: 'docker', dockerImage: 'nginx:1.27' })
+        .expect(200);
+      await powerOff(bought.id).expect(200);
+
+      const refused = await request(http)
+        .post(`/applications/${applicationId}/deployments`)
+        .set('Cookie', grace.cookie)
+        .send({});
+
+      expect(refused.status).toBe(409);
+      expect(refused.body).toMatchObject({
+        code: BOUGHT_SERVER_NOT_READY_CODE,
+        message:
+          'web-1 is powered off by an operator: deploy to it once it is powered back on',
+      });
+      expect(await deployRefusal(ctx.db, [bought.id])).toBe(
+        'web-1 is powered off by an operator: deploy to it once it is powered back on',
+      );
+
+      await powerOn(bought.id).expect(204);
+      expect(await deployRefusal(ctx.db, [bought.id])).toBeNull();
     });
 
     it('marks nothing when the provider refuses, and says so to the Operator', async () => {

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { KVList, KVRow } from "@/components/console/kv-list";
 import type { ApplicationDetail } from "@/lib/api/endpoints/applications";
+import { notReadyYet } from "@/lib/api/endpoints/servers";
 import type { Server } from "@/lib/api/endpoints/servers";
 import { usePermission } from "@/lib/auth/use-permission";
 
@@ -99,11 +100,15 @@ export function BuildServerCard({
       placeholder: "Build where it runs",
       options: [
         { value: "", label: "Build where it runs" },
-        ...servers.map((server) => ({
-          value: server.serverId,
-          label: server.name,
-          detail: server.ipAddress,
-        })),
+        ...servers.map((server) => {
+          const notReady = notReadyYet(server);
+          return {
+            value: server.serverId,
+            label: server.name,
+            detail: notReady ?? server.ipAddress,
+            disabled: notReady !== null,
+          };
+        }),
       ],
       hint:
         application.sourceType === "docker"

@@ -12,6 +12,7 @@ const SET_UP: ServerFacts = {
   setupMessage: null,
   setupInFlight: false,
   boughtStage: null,
+  poweredOff: false,
 };
 
 describe('readinessFrom', () => {
@@ -45,6 +46,17 @@ describe('readinessFrom', () => {
     expect(
       readinessFrom(ON_SERVER, { ...SET_UP, boughtStage: 'changing' }),
     ).toEqual({ kind: 'waiting', waitingFor: 'web-1 is being changed' });
+  });
+
+  it('waits on a Bought Server an operator powered off, in any stage, saying so', () => {
+    for (const boughtStage of ['setting_up', 'ready'] as const) {
+      expect(
+        readinessFrom(ON_SERVER, { ...SET_UP, boughtStage, poweredOff: true }),
+      ).toEqual({
+        kind: 'waiting',
+        waitingFor: 'web-1 is powered off by an operator',
+      });
+    }
   });
 
   it('waits while a Setup run is going, even after an earlier one finished', () => {

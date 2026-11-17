@@ -10,7 +10,11 @@ import type {
 } from "@/lib/api/endpoints/environments";
 import type { AutoApplyView } from "@/lib/api/endpoints/pending-setups";
 import type { Plan } from "@/lib/api/endpoints/project-config";
-import { lastSetup, type Server } from "@/lib/api/endpoints/servers";
+import {
+  lastSetup,
+  notReadyYet,
+  type Server,
+} from "@/lib/api/endpoints/servers";
 
 import { SUGGESTED_MEMORY_GB, offerIn } from "../server/buy/buy-model";
 
@@ -28,7 +32,7 @@ import { SUGGESTED_MEMORY_GB, offerIn } from "../server/buy/buy-model";
  */
 export function isReadyServer(server: Server): boolean {
   if (server.serverType !== "deploy") return false;
-  if (server.boughtServer) return server.boughtServer.stage === "ready";
+  if (server.boughtServer) return notReadyYet(server) === null;
   return lastSetup(server)?.ok === true;
 }
 
@@ -46,7 +50,8 @@ export function canSetUpOn(server: Server): boolean {
   return (
     isReadyServer(server) ||
     (server.serverType === "deploy" &&
-      server.boughtServer?.stage === "setting_up")
+      server.boughtServer?.stage === "setting_up" &&
+      !server.boughtServer.poweredOff)
   );
 }
 
