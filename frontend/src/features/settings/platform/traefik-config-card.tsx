@@ -128,7 +128,7 @@ export function TraefikConfigCard({
 
   const emptyNote = (
     <span className="text-meta text-tx-3">
-      This file cannot be saved empty — delete it on the host instead.
+      This file cannot be saved empty — delete it on the platform host instead.
     </span>
   );
 
@@ -172,7 +172,7 @@ export function TraefikConfigCard({
               open={expanded}
               onOpenChange={setExpanded}
               title={descriptor.title}
-              context={`${descriptor.path} · Traefik on this host`}
+              context={`${descriptor.path} · Traefik on the platform host`}
               label={label}
               value={content}
               onChange={setDraft}

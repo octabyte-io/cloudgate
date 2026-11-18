@@ -122,7 +122,7 @@ describe("TraefikConfigCard — Expand", () => {
     const { dialog, editor } = expanded({ allowed: true });
 
     expect(within(dialog).getByRole("heading", { name: "Main configuration" })).toBeTruthy();
-    expect(dialog.textContent).toContain("traefik.yml");
+    expect(dialog.textContent).toContain("traefik.yml · Traefik on the platform host");
     expect(within(dialog).getByRole("button", { name: "Save main configuration" })).toBeTruthy();
     expect((editor as HTMLTextAreaElement).value).toBe("entryPoints: {}\n");
   });
