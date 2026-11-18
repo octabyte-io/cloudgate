@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Icon } from "@/lib/design/icons";
+import { counted } from "@/lib/format/plural";
 import { yamlProblem } from "@/lib/format/yaml-problem";
 import { cn } from "@/lib/utils";
 
@@ -148,7 +149,7 @@ export function ExpandedEditor({
         )}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line bg-panel px-4 py-2 text-meta text-tx-3">
           {status}
-          <span>{lines} lines</span>
+          <span>{counted(lines, "line", "lines")}</span>
         </div>
       </DialogContent>
     </Dialog>

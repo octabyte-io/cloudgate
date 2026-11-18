@@ -109,6 +109,15 @@ describe("ExpandedEditor as a text box", () => {
     // editor's gutter numbers them.
     expect(screen.getByRole("dialog").textContent).toContain("3 lines");
   });
+
+  it("says 1 line, not 1 lines, for a file of one line", () => {
+    render(<Caller save={vi.fn()} />);
+    fireEvent.change(box(), { target: { value: "LOG_LEVEL=debug" } });
+
+    const status = screen.getByRole("dialog").textContent;
+    expect(status).toContain("1 line");
+    expect(status).not.toContain("1 lines");
+  });
 });
 
 /**
