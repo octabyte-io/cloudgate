@@ -2,6 +2,44 @@
 
 ## Unreleased
 
+## 0.3.10 (2026-11-18)
+
+### Expand a file editor to fill the window
+
+Every file editor in the console has an **Expand** button (#118). It opens the same file filling the browser window: a top bar with the file's name, where it belongs, an "Unsaved changes" mark and the editor's own Discard and Save; the file edge to edge; and a status line with how many lines it has and, for a compose file or a Project config, whether the YAML is valid. **Back to page** or Esc returns with the edit kept in the card; nothing is asked and nothing is thrown away. It is on the Compose file card, the Project config panel, the Traefik config and dynamic files cards, the Variables editor, Traefik's environment block, the patch editor, every text box that holds a whole file (mount content, certificates and keys, custom CSS, schedule commands, runtime arguments, preview variables and build arguments, the Server's setup command), and, read-only, an Environment's copy of a repository-kept Project config and the move-out dialog's preview. Saving from the top bar follows the same rules as the card: a compose file that is not valid YAML cannot be saved there either.
+
+**What to do on upgrade**: nothing.
+
+### The Get started wizard shows real progress
+
+The wizard's single spinners are gone (#117). Setting up a server says which of the server setup's eight steps is running and the machine's newest line; the launch shows each of its parts and its deploy's output; a Stripe confirmation says how long it has taken.
+
+**What to do on upgrade**: nothing.
+
+### Buy a server picks the Server image, and the wizard buys with every option
+
+Buy a server has an **Operating system** select, filtered to the chosen size's architecture and named in the summary; it opens on Ubuntu 24.04, what every Bought Server was made from before, and Buy refuses an image the size cannot run (#107). The Server families are named Standard, Performance, Arm and Dedicated, and the screen opens on two suggestions, Closest and Cheapest. The summary stays in view as the options scroll (#109). The Get started wizard's step 1 now offers every option the Buy screen has, the image, backups and extra storage among them, where before it always bought Ubuntu 24.04 with none (#110). After Buy, step 2 is open at once with the server's progress in a strip above it (#111), and it asks the web address, Project and setup name as Template setup does, so your own domain and its DNS check work there too (#112).
+
+**What to do on upgrade**: nothing.
+
+### A powered-off Bought Server is refused as a deploy target
+
+A Bought Server powered off by an operator was still offered and taken as a deploy target, and a rollback, a Start or restart, a Run now, an upload or a preview went on to the machine and failed with a 500 (#115). Each is now refused with a 409 naming the Server, a template setup waits for it to be powered on instead of applying, and the build-server and probe pickers leave it out. The powered-off notice says "Powered off by an operator", gives the reason, and links support.
+
+**What to do on upgrade**: nothing.
+
+### A new Bought Server's first setup waits for SSH
+
+A Bought Server's first Setup run started as soon as the provider reported its address, before its SSH daemon answered, so it timed out, the Server was left with Setup failed, and a Get started launch waiting on it stalled. The first run now waits up to ten minutes for the machine to accept SSH before it runs setup.
+
+**What to do on upgrade**: nothing.
+
+### A Server's Terminal tab is its Shell tab
+
+Every interactive session in the console is called a shell (#116); `/servers/<id>/terminal` forwards to `/shell`.
+
+**What to do on upgrade**: nothing.
+
 ## 0.3.9 (2026-11-18)
 
 ### Traefik and the Compose stacks on cloudgate-network come back after a reboot
