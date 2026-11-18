@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { CodeEditor } from "@/components/console/code-editor";
+import { ExpandedEditor, ExpandedEditorStatus } from "@/components/console/expanded-editor";
 import { Field } from "@/components/console/field";
 import { Modal } from "@/components/console/modal";
 import { Picker } from "@/components/console/picker";
@@ -23,6 +24,10 @@ import { useConfirmMove, usePreviewMove } from "./use-project-config";
  * Config branch is chosen — then **Preview**, which shows that copy and each
  * Environment's plan of it, and **Move**, refused if the copy changed since.
  * The move clears every Config branch and applies nothing.
+ *
+ * The previewed copy **expands** to the whole window (spec #118), read-only,
+ * over this dialog: Base UI stacks the two, so Back to page and Esc return
+ * here with the preview still shown.
  */
 export function MoveOutModal({
   projectId,
@@ -48,6 +53,7 @@ export function MoveOutModal({
   };
   const shown = preview.data && !preview.isPending ? preview.data : null;
   const kept = shown?.to.kind === "cloudgate" ? shown.to.copy : null;
+  const [expanded, setExpanded] = useState(false);
 
   const close = (next: boolean) => {
     if (!next) {
@@ -56,6 +62,20 @@ export function MoveOutModal({
     }
     onOpenChange(next);
   };
+
+  const openTheFile = kept ? (
+    <a
+      href={kept.fileUrl}
+      target="_blank"
+      rel="noreferrer"
+      className="text-meta font-medium text-brand-tx underline-offset-3 hover:underline focus-visible:underline"
+    >
+      Open the file
+    </a>
+  ) : null;
+  const where = kept
+    ? `${kept.path} from ${kept.repository} on ${readLine(kept.branch, kept.commitSha)}`
+    : "";
 
   return (
     <Modal open={open} onOpenChange={close} wide>
@@ -98,22 +118,25 @@ export function MoveOutModal({
         {kept ? (
           <div className="grid gap-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-meta text-tx-2">
-                {kept.path} from {kept.repository} on{" "}
-                {readLine(kept.branch, kept.commitSha)}
-              </p>
-              <a
-                href={kept.fileUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-meta font-medium text-brand-tx underline-offset-3 hover:underline focus-visible:underline"
-              >
-                Open the file
-              </a>
+              <p className="text-meta text-tx-2">{where}</p>
+              <div className="flex items-center gap-3">
+                {openTheFile}
+                <Button size="sm" onClick={() => setExpanded(true)}>
+                  <Icon name="maximise" size={14} />
+                  Expand
+                </Button>
+              </div>
             </div>
-            <CodeEditor
-              value={kept.text}
+            <CodeEditor value={kept.text} label="The copy Cloudgate will keep" />
+            <ExpandedEditor
+              open={expanded}
+              onOpenChange={setExpanded}
+              title="Project config"
+              context={where}
               label="The copy Cloudgate will keep"
+              value={kept.text}
+              actions={openTheFile}
+              status={expanded ? <ExpandedEditorStatus yaml={kept.text} /> : null}
             />
           </div>
         ) : null}
