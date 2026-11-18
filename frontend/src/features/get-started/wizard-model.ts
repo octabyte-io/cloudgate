@@ -112,11 +112,7 @@ export function buyStageStates(
   return BUY_STAGES.map((entry, index) => ({
     label: entry.label,
     state:
-      stage === "ready" || index < at
-        ? "done"
-        : index === at
-          ? "now"
-          : "todo",
+      stage === "ready" || index < at ? "done" : index === at ? "now" : "todo",
   }));
 }
 
@@ -275,4 +271,58 @@ function freeName(
     const name = `${base}${joiner}${at}`;
     if (!used.has(name.toLowerCase())) return name;
   }
+}
+
+/** How one part of the app is getting on, while it starts. */
+export type LaunchPartState = "waiting" | "starting" | "started" | "failed";
+
+export type LaunchPart = {
+  /** The part's Config name. */
+  name: string;
+  state: LaunchPartState;
+  /** The Deployment running for it now, whose log says what it is doing. */
+  deploymentId: string | null;
+};
+
+/**
+ * Each part the setup's Apply created, with how its deploy is getting on:
+ * waiting its turn, starting (its Deployment running), started, or failed.
+ * A queued deploy names its Deployment, so that row is the one read; a
+ * database's deploy writes none, so its own `started` is taken as it is.
+ * Empty before the plan is applied.
+ */
+export function launchParts(
+  plan: Plan | null | undefined,
+  deployments: readonly EnvironmentDeployment[] | undefined,
+): LaunchPart[] {
+  const byId = new Map(
+    (deployments ?? []).map((row) => [row.deploymentId, row] as const),
+  );
+  return (plan?.results ?? []).flatMap((result): LaunchPart[] => {
+    const deploy = result.deploy;
+    const name = result.configName;
+    if (deploy === null) return [];
+    if (deploy.status === "started") {
+      return [{ name, state: "started", deploymentId: null }];
+    }
+    if (deploy.status === "not-deployed") {
+      return [{ name, state: "failed", deploymentId: null }];
+    }
+    const status = byId.get(deploy.deploymentId)?.status;
+    const state: LaunchPartState =
+      status === "running"
+        ? "starting"
+        : status === "done"
+          ? "started"
+          : status === "error" || status === "cancelled"
+            ? "failed"
+            : "waiting";
+    return [
+      {
+        name,
+        state,
+        deploymentId: state === "starting" ? deploy.deploymentId : null,
+      },
+    ];
+  });
 }

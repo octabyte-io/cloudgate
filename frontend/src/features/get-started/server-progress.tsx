@@ -14,6 +14,8 @@ import { errorMessage } from "@/lib/api/error-message";
 import { useInvalidate } from "@/lib/api/use-invalidate";
 
 import { useCancelPurchase } from "../server/buy/use-bought-servers";
+import { FirstSetupRun } from "./first-setup-run";
+import { useSecondsWaited } from "./use-get-started";
 import { BUY_STAGES, buyStageStates } from "./wizard-model";
 import { StepNote } from "./wizard-parts";
 import { wizardHref } from "./wizard-state";
@@ -46,6 +48,7 @@ export function ServerProgress({
   name,
   stage,
   leftPayment = false,
+  paid = false,
 }: {
   template: TemplateSummary;
   id: string;
@@ -53,10 +56,16 @@ export function ServerProgress({
   stage: BoughtServerStage;
   /** Back from a cancelled Checkout, with the payment still to finish. */
   leftPayment?: boolean;
+  /** Back from a paid Checkout, with Stripe's word on it still to come. */
+  paid?: boolean;
 }) {
   // Only the four stages a buyer follows; a later one (Changing) is the
   // Server's own page's to show.
-  const doing = DOING[stage];
+  // Back from a paid Checkout the payment is made, only not confirmed yet.
+  const doing =
+    paid && stage === "waiting_for_payment"
+      ? "is waiting for Stripe to confirm your payment"
+      : DOING[stage];
   if (!doing) return null;
   const steps = buyStageStates(stage).map((entry, at) => ({
     id: BUY_STAGES[at].stage,
@@ -80,16 +89,90 @@ export function ServerProgress({
           )}
         </div>
         <SegmentedProgress label="Your server" steps={steps} />
+        {stage === "creating" ? (
+          <p className="text-meta text-tx-2">
+            A new machine is being started for you. This usually takes a minute
+            or two.
+          </p>
+        ) : null}
+        {stage === "setting_up" ? (
+          <div className="grid gap-2 rounded-md border border-line bg-panel-2 p-3">
+            <FirstSetupRun serverId={id} name={name} />
+          </div>
+        ) : null}
         {ready ? null : (
           <p className="text-meta wrap-anywhere text-tx-2">
             {`${template.name} starts on its own once the server is ready, so you can leave after Deploy.`}
           </p>
         )}
         {stage === "waiting_for_payment" ? (
-          <FinishPaying template={template} id={id} left={leftPayment} />
+          paid ? (
+            <ConfirmingPayment template={template} id={id} />
+          ) : (
+            <FinishPaying
+              template={template}
+              id={id}
+              note={
+                leftPayment ? (
+                  <StepNote tone="info">
+                    You left the payment page before paying: finish paying to
+                    get the server, or cancel it and nothing is charged.
+                  </StepNote>
+                ) : null
+              }
+            />
+          )
         ) : null}
       </Card.Body>
     </Card>
+  );
+}
+
+/** How long a payment made is waited for before the way to pay again shows. */
+const CONFIRM_PATIENCE_S = 45;
+
+/**
+ * Back from a paid Checkout, the purchase waits for Stripe's word, which
+ * comes a few seconds after the browser does. Until then the strip says the
+ * payment is being confirmed rather than offering to pay a second time;
+ * a wait that runs long offers it after all, since a bank's check can
+ * still have stopped the payment.
+ */
+function ConfirmingPayment({
+  template,
+  id,
+}: {
+  template: TemplateSummary;
+  id: string;
+}) {
+  const waited = useSecondsWaited();
+  if (waited >= CONFIRM_PATIENCE_S) {
+    return (
+      <FinishPaying
+        template={template}
+        id={id}
+        note={
+          <StepNote tone="warn">
+            Stripe hasn&rsquo;t confirmed your payment yet. If you were asked to
+            approve it with your bank and didn&rsquo;t, finish paying below;
+            otherwise give it a minute more.
+          </StepNote>
+        }
+      />
+    );
+  }
+  return (
+    <p
+      role="status"
+      className="flex items-center gap-2 border-t border-line pt-3 text-ui text-tx-2"
+    >
+      <span
+        aria-hidden="true"
+        className="size-2 flex-none rounded-pill bg-warn motion-safe:animate-pulse"
+      />
+      Payment made. Confirming it with Stripe, which usually takes a few
+      seconds.
+    </p>
   );
 }
 
@@ -100,12 +183,12 @@ export function ServerProgress({
 function FinishPaying({
   template,
   id,
-  left,
+  note,
 }: {
   template: TemplateSummary;
   id: string;
-  /** The person left the payment page before paying (`checkout=cancelled`). */
-  left: boolean;
+  /** Why paying is offered: the payment page was left, or a payment is slow to confirm. */
+  note?: React.ReactNode;
 }) {
   const router = useRouter();
   const invalidate = useInvalidate();
@@ -122,12 +205,7 @@ function FinishPaying({
 
   return (
     <div className="grid gap-3 border-t border-line pt-3">
-      {left ? (
-        <StepNote tone="info">
-          You left the payment page before paying: finish paying to get the
-          server, or cancel it and nothing is charged.
-        </StepNote>
-      ) : null}
+      {note}
       <div className="flex flex-wrap gap-2">
         {/* `SubmitButton` for its pending state, as `check-inbox` does: the
             label stays and a turning mark says the press was taken. */}

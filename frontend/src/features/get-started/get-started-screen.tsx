@@ -115,6 +115,7 @@ export function GetStartedScreen() {
             <LaunchView
               template={template}
               environmentId={state.environmentId}
+              serverId={state.serverId}
             />
           ) : step === "details" && state.serverId ? (
             <DetailsStep
@@ -122,6 +123,7 @@ export function GetStartedScreen() {
               serverId={state.serverId}
               bought={state.path === "buy"}
               leftPayment={state.checkout === "cancelled"}
+              paid={state.checkout === "success"}
             />
           ) : (
             <ServerStep template={template} state={state} />

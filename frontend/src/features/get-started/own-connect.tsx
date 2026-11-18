@@ -1,25 +1,22 @@
 import { useState } from "react";
 
 import { Card } from "@/components/console/card";
-import { LogWell } from "@/components/console/log-well";
 import { Skeleton } from "@/components/console/skeleton";
 import { SubmitButton } from "@/components/console/submit-button";
 import type { TemplateSummary } from "@/lib/api/endpoints/templates";
 import { errorMessage } from "@/lib/api/error-message";
-import { Icon } from "@/lib/design/icons";
 import { useSshKeys } from "@/lib/api/use-ssh-keys";
 
-import { toSetupLines } from "../server/infrastructure/setup-log-tones";
 import { SetupConfirmModal } from "../server/infrastructure/setup-confirm-modal";
 import {
   useServer,
   useServerSetupRun,
   useValidateServer,
-  type SetupRunState,
 } from "../server/use-server";
 import { KeyLine } from "./own-server-form";
-import { ServerReady, StageList } from "./wizard-parts";
-import { isReadyServer, type StageState } from "./wizard-model";
+import { SetupProgressView } from "./setup-progress-view";
+import { ServerReady } from "./wizard-parts";
+import { isReadyServer } from "./wizard-model";
 import { wizardHref } from "./wizard-state";
 
 /** The press that starts the setup, and the words on its confirmation. */
@@ -30,8 +27,8 @@ const CONNECT = "Connect my server";
  * in (`validate`), then the person confirms, and **that confirmation is the
  * press that starts the Setup run** (ADR-0058) — the same start-dial the
  * Server's Setup card makes, through the same hook, so nothing here starts
- * a run by being opened, reloaded or reconnected. The run's own output is
- * one press away, folded, for whoever wants to read it.
+ * a run by being opened, reloaded or reconnected. While it runs, the
+ * wizard says which of the script's steps it is on (`SetupProgressView`).
  */
 export function OwnConnect({
   template,
@@ -96,9 +93,11 @@ export function OwnConnect({
       />
       <Card.Body className="grid gap-4">
         {running || run.state !== "idle" ? (
-          <StageList
+          <SetupProgressView
+            lines={run.lines}
+            dropped={run.dropped}
+            live={running}
             label="Connecting your server"
-            stages={stages(run.state)}
           />
         ) : key ? (
           <KeyLine publicKey={key.publicKey} user={row.username} />
@@ -129,28 +128,6 @@ export function OwnConnect({
           </div>
         ) : null}
 
-        {run.lines.length > 0 ? (
-          <details className="group grid gap-2">
-            {/* Our own chevron in place of the browser's marker, turning as
-                the output folds open. */}
-            <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-sm text-ui text-tx-2 transition-colors duration-100 hover:text-tx [&::-webkit-details-marker]:hidden">
-              <Icon
-                name="chevR"
-                size={14}
-                className="flex-none transition-transform duration-150 ease-out-strong group-open:rotate-90"
-              />
-              Show what&rsquo;s happening
-            </summary>
-            <LogWell
-              label="Setup output"
-              lines={toSetupLines(run.lines)}
-              live={running}
-              dropped={run.dropped}
-              className="mt-2"
-            />
-          </details>
-        ) : null}
-
         {running ? null : (
           <div>
             <SubmitButton
@@ -164,6 +141,11 @@ export function OwnConnect({
             >
               {CONNECT}
             </SubmitButton>
+            {validate.isPending ? (
+              <p role="status" className="mt-2 text-meta text-tx-2">
+                {`Signing in to ${row.ipAddress} as ${row.username}. This takes a few seconds.`}
+              </p>
+            ) : null}
           </div>
         )}
       </Card.Body>
@@ -181,15 +163,4 @@ export function OwnConnect({
       />
     </Card>
   );
-}
-
-/** The three stages of connecting, from where the Setup run is. */
-function stages(state: SetupRunState): { label: string; state: StageState }[] {
-  const setup: StageState =
-    state === "finished" ? "done" : state === "running" ? "now" : "todo";
-  return [
-    { label: "Signed in to your server", state: "done" },
-    { label: "Installing what apps need", state: setup },
-    { label: "Ready", state: state === "finished" ? "done" : "todo" },
-  ];
 }
