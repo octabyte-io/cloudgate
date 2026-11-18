@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 
-import { Chip } from "@/components/console/chip";
 import { CodeEditor } from "@/components/console/code-editor";
 import { containTab } from "@/components/console/modal";
+import { StatusPill } from "@/components/console/status-pill";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Icon } from "@/lib/design/icons";
+import type { Mark } from "@/lib/design/status";
 import { counted } from "@/lib/format/plural";
 import { yamlProblem } from "@/lib/format/yaml-problem";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,14 @@ import { cn } from "@/lib/utils";
  * the bottom even when the file is short.
  */
 const FILL = "min-h-0 flex-1 rounded-none border-0";
+
+/**
+ * Whether the draft differs from what is saved is a status, so it is a
+ * `StatusPill` rather than a `Chip`, which is a static label. `warn`, as the
+ * Swarm section says its own edits not saved; the glyph is `held`'s, a thing
+ * half done that waits on someone.
+ */
+const UNSAVED: Mark = { glyph: "◐", tone: "warn", label: "Unsaved changes" };
 
 /**
  * The button that opens an `ExpandedEditor`: `maximise`, the Dock's half of
@@ -120,7 +129,7 @@ export function ExpandedEditor({
             <DialogTitle className="text-body font-semibold text-tx">{title}</DialogTitle>
             <p className="truncate text-meta text-tx-3">{context}</p>
           </div>
-          {changed ? <Chip variant="warn">Unsaved changes</Chip> : null}
+          {changed ? <StatusPill mark={UNSAVED} /> : null}
           {actions ? (
             <div className="flex items-center gap-2 max-sm:w-full max-sm:justify-end">
               {actions}

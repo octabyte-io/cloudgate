@@ -70,7 +70,10 @@ describe("ExpandedEditor as a text box", () => {
     fireEvent.change(box(), { target: { value: EDITED } });
 
     expect(screen.getByLabelText("The card's draft").textContent).toBe(EDITED);
-    expect(screen.getByText("Unsaved changes")).toBeTruthy();
+    // A status, so a status pill: a chip is a static label (design-system.md).
+    expect(
+      screen.getByText("Unsaved changes").closest('[data-slot="status-pill"]'),
+    ).not.toBeNull();
   });
 
   it("closes on Escape pressed in the text box, and the edit stays with the caller", async () => {
