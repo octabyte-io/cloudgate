@@ -3,6 +3,7 @@ import { useId, useState } from "react";
 import { Card } from "@/components/console/card";
 import { Chip } from "@/components/console/chip";
 import { CodeEditor } from "@/components/console/code-editor";
+import { ExpandedEditor } from "@/components/console/expanded-editor";
 import { FormError } from "@/components/console/field";
 import { MetaStrip } from "@/components/console/meta-strip";
 import { SubmitButton } from "@/components/console/submit-button";
@@ -15,6 +16,7 @@ import {
   type UpdateComposeInput,
 } from "@/lib/api/endpoints/compose";
 import { usePermission } from "@/lib/auth/use-permission";
+import { Icon } from "@/lib/design/icons";
 
 import { unsetInterpolations } from "./interpolation-check";
 import { yamlProblem } from "./yaml-check";
@@ -52,26 +54,20 @@ export function ComposeFileCard({
   compose: ComposeDetail;
   save: (input: UpdateComposeInput) => Promise<unknown>;
 }) {
-  const raw = compose.sourceType === "raw";
-
   return (
     <Card>
-      <Card.Header
-        title="Compose file"
-        sub={
-          raw
-            ? "Stored in Cloudgate. Written to the deploy target on every Deployment."
-            : `Read from the repository at ${compose.composePath} when the stack deploys.`
-        }
-        headingLevel={2}
-      />
-      {raw ? (
+      {compose.sourceType === "raw" ? (
         <RawEditor compose={compose} save={save} />
       ) : (
         <ClonedFile compose={compose} />
       )}
     </Card>
   );
+}
+
+/** The card's title row, drawn by each half, because only the editable one has Expand. */
+function Header({ sub, actions }: { sub: string; actions?: React.ReactNode }) {
+  return <Card.Header title="Compose file" sub={sub} headingLevel={2} actions={actions} />;
 }
 
 /** The editable half. One field, one Save, and a YAML check before it. */
@@ -102,9 +98,91 @@ function RawEditor({
   const changed = draft !== stored;
   const problem = changed ? yamlProblem(draft) : null;
   const unset = unsetInterpolations(draft, compose.env);
+  const [expanded, setExpanded] = useState(false);
+  const label = `The compose file for ${compose.name}`;
+
+  async function saveDraft() {
+    if (!permission.allowed) return;
+    setRefusal(null);
+    setSaving(true);
+    try {
+      await save({ composeFile: draft });
+      setEdit(null);
+      toast.done("Compose file saved.", {
+        description: "Deploy the stack to apply it.",
+      });
+    } catch (error) {
+      setRefusal(errorMessage(error));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // One Save and one Discard, drawn in the card and again in the expanded
+  // editor's top bar, so the two can never disagree about when saving is off.
+  function saveButton(size?: "sm") {
+    return (
+      <SubmitButton
+        type="button"
+        size={size}
+        pending={saving}
+        disabled={!permission.allowed || !changed || problem !== null}
+        title={permission.allowed ? undefined : COMPOSE_UPDATE_REFUSAL}
+        aria-describedby={permission.allowed ? undefined : roleRefusalId}
+        onClick={saveDraft}
+      >
+        Save the file
+      </SubmitButton>
+    );
+  }
+
+  function discardButton(size?: "sm") {
+    return (
+      <Button
+        type="button"
+        size={size}
+        disabled={!changed}
+        onClick={() => {
+          setEdit(null);
+          setRefusal(null);
+        }}
+      >
+        Discard changes
+      </Button>
+    );
+  }
 
   return (
     <>
+      <Header
+        sub="Stored in Cloudgate. Written to the deploy target on every Deployment."
+        actions={
+          <Button type="button" size="sm" onClick={() => setExpanded(true)}>
+            <Icon name="maximise" size={14} />
+            Expand
+          </Button>
+        }
+      />
+      <ExpandedEditor
+        open={expanded}
+        onOpenChange={setExpanded}
+        title="Compose file"
+        context={compose.name}
+        label={label}
+        value={draft}
+        onChange={setEdit}
+        changed={changed}
+        actions={
+          <>
+            {discardButton("sm")}
+            {saveButton("sm")}
+          </>
+        }
+        status={
+          // Parsed only while open: the card itself checks an edited draft alone.
+          expanded ? <ExpandedStatus problem={yamlProblem(draft)} refusal={refusal} /> : null
+        }
+      />
       {changed ? (
         <MetaStrip>
           <strong>Unsaved changes.</strong> Nothing is applied until this is saved
@@ -113,7 +191,7 @@ function RawEditor({
       ) : null}
       <Card.Body className="flex flex-col gap-3">
         <CodeEditor
-          label={`The compose file for ${compose.name}`}
+          label={label}
           value={draft}
           onChange={setEdit}
         />
@@ -152,41 +230,8 @@ function RawEditor({
         )}
 
         <div className="flex flex-wrap items-center gap-2">
-          <SubmitButton
-            type="button"
-            pending={saving}
-            disabled={!permission.allowed || !changed || problem !== null}
-            title={permission.allowed ? undefined : COMPOSE_UPDATE_REFUSAL}
-            aria-describedby={permission.allowed ? undefined : roleRefusalId}
-            onClick={async () => {
-              if (!permission.allowed) return;
-              setRefusal(null);
-              setSaving(true);
-              try {
-                await save({ composeFile: draft });
-                setEdit(null);
-                toast.done("Compose file saved.", {
-                  description: "Deploy the stack to apply it.",
-                });
-              } catch (error) {
-                setRefusal(errorMessage(error));
-              } finally {
-                setSaving(false);
-              }
-            }}
-          >
-            Save the file
-          </SubmitButton>
-          <Button
-            type="button"
-            disabled={!changed}
-            onClick={() => {
-              setEdit(null);
-              setRefusal(null);
-            }}
-          >
-            Discard changes
-          </Button>
+          {saveButton()}
+          {discardButton()}
           <span className="ml-auto text-meta text-tx-3">
             <Chip>{COMPOSE_TYPE_LABEL[compose.composeType]}</Chip>
           </span>
@@ -198,29 +243,64 @@ function RawEditor({
   );
 }
 
+/**
+ * The expanded editor's status line: whether the draft parses, and a refused
+ * save, which would otherwise land in the card behind it.
+ */
+function ExpandedStatus({
+  problem,
+  refusal,
+}: {
+  problem: ReturnType<typeof yamlProblem>;
+  refusal: string | null;
+}) {
+  return (
+    <>
+      {problem ? (
+        <span className="text-bad">
+          {problem.kind === "aliases" ? "YAML aliases that cannot be resolved" : "Not valid YAML"}
+          {problem.line ? ` (line ${problem.line})` : ""}
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-1.25 text-tx-2">
+          <Icon name="check" size={13} /> Valid YAML
+        </span>
+      )}
+      {refusal ? (
+        <span role="alert" className="text-bad">
+          {refusal}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
 /** The half where the file is somewhere else. */
 function ClonedFile({ compose }: { compose: ComposeDetail }) {
   return (
-    <Card.Body className="flex flex-col gap-3">
-      <div className="rounded-lg border border-info-line bg-info-tint px-3.5 py-3">
-        <p className="text-body text-tx">
-          <strong className="font-medium">
-            This stack&rsquo;s file is in its repository
-          </strong>{" "}
-          — <span className="font-mono text-meta">{compose.composePath}</span>,
-          on the branch the Source card names. Cloudgate clones it as part of a
-          Deployment and reads it from there.
-        </p>
-        <p className="mt-2 text-meta text-tx-2">
-          There is no route that reads that file back, so there is nothing to show
-          here and nothing to edit: the column an editor would write is only read
-          for a source of type <span className="font-mono">raw</span>. Change the
-          file where it lives, then deploy — or change the source above to a file
-          written here.
-        </p>
-      </div>
+    <>
+      <Header sub={`Read from the repository at ${compose.composePath} when the stack deploys.`} />
+      <Card.Body className="flex flex-col gap-3">
+        <div className="rounded-lg border border-info-line bg-info-tint px-3.5 py-3">
+          <p className="text-body text-tx">
+            <strong className="font-medium">
+              This stack&rsquo;s file is in its repository
+            </strong>{" "}
+            — <span className="font-mono text-meta">{compose.composePath}</span>,
+            on the branch the Source card names. Cloudgate clones it as part of a
+            Deployment and reads it from there.
+          </p>
+          <p className="mt-2 text-meta text-tx-2">
+            There is no route that reads that file back, so there is nothing to show
+            here and nothing to edit: the column an editor would write is only read
+            for a source of type <span className="font-mono">raw</span>. Change the
+            file where it lives, then deploy — or change the source above to a file
+            written here.
+          </p>
+        </div>
 
-      <DeclaredServices compose={compose} />
-    </Card.Body>
+        <DeclaredServices compose={compose} />
+      </Card.Body>
+    </>
   );
 }

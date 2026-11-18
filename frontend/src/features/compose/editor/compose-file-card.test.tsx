@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ComposeDetail } from "@/lib/api/endpoints/compose";
@@ -93,5 +93,82 @@ describe("ComposeFileCard — Save the file", () => {
 
     fireEvent.click(button);
     await waitFor(() => expect(save).toHaveBeenCalledWith({ composeFile: EDITED }));
+  });
+});
+
+/**
+ * Expand: the same file, filling the window, saved from its top bar
+ * (spec #118). The card holds the draft, so closing keeps the edit there.
+ */
+describe("ComposeFileCard — Expand", () => {
+  const LABEL = "The compose file for ui-compose";
+
+  function expanded() {
+    usePermission.mockReturnValue({ allowed: true, pending: false, role: "member" });
+    const save = vi.fn(async () => undefined);
+    render(<ComposeFileCard compose={compose} save={save} />);
+    fireEvent.click(screen.getByRole("button", { name: "Expand" }));
+    const dialog = screen.getByRole("dialog");
+    return { save, dialog, editor: within(dialog).getByLabelText(LABEL) };
+  }
+
+  /** The card's own editor, not the expanded one. */
+  function cardEditor() {
+    return screen
+      .getAllByLabelText(LABEL)
+      .find((el) => !el.closest("[role=dialog]")) as HTMLTextAreaElement;
+  }
+
+  it("opens the file with its name, the stack's name, Discard and Save", () => {
+    const { dialog, editor } = expanded();
+
+    expect(within(dialog).getByRole("heading", { name: "Compose file" })).toBeTruthy();
+    expect(dialog.textContent).toContain("ui-compose");
+    expect(within(dialog).getByRole("button", { name: "Discard changes" })).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Save the file" })).toBeTruthy();
+    expect((editor as HTMLTextAreaElement).value).toBe(compose.composeFile);
+  });
+
+  it("saves the edit from the top bar and clears Unsaved changes", async () => {
+    const { save, dialog, editor } = expanded();
+    fireEvent.change(editor, { target: { value: EDITED } });
+    expect(within(dialog).getByText("Unsaved changes")).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save the file" }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledWith({ composeFile: EDITED }));
+    await waitFor(() => expect(within(dialog).queryByText("Unsaved changes")).toBeNull());
+  });
+
+  it("does not save a file that is not valid YAML from the top bar, and says so", () => {
+    const { save, dialog, editor } = expanded();
+    fireEvent.change(editor, { target: { value: "services: [\n" } });
+
+    const button = within(dialog).getByRole("button", { name: "Save the file" });
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(button);
+    expect(save).not.toHaveBeenCalled();
+    expect(dialog.textContent).toContain("Not valid YAML");
+  });
+
+  it("closes on Escape, and the edit stays in the card", async () => {
+    const { editor } = expanded();
+    fireEvent.change(editor, { target: { value: EDITED } });
+
+    fireEvent.keyDown(editor, { key: "Escape" });
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(cardEditor().value).toBe(EDITED);
+    expect(document.body.textContent).toContain("Unsaved changes.");
+  });
+
+  it("closes on Back to page, and the edit stays in the card", async () => {
+    const { dialog, editor } = expanded();
+    fireEvent.change(editor, { target: { value: EDITED } });
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Back to page" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(cardEditor().value).toBe(EDITED);
   });
 });
