@@ -6,6 +6,7 @@ import { Card } from "@/components/console/card";
 import { CodeEditor } from "@/components/console/code-editor";
 import { CopyButton } from "@/components/console/copy-button";
 import { EmptyState } from "@/components/console/empty-state";
+import { ExpandedEditor, ExpandedEditorStatus } from "@/components/console/expanded-editor";
 import { Page } from "@/components/console/page";
 import { PageHeader } from "@/components/console/page-header";
 import { Skeleton } from "@/components/console/skeleton";
@@ -26,6 +27,7 @@ import { useEnvironments } from "@/features/environment/use-environments";
 import { MoveConfigModal } from "../move-config-modal";
 import { MoveOutModal } from "../move-out-modal";
 import { EnvironmentPlanCard } from "../environment-plan-card";
+import { useProject } from "../use-projects";
 import {
   MOVE_REFUSAL,
   PLAN_REQUEST_REFUSAL,
@@ -207,6 +209,12 @@ function RepositoryLocationCard({
   );
 }
 
+/**
+ * The editor of a Cloudgate-kept config. **Expand** gives it the whole window
+ * (spec #118), with this card's own Discard edits and Save and plan in its top
+ * bar, drawn by the same functions as the header's so the two cannot disagree
+ * about when planning is off.
+ */
 function ConfigEditorCard({
   projectId,
   stored,
@@ -224,6 +232,38 @@ function ConfigEditorCard({
   const canPlan = usePermission({ environment: ["read"] });
   const canMove = usePermission({ project: ["update"] });
   const edited = draft !== stored;
+  const [expanded, setExpanded] = useState(false);
+  const project = useProject(projectId);
+
+  function discardButton(size?: "sm") {
+    return edited ? (
+      <Button
+        variant="qt"
+        size={size}
+        disabled={save.isPending}
+        onClick={() => {
+          setDraft(stored);
+          save.reset();
+        }}
+      >
+        Discard edits
+      </Button>
+    ) : null;
+  }
+
+  function saveButton(size?: "sm") {
+    return (
+      <Button
+        variant="pri"
+        size={size}
+        disabled={!edited || !canPlan.allowed || save.isPending}
+        title={canPlan.allowed ? undefined : PLAN_REQUEST_REFUSAL}
+        onClick={() => edited && canPlan.allowed && save.mutate({ text: draft })}
+      >
+        Save and plan
+      </Button>
+    );
+  }
 
   return (
     <Card>
@@ -233,6 +273,10 @@ function ConfigEditorCard({
         actions={
           <>
             <CopyButton value={draft} label="Project config" />
+            <Button onClick={() => setExpanded(true)}>
+              <Icon name="maximise" size={14} />
+              Expand
+            </Button>
             <Button
               variant="gh"
               disabled={!canMove.allowed || edited}
@@ -247,28 +291,8 @@ function ConfigEditorCard({
             >
               Move to a repository
             </Button>
-            {edited ? (
-              <Button
-                variant="qt"
-                disabled={save.isPending}
-                onClick={() => {
-                  setDraft(stored);
-                  save.reset();
-                }}
-              >
-                Discard edits
-              </Button>
-            ) : null}
-            <Button
-              variant="pri"
-              disabled={!edited || !canPlan.allowed || save.isPending}
-              title={canPlan.allowed ? undefined : PLAN_REQUEST_REFUSAL}
-              onClick={() =>
-                edited && canPlan.allowed && save.mutate({ text: draft })
-              }
-            >
-              Save and plan
-            </Button>
+            {discardButton()}
+            {saveButton()}
           </>
         }
       />
@@ -294,6 +318,35 @@ function ConfigEditorCard({
         ) : null}
         <CodeEditor value={draft} onChange={setDraft} label="Project config" />
       </Card.Body>
+      <ExpandedEditor
+        open={expanded}
+        onOpenChange={setExpanded}
+        title="Project config"
+        context={`${project.data?.name ?? "This Project"} · Kept in Cloudgate`}
+        label="Project config"
+        value={draft}
+        onChange={setDraft}
+        changed={edited}
+        actions={
+          <>
+            {discardButton("sm")}
+            {saveButton("sm")}
+          </>
+        }
+        status={
+          expanded ? (
+            <>
+              <ExpandedEditorStatus
+                yaml={draft}
+                refusal={save.error ? errorMessage(save.error) : null}
+              />
+              {save.data && !save.isPending && !save.data.stored ? (
+                <span>Planned in each Environment. Nothing is applied.</span>
+              ) : null}
+            </>
+          ) : null
+        }
+      />
       <MoveConfigModal
         projectId={projectId}
         open={moving}
