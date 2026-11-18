@@ -11,9 +11,15 @@ import type { TemplateSummary } from "@/lib/api/endpoints/templates";
 import { errorMessage } from "@/lib/api/error-message";
 import { Icon } from "@/lib/design/icons";
 
+import { LaunchDetail } from "./launch-progress";
 import { useLaunch } from "./use-get-started";
 import { StageList } from "./wizard-parts";
-import { appAddress, type LaunchPhase, type StageState } from "./wizard-model";
+import {
+  appAddress,
+  launchParts,
+  type LaunchPhase,
+  type StageState,
+} from "./wizard-model";
 
 /**
  * Step three: the deploy, followed until the app runs, then its address
@@ -24,9 +30,12 @@ import { appAddress, type LaunchPhase, type StageState } from "./wizard-model";
 export function LaunchView({
   template,
   environmentId,
+  serverId = null,
 }: {
   template: TemplateSummary;
   environmentId: string;
+  /** The Server the app goes on, from the wizard's address. */
+  serverId?: string | null;
 }) {
   const launch = useLaunch(environmentId, template.id);
   const environmentHref = `/environments/${encodeURIComponent(environmentId)}`;
@@ -88,12 +97,17 @@ export function LaunchView({
         <StageList
           label={`Launching ${template.name}`}
           stages={launchStages(phase, template.name)}
+          detail={
+            <LaunchDetail
+              phase={phase}
+              parts={launchParts(
+                launch.plan.data?.plan,
+                launch.deployments.data,
+              )}
+              serverId={serverId}
+            />
+          }
         />
-        {phase.phase === "preparing" && phase.waitingFor ? (
-          <p role="status" className="text-ui text-tx-2">
-            {phase.waitingFor}
-          </p>
-        ) : null}
       </Card.Body>
     </Card>
   );

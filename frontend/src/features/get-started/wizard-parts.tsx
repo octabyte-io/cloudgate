@@ -26,46 +26,62 @@ const STATE_WORD: Record<StageState, string> = {
 export function StageList({
   label,
   stages,
+  detail,
 }: {
   label: string;
   stages: { label: string; state: StageState }[];
+  /**
+   * What the stage in progress is doing, under its label: the stage's own
+   * progress, so a stage that takes minutes says more than its name.
+   */
+  detail?: React.ReactNode;
 }) {
   return (
     <ol aria-label={label} aria-live="polite" className="grid gap-2.5">
       {stages.map((stage) => (
-        <li key={stage.label} className="flex items-center gap-2.5">
-          <span
-            aria-hidden="true"
-            className={cn(
-              // The ring's tint carries a stage moving on; the mark inside
-              // it swaps. Colours only, so the row never shifts.
-              "grid size-6 flex-none place-items-center rounded-pill border transition-colors duration-200 ease-out-strong",
-              stage.state === "done" && "border-ok-line bg-ok-tint text-ok",
-              stage.state === "now" &&
-                "border-brand-line bg-brand-tint text-brand-tx",
-              stage.state === "todo" && "border-line-2 text-tx-4",
-            )}
-          >
-            {stage.state === "done" ? (
-              <Icon name="check" size={13} />
-            ) : stage.state === "now" ? (
-              <Icon
-                name="refresh"
-                size={13}
-                className="animate-spin motion-reduce:animate-none"
-              />
-            ) : null}
-          </span>
-          <span
-            className={cn(
-              "min-w-0 text-body wrap-anywhere",
-              stage.state === "todo" ? "text-tx-3" : "text-tx",
-              stage.state === "now" && "font-medium",
-            )}
-          >
-            {stage.label}
-          </span>
-          <span className="sr-only">: {STATE_WORD[stage.state]}</span>
+        <li key={stage.label} className="grid gap-2">
+          <div className="flex items-center gap-2.5">
+            <span
+              aria-hidden="true"
+              className={cn(
+                // The ring's tint carries a stage moving on; the mark inside
+                // it swaps. Colours only, so the row never shifts.
+                "grid size-6 flex-none place-items-center rounded-pill border transition-colors duration-200 ease-out-strong",
+                stage.state === "done" && "border-ok-line bg-ok-tint text-ok",
+                stage.state === "now" &&
+                  "border-brand-line bg-brand-tint text-brand-tx",
+                stage.state === "todo" && "border-line-2 text-tx-4",
+              )}
+            >
+              {stage.state === "done" ? (
+                <Icon name="check" size={13} />
+              ) : stage.state === "now" ? (
+                <Icon
+                  name="refresh"
+                  size={13}
+                  className="animate-spin motion-reduce:animate-none"
+                />
+              ) : null}
+            </span>
+            <span
+              className={cn(
+                "min-w-0 text-body wrap-anywhere",
+                stage.state === "todo" ? "text-tx-3" : "text-tx",
+                stage.state === "now" && "font-medium",
+              )}
+            >
+              {stage.label}
+            </span>
+            <span className="sr-only">: {STATE_WORD[stage.state]}</span>
+          </div>
+          {stage.state === "now" && detail ? (
+            // Indented to the label, so it reads as the stage's own. Out of
+            // the list's live region: the detail announces its own headline,
+            // never each line a machine prints.
+            <div aria-live="off" className="ml-8.5 min-w-0">
+              {detail}
+            </div>
+          ) : null}
         </li>
       ))}
     </ol>
@@ -90,13 +106,7 @@ export function AskAdmin({ children }: { children: React.ReactNode }) {
 }
 
 /** A Server that is ready, and the way on to the app's details. */
-export function ServerReady({
-  name,
-  href,
-}: {
-  name: string;
-  href: string;
-}) {
+export function ServerReady({ name, href }: { name: string; href: string }) {
   return (
     // Fades in where the progress card stood: the step itself already rose,
     // so this is content replaced in place, not a second entrance.

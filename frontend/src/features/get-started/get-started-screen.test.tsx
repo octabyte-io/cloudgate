@@ -114,6 +114,13 @@ vi.mock("@/lib/api/endpoints/templates", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/endpoints/templates")>()),
   templatesApi: { setUp },
 }));
+// The Setup run's socket is the Server's own Setup card's, tested there:
+// here it is only where it shows.
+vi.mock("./first-setup-run", () => ({
+  FirstSetupRun: ({ name }: { name: string }) => (
+    <p>{`The setup of ${name}, step by step`}</p>
+  ),
+}));
 vi.mock("@/lib/api/use-projects", () => ({
   useProjects: () => ({ isPending: false, data: [] }),
 }));
@@ -145,8 +152,10 @@ vi.mock("./use-get-started", () => ({
   useWizardPurchases: () => ({ isPending: false, data: reads.purchases }),
   WAIT_POLL_MS: 4_000,
   useWizardServerRoom: () => ({ isPending: false, data: null }),
+  useSecondsWaited: () => 0,
   useLaunch: () => ({
-    plan: { error: null },
+    plan: { error: null, data: undefined },
+    deployments: { data: undefined },
     phase: reads.phase,
     domains: { isPending: false, data: reads.domains },
   }),
@@ -348,6 +357,21 @@ describe("GetStartedScreen", () => {
 
     const stages = screen.getByRole("list", { name: "Launching Ghost" });
     expect(within(stages).getByText("Preparing Ghost")).toBeTruthy();
+  });
+
+  it("follows a bought server's first setup while the launch waits for it", () => {
+    reads.servers = [boughtServer("srv_1", "ghost-1", "setting_up")];
+    reads.phase = {
+      phase: "preparing",
+      waitingFor: "ghost-1 is being set up.",
+    };
+    show("template=ghost&server=srv_1&env=env_1");
+
+    const stages = screen.getByRole("list", { name: "Launching Ghost" });
+    expect(within(stages).getByText("ghost-1 is being set up.")).toBeTruthy();
+    expect(
+      within(stages).getByText("The setup of ghost-1, step by step"),
+    ).toBeTruthy();
   });
 
   it("gives the running app's address and the way to open it", () => {
@@ -574,6 +598,24 @@ describe("GetStartedScreen", () => {
       expect(screen.queryByText(/No need to wait/)).toBeNull();
     });
 
+    it("follows the server's first setup in the strip while it is set up, and not before", () => {
+      reads.servers = [boughtServer("bs_1", "ghost-1", "setting_up")];
+      reads.setupForm = GHOST_SETUP;
+      show(DETAILS.slice("/get-started?".length));
+      expect(
+        within(strip()).getByText("The setup of ghost-1, step by step"),
+      ).toBeTruthy();
+
+      cleanup();
+      reads.servers = [];
+      reads.purchases = [purchase("bs_1", "ghost-1", "creating")];
+      show(DETAILS.slice("/get-started?".length));
+      expect(within(strip()).queryByText(/step by step/)).toBeNull();
+      expect(
+        within(strip()).getByText(/A new machine is being started for you/),
+      ).toBeTruthy();
+    });
+
     it("waits for payment in the strip, with the way to finish paying", () => {
       reads.purchases = [purchase("bs_1", "ghost-1", "waiting_for_payment")];
       reads.setupForm = GHOST_SETUP;
@@ -637,12 +679,25 @@ describe("GetStartedScreen", () => {
         expect(screen.queryByText(/Set up Ghost now/)).toBeNull();
       });
 
-      it("goes on to step 2 back from Checkout, in the one-column width", () => {
+      it("goes on to step 2 back from Checkout, in the one-column width, keeping that it was paid", () => {
         reads.purchases = [purchase("bs_1", "ghost-1", "waiting_for_payment")];
         const { container } = show("template=ghost&path=buy&checkout=success");
 
-        expect(replace).toHaveBeenCalledWith(DETAILS);
+        expect(replace).toHaveBeenCalledWith(`${DETAILS}&checkout=success`);
         expect(container.querySelector(".max-w-6xl")).toBeNull();
+      });
+
+      it("says a payment made is being confirmed, not offering to pay again", () => {
+        reads.purchases = [purchase("bs_1", "ghost-1", "waiting_for_payment")];
+        reads.setupForm = GHOST_SETUP;
+        show(`${DETAILS.slice("/get-started?".length)}&checkout=success`);
+
+        expect(
+          screen.getByText(/Payment made\. Confirming it with Stripe/),
+        ).toBeTruthy();
+        expect(
+          screen.queryByRole("button", { name: "Finish paying" }),
+        ).toBeNull();
       });
 
       it("goes on to step 2 back from a cancelled Checkout, keeping that the payment page was left", () => {

@@ -53,12 +53,14 @@ export function readWizard(params: {
 /**
  * The wizard's address for a state. `checkout` says how one return from
  * Stripe went, so it is written back only where a caller passes it on: the
- * buy path's way back from a cancelled Checkout moves on to step two, which
- * still has to say the payment page was left. Carried any further, it would
- * say so again on every later step.
+ * buy path's way back from Checkout moves on to step two, which still has
+ * to say the payment page was left, or that a payment made is being
+ * confirmed. Carried any further, it would say so again on every later step.
  */
 export function wizardHref(
-  state: Partial<Omit<WizardState, "checkout">> & { checkout?: "cancelled" },
+  state: Partial<Omit<WizardState, "checkout">> & {
+    checkout?: WizardState["checkout"];
+  },
 ): string {
   const query = new URLSearchParams();
   if (state.templateId) query.set("template", state.templateId);

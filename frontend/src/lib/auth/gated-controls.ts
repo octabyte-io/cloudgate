@@ -158,7 +158,7 @@ export const GATED_CONTROLS: GatedControl[] = [
 
   // ── /get-started (the templates website's Deploy button) ────────────
   { file: "features/get-started/own-server-form.tsx", label: "Save and continue", requires: { server: ["create"] }, route: "POST /servers" },
-  { file: "features/get-started/own-flow.tsx", label: "Start free trial", requires: { organization: ["update"] }, route: "POST /billing/checkout", checkedIn: "BillingService.assertAdmin: owner or admin, who both hold it" },
+  { file: "features/get-started/plan-step.tsx", label: "Start free trial", requires: { organization: ["update"] }, route: "POST /billing/checkout", checkedIn: "BillingService.assertAdmin: owner or admin, who both hold it" },
   { file: "features/get-started/details-form.tsx", label: "Deploy", requires: { service: ["create"] }, route: "POST /templates/setup" },
 
   // ── an Environment's services ────────────────────────────────────────

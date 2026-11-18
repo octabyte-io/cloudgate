@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,6 +15,7 @@ import type { WizardState } from "./wizard-state";
 const reads = vi.hoisted(() => ({
   code: null as string | null,
   trialAvailable: true,
+  waited: 0,
 }));
 const checkout = vi.hoisted(() => vi.fn());
 
@@ -39,6 +41,7 @@ vi.mock("./use-get-started", () => ({
     isPending: false,
     data: { canCreateMoreServers: reads.code === null, code: reads.code },
   }),
+  useSecondsWaited: () => reads.waited,
 }));
 vi.mock("./own-server-form", () => ({
   OwnServerForm: () => <p>The server form</p>,
@@ -69,6 +72,7 @@ function state(over: Partial<WizardState>): WizardState {
 beforeEach(() => {
   reads.code = null;
   reads.trialAvailable = true;
+  reads.waited = 0;
   checkout.mockReset();
 });
 
@@ -113,13 +117,26 @@ describe("OwnFlow", () => {
     expect(screen.getByRole("button", { name: "Choose Starter" })).toBeTruthy();
   });
 
-  it("waits for the plan to land after a paid Checkout", () => {
+  it("waits for the plan to land after a paid Checkout, saying how long it has waited", () => {
     reads.code = "PLAN_REQUIRED";
+    reads.waited = 4;
     render(<OwnFlow template={GHOST} state={state({ checkout: "success" })} />);
 
-    expect(screen.getByRole("status").textContent).toMatch(
-      /Confirming your plan/,
-    );
+    const stages = screen.getByRole("list", { name: "Starting your plan" });
+    expect(within(stages).getByText("Confirming your plan")).toBeTruthy();
+    expect(screen.getByText("Usually a few seconds. Waiting 4s.")).toBeTruthy();
+    expect(screen.queryByText(/taking longer than usual/)).toBeNull();
+  });
+
+  it("says a long wait for the plan needs no second payment, and where to look", () => {
+    reads.code = "PLAN_REQUIRED";
+    reads.waited = 31;
+    render(<OwnFlow template={GHOST} state={state({ checkout: "success" })} />);
+
+    expect(screen.getByText(/You don.t need to pay again/)).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Billing page" }).getAttribute("href"),
+    ).toBe("/settings/billing");
   });
 
   it("says nothing was charged after a cancelled Checkout", () => {

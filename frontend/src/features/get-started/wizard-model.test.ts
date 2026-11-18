@@ -16,6 +16,7 @@ import {
   freeEnvironmentName,
   freeProjectName,
   isReadyServer,
+  launchParts,
   launchPhase,
   serverBeingMade,
   startingPrice,
@@ -227,9 +228,7 @@ describe("launchPhase", () => {
       launchPhase(plan({ results: [queued] }), [deployment("a", "running")])
         .phase,
     ).toBe("starting");
-    expect(launchPhase(plan({ results: [queued] }), []).phase).toBe(
-      "starting",
-    );
+    expect(launchPhase(plan({ results: [queued] }), []).phase).toBe("starting");
   });
 
   it("reads only each Service's newest Deployment, the feed being newest first", () => {
@@ -317,7 +316,12 @@ describe("launchPhase", () => {
 
 describe("appAddress", () => {
   const domain = (over: Partial<EnvironmentDomain>) =>
-    ({ host: "ghost.example.com", https: true, path: null, ...over }) as EnvironmentDomain;
+    ({
+      host: "ghost.example.com",
+      https: true,
+      path: null,
+      ...over,
+    }) as EnvironmentDomain;
 
   it("is the first Domain as a URL, with its scheme", () => {
     expect(appAddress([domain({})])).toBe("https://ghost.example.com");
@@ -386,5 +390,67 @@ describe("waitsForGeneratedHost", () => {
   it("does not wait before the form is read, or for a form with no new-Project hosts", () => {
     expect(waitsForGeneratedHost(undefined, "srv_1")).toBe(false);
     expect(waitsForGeneratedHost(form(null), "srv_1")).toBe(false);
+  });
+});
+
+describe("launchParts", () => {
+  const row = (deploymentId: string, status: EnvironmentDeployment["status"]) =>
+    ({
+      deploymentId,
+      status,
+      owner: { type: "compose", id: "c", name: "c" },
+    }) as EnvironmentDeployment;
+  const database = {
+    configName: "db",
+    status: "applied",
+    deploy: { status: "started" },
+  } as PlanStepResult;
+  const network = {
+    configName: "Environment network (eu-west-1)",
+    status: "applied",
+    deploy: null,
+  } as PlanStepResult;
+
+  it("is empty before the plan is applied", () => {
+    expect(launchParts(undefined, undefined)).toEqual([]);
+    expect(launchParts(plan({ status: "open", results: null }), [])).toEqual(
+      [],
+    );
+  });
+
+  it("reads the Deployment a queued deploy names, not the Service's newest", () => {
+    expect(
+      launchParts(plan({ results: [queued] }), [
+        row("dep_2", "error"),
+        row("dep_1", "running"),
+      ]),
+    ).toEqual([
+      { name: "ghost-app", state: "starting", deploymentId: "dep_1" },
+    ]);
+  });
+
+  it("waits for a Deployment the feed does not show yet, and names none to follow", () => {
+    expect(launchParts(plan({ results: [queued] }), [])).toEqual([
+      { name: "ghost-app", state: "waiting", deploymentId: null },
+    ]);
+    expect(
+      launchParts(plan({ results: [queued] }), [row("dep_1", "pending")]),
+    ).toEqual([{ name: "ghost-app", state: "waiting", deploymentId: null }]);
+  });
+
+  it("says started, or failed, once the Deployment has ended", () => {
+    expect(
+      launchParts(plan({ results: [queued] }), [row("dep_1", "done")])[0].state,
+    ).toBe("started");
+    expect(
+      launchParts(plan({ results: [queued] }), [row("dep_1", "cancelled")])[0]
+        .state,
+    ).toBe("failed");
+  });
+
+  it("takes a database's own started, and leaves out steps that deploy nothing", () => {
+    expect(launchParts(plan({ results: [network, database] }), [])).toEqual([
+      { name: "db", state: "started", deploymentId: null },
+    ]);
   });
 });

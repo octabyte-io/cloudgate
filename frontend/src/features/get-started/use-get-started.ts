@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { billingApi } from "@/lib/api/endpoints/billing";
@@ -179,4 +180,19 @@ export function useWizardServerRoom(following: boolean) {
         ? WAIT_POLL_MS
         : false,
   });
+}
+
+/**
+ * Whole seconds since the caller mounted, ticking once a second: how long
+ * this page has waited for something the backend has not confirmed yet, so
+ * a wait that runs long can say so instead of looking stuck.
+ */
+export function useSecondsWaited(): number {
+  const [started] = useState(() => Date.now());
+  const [now, setNow] = useState(started);
+  useEffect(() => {
+    const tick = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(tick);
+  }, []);
+  return Math.floor((now - started) / 1_000);
 }
