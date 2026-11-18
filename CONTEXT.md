@@ -397,7 +397,9 @@ _Avoid_: Owned container, service container
 
 **Shell tab**:
 The tab on an Application, a database or a Compose stack that opens `sh` inside one of the Service's own running containers, found by the Service rather than by picking it out of a Server's Docker listing; Overview's **Open a shell** goes to it. It lists only the containers running on the Service's own machine (its Server, the platform host, or a Compose stack's own **Stack VM**, reached through its cloud's tunnel, ADR-0070) and offers a choice when there is more than one, preselecting the first; a Compose stack's entries name their compose service. Opening a shell takes `service: ['update']` on the Service, because a shell writes inside the workload, and the tab is absent for a role without it and for any other Service in a Cloud account, which has no container to open one in (ADR-0008). Leaving the tab ends the shell and coming back opens a fresh one.
-_Avoid_: Console, exec tab, container terminal
+
+A Server has a **Shell** tab too, at `/servers/<id>/shell`: the same session, drawn by the same emulator and dockable the same way, but over SSH on the Server's machine itself rather than inside a container. The two differ in where the shell runs and in nothing the operator handles, so the console calls both a shell; "terminal" is the word for the operator's own terminal on their computer, which the CLI's sign-in page asks about.
+_Avoid_: Console, exec tab, container terminal, Terminal tab
 
 **Dock**:
 The panel along the bottom of the console, full width under the rail and the page, that holds Docked shells and Docked logs as tabs and keeps them running while the operator moves between pages. It belongs to one sign-in in one Organization: switching Organization or signing out ends everything in it, and a reload brings it back empty.

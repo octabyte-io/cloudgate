@@ -29,7 +29,7 @@ import { serverTerminalTarget } from "../shell-offers";
  *
  * Teardown is `<Terminal>`'s: leaving the tab ends a session the page still holds and
  * closes the socket, and the gateway's `ws.on("close")` closes the SSH channel behind
- * it. Nothing has to be remembered. A session moved into the docked terminal with its
+ * it. Nothing has to be remembered. A session moved into a Docked shell with its
  * Dock control is the Dock's instead, and outlives the tab.
  */
 export default function Panel(props: PanelProps) {

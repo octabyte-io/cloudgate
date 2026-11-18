@@ -98,8 +98,8 @@ export function ServerPanel({
         actions={
           <>
             {actions?.(row)}
-            {panel.label === "Terminal" ? null : (
-              <LinkButton href={`/servers/${row.serverId}/terminal`}>
+            {panel.label === "Shell" ? null : (
+              <LinkButton href={`/servers/${row.serverId}/shell`}>
                 <Icon name="term" size={15} />
                 Open a shell
               </LinkButton>

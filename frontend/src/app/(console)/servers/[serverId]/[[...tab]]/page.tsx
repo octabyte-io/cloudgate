@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
 import { ScopePanel } from "@/components/shell/scope-panel";
 import { tabScreen } from "@/components/shell/nav";
@@ -20,7 +20,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function Page({ params }: Props) {
-  const { tab } = await params;
+  const { serverId, tab } = await params;
+  // The Shell tab was called Terminal, at `terminal`, until the console settled
+  // on one word for an interactive session (CONTEXT.md, **Shell tab**). The old
+  // address was every other Server tab's "Open a shell" link, so it is in
+  // bookmarks and history; it forwards rather than 404s.
+  if (tab?.length === 1 && tab[0] === "terminal") {
+    permanentRedirect(`/servers/${encodeURIComponent(serverId)}/shell`);
+  }
   if (!tabScreen("server", (tab ?? []).join("/"))) notFound();
 
   return <ScopePanel />;

@@ -167,7 +167,7 @@ function renderDock({ offers }: { offers?: TerminalOffer[] } = {}) {
   );
 }
 
-const panel = () => screen.queryByRole("region", { name: /^Terminal:/ });
+const panel = () => screen.queryByRole("region", { name: /^Shell:/ });
 
 class NoopObserver {
   observe() {}
@@ -334,7 +334,7 @@ describe("the docked terminal", () => {
 
       expect(tabs()[0]?.getAttribute("aria-selected")).toBe("true");
       expect(panel()?.getAttribute("aria-label")).toBe(
-        "Terminal: container app-9uiusu.1.x7 on main-vps",
+        "Shell: container app-9uiusu.1.x7 on main-vps",
       );
       expect(FakeSocket.all[0]?.close).not.toHaveBeenCalled();
       expect(FakeSocket.all[1]?.close).not.toHaveBeenCalled();
