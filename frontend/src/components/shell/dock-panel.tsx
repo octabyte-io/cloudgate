@@ -81,7 +81,7 @@ export function DockPanel({
   return (
     <section
       ref={panel}
-      aria-label={tab.kind === "shell" ? `Terminal: ${title}` : `Log: ${title}`}
+      aria-label={tab.kind === "shell" ? `Shell: ${title}` : `Log: ${title}`}
       data-slot="dock"
       className="dock-panel relative flex min-h-0 min-w-0 flex-col border-t border-line bg-panel shadow-pop"
     >

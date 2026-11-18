@@ -6,7 +6,7 @@ import { panel, type TabEntry } from "../tab-registry";
  *
  * **Panels belong to F13.** `src/features/server/panels/`.
  *
- * **F13 added one row: Terminal** (contract rule 2, and this is the reasoning it
+ * **F13 added one row: Shell** (contract rule 2, and this is the reasoning it
  * asks for). The reference has "Open a shell" as a header action, and a dialog is
  * the wrong container for a terminal in a way that is not a matter of taste:
  * Escape closes a dialog and Escape is a key people press inside a shell
@@ -57,10 +57,10 @@ export const SERVER_TABS: readonly TabEntry[] = [
     panel: panel(() => import("@/features/server/panels/access")),
   },
   {
-    slug: "terminal",
-    label: "Terminal",
+    slug: "shell",
+    label: "Shell",
     icon: "term",
-    panel: panel(() => import("@/features/server/panels/terminal")),
+    panel: panel(() => import("@/features/server/panels/shell")),
   },
   {
     slug: "settings",

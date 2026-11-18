@@ -145,7 +145,7 @@ function Console({ page = true }: { page?: boolean }) {
   );
 }
 
-const dock = () => screen.queryByRole("region", { name: /^Terminal:/ });
+const dock = () => screen.queryByRole("region", { name: /^Shell:/ });
 
 describe("a page's terminal", () => {
   it("docks its running session in one click — same socket, same scrollback", async () => {
