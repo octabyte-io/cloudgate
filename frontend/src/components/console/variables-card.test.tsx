@@ -1,5 +1,12 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { VariablesCard } from "./variables-card";
 
@@ -85,6 +92,53 @@ describe("VariablesCard", () => {
     expect(edit.getAttribute("aria-disabled")).not.toBe("true");
     fireEvent.click(edit);
     expect(screen.getByRole("textbox")).toBeTruthy();
+  });
+
+  // Spec #118: a long .env does not fit the block, so it expands to fill the
+  // window, and saves from there with the block's own Save.
+  it("expands the block to fill the window and saves the edit from its top bar", async () => {
+    const save = vi.fn(async () => undefined);
+    render(
+      <VariablesCard
+        env={"API_KEY=one\n"}
+        save={save}
+        noun="Environment"
+        title="Environment variables"
+        gate={OPEN}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expand Variables" }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Environment variables" }),
+    ).toBeTruthy();
+    fireEvent.change(within(dialog).getByRole("textbox"), {
+      target: { value: "API_KEY=two\n" },
+    });
+    expect(within(dialog).getByText("Unsaved changes")).toBeTruthy();
+
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Save variables" }),
+    );
+    await waitFor(() => expect(save).toHaveBeenCalledWith("API_KEY=two\n"));
+  });
+
+  it("keeps an edit made in the expanded block when it goes back to the page", async () => {
+    render(<VariablesCard env={"API_KEY=one\n"} save={async () => undefined} noun="Project" gate={OPEN} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expand Variables" }));
+    fireEvent.change(within(screen.getByRole("dialog")).getByRole("textbox"), {
+      target: { value: "API_KEY=two\n" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to page" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe(
+      "API_KEY=two\n",
+    );
   });
 
   // On a repository-kept config the file sets the names; values stay

@@ -1,6 +1,9 @@
 import { FormProvider } from "react-hook-form";
 import { z } from "zod";
 
+import { useState } from "react";
+
+import { ExpandButton, ExpandedEditor } from "@/components/console/expanded-editor";
 import { Field, FormError } from "@/components/console/field";
 import { SubmitButton } from "@/components/console/submit-button";
 import { toast } from "@/components/console/toast";
@@ -39,6 +42,7 @@ export function VariablesForm({
   save,
   onDone,
   noun,
+  title = "Variables",
   names = null,
   references,
 }: {
@@ -47,6 +51,8 @@ export function VariablesForm({
   onDone: () => void;
   /** What this blob belongs to, for the toast: "Project", "Environment". */
   noun: string;
+  /** The card's title, which the expanded block is titled with too. */
+  title?: string;
   /**
    * The names this blob may hold, when something else sets them (a
    * repository-kept Project config's variable lists). Values stay editable;
@@ -79,6 +85,7 @@ export function VariablesForm({
     onError: (error) => toast.error(error),
   });
 
+  const [expanded, setExpanded] = useState(false);
   const typed = form.watch("env");
   const issues = envIssues(typed, references);
   const blocked = issues.some((issue) => issue.blocking);
@@ -89,6 +96,31 @@ export function VariablesForm({
           .map((variable) => variable.key)
           .filter((key) => !names.allowed.has(key));
 
+  // The form's own Save and Cancel, drawn under the block and again in the
+  // expanded editor's top bar. The top bar is outside the `<form>` (the dialog
+  // is portalled), so its Save submits by calling `form.submit` itself.
+  function saveButton(size?: "sm") {
+    return (
+      <SubmitButton
+        type={size ? "button" : "submit"}
+        size={size}
+        pending={form.formState.isSubmitting}
+        disabled={added.length > 0 || blocked}
+        onClick={size ? () => void form.submit() : undefined}
+      >
+        Save variables
+      </SubmitButton>
+    );
+  }
+
+  function cancelButton(size?: "sm") {
+    return (
+      <Button type="button" size={size} onClick={onDone}>
+        Cancel
+      </Button>
+    );
+  }
+
   return (
     <FormProvider {...form}>
       <form method="post" noValidate onSubmit={form.submit} className="grid gap-3.5">
@@ -96,6 +128,7 @@ export function VariablesForm({
           name="env"
           label="Variables"
           hint="One KEY=value per line. Lines starting with # are comments and are kept."
+          action={<ExpandButton name="Variables" onClick={() => setExpanded(true)} />}
         >
           <Textarea
             rows={10}
@@ -105,6 +138,33 @@ export function VariablesForm({
             className="max-h-log resize-y overflow-auto font-mono text-meta leading-log"
           />
         </Field>
+        <ExpandedEditor
+          open={expanded}
+          onOpenChange={setExpanded}
+          kind="text"
+          title={title}
+          context={`The ${noun}'s variables, one KEY=value per line.`}
+          label="Variables"
+          value={typed}
+          onChange={(next) => form.setValue("env", next, { shouldDirty: true })}
+          changed={form.formState.isDirty}
+          actions={
+            <>
+              {cancelButton("sm")}
+              {saveButton("sm")}
+            </>
+          }
+          status={
+            <ExpandedStatus
+              issues={issues}
+              refusal={
+                added.length > 0
+                  ? `${added.join(", ")}: ${names?.refusal}`
+                  : form.rootError
+              }
+            />
+          }
+        />
         <EnvIssues issues={issues} />
         {added.length > 0 ? (
           <p className="text-meta text-bad" role="alert">
@@ -113,18 +173,42 @@ export function VariablesForm({
         ) : null}
         <FormError message={form.rootError} />
         <div className="flex flex-wrap items-center gap-2">
-          <SubmitButton
-            pending={form.formState.isSubmitting}
-            disabled={added.length > 0 || blocked}
-          >
-            Save variables
-          </SubmitButton>
-          <Button type="button" onClick={onDone}>
-            Cancel
-          </Button>
+          {saveButton()}
+          {cancelButton()}
         </div>
       </form>
     </FormProvider>
+  );
+}
+
+/**
+ * The expanded block's status line: what the list under the block says, which
+ * the dialog covers, and a refusal that would land behind it.
+ */
+function ExpandedStatus({
+  issues,
+  refusal,
+}: {
+  issues: EnvIssue[];
+  refusal: string | undefined;
+}) {
+  return (
+    <>
+      {issues.map((issue) => (
+        <span
+          key={`${issue.line}:${issue.message}`}
+          className={cn(issue.blocking ? "text-bad" : "text-warn")}
+        >
+          <span className="font-mono">Line {issue.line}</span>
+          {issue.blocking ? "" : " (warning)"}: {issue.message}
+        </span>
+      ))}
+      {refusal ? (
+        <span role="alert" className="text-bad">
+          {refusal}
+        </span>
+      ) : null}
+    </>
   );
 }
 

@@ -147,6 +147,7 @@ export function VariablesCard({
             env={env}
             save={save}
             noun={noun}
+            title={title}
             names={names}
             references={references}
             onDone={() => setEditing(false)}
