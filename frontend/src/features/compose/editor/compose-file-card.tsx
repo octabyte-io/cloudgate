@@ -3,7 +3,7 @@ import { useId, useState } from "react";
 import { Card } from "@/components/console/card";
 import { Chip } from "@/components/console/chip";
 import { CodeEditor } from "@/components/console/code-editor";
-import { ExpandedEditor } from "@/components/console/expanded-editor";
+import { ExpandedEditor, ExpandedEditorStatus } from "@/components/console/expanded-editor";
 import { FormError } from "@/components/console/field";
 import { MetaStrip } from "@/components/console/meta-strip";
 import { SubmitButton } from "@/components/console/submit-button";
@@ -17,9 +17,9 @@ import {
 } from "@/lib/api/endpoints/compose";
 import { usePermission } from "@/lib/auth/use-permission";
 import { Icon } from "@/lib/design/icons";
+import { yamlProblem } from "@/lib/format/yaml-problem";
 
 import { unsetInterpolations } from "./interpolation-check";
-import { yamlProblem } from "./yaml-check";
 import { DeclaredServices } from "./declared-services";
 import { COMPOSE_UPDATE_REFUSAL } from "../use-compose";
 
@@ -180,7 +180,7 @@ function RawEditor({
         }
         status={
           // Parsed only while open: the card itself checks an edited draft alone.
-          expanded ? <ExpandedStatus problem={yamlProblem(draft)} refusal={refusal} /> : null
+          expanded ? <ExpandedEditorStatus yaml={draft} refusal={refusal} /> : null
         }
       />
       {changed ? (
@@ -239,38 +239,6 @@ function RawEditor({
 
         <DeclaredServices compose={compose} />
       </Card.Body>
-    </>
-  );
-}
-
-/**
- * The expanded editor's status line: whether the draft parses, and a refused
- * save, which would otherwise land in the card behind it.
- */
-function ExpandedStatus({
-  problem,
-  refusal,
-}: {
-  problem: ReturnType<typeof yamlProblem>;
-  refusal: string | null;
-}) {
-  return (
-    <>
-      {problem ? (
-        <span className="text-bad">
-          {problem.kind === "aliases" ? "YAML aliases that cannot be resolved" : "Not valid YAML"}
-          {problem.line ? ` (line ${problem.line})` : ""}
-        </span>
-      ) : (
-        <span className="inline-flex items-center gap-1.25 text-tx-2">
-          <Icon name="check" size={13} /> Valid YAML
-        </span>
-      )}
-      {refusal ? (
-        <span role="alert" className="text-bad">
-          {refusal}
-        </span>
-      ) : null}
     </>
   );
 }

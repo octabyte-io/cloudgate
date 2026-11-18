@@ -110,3 +110,30 @@ describe("ExpandedEditor as a text box", () => {
     expect(screen.getByRole("dialog").textContent).toContain("3 lines");
   });
 });
+
+/**
+ * A file the page only shows — an Environment's copy of a repository-kept
+ * config, the copy a move would keep — expands the same way, and stays
+ * read-only there.
+ */
+describe("ExpandedEditor as a read-only view", () => {
+  it("shows the file in a box that cannot be typed in, with no Unsaved changes", () => {
+    render(
+      <ExpandedEditor
+        open
+        onOpenChange={vi.fn()}
+        kind="text"
+        title="Project config"
+        context="cloudgate.yaml on main"
+        label="Project config on main"
+        value={STORED}
+      />,
+    );
+
+    const view = screen.getByLabelText("Project config on main") as HTMLTextAreaElement;
+    expect(view.value).toBe(STORED);
+    expect(view.readOnly).toBe(true);
+    expect(screen.queryByText("Unsaved changes")).toBeNull();
+    expect(screen.getByRole("button", { name: "Back to page" })).toBeTruthy();
+  });
+});

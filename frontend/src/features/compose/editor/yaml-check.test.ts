@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { composeFileIsEmpty, yamlProblem } from "./yaml-check";
+import { yamlProblem } from "@/lib/format/yaml-problem";
+
+import { composeFileIsEmpty } from "./yaml-check";
 
 /**
  * The two questions the editor asks about a compose file before anything on the

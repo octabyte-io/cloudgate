@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Icon } from "@/lib/design/icons";
+import { yamlProblem } from "@/lib/format/yaml-problem";
 import { cn } from "@/lib/utils";
 
 /**
@@ -53,6 +54,11 @@ export function ExpandButton({
  * are the caller's for the same reason: the card already knows when its Save is
  * off and why, and a second Save here could disagree with it.
  *
+ * **A file the page only shows expands too**, read-only: no `onChange`, as
+ * `CodeEditor` takes it, and then no Unsaved changes and no buttons but the
+ * caller's own, if it has any (an Environment's copy of a repository-kept
+ * config, the copy a move would keep).
+ *
  * It is Base UI's dialog, so it stacks over a dialog the editor already sits in.
  */
 export function ExpandedEditor({
@@ -64,7 +70,7 @@ export function ExpandedEditor({
   label,
   value,
   onChange,
-  changed,
+  changed = false,
   actions,
   status,
 }: {
@@ -79,11 +85,12 @@ export function ExpandedEditor({
   /** The editor's accessible name, the same one the card's editor has. */
   label: string;
   value: string;
-  onChange: (next: string) => void;
+  /** Omit for a read-only view, as `CodeEditor` does. */
+  onChange?: (next: string) => void;
   /** Whether the draft differs from what is saved. */
-  changed: boolean;
+  changed?: boolean;
   /** The caller's own Discard and Save. */
-  actions: ReactNode;
+  actions?: ReactNode;
   /** What the caller knows about the draft, such as whether its YAML parses. */
   status?: ReactNode;
 }) {
@@ -114,9 +121,11 @@ export function ExpandedEditor({
             <p className="truncate text-meta text-tx-3">{context}</p>
           </div>
           {changed ? <Chip variant="warn">Unsaved changes</Chip> : null}
-          <div className="flex items-center gap-2 max-sm:w-full max-sm:justify-end">
-            {actions}
-          </div>
+          {actions ? (
+            <div className="flex items-center gap-2 max-sm:w-full max-sm:justify-end">
+              {actions}
+            </div>
+          ) : null}
         </div>
         {kind === "code" ? (
           <CodeEditor
@@ -129,7 +138,8 @@ export function ExpandedEditor({
           <Textarea
             aria-label={label}
             value={value}
-            onChange={(event) => onChange(event.target.value)}
+            onChange={onChange && ((event) => onChange(event.target.value))}
+            readOnly={onChange === undefined}
             spellCheck={false}
             className={cn(
               FILL,
@@ -143,5 +153,44 @@ export function ExpandedEditor({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * What goes on the expanded editor's status line for most callers: whether the
+ * draft parses as YAML, and a refused save, which would otherwise land in the
+ * card behind the editor where nobody can see it.
+ *
+ * `yaml` is the draft to check; leave it out where the page has no business
+ * judging the file (a Traefik file, whose card leaves that to the backend).
+ * Render it only while the editor is open, so a card does not parse its draft
+ * on every keystroke for a line nobody sees.
+ */
+export function ExpandedEditorStatus({
+  yaml,
+  refusal,
+}: {
+  yaml?: string;
+  refusal?: string | null;
+}) {
+  const problem = yaml === undefined ? null : yamlProblem(yaml);
+  return (
+    <>
+      {yaml === undefined ? null : problem ? (
+        <span className="text-bad">
+          {problem.kind === "aliases" ? "YAML aliases that cannot be resolved" : "Not valid YAML"}
+          {problem.line ? ` (line ${problem.line})` : ""}
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-1.25 text-tx-2">
+          <Icon name="check" size={13} /> Valid YAML
+        </span>
+      )}
+      {refusal ? (
+        <span role="alert" className="text-bad">
+          {refusal}
+        </span>
+      ) : null}
+    </>
   );
 }
