@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -79,5 +79,54 @@ describe("EnvBlock — Save environment", () => {
 
     fireEvent.click(button);
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith(EDITED));
+  });
+});
+
+/** Spec #118: the block expands to fill the window, with its own Save. */
+describe("EnvBlock — Expand", () => {
+  it("opens the edit filling the window and saves it from the top bar", async () => {
+    const { mutateAsync } = mount({ allowed: true });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Expand Environment variables" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Environment variables" }),
+    ).toBeTruthy();
+    const box = within(dialog).getByLabelText(
+      "Traefik's environment variables",
+    ) as HTMLTextAreaElement;
+    expect(box.value).toBe(EDITED);
+    expect(within(dialog).getByText("Unsaved changes")).toBeTruthy();
+
+    fireEvent.change(box, { target: { value: `${EDITED}\nLOG=debug` } });
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Save environment" }),
+    );
+    await waitFor(() =>
+      expect(mutateAsync).toHaveBeenCalledWith(`${EDITED}\nLOG=debug`),
+    );
+  });
+
+  it("keeps the edit in the block on Back to page", async () => {
+    mount({ allowed: true });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Expand Environment variables" }),
+    );
+    fireEvent.change(
+      within(screen.getByRole("dialog")).getByLabelText(
+        "Traefik's environment variables",
+      ),
+      { target: { value: "TZ=Europe/Paris" } },
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to page" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(
+      (screen.getByLabelText("Traefik's environment variables") as HTMLTextAreaElement)
+        .value,
+    ).toBe("TZ=Europe/Paris");
   });
 });

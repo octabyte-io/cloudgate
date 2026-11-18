@@ -1,6 +1,10 @@
 import { useId, useState } from "react";
 import type { UseMutationResult } from "@tanstack/react-query";
 
+import {
+  ExpandButton,
+  ExpandedEditor,
+} from "@/components/console/expanded-editor";
 import { FormError } from "@/components/console/field";
 import { Skeleton } from "@/components/console/skeleton";
 import { SubmitButton } from "@/components/console/submit-button";
@@ -44,19 +48,67 @@ export function EnvBlock({
   const [refusal, setRefusal] = useState<string | null>(null);
   const gate = useInstanceGate();
   const gateId = useId();
+  const [expanded, setExpanded] = useState(false);
+
+  async function saveDraft() {
+    if (!gate.allowed) return;
+    setRefusal(null);
+    try {
+      await save.mutateAsync(draft.value);
+      onSaved(draft.value);
+      draft.reset();
+      toast.done("Saved. Traefik is being recreated.");
+    } catch (error) {
+      setRefusal(errorMessage(error));
+    }
+  }
+
+  // One Save and one Discard, drawn under the block and again in the
+  // expanded editor's top bar (spec #118), so the two cannot disagree.
+  function saveButton(size?: "sm") {
+    return (
+      <SubmitButton
+        type="button"
+        size={size}
+        pending={save.isPending || recreating}
+        disabled={!gate.allowed || !draft.dirty}
+        title={gate.allowed ? undefined : gate.refusal}
+        aria-describedby={gate.allowed ? undefined : gateId}
+        onClick={saveDraft}
+      >
+        Save environment
+      </SubmitButton>
+    );
+  }
+
+  function discardButton(size?: "sm") {
+    return draft.dirty ? (
+      <Button type="button" size={size} onClick={draft.reset}>
+        Discard changes
+      </Button>
+    ) : null;
+  }
 
   return (
     <div className="grid gap-2">
-      <div>
-        <h3 className="text-body font-semibold text-tx">
-          Environment variables
-        </h3>
-        <p className="mt-0.5 text-meta text-tx-2">
-          One <code className="font-mono">KEY=value</code> per line, as the
-          container was started with. A{" "}
-          <code className="font-mono">{"${{…}}"}</code> reference is resolved on
-          the way in.
-        </p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h3 className="text-body font-semibold text-tx">
+            Environment variables
+          </h3>
+          <p className="mt-0.5 text-meta text-tx-2">
+            One <code className="font-mono">KEY=value</code> per line, as the
+            container was started with. A{" "}
+            <code className="font-mono">{"${{…}}"}</code> reference is resolved
+            on the way in.
+          </p>
+        </div>
+        {pending ? null : (
+          <ExpandButton
+            name="Environment variables"
+            onClick={() => setExpanded(true)}
+          />
+        )}
       </div>
       {pending ? (
         <Skeleton className="h-24 w-full rounded-lg" />
@@ -69,6 +121,30 @@ export function EnvBlock({
             aria-label="Traefik's environment variables"
             onChange={(event) => draft.set(event.target.value)}
           />
+          <ExpandedEditor
+            open={expanded}
+            onOpenChange={setExpanded}
+            kind="text"
+            title="Environment variables"
+            context="Traefik, as the container was started. Saving recreates it."
+            label="Traefik's environment variables"
+            value={draft.value}
+            onChange={draft.set}
+            changed={draft.dirty}
+            actions={
+              <>
+                {discardButton("sm")}
+                {saveButton("sm")}
+              </>
+            }
+            status={
+              refusal ? (
+                <span role="alert" className="text-bad">
+                  {refusal}
+                </span>
+              ) : null
+            }
+          />
           <FormError message={refusal ?? undefined} />
           {gate.allowed ? null : (
             <p id={gateId} className="text-meta text-tx-2">
@@ -76,32 +152,8 @@ export function EnvBlock({
             </p>
           )}
           <div className="flex flex-wrap items-center gap-2">
-            <SubmitButton
-              type="button"
-              pending={save.isPending || recreating}
-              disabled={!gate.allowed || !draft.dirty}
-              title={gate.allowed ? undefined : gate.refusal}
-              aria-describedby={gate.allowed ? undefined : gateId}
-              onClick={async () => {
-                if (!gate.allowed) return;
-                setRefusal(null);
-                try {
-                  await save.mutateAsync(draft.value);
-                  onSaved(draft.value);
-                  draft.reset();
-                  toast.done("Saved. Traefik is being recreated.");
-                } catch (error) {
-                  setRefusal(errorMessage(error));
-                }
-              }}
-            >
-              Save environment
-            </SubmitButton>
-            {draft.dirty ? (
-              <Button type="button" onClick={draft.reset}>
-                Discard changes
-              </Button>
-            ) : null}
+            {saveButton()}
+            {discardButton()}
           </div>
         </>
       )}
