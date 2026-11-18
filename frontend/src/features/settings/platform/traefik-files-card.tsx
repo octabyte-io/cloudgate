@@ -2,6 +2,7 @@ import { useId, useState } from "react";
 
 import { Card } from "@/components/console/card";
 import { CodeEditor } from "@/components/console/code-editor";
+import { ExpandedEditor, ExpandedEditorStatus } from "@/components/console/expanded-editor";
 import { FormError } from "@/components/console/field";
 import { Skeleton } from "@/components/console/skeleton";
 import { SubmitButton } from "@/components/console/submit-button";
@@ -9,6 +10,7 @@ import { toast } from "@/components/console/toast";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/api/error-message";
 import { usePermission } from "@/lib/auth/use-permission";
+import { Icon } from "@/lib/design/icons";
 
 import { useDraft } from "./use-draft";
 import {
@@ -55,6 +57,12 @@ import { FileTree, isGenerated } from "./traefik-file-tree";
  * `requireInstanceAuthority` (ADR-0013). Each is a refusal the route gives to
  * everyone who fails it, so either one turns the button off; the statement's
  * reason is shown first because the decorator's guard answers first.
+ *
+ * **Expand** gives the chosen file the whole window (spec #118), with this
+ * card's own Save file and Discard in its top bar, drawn by the same functions
+ * as below so both gates hold there. Its status line says no word on YAML: not
+ * every file here is YAML, and `TraefikConfigCard` records why the verdict is
+ * the backend's.
  */
 export function TraefikFilesCard() {
   const tree = useTraefikDirectories();
@@ -76,6 +84,31 @@ export function TraefikFilesCard() {
     reset,
     dirty,
   } = useDraft(file.data ?? "");
+  const [expanded, setExpanded] = useState(false);
+
+  function saveButton(size?: "sm") {
+    return (
+      <SubmitButton
+        type="button"
+        size={size}
+        pending={writeFile.isPending}
+        disabled={!allowed || !dirty || content.trim() === ""}
+        title={allowed ? undefined : gateReason}
+        aria-describedby={allowed ? undefined : gateId}
+        onClick={save}
+      >
+        Save file
+      </SubmitButton>
+    );
+  }
+
+  function discardButton(size?: "sm") {
+    return dirty ? (
+      <Button type="button" size={size} onClick={reset}>
+        Discard changes
+      </Button>
+    ) : null;
+  }
 
   return (
     <Card aria-busy={tree.isPending || undefined}>
@@ -141,11 +174,25 @@ export function TraefikFilesCard() {
                     here survives only until one of those happens.
                   </p>
                 ) : null}
-                <CodeEditor
+                <ExpandedEditor
+                  open={expanded}
+                  onOpenChange={setExpanded}
+                  // The tree's ids are absolute paths, so the name is the last part.
+                  title={path.split("/").pop() || path}
+                  context={path}
+                  label={path}
                   value={content}
                   onChange={setDraft}
-                  label={`${path}`}
+                  changed={dirty}
+                  actions={
+                    <>
+                      {discardButton("sm")}
+                      {saveButton("sm")}
+                    </>
+                  }
+                  status={<ExpandedEditorStatus refusal={refusal} />}
                 />
+                <CodeEditor value={content} onChange={setDraft} label={path} />
                 <FormError message={refusal ?? undefined} />
                 {allowed ? null : (
                   <p id={gateId} className="text-meta text-tx-2">
@@ -153,24 +200,15 @@ export function TraefikFilesCard() {
                   </p>
                 )}
                 <div className="flex flex-wrap items-center gap-2">
-                  <SubmitButton
-                    type="button"
-                    pending={writeFile.isPending}
-                    disabled={!allowed || !dirty || content.trim() === ""}
-                    title={allowed ? undefined : gateReason}
-                    aria-describedby={allowed ? undefined : gateId}
-                    onClick={save}
-                  >
-                    Save file
-                  </SubmitButton>
-                  {dirty ? (
-                    <Button type="button" onClick={reset}>
-                      Discard changes
-                    </Button>
-                  ) : null}
+                  {saveButton()}
+                  {discardButton()}
                   <code className="ml-auto font-mono text-meta wrap-anywhere text-tx-3">
                     {path}
                   </code>
+                  <Button type="button" onClick={() => setExpanded(true)}>
+                    <Icon name="maximise" size={14} />
+                    Expand
+                  </Button>
                 </div>
               </>
             )}

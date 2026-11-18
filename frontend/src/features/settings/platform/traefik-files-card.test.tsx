@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Gate, PermissionVerdict } from "@/lib/auth/use-permission";
@@ -128,5 +128,66 @@ describe("TraefikFilesCard — Save file", () => {
     await waitFor(() =>
       expect(writeFile.mutateAsync).toHaveBeenCalledWith({ path: PATH, content: EDITED }),
     );
+  });
+});
+
+/**
+ * Expand (spec #118): the chosen file filling the window, saved from its top
+ * bar by the card's own Save file, so both of the route's gates hold there.
+ */
+describe("TraefikFilesCard — Expand", () => {
+  function picked({ instance, statement }: { instance: boolean; statement: boolean }) {
+    useInstanceGate.mockReturnValue({
+      allowed: instance,
+      refusal: instance ? "" : INSTANCE_REFUSAL,
+    });
+    usePermission.mockReturnValue({ allowed: statement, pending: false, role: "member" });
+    render(<TraefikFilesCard />);
+  }
+
+  function expand() {
+    fireEvent.click(screen.getByRole("button", { name: "extra.yml" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expand" }));
+    const dialog = screen.getByRole("dialog");
+    return { dialog, editor: within(dialog).getByLabelText(PATH) };
+  }
+
+  it("is not offered until a file is chosen", () => {
+    picked({ instance: true, statement: true });
+    expect(screen.queryByRole("button", { name: "Expand" })).toBeNull();
+  });
+
+  it("opens the chosen file with its name, its path and Save file", () => {
+    picked({ instance: true, statement: true });
+    const { dialog, editor } = expand();
+
+    expect(within(dialog).getByRole("heading", { name: "extra.yml" })).toBeTruthy();
+    expect(dialog.textContent).toContain(PATH);
+    expect(within(dialog).getByRole("button", { name: "Save file" })).toBeTruthy();
+    expect((editor as HTMLTextAreaElement).value).toBe("http: {}\n");
+  });
+
+  it("saves the edit from the top bar", async () => {
+    picked({ instance: true, statement: true });
+    const { dialog, editor } = expand();
+    fireEvent.change(editor, { target: { value: EDITED } });
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save file" }));
+
+    await waitFor(() =>
+      expect(writeFile.mutateAsync).toHaveBeenCalledWith({ path: PATH, content: EDITED }),
+    );
+  });
+
+  it("is off in the top bar with the role reason for a role without traefikFiles:write", () => {
+    picked({ instance: true, statement: false });
+    const { dialog, editor } = expand();
+    fireEvent.change(editor, { target: { value: EDITED } });
+
+    const button = within(dialog).getByRole("button", { name: "Save file" });
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    expect(button.getAttribute("title")).toBe(TRAEFIK_FILES_WRITE_REFUSAL);
+    fireEvent.click(button);
+    expect(writeFile.mutateAsync).not.toHaveBeenCalled();
   });
 });
