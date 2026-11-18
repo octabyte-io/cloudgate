@@ -94,6 +94,39 @@ export function PatchEditorModal({
   );
 
   if (!filePath) return null;
+  const path = filePath;
+
+  async function saveDraft() {
+    setRefusal(null);
+    setBusy(true);
+    try {
+      await save({ filePath: path, content: draft });
+      toast.done(`Patch saved for ${path}.`, {
+        description: "It is applied to the clone before the next build.",
+      });
+      onOpenChange(false);
+    } catch (caught) {
+      setRefusal(errorMessage(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // The one Save, in the footer and again in the expanded editor's top bar.
+  function saveButton(size?: "sm") {
+    return (
+      <Button
+        type="button"
+        size={size}
+        variant="pri"
+        disabled={busy || pending}
+        aria-busy={busy || undefined}
+        onClick={saveDraft}
+      >
+        Save as a patch
+      </Button>
+    );
+  }
 
   return (
     <Modal open={open} onOpenChange={onOpenChange} wide>
@@ -126,6 +159,14 @@ export function PatchEditorModal({
             onDraft={setEdit}
             rows={rows}
             againstRepo={againstRepo}
+            expandedActions={saveButton("sm")}
+            expandedStatus={
+              refusal ? (
+                <span role="alert" className="text-bad">
+                  {refusal}
+                </span>
+              ) : null
+            }
           />
         )}
 
@@ -158,29 +199,7 @@ export function PatchEditorModal({
         </Button>
         <Modal.Gap />
         <Modal.Close render={<Button type="button">Cancel</Button>} />
-        <Button
-          type="button"
-          variant="pri"
-          disabled={busy || pending}
-          aria-busy={busy || undefined}
-          onClick={async () => {
-            setRefusal(null);
-            setBusy(true);
-            try {
-              await save({ filePath, content: draft });
-              toast.done(`Patch saved for ${filePath}.`, {
-                description: "It is applied to the clone before the next build.",
-              });
-              onOpenChange(false);
-            } catch (caught) {
-              setRefusal(errorMessage(caught));
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          Save as a patch
-        </Button>
+        {saveButton()}
       </Modal.Footer>
     </Modal>
   );

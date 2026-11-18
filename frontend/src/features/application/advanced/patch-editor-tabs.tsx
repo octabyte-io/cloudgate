@@ -1,4 +1,7 @@
+import { useState, type ReactNode } from "react";
+
 import { DiffView } from "@/components/console/diff-view";
+import { ExpandButton, ExpandedEditor } from "@/components/console/expanded-editor";
 import { Tabs } from "@/components/console/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { diffLines, hasChanges } from "@/lib/format/diff-lines";
@@ -38,6 +41,8 @@ export function PatchEditorTabs({
   onDraft,
   rows,
   againstRepo,
+  expandedActions,
+  expandedStatus,
 }: {
   filePath: string;
   draft: string;
@@ -46,8 +51,13 @@ export function PatchEditorTabs({
   rows: Rows;
   /** Repository → editor, or `null` when the repository has no such file. */
   againstRepo: Rows | null;
+  /** The dialog's own Save, drawn again in the expanded editor's top bar. */
+  expandedActions: ReactNode;
+  /** A refused save, which would otherwise land behind the expanded editor. */
+  expandedStatus?: ReactNode;
 }) {
   const changed = hasChanges(rows);
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <Tabs defaultValue="edit">
@@ -64,7 +74,24 @@ export function PatchEditorTabs({
         ) : null}
       </Tabs.Bar>
 
-      <Tabs.Panel value="edit" className="pt-3">
+      <Tabs.Panel value="edit" className="grid gap-2 pt-3">
+        {/* Spec #118: the file filling the window, stacked over this dialog. */}
+        <div className="flex justify-end">
+          <ExpandButton name={filePath} onClick={() => setExpanded(true)} />
+        </div>
+        <ExpandedEditor
+          open={expanded}
+          onOpenChange={setExpanded}
+          kind="text"
+          title={filePath}
+          context="Saved as a patch, applied to the clone before every build."
+          label={`Contents of ${filePath}`}
+          value={draft}
+          onChange={onDraft}
+          changed={changed}
+          actions={expandedActions}
+          status={expandedStatus}
+        />
         <Textarea
           value={draft}
           onChange={(event) => onDraft(event.target.value)}

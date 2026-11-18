@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/components/console/toast", () => ({
@@ -78,4 +78,62 @@ describe("PatchEditorTabs", () => {
       expect(gridItemOf(diff!).className).toMatch(/(^|\s)min-w-0(\s|$)/);
     },
   );
+});
+
+/**
+ * Spec #118: the Edit tab's file expands to fill the window, over the patch
+ * dialog, and saves as a patch from there.
+ */
+describe("PatchEditorTabs — Expand", () => {
+  function open(save: (input: { filePath: string; content: string }) => Promise<unknown>) {
+    render(
+      <PatchEditorModal
+        filePath="nginx.conf"
+        loaded={"server {\n}\n"}
+        original={"server {\n}\n"}
+        pending={false}
+        error={null}
+        open
+        onOpenChange={() => {}}
+        save={save}
+        markForDeletion={async () => {}}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Expand nginx.conf" }));
+    const dialogs = screen.getAllByRole("dialog");
+    return dialogs[dialogs.length - 1];
+  }
+
+  it("opens the file filling the window and saves the edit as a patch from its top bar", async () => {
+    const save = vi.fn(async () => undefined);
+    const expanded = open(save);
+
+    expect(within(expanded).getByRole("heading", { name: "nginx.conf" })).toBeTruthy();
+    fireEvent.change(within(expanded).getByLabelText("Contents of nginx.conf"), {
+      target: { value: "server {\n  listen 80;\n}\n" },
+    });
+    expect(within(expanded).getByText("Unsaved changes")).toBeTruthy();
+
+    fireEvent.click(within(expanded).getByRole("button", { name: "Save as a patch" }));
+    await waitFor(() =>
+      expect(save).toHaveBeenCalledWith({
+        filePath: "nginx.conf",
+        content: "server {\n  listen 80;\n}\n",
+      }),
+    );
+  });
+
+  it("keeps the edit in the Edit tab on Back to page", async () => {
+    const expanded = open(async () => undefined);
+    fireEvent.change(within(expanded).getByLabelText("Contents of nginx.conf"), {
+      target: { value: "server {\n  listen 80;\n}\n" },
+    });
+
+    fireEvent.click(within(expanded).getByRole("button", { name: "Back to page" }));
+
+    await waitFor(() => expect(screen.getAllByRole("dialog")).toHaveLength(1));
+    expect(
+      (screen.getByLabelText("Contents of nginx.conf") as HTMLTextAreaElement).value,
+    ).toBe("server {\n  listen 80;\n}\n");
+  });
 });
