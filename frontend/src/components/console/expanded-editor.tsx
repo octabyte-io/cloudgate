@@ -20,6 +20,28 @@ import { cn } from "@/lib/utils";
 const FILL = "min-h-0 flex-1 rounded-none border-0";
 
 /**
+ * The button that opens an `ExpandedEditor`: `maximise`, the Dock's half of
+ * the pair Back to page's `restore` closes. `name` is the file it expands, for
+ * a form holding two (a certificate and its private key).
+ */
+export function ExpandButton({
+  name,
+  size = "xs",
+  onClick,
+}: {
+  name: string;
+  size?: "xs" | "sm";
+  onClick: () => void;
+}) {
+  return (
+    <Button type="button" size={size} aria-label={`Expand ${name}`} onClick={onClick}>
+      <Icon name="maximise" size={14} />
+      Expand
+    </Button>
+  );
+}
+
+/**
  * A file editor given the whole browser window (spec #118, the prototype's
  * variant B): a top bar with the file's name, where it belongs, "Unsaved
  * changes" and the caller's own Discard and Save; the file edge to edge; and a

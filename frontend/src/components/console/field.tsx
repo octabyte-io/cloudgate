@@ -51,6 +51,12 @@ export type FieldProps = {
    */
   registerOptions?: RegisterOptions;
   orientation?: "vertical" | "horizontal";
+  /**
+   * A small button at the end of the label's row, for something done *to*
+   * the control: Expand on a text box holding a whole file (#118). Vertical
+   * fields only.
+   */
+  action?: React.ReactNode;
   className?: string;
   /** Exactly one control. It is given its id, its registration and its aria wiring. */
   children: React.ReactElement<Record<string, unknown>>;
@@ -91,6 +97,7 @@ export function Field({
   manual,
   registerOptions,
   orientation = "vertical",
+  action,
   className,
   children,
 }: FieldProps) {
@@ -187,7 +194,14 @@ export function Field({
         </>
       ) : (
         <>
-          {labelNode}
+          {action ? (
+            <div className="flex min-w-0 items-end justify-between gap-2">
+              {labelNode}
+              {action}
+            </div>
+          ) : (
+            labelNode
+          )}
           {control}
           {hintNode}
           {errorNode}

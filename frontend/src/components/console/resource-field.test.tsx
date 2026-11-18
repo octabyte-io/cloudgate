@@ -376,6 +376,62 @@ describe("ResourceField", () => {
   });
 });
 
+/**
+ * Spec #118: a text box holding a whole file (a mount's content, a
+ * certificate, a shell command) opens in the window-filling editor, and a
+ * text box holding a sentence does not.
+ */
+describe("ResourceField as a text box", () => {
+  const STORED = "server {\n}\n";
+  const EDITED = "server {\n  listen 80;\n}\n";
+
+  function files(): Form {
+    return {
+      label: "a mount",
+      fields: () => [
+        { kind: "textarea", name: "content", label: "Content", mono: true },
+        { kind: "textarea", name: "note", label: "Note" },
+      ],
+      schema: z.object({
+        content: z.string(),
+        note: z.string(),
+      }) as ZodType<FieldValues>,
+      defaults: { content: STORED, note: "" },
+    };
+  }
+
+  it("shows Expand on a mono text box and not on a plain one", () => {
+    mount(files());
+
+    const expands = screen.getAllByRole("button", { name: "Expand Content" });
+    expect(expands).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: /Expand Note/ })).toBeNull();
+    expect(screen.getAllByRole("button", { name: /^Expand/ })).toHaveLength(1);
+  });
+
+  it("opens the file filling the window, and a typed edit reaches the form and stays on Back to page", async () => {
+    const read = mount(files());
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand Content" }));
+    const dialog = screen.getByRole("dialog");
+    expect(screen.getByRole("heading", { name: "Content" })).toBeTruthy();
+    const expanded = dialog.querySelector("textarea");
+    if (!expanded) throw new Error("the expanded editor has no text box");
+    expect(expanded.value).toBe(STORED);
+
+    fireEvent.change(expanded, { target: { value: EDITED } });
+    expect(read().content).toBe(EDITED);
+    expect(screen.getByText("Unsaved changes")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to page" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    const box = document.querySelector<HTMLTextAreaElement>(
+      'textarea[name="content"]',
+    );
+    expect(box?.value).toBe(EDITED);
+  });
+});
+
 describe('every kind: "number" field in the console', () => {
   const driven = Object.entries(CENSUS).flatMap(([file, entry]) =>
     "forms" in entry ? entry.forms().map((form) => ({ file, form })) : [],

@@ -1,5 +1,12 @@
-import { Controller, useFormContext, type FieldValues } from "react-hook-form";
+import { useState } from "react";
+import {
+  Controller,
+  useFormContext,
+  useWatch,
+  type FieldValues,
+} from "react-hook-form";
 
+import { ExpandButton, ExpandedEditor } from "@/components/console/expanded-editor";
 import { Field } from "@/components/console/field";
 import type { FieldSpec } from "@/components/console/form-spec";
 import { PasswordInput } from "@/components/console/password-input";
@@ -123,22 +130,7 @@ export function ResourceField<Values extends FieldValues>({
   }
 
   if (spec.kind === "textarea") {
-    return (
-      <Field {...common}>
-        <Textarea
-          rows={spec.rows ?? 6}
-          placeholder={spec.placeholder}
-          {...locked}
-          // A file's content and a shell script are read as code; `max-h`
-          // rather than a row cap, because `field-sizing-content` is what makes
-          // a short value take a short box.
-          className={cn(
-            "max-h-80 overflow-auto",
-            spec.mono && "font-mono text-meta leading-log",
-          )}
-        />
-      </Field>
-    );
+    return <TextBoxField spec={spec} common={common} />;
   }
 
   if (spec.kind === "lines") {
@@ -230,6 +222,100 @@ export function ResourceField<Values extends FieldValues>({
         className={cn(spec.mono && "font-mono text-meta")}
       />
     </Field>
+  );
+}
+
+/**
+ * A `textarea` spec. A `mono` one holds a whole file (a mount's content, a
+ * certificate, a shell command), so it has **Expand** (spec #118), which opens
+ * the same value in `ExpandedEditor` filling the window.
+ *
+ * The expanded editor offers **nothing beyond Back to page**. The field has no
+ * Save of its own: it is saved by its form's Save, with the rest of the form,
+ * and that button is in a card or a dialog this component cannot see — and
+ * may be refused for a field the expanded editor does not show. So the edit
+ * goes straight into the form (`setValue`, dirtied, so the form's own
+ * "Unsaved changes" and Save behave as if it were typed in the box) and the
+ * operator saves it where the form does.
+ *
+ * A locked field has no Expand: it is read-only, and the expanded text box is not.
+ */
+function TextBoxField<Values extends FieldValues>({
+  spec,
+  common,
+}: {
+  spec: FieldSpec<Values> & { kind: "textarea" };
+  common: { name: string; label: string; hint?: React.ReactNode; optional?: boolean };
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const expandable = spec.mono === true && spec.locked === undefined;
+
+  return (
+    <>
+      <Field
+        {...common}
+        action={
+          expandable ? (
+            <ExpandButton name={spec.label} onClick={() => setExpanded(true)} />
+          ) : undefined
+        }
+      >
+        <Textarea
+          rows={spec.rows ?? 6}
+          placeholder={spec.placeholder}
+          {...lockedProps(spec.locked)}
+          // A file's content and a shell script are read as code; `max-h`
+          // rather than a row cap, because `field-sizing-content` is what makes
+          // a short value take a short box.
+          className={cn(
+            "max-h-80 overflow-auto",
+            spec.mono && "font-mono text-meta leading-log",
+          )}
+        />
+      </Field>
+      {expandable && expanded ? (
+        <ExpandedField
+          name={spec.name}
+          label={spec.label}
+          onClose={() => setExpanded(false)}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * The expanded editor over one form field. Mounted only while open, so the
+ * field's value is watched only then.
+ */
+function ExpandedField({
+  name,
+  label,
+  onClose,
+}: {
+  name: string;
+  label: string;
+  onClose: () => void;
+}) {
+  const form = useFormContext();
+  const value = (useWatch({ control: form.control, name }) as string | undefined) ?? "";
+  const { isDirty } = form.getFieldState(name, form.formState);
+
+  return (
+    <ExpandedEditor
+      open
+      onOpenChange={(open) => (open ? undefined : onClose())}
+      kind="text"
+      title={label}
+      context="Saved with the rest of this form, from its own Save."
+      label={label}
+      value={value}
+      onChange={(next) =>
+        form.setValue(name, next, { shouldDirty: true, shouldValidate: false })
+      }
+      changed={isDirty}
+      actions={null}
+    />
   );
 }
 
