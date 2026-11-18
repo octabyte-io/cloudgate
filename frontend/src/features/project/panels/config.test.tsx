@@ -78,6 +78,7 @@ afterEach(() => {
   cleanup();
   usePermission.mockReset();
   save.mutate.mockClear();
+  save.data = undefined;
 });
 
 function expanded({ allowed }: { allowed: boolean }) {
@@ -116,6 +117,20 @@ describe("ConfigEditorCard — Expand", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Save and plan" }));
 
     expect(save.mutate).toHaveBeenCalledWith({ text: EDITED });
+  });
+
+  it("says on its status line that a plan from the top bar was made and nothing applied", () => {
+    // The save as it stands once the plan request has answered.
+    save.data = { stored: false };
+    const { dialog, editor } = expanded({ allowed: true });
+    fireEvent.change(editor, { target: { value: EDITED } });
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save and plan" }));
+
+    expect(save.mutate).toHaveBeenCalledWith({ text: EDITED });
+    expect(dialog.textContent).toContain("Planned in each Environment. Nothing is applied.");
+    // Still open: the result is read where the save was made.
+    expect(screen.getByRole("dialog")).toBe(dialog);
   });
 
   it("says when the edit is not valid YAML", () => {
