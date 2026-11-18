@@ -1,5 +1,8 @@
+import { useState } from "react";
+
 import { Card } from "@/components/console/card";
 import { CodeEditor } from "@/components/console/code-editor";
+import { ExpandedEditor, ExpandedEditorStatus } from "@/components/console/expanded-editor";
 import { Skeleton } from "@/components/console/skeleton";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/api/error-message";
@@ -27,9 +30,20 @@ import { cloudName, CLOUD_NAMES } from "@/lib/api/endpoints/cloud-accounts";
  * An Environment's copy of a repository-kept config, read now from its
  * Config branch (US55): read-only, with the commit it was read at and a link
  * to the file there, or why it cannot be read. Never a fallback copy.
+ *
+ * **Expand** gives the copy the whole window (spec #118), read-only as here:
+ * the file is changed in its repository, so the top bar's one action is the
+ * link to it.
  */
-function EnvironmentCopy({ environmentId }: { environmentId: string }) {
+function EnvironmentCopy({
+  environmentId,
+  environmentName,
+}: {
+  environmentId: string;
+  environmentName: string;
+}) {
   const copy = useEnvironmentConfigCopy(environmentId);
+  const [expanded, setExpanded] = useState(false);
   if (copy.error) {
     return <p className="text-body text-bad">{errorMessage(copy.error)}</p>;
   }
@@ -46,25 +60,42 @@ function EnvironmentCopy({ environmentId }: { environmentId: string }) {
       </p>
     );
   }
+  const where = `${found.path} on ${readLine(found.copy.branch, found.copy.commitSha)}${
+    found.configBranch === null ? " (the default branch)" : ""
+  }`;
+  const label = `Project config on ${branch}`;
+  const openTheFile = (
+    <a
+      href={found.copy.fileUrl}
+      target="_blank"
+      rel="noreferrer"
+      className="text-meta font-medium text-brand-tx underline-offset-3 hover:underline focus-visible:underline"
+    >
+      Open the file
+    </a>
+  );
   return (
     <div className="grid gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-meta text-tx-2">
-          {found.path} on {readLine(found.copy.branch, found.copy.commitSha)}
-          {found.configBranch === null ? " (the default branch)" : ""}
-        </p>
-        <a
-          href={found.copy.fileUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="text-meta font-medium text-brand-tx underline-offset-3 hover:underline focus-visible:underline"
-        >
-          Open the file
-        </a>
+        <p className="text-meta text-tx-2">{where}</p>
+        <div className="flex items-center gap-3">
+          {openTheFile}
+          <Button size="sm" onClick={() => setExpanded(true)}>
+            <Icon name="maximise" size={14} />
+            Expand
+          </Button>
+        </div>
       </div>
-      <CodeEditor
+      <CodeEditor value={found.copy.text} label={label} />
+      <ExpandedEditor
+        open={expanded}
+        onOpenChange={setExpanded}
+        title="Project config"
+        context={`${environmentName} · ${where}`}
+        label={label}
         value={found.copy.text}
-        label={`Project config on ${branch}`}
+        actions={openTheFile}
+        status={expanded ? <ExpandedEditorStatus yaml={found.copy.text} /> : null}
       />
     </div>
   );
@@ -153,7 +184,10 @@ export function EnvironmentPlanCard({
       />
       <Card.Body className="grid gap-4">
         {repositoryKept ? (
-          <EnvironmentCopy environmentId={environment.environmentId} />
+          <EnvironmentCopy
+            environmentId={environment.environmentId}
+            environmentName={environment.name}
+          />
         ) : null}
         {failure ? (
           <p className="text-body text-bad">{errorMessage(failure)}</p>
