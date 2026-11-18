@@ -7,11 +7,13 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { FormProvider, type FieldValues } from "react-hook-form";
 import { afterEach, describe, expect, it } from "vitest";
 import { z, type ZodType } from "zod";
 
+import { Card } from "@/components/console/card";
 import type { FieldSpec } from "@/components/console/form-spec";
 import { useApiForm } from "@/components/console/use-api-form";
 import type { ApplicationDetail } from "@/lib/api/endpoints/applications";
@@ -279,9 +281,15 @@ afterEach(() => {
 function Harness({
   form: spec,
   onReady,
+  place = "form",
 }: {
   form: Form;
   onReady: (read: () => FieldValues) => void;
+  /**
+   * Where the fields sit: in a `<form>` (the default), in a form inside a
+   * titled card, in a form whose Save is refused, or in no form at all.
+   */
+  place?: Place;
 }) {
   const form = useApiForm<FieldValues>({
     schema: spec.schema,
@@ -296,31 +304,51 @@ function Harness({
   });
   onReady(() => form.getValues());
   const values = form.watch();
+  const fields = spec.fields(values).map((field) => (
+    <ResourceField
+      key={field.name}
+      // Shown whatever the form holds: a Pushover retry is only on screen
+      // at priority 2, and the census is about the box, not the rule.
+      spec={field.kind === "number" ? { ...field, when: undefined } : field}
+      values={values}
+    />
+  ));
+  if (place === "none") {
+    return <FormProvider {...form}>{fields}</FormProvider>;
+  }
+  const inForm = (
+    <form method="post" onSubmit={form.submit}>
+      {fields}
+      {place === "refused" ? (
+        <button type="submit" disabled title="Your role cannot change mounts.">
+          Save
+        </button>
+      ) : (
+        <button type="submit">Save</button>
+      )}
+    </form>
+  );
   return (
     <FormProvider {...form}>
-      <form method="post" onSubmit={form.submit}>
-        {spec.fields(values).map((field) => (
-          <ResourceField
-            key={field.name}
-            // Shown whatever the form holds: a Pushover retry is only on screen
-            // at priority 2, and the census is about the box, not the rule.
-            spec={
-              field.kind === "number" ? { ...field, when: undefined } : field
-            }
-            values={values}
-          />
-        ))}
-        <button type="submit">Save</button>
-      </form>
+      {place === "card" ? (
+        <Card>
+          <Card.Header title="Mounts" />
+          <Card.Body>{inForm}</Card.Body>
+        </Card>
+      ) : (
+        inForm
+      )}
     </FormProvider>
   );
 }
 
 const TYPE_REFUSAL = /expected number|received (string|nan|undefined)/i;
 
-function mount(form: Form) {
+type Place = "form" | "card" | "refused" | "none";
+
+function mount(form: Form, place?: Place) {
   let read: () => FieldValues = () => ({});
-  render(<Harness form={form} onReady={(next) => (read = next)} />);
+  render(<Harness form={form} place={place} onReady={(next) => (read = next)} />);
   return () => read();
 }
 
@@ -385,9 +413,10 @@ describe("ResourceField as a text box", () => {
   const STORED = "server {\n}\n";
   const EDITED = "server {\n  listen 80;\n}\n";
 
-  function files(): Form {
+  function files(after?: (values: FieldValues) => void): Form {
     return {
       label: "a mount",
+      after,
       fields: () => [
         { kind: "textarea", name: "content", label: "Content", mono: true },
         { kind: "textarea", name: "note", label: "Note" },
@@ -429,6 +458,68 @@ describe("ResourceField as a text box", () => {
       'textarea[name="content"]',
     );
     expect(box?.value).toBe(EDITED);
+  });
+
+  it("saves the form from the top bar with the form's own Save, back on the page", async () => {
+    let submitted: FieldValues | null = null;
+    mount(
+      files((values) => {
+        submitted = values;
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand Content" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Content"), {
+      target: { value: EDITED },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    // Back on the page, where the form's own result or refusal is shown.
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(submitted).toEqual({ content: EDITED, note: "" }));
+  });
+
+  it("is off in the top bar, with the reason, while the form's own Save is", () => {
+    mount(files(), "refused");
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand Content" }));
+    const save = within(screen.getByRole("dialog")).getByRole("button", { name: "Save" });
+
+    expect(
+      save.hasAttribute("disabled") || save.getAttribute("aria-disabled") === "true",
+    ).toBe(true);
+    expect(save.getAttribute("title")).toBe("Your role cannot change mounts.");
+  });
+
+  it("offers no Save for a text box that is in no form", () => {
+    mount(files(), "none");
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand Content" }));
+    const dialog = screen.getByRole("dialog");
+
+    expect(within(dialog).queryByRole("button", { name: /Save/ })).toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Back to page" })).toBeTruthy();
+  });
+
+  it("says where the file belongs by the card its form is in", () => {
+    mount(files(), "card");
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand Content" }));
+    const dialog = screen.getByRole("dialog");
+
+    expect(dialog.textContent).toContain("Mounts");
+    expect(dialog.textContent).not.toContain("Saved with the rest of this form");
+  });
+
+  it("keeps the sentence for a form nothing titles", () => {
+    mount(files());
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand Content" }));
+
+    expect(screen.getByRole("dialog").textContent).toContain(
+      "Saved with the rest of this form, from its own Save.",
+    );
   });
 });
 

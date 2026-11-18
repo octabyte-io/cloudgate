@@ -12,6 +12,7 @@ import type { FieldSpec } from "@/components/console/form-spec";
 import { PasswordInput } from "@/components/console/password-input";
 import { Picker } from "@/components/console/picker";
 import { RowsField } from "@/components/console/rows-field";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -230,13 +231,11 @@ export function ResourceField<Values extends FieldValues>({
  * certificate, a shell command), so it has **Expand** (spec #118), which opens
  * the same value in `ExpandedEditor` filling the window.
  *
- * The expanded editor offers **nothing beyond Back to page**. The field has no
- * Save of its own: it is saved by its form's Save, with the rest of the form,
- * and that button is in a card or a dialog this component cannot see — and
- * may be refused for a field the expanded editor does not show. So the edit
- * goes straight into the form (`setValue`, dirtied, so the form's own
- * "Unsaved changes" and Save behave as if it were typed in the box) and the
- * operator saves it where the form does.
+ * The edit goes straight into the form (`setValue`, dirtied, so the form's own
+ * "Unsaved changes" and Save behave as if it were typed in the box). The field
+ * has no Save of its own: it is saved with the rest of its form. So the
+ * expanded editor's Save **is the form's**: it presses the form's own submit
+ * button, back on the page (`formPlace`). A field in no form has no Save there.
  *
  * A locked field has no Expand: it is read-only, and the expanded text box is not.
  */
@@ -247,7 +246,9 @@ function TextBoxField<Values extends FieldValues>({
   spec: FieldSpec<Values> & { kind: "textarea" };
   common: { name: string; label: string; hint?: React.ReactNode; optional?: boolean };
 }) {
-  const [expanded, setExpanded] = useState(false);
+  // Where the field sits, read off the Expand button when it is pressed; set
+  // while the expanded editor is open.
+  const [place, setPlace] = useState<FormPlace | null>(null);
   const expandable = spec.mono === true && spec.locked === undefined;
 
   return (
@@ -256,7 +257,10 @@ function TextBoxField<Values extends FieldValues>({
         {...common}
         action={
           expandable ? (
-            <ExpandButton name={spec.label} onClick={() => setExpanded(true)} />
+            <ExpandButton
+              name={spec.label}
+              onClick={(event) => setPlace(formPlace(event.currentTarget))}
+            />
           ) : undefined
         }
       >
@@ -273,11 +277,12 @@ function TextBoxField<Values extends FieldValues>({
           )}
         />
       </Field>
-      {expandable && expanded ? (
+      {expandable && place ? (
         <ExpandedField
           name={spec.name}
           label={spec.label}
-          onClose={() => setExpanded(false)}
+          place={place}
+          onClose={() => setPlace(null)}
         />
       ) : null}
     </>
@@ -291,15 +296,34 @@ function TextBoxField<Values extends FieldValues>({
 function ExpandedField({
   name,
   label,
+  place,
   onClose,
 }: {
   name: string;
   label: string;
+  place: FormPlace;
   onClose: () => void;
 }) {
   const form = useFormContext();
   const value = (useWatch({ control: form.control, name }) as string | undefined) ?? "";
   const { isDirty } = form.getFieldState(name, form.formState);
+  const submitter = place.form ? submitterOf(place.form) : null;
+  // Off, with its reason, when the form's own Save is: that button is the
+  // gate, and a top bar Save that looked on would only close the editor.
+  const off =
+    submitter !== null &&
+    (submitter.disabled || submitter.getAttribute("aria-disabled") === "true");
+
+  function save() {
+    const target = place.form;
+    if (!target) return;
+    // Back to the page first, so the form's result or refusal is seen there.
+    onClose();
+    // The form's own button rather than `requestSubmit()` alone, so whatever
+    // that button refuses (a gate, a submit in flight) this refuses too.
+    if (submitter) submitter.click();
+    else target.requestSubmit();
+  }
 
   return (
     <ExpandedEditor
@@ -307,16 +331,60 @@ function ExpandedField({
       onOpenChange={(open) => (open ? undefined : onClose())}
       kind="text"
       title={label}
-      context="Saved with the rest of this form, from its own Save."
+      context={place.title ?? "Saved with the rest of this form, from its own Save."}
       label={label}
       value={value}
       onChange={(next) =>
         form.setValue(name, next, { shouldDirty: true, shouldValidate: false })
       }
       changed={isDirty}
-      actions={null}
+      actions={
+        place.form ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="pri"
+            disabled={off}
+            title={off ? submitter?.title || undefined : undefined}
+            onClick={save}
+          >
+            {submitter?.textContent?.trim() || "Save"}
+          </Button>
+        ) : null
+      }
     />
   );
+}
+
+/** The form a field is saved by, and what the page calls the place it sits in. */
+type FormPlace = { form: HTMLFormElement | null; title: string | null };
+
+/**
+ * Where a field sits, read off the DOM from an element of it: its `<form>`,
+ * and the title of the card or dialog around it (a dialog's `DialogTitle`, a
+ * card's header heading) for the expanded editor's context line. A spec knows
+ * neither: the same mount spec is used in an add dialog and an edit one.
+ */
+function formPlace(from: HTMLElement): FormPlace {
+  const form = from.closest("form");
+  const around = from.closest('[data-slot="dialog-content"], [data-slot="card"]');
+  const heading = around?.querySelector(
+    around.matches('[data-slot="card"]')
+      ? ':scope > [data-slot="card-header"] :is(h1, h2, h3, h4, h5, h6)'
+      : '[data-slot="dialog-title"]',
+  );
+  return { form, title: heading?.textContent?.trim() || null };
+}
+
+/**
+ * The form's own submit button, also when it sits outside the `<form>` and
+ * names it with `form=` (a dialog's footer), which `form.elements` includes.
+ */
+function submitterOf(form: HTMLFormElement): HTMLButtonElement | null {
+  for (const element of Array.from(form.elements)) {
+    if (element instanceof HTMLButtonElement && element.type === "submit") return element;
+  }
+  return null;
 }
 
 /**
