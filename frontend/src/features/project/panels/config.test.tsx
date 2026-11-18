@@ -96,7 +96,7 @@ function expanded({ allowed }: { allowed: boolean }) {
  * Expand (spec #118): the Project config filling the window, planned from its
  * top bar by the card's own Save and plan, so its gate holds there too.
  */
-describe("the Project config panel — Expand", () => {
+describe("ConfigEditorCard — Expand", () => {
   it("opens the config with its title, its Project's name, Save and plan and its YAML status", () => {
     const { dialog, editor } = expanded({ allowed: true });
 

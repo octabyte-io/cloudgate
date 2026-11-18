@@ -1,8 +1,8 @@
+import { useState } from "react";
 import { FormProvider } from "react-hook-form";
 import { z } from "zod";
 
-import { useState } from "react";
-
+import type { NameLock } from "@/components/console/config-lock";
 import { ExpandButton, ExpandedEditor } from "@/components/console/expanded-editor";
 import { Field, FormError } from "@/components/console/field";
 import { SubmitButton } from "@/components/console/submit-button";
@@ -10,8 +10,6 @@ import { toast } from "@/components/console/toast";
 import { useApiForm } from "@/components/console/use-api-form";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-
-import type { NameLock } from "@/components/console/config-lock";
 import { countVariables, parseEnvBlob } from "@/lib/format/env-blob";
 import {
   envIssues,
