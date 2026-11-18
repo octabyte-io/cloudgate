@@ -229,6 +229,8 @@ const SAVE_EXEMPT: Record<string, string> = {
     "Reached only through the row's Rename, which is gated.",
   "features/tags/tag-row.tsx::Save":
     "Reached only through the row's Rename, which is gated.",
+  "components/console/resource-field.tsx::Save":
+    "The expanded text box's Save presses its form's own submit button and is off whenever that button is, so the form's Save carries the gate.",
   "components/console/wired-link-form.tsx::Save link":
     "Mounted only through the Wired variables card's Link a variable, which reads its caller's gate.",
   "features/operator/bought-servers-section.tsx::Save changes":
