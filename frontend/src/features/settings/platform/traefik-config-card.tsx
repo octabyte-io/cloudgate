@@ -2,6 +2,7 @@ import { useId, useState } from "react";
 
 import { Card } from "@/components/console/card";
 import { CodeEditor } from "@/components/console/code-editor";
+import { ExpandedEditor, ExpandedEditorStatus } from "@/components/console/expanded-editor";
 import { FormError } from "@/components/console/field";
 import { Skeleton } from "@/components/console/skeleton";
 import { SubmitButton } from "@/components/console/submit-button";
@@ -9,6 +10,7 @@ import { toast } from "@/components/console/toast";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/api/error-message";
 import type { TraefikConfigKind } from "@/lib/api/endpoints/traefik";
+import { Icon } from "@/lib/design/icons";
 
 import { useDraft } from "./use-draft";
 import {
@@ -70,6 +72,12 @@ export type TraefikConfigDescriptor = {
  * (ADR-0013), so the card reads `useInstanceGate` — the rule's case 2 beside
  * `usePermission`. The editor stays live; reading the file is not the refused
  * act, and its own read takes the same authority anyway.
+ *
+ * **Expand** gives the file the whole window (spec #118) with this card's own
+ * Save and Discard in its top bar, drawn by the same functions as below, so the
+ * gate and the empty-file rule cannot disagree between the two. Its status line
+ * says no word on the YAML, for the reason above: that verdict is the
+ * backend's, and it arrives as the refusal.
  */
 export function TraefikConfigCard({
   descriptor,
@@ -87,6 +95,39 @@ export function TraefikConfigCard({
     reset,
     dirty,
   } = useDraft(config.data ?? "");
+  const [expanded, setExpanded] = useState(false);
+  const label = `${descriptor.title} (${descriptor.path})`;
+  const empty = content.trim() === "";
+
+  function saveButton(size?: "sm") {
+    return (
+      <SubmitButton
+        pending={writeConfig.isPending}
+        onClick={save}
+        type="button"
+        size={size}
+        disabled={!gate.allowed || !dirty || empty}
+        title={gate.allowed ? undefined : gate.refusal}
+        aria-describedby={gate.allowed ? undefined : gateId}
+      >
+        Save {descriptor.title.toLowerCase()}
+      </SubmitButton>
+    );
+  }
+
+  function discardButton(size?: "sm") {
+    return dirty ? (
+      <Button type="button" size={size} onClick={reset}>
+        Discard changes
+      </Button>
+    ) : null;
+  }
+
+  const emptyNote = (
+    <span className="text-meta text-tx-3">
+      This file cannot be saved empty — delete it on the host instead.
+    </span>
+  );
 
   return (
     <Card aria-busy={config.isPending || undefined}>
@@ -95,9 +136,17 @@ export function TraefikConfigCard({
         sub={descriptor.lede}
         headingLevel={2}
         actions={
-          <code className="hidden font-mono text-meta text-tx-3 sm:block">
-            {descriptor.path}
-          </code>
+          <>
+            <code className="hidden font-mono text-meta text-tx-3 sm:block">
+              {descriptor.path}
+            </code>
+            {config.isPending || config.error ? null : (
+              <Button type="button" size="sm" onClick={() => setExpanded(true)}>
+                <Icon name="maximise" size={14} />
+                Expand
+              </Button>
+            )}
+          </>
         }
       />
       <Card.Body className="grid gap-3">
@@ -115,11 +164,29 @@ export function TraefikConfigCard({
                 yet. Saving here creates it.
               </p>
             ) : null}
-            <CodeEditor
+            <ExpandedEditor
+              open={expanded}
+              onOpenChange={setExpanded}
+              title={descriptor.title}
+              context={`${descriptor.path} · Traefik on this host`}
+              label={label}
               value={content}
               onChange={setDraft}
-              label={`${descriptor.title} (${descriptor.path})`}
+              changed={dirty}
+              actions={
+                <>
+                  {discardButton("sm")}
+                  {saveButton("sm")}
+                </>
+              }
+              status={
+                <>
+                  <ExpandedEditorStatus refusal={refusal} />
+                  {empty && dirty ? emptyNote : null}
+                </>
+              }
             />
+            <CodeEditor value={content} onChange={setDraft} label={label} />
             <FormError message={refusal ?? undefined} />
             {gate.allowed ? null : (
               <p id={gateId} className="text-meta text-tx-2">
@@ -127,27 +194,9 @@ export function TraefikConfigCard({
               </p>
             )}
             <div className="flex flex-wrap items-center gap-2">
-              <SubmitButton
-                pending={writeConfig.isPending}
-                onClick={save}
-                type="button"
-                disabled={!gate.allowed || !dirty || content.trim() === ""}
-                title={gate.allowed ? undefined : gate.refusal}
-                aria-describedby={gate.allowed ? undefined : gateId}
-              >
-                Save {descriptor.title.toLowerCase()}
-              </SubmitButton>
-              {dirty ? (
-                <Button type="button" onClick={reset}>
-                  Discard changes
-                </Button>
-              ) : null}
-              {content.trim() === "" && dirty ? (
-                <span className="text-meta text-tx-3">
-                  This file cannot be saved empty — delete it on the host
-                  instead.
-                </span>
-              ) : null}
+              {saveButton()}
+              {discardButton()}
+              {empty && dirty ? emptyNote : null}
             </div>
           </>
         )}

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Gate } from "@/lib/auth/use-permission";
@@ -100,5 +100,69 @@ describe("TraefikConfigCard — Save", () => {
         content: EDITED,
       }),
     );
+  });
+});
+
+/**
+ * Expand (spec #118): the file filling the window, saved from its top bar by
+ * the card's own Save, so the gate and the empty-file rule hold there too.
+ */
+describe("TraefikConfigCard — Expand", () => {
+  const LABEL = "Main configuration (traefik.yml)";
+
+  function expanded({ allowed }: { allowed: boolean }) {
+    useInstanceGate.mockReturnValue({ allowed, refusal: allowed ? "" : REFUSAL });
+    render(<TraefikConfigCard descriptor={CONFIGS[0]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Expand" }));
+    const dialog = screen.getByRole("dialog");
+    return { dialog, editor: within(dialog).getByLabelText(LABEL) };
+  }
+
+  it("opens the file with its title, its path and the card's Save", () => {
+    const { dialog, editor } = expanded({ allowed: true });
+
+    expect(within(dialog).getByRole("heading", { name: "Main configuration" })).toBeTruthy();
+    expect(dialog.textContent).toContain("traefik.yml");
+    expect(within(dialog).getByRole("button", { name: "Save main configuration" })).toBeTruthy();
+    expect((editor as HTMLTextAreaElement).value).toBe("entryPoints: {}\n");
+  });
+
+  it("saves the edit from the top bar and clears Unsaved changes", async () => {
+    const { dialog, editor } = expanded({ allowed: true });
+    fireEvent.change(editor, { target: { value: EDITED } });
+    expect(within(dialog).getByText("Unsaved changes")).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save main configuration" }));
+
+    await waitFor(() =>
+      expect(writeConfig.mutateAsync).toHaveBeenCalledWith({ kind: "main", content: EDITED }),
+    );
+    await waitFor(() => expect(within(dialog).queryByText("Unsaved changes")).toBeNull());
+  });
+
+  it("says why a save failed in the expanded editor", async () => {
+    // fetch's own rejection when the request never landed.
+    writeConfig.mutateAsync.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const { dialog, editor } = expanded({ allowed: true });
+    fireEvent.change(editor, { target: { value: EDITED } });
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save main configuration" }));
+
+    await waitFor(() =>
+      expect(within(dialog).getByRole("alert").textContent).toContain(
+        "Could not reach the backend.",
+      ),
+    );
+  });
+
+  it("is off in the top bar with the reason for a caller without instance authority", () => {
+    const { dialog, editor } = expanded({ allowed: false });
+    fireEvent.change(editor, { target: { value: EDITED } });
+
+    const button = within(dialog).getByRole("button", { name: "Save main configuration" });
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    expect(button.getAttribute("title")).toBe(REFUSAL);
+    fireEvent.click(button);
+    expect(writeConfig.mutateAsync).not.toHaveBeenCalled();
   });
 });
