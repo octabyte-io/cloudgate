@@ -6,7 +6,11 @@ import { Card } from "@/components/console/card";
 import { CodeEditor } from "@/components/console/code-editor";
 import { CopyButton } from "@/components/console/copy-button";
 import { EmptyState } from "@/components/console/empty-state";
-import { ExpandedEditor, ExpandedEditorStatus } from "@/components/console/expanded-editor";
+import {
+  ExpandButton,
+  ExpandedEditor,
+  ExpandedEditorStatus,
+} from "@/components/console/expanded-editor";
 import { Page } from "@/components/console/page";
 import { PageHeader } from "@/components/console/page-header";
 import { Skeleton } from "@/components/console/skeleton";
@@ -273,10 +277,11 @@ function ConfigEditorCard({
         actions={
           <>
             <CopyButton value={draft} label="Project config" />
-            <Button onClick={() => setExpanded(true)}>
-              <Icon name="maximise" size={14} />
-              Expand
-            </Button>
+            <ExpandButton
+              name="Project config"
+              size="default"
+              onClick={() => setExpanded(true)}
+            />
             <Button
               variant="gh"
               disabled={!canMove.allowed || edited}

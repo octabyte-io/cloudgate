@@ -87,7 +87,7 @@ describe("EnvironmentPlanCard — Expand", () => {
         repositoryKept
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Expand" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expand Project config" }));
     const dialog = screen.getByRole("dialog");
     return { dialog, view: within(dialog).getByLabelText("Project config on release") };
   }

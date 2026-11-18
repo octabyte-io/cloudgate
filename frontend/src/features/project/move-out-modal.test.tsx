@@ -82,7 +82,7 @@ function expanded() {
       environments={[]}
     />,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Expand" }));
+  fireEvent.click(screen.getByRole("button", { name: "Expand Project config" }));
   const editor = screen
     .getAllByRole("dialog")
     .find((dialog) => within(dialog).queryByRole("button", { name: "Back to page" }));

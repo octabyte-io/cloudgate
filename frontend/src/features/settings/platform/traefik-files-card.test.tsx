@@ -147,14 +147,14 @@ describe("TraefikFilesCard — Expand", () => {
 
   function expand() {
     fireEvent.click(screen.getByRole("button", { name: "extra.yml" }));
-    fireEvent.click(screen.getByRole("button", { name: "Expand" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expand extra.yml" }));
     const dialog = screen.getByRole("dialog");
     return { dialog, editor: within(dialog).getByLabelText(PATH) };
   }
 
   it("is not offered until a file is chosen", () => {
     picked({ instance: true, statement: true });
-    expect(screen.queryByRole("button", { name: "Expand" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Expand/ })).toBeNull();
   });
 
   it("opens the chosen file with its name, its path and Save file", () => {

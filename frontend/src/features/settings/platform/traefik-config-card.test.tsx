@@ -113,7 +113,7 @@ describe("TraefikConfigCard — Expand", () => {
   function expanded({ allowed }: { allowed: boolean }) {
     useInstanceGate.mockReturnValue({ allowed, refusal: allowed ? "" : REFUSAL });
     render(<TraefikConfigCard descriptor={CONFIGS[0]} />);
-    fireEvent.click(screen.getByRole("button", { name: "Expand" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expand Main configuration" }));
     const dialog = screen.getByRole("dialog");
     return { dialog, editor: within(dialog).getByLabelText(LABEL) };
   }

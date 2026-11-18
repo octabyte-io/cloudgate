@@ -3,7 +3,11 @@ import { useId, useState } from "react";
 import { Card } from "@/components/console/card";
 import { Chip } from "@/components/console/chip";
 import { CodeEditor } from "@/components/console/code-editor";
-import { ExpandedEditor, ExpandedEditorStatus } from "@/components/console/expanded-editor";
+import {
+  ExpandButton,
+  ExpandedEditor,
+  ExpandedEditorStatus,
+} from "@/components/console/expanded-editor";
 import { FormError } from "@/components/console/field";
 import { MetaStrip } from "@/components/console/meta-strip";
 import { SubmitButton } from "@/components/console/submit-button";
@@ -16,7 +20,6 @@ import {
   type UpdateComposeInput,
 } from "@/lib/api/endpoints/compose";
 import { usePermission } from "@/lib/auth/use-permission";
-import { Icon } from "@/lib/design/icons";
 import { yamlProblem } from "@/lib/format/yaml-problem";
 
 import { unsetInterpolations } from "./interpolation-check";
@@ -157,10 +160,7 @@ function RawEditor({
       <Header
         sub="Stored in Cloudgate. Written to the deploy target on every Deployment."
         actions={
-          <Button type="button" size="sm" onClick={() => setExpanded(true)}>
-            <Icon name="maximise" size={14} />
-            Expand
-          </Button>
+          <ExpandButton name="Compose file" size="sm" onClick={() => setExpanded(true)} />
         }
       />
       <ExpandedEditor

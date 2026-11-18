@@ -31,8 +31,9 @@ export function ExpandButton({
   onClick,
 }: {
   name: string;
-  size?: "xs" | "sm";
-  onClick: () => void;
+  size?: "xs" | "sm" | "default";
+  /** Handed the click, for a caller that needs to know where the button sits. */
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
   return (
     <Button type="button" size={size} aria-label={`Expand ${name}`} onClick={onClick}>

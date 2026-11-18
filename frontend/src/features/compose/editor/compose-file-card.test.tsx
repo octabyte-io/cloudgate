@@ -107,7 +107,7 @@ describe("ComposeFileCard — Expand", () => {
     usePermission.mockReturnValue({ allowed: true, pending: false, role: "member" });
     const save = vi.fn(async () => undefined);
     render(<ComposeFileCard compose={compose} save={save} />);
-    fireEvent.click(screen.getByRole("button", { name: "Expand" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expand Compose file" }));
     const dialog = screen.getByRole("dialog");
     return { save, dialog, editor: within(dialog).getByLabelText(LABEL) };
   }

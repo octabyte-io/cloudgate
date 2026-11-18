@@ -87,7 +87,7 @@ function expanded({ allowed }: { allowed: boolean }) {
       <Panel id="prj-1" kind={null} label="Config" icon="list" />
     </QueryClientProvider>,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Expand" }));
+  fireEvent.click(screen.getByRole("button", { name: "Expand Project config" }));
   const dialog = screen.getByRole("dialog");
   return { dialog, editor: within(dialog).getByLabelText("Project config") };
 }

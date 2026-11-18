@@ -2,7 +2,11 @@ import { useState } from "react";
 
 import { Card } from "@/components/console/card";
 import { CodeEditor } from "@/components/console/code-editor";
-import { ExpandedEditor, ExpandedEditorStatus } from "@/components/console/expanded-editor";
+import {
+  ExpandButton,
+  ExpandedEditor,
+  ExpandedEditorStatus,
+} from "@/components/console/expanded-editor";
 import { Skeleton } from "@/components/console/skeleton";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/api/error-message";
@@ -80,10 +84,7 @@ function EnvironmentCopy({
         <p className="text-meta text-tx-2">{where}</p>
         <div className="flex items-center gap-3">
           {openTheFile}
-          <Button size="sm" onClick={() => setExpanded(true)}>
-            <Icon name="maximise" size={14} />
-            Expand
-          </Button>
+          <ExpandButton name="Project config" size="sm" onClick={() => setExpanded(true)} />
         </div>
       </div>
       <CodeEditor value={found.copy.text} label={label} />

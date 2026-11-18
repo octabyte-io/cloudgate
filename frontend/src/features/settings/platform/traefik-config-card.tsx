@@ -2,7 +2,11 @@ import { useId, useState } from "react";
 
 import { Card } from "@/components/console/card";
 import { CodeEditor } from "@/components/console/code-editor";
-import { ExpandedEditor, ExpandedEditorStatus } from "@/components/console/expanded-editor";
+import {
+  ExpandButton,
+  ExpandedEditor,
+  ExpandedEditorStatus,
+} from "@/components/console/expanded-editor";
 import { FormError } from "@/components/console/field";
 import { Skeleton } from "@/components/console/skeleton";
 import { SubmitButton } from "@/components/console/submit-button";
@@ -10,7 +14,6 @@ import { toast } from "@/components/console/toast";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/api/error-message";
 import type { TraefikConfigKind } from "@/lib/api/endpoints/traefik";
-import { Icon } from "@/lib/design/icons";
 
 import { useDraft } from "./use-draft";
 import {
@@ -141,10 +144,11 @@ export function TraefikConfigCard({
               {descriptor.path}
             </code>
             {config.isPending || config.error ? null : (
-              <Button type="button" size="sm" onClick={() => setExpanded(true)}>
-                <Icon name="maximise" size={14} />
-                Expand
-              </Button>
+              <ExpandButton
+                name={descriptor.title}
+                size="sm"
+                onClick={() => setExpanded(true)}
+              />
             )}
           </>
         }

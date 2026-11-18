@@ -2,7 +2,11 @@ import { useId, useState } from "react";
 
 import { Card } from "@/components/console/card";
 import { CodeEditor } from "@/components/console/code-editor";
-import { ExpandedEditor, ExpandedEditorStatus } from "@/components/console/expanded-editor";
+import {
+  ExpandButton,
+  ExpandedEditor,
+  ExpandedEditorStatus,
+} from "@/components/console/expanded-editor";
 import { FormError } from "@/components/console/field";
 import { Skeleton } from "@/components/console/skeleton";
 import { SubmitButton } from "@/components/console/submit-button";
@@ -10,7 +14,6 @@ import { toast } from "@/components/console/toast";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/api/error-message";
 import { usePermission } from "@/lib/auth/use-permission";
-import { Icon } from "@/lib/design/icons";
 
 import { useDraft } from "./use-draft";
 import {
@@ -205,10 +208,11 @@ export function TraefikFilesCard() {
                   <code className="ml-auto font-mono text-meta wrap-anywhere text-tx-3">
                     {path}
                   </code>
-                  <Button type="button" onClick={() => setExpanded(true)}>
-                    <Icon name="maximise" size={14} />
-                    Expand
-                  </Button>
+                  <ExpandButton
+                    name={path.split("/").pop() || path}
+                    size="default"
+                    onClick={() => setExpanded(true)}
+                  />
                 </div>
               </>
             )}

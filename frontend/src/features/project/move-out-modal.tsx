@@ -1,7 +1,11 @@
 import { useState } from "react";
 
 import { CodeEditor } from "@/components/console/code-editor";
-import { ExpandedEditor, ExpandedEditorStatus } from "@/components/console/expanded-editor";
+import {
+  ExpandButton,
+  ExpandedEditor,
+  ExpandedEditorStatus,
+} from "@/components/console/expanded-editor";
 import { Field } from "@/components/console/field";
 import { Modal } from "@/components/console/modal";
 import { Picker } from "@/components/console/picker";
@@ -121,10 +125,11 @@ export function MoveOutModal({
               <p className="text-meta text-tx-2">{where}</p>
               <div className="flex items-center gap-3">
                 {openTheFile}
-                <Button size="sm" onClick={() => setExpanded(true)}>
-                  <Icon name="maximise" size={14} />
-                  Expand
-                </Button>
+                <ExpandButton
+                  name="Project config"
+                  size="sm"
+                  onClick={() => setExpanded(true)}
+                />
               </div>
             </div>
             <CodeEditor value={kept.text} label="The copy Cloudgate will keep" />
