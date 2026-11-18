@@ -1,5 +1,6 @@
 import type { FrozenOrganizations } from '../../src/cloud/billing/frozen-organizations.service';
 import type { DrizzleDB } from '../../src/db/drizzle.module';
+import { boughtServer } from '../../src/bought-servers/bought-server.schema';
 import { server } from '../../src/servers/server.schema';
 import type { ApplicationsService } from '../../src/applications/applications.service';
 import type { DeployMeta } from '../../src/deployment-engine/deployment-engine.service';
@@ -38,13 +39,15 @@ const makeDb = (preview: PreviewDeployment, servers: Servers) => {
         limit: () => Promise.resolve([{ preview, ...servers }]),
       }),
   };
-  // No Server is in maintenance: its read answers none.
+  // No Server is in maintenance or powered off: each read answers none.
   const noServer = {
+    innerJoin: () => noServer,
     where: () => ({ limit: () => Promise.resolve([]) }),
   };
   return {
     select: () => ({
-      from: (table: unknown) => (table === server ? noServer : chain),
+      from: (table: unknown) =>
+        table === server || table === boughtServer ? noServer : chain,
     }),
     selectDistinctOn: () => ({
       from: () => ({ where: () => ({ orderBy: () => Promise.resolve([]) }) }),

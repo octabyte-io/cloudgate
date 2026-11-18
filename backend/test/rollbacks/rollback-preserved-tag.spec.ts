@@ -1,6 +1,7 @@
 import type Docker from 'dockerode';
 import type { ApplicationsService } from '../../src/applications/applications.service';
 import type { DrizzleDB } from '../../src/db/drizzle.module';
+import { boughtServer } from '../../src/bought-servers/bought-server.schema';
 import { server } from '../../src/servers/server.schema';
 import type { RemoteDockerFactory } from '../../src/docker/remote-docker.factory';
 import type {
@@ -40,7 +41,8 @@ import { makeApp } from '../deployment-engine/application.fixture';
 
 /**
  * `findOwnedRollback`'s one org-scoped select, answered with `row`, and the
- * maintenance read of its Server, answered with none in maintenance.
+ * maintenance and power-off reads of its Server, answered with none in
+ * maintenance and none powered off.
  */
 const makeRollbackDb = (row: unknown) => {
   const chain: Record<string, unknown> = {
@@ -53,7 +55,8 @@ const makeRollbackDb = (row: unknown) => {
     chain[method] = () => chain;
     noServer[method] = () => noServer;
   }
-  chain.from = (table: unknown) => (table === server ? noServer : chain);
+  chain.from = (table: unknown) =>
+    table === server || table === boughtServer ? noServer : chain;
   chain.select = () => chain;
   return chain as unknown as DrizzleDB;
 };

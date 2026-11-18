@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { and, desc, eq, inArray, isNull, notInArray } from 'drizzle-orm';
 import { application } from '../applications/application.schema';
+import { refuseWhilePoweredOff } from '../bought-servers/server-readiness';
 import { refuseWhileInMaintenance } from '../servers/server-maintenance';
 import type {
   Application,
@@ -863,7 +864,13 @@ export class PreviewDeploymentsService {
       refuseUnlessAllowed(owned);
       refuseIfExpired(owned.preview);
     }
-    // Nothing new is built or started on a Server in maintenance (spec #1420).
+    // Nothing new is built or started on a Server in maintenance (spec
+    // #1420), nor on a Bought Server an Operator powered off (#1401).
+    await refuseWhilePoweredOff(
+      this.db,
+      [owned.serverId, owned.buildServerId],
+      'deploy a preview',
+    );
     await refuseWhileInMaintenance(this.db, [
       owned.serverId,
       owned.buildServerId,
@@ -1017,7 +1024,13 @@ export class PreviewDeploymentsService {
     refuseCloudPreview(parent);
     refuseUnlessAllowed(parent);
     // A Server in maintenance, run or build, takes no new preview (spec
-    // #1420); it ends, so the caller may ask again.
+    // #1420); it ends, so the caller may ask again. Nor does a Bought Server
+    // an Operator powered off (#1401), until one powers it back on.
+    await refuseWhilePoweredOff(
+      this.db,
+      [parent.serverId, parent.buildServerId],
+      'deploy a preview',
+    );
     await refuseWhileInMaintenance(this.db, [
       parent.serverId,
       parent.buildServerId,

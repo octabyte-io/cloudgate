@@ -15,6 +15,7 @@ import {
   ApplicationsService,
 } from '../applications/applications.service';
 import { checkServerAccess } from '../common/owned-server';
+import { refuseWhilePoweredOff } from '../bought-servers/server-readiness';
 import { refuseWhileInMaintenance } from '../servers/server-maintenance';
 import { DRIZZLE } from '../db/drizzle.module';
 import type { DrizzleDB } from '../db/drizzle.module';
@@ -364,7 +365,9 @@ export class RollbacksService implements RollbackRecorder {
     await this.permissions.checkPermission(ctx, { deployment: ['create'] });
     const owned = await this.findOwnedRollback(ctx, rollbackId);
     await this.permissions.checkServiceAccess(ctx, owned.applicationId, 'read');
-    // Nothing is restored onto a Server in maintenance (spec #1420).
+    // Nothing is restored onto a Server in maintenance (spec #1420), nor
+    // onto a Bought Server an Operator powered off (#1401).
+    await refuseWhilePoweredOff(this.db, [owned.serverId], 'roll back');
     await refuseWhileInMaintenance(this.db, [owned.serverId]);
     // A `static` site on AWS's point is a folder of its bucket, and
     // going back to it is a Deployment of the Service.

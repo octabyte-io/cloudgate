@@ -189,6 +189,7 @@ import {
 import type { CronServiceClock } from '../cron-services/cron-service.clock';
 import type { Application, ApplicationConfigKind } from './application.schema';
 import type { DrizzleTx } from '../environments/config-name';
+import { refuseWhilePoweredOff } from '../bought-servers/server-readiness';
 import { refuseWhileInMaintenance } from '../servers/server-maintenance';
 
 /**
@@ -1248,7 +1249,13 @@ export class ApplicationsService {
     // Never pulls the tree from under a build reading it.
     await refuseWhileBuilding(this.db, current.applicationId);
     // Nor lands a drop for a Server in maintenance, run or build (spec
-    // #1420): the archive is written onto the build Server.
+    // #1420), or a Bought Server an Operator powered off (#1401): the
+    // archive is written onto the build Server.
+    await refuseWhilePoweredOff(
+      this.db,
+      [current.serverId, current.buildServerId],
+      'upload',
+    );
     await refuseWhileInMaintenance(this.db, [
       current.serverId,
       current.buildServerId,
@@ -1298,7 +1305,13 @@ export class ApplicationsService {
     await this.permissions.checkPermission(ctx, { deployment: ['create'] });
     const current = await this.findOwned(ctx, applicationId);
     // Nothing new starts on a Server in maintenance (spec #1420), a Cron
-    // service's next run included.
+    // service's next run included; nor on a Bought Server an Operator
+    // powered off (#1401).
+    await refuseWhilePoweredOff(
+      this.db,
+      [current.serverId],
+      'start the Service',
+    );
     await refuseWhileInMaintenance(this.db, [current.serverId]);
     // A Cron service has no Swarm service to scale: Start ends its pause,
     // and its timetable fires again from the next fire time.
@@ -1441,7 +1454,13 @@ export class ApplicationsService {
       );
     }
     // A reload starts the Service's task again, which a Server in
-    // maintenance refuses as it refuses Start (spec #1420).
+    // maintenance refuses as it refuses Start (spec #1420), and so does a
+    // Bought Server an Operator powered off (#1401).
+    await refuseWhilePoweredOff(
+      this.db,
+      [current.serverId],
+      'reload the Service',
+    );
     await refuseWhileInMaintenance(this.db, [current.serverId]);
     const cloud = cloudTargetOf(current);
     if (cloud) {

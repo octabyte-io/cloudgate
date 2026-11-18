@@ -21,14 +21,12 @@ describe('BaseDatabaseService', () => {
   function serviceFailingWith(error: Error): Lifecycle {
     const permissions = { checkPermission: () => Promise.resolve() };
     const remoteExec = { execRemote: () => Promise.reject(error) };
-    // The one read before Docker: no Server in maintenance.
-    const db = {
-      select: () => ({
-        from: () => ({
-          where: () => ({ limit: () => Promise.resolve([]) }),
-        }),
-      }),
+    // The reads before Docker: no Server powered off, none in maintenance.
+    const noServer = {
+      innerJoin: () => noServer,
+      where: () => ({ limit: () => Promise.resolve([]) }),
     };
+    const db = { select: () => ({ from: () => noServer }) };
     const service = new LibsqlService(
       ...([db, permissions, null, remoteExec, null] as unknown as [
         never,

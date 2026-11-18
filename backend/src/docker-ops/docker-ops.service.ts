@@ -13,6 +13,7 @@ import type { ServiceAddress } from '../realtime/container-access.service';
 import { execOnServer } from '../remote/exec-dispatch';
 import { RemoteExecService } from '../remote/remote-exec.service';
 import type { ExecResult } from '../remote/remote-exec.service';
+import { refuseWhilePoweredOff } from '../bought-servers/server-readiness';
 import { refuseWhileInMaintenance } from '../servers/server-maintenance';
 import { withoutOtlpHeaders } from '../traces/trace-store';
 import { rethrowIfHostUnreachable } from './host-reachability';
@@ -863,14 +864,20 @@ export class DockerOpsService {
     }
   }
 
-  /** `docker container restart`; refused on a Server in maintenance. */
+  /**
+   * `docker container restart`; refused on a Server in maintenance and on a
+   * powered-off Bought Server.
+   */
   restartContainer(ctx: PermissionCtx, input: ContainerOpInput) {
     return this.containerOp(ctx, input, ['docker', 'container', 'restart'], {
       startsContainer: true,
     });
   }
 
-  /** `docker container start`; refused on a Server in maintenance. */
+  /**
+   * `docker container start`; refused on a Server in maintenance and on a
+   * powered-off Bought Server.
+   */
   startContainer(ctx: PermissionCtx, input: ContainerOpInput) {
     return this.containerOp(ctx, input, ['docker', 'container', 'start'], {
       startsContainer: true,
@@ -942,8 +949,11 @@ export class DockerOpsService {
    *
    * **`startsContainer`: start and restart are refused on a Server in
    * maintenance** (spec #1420), as a Service's Start is, once the Server is
-   * known to be the caller's and before the container is looked up over SSH.
-   * Stop, kill and remove are not: they start nothing.
+   * known to be the caller's and before the container is looked up over SSH,
+   * and so are they on a Bought Server an Operator powered off (#1401), whose
+   * machine SSH cannot reach. Stop, kill and remove are not: they start
+   * nothing, and nothing decides whether a stop on a powered-off machine is
+   * refused, so it fails at SSH as before.
    */
   private async containerOp(
     ctx: PermissionCtx,
@@ -953,7 +963,15 @@ export class DockerOpsService {
   ): Promise<void> {
     await this.permissions.checkPermission(ctx, { docker: ['write'] });
     const serverId = await this.ownedServerId(ctx, input.serverId);
-    if (startsContainer) await refuseWhileInMaintenance(this.db, [serverId]);
+    if (startsContainer) {
+      await refuseWhilePoweredOff(
+        this.db,
+        [serverId],
+        // `start` or `restart`, the command's own verb.
+        `${commandPrefix[commandPrefix.length - 1]} the container`,
+      );
+      await refuseWhileInMaintenance(this.db, [serverId]);
+    }
     await this.authorizeManagedContainer(ctx, input.containerId, serverId);
     const { stderr } = await this.exec(serverId, [
       ...commandPrefix,

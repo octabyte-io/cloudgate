@@ -19,7 +19,10 @@ import {
 } from '../../applications/application-volumes';
 import { applicationStatusEnum } from '../../applications/application.schema';
 import type { WorkloadServiceType } from '../../applications/application.schema';
-import { refuseDeployUntilReady } from '../../bought-servers/server-readiness';
+import {
+  refuseDeployUntilReady,
+  refuseWhilePoweredOff,
+} from '../../bought-servers/server-readiness';
 import { refuseWhileInMaintenance } from '../../servers/server-maintenance';
 import { checkServerAccess } from '../../common/owned-server';
 import { InstanceMode } from '../../instance-mode/instance-mode.service';
@@ -1345,7 +1348,13 @@ export abstract class BaseDatabaseService<
     const owned = await this.findOwned(ctx, databaseId);
     const onCloud = await this.inCloud?.(owned.id, 'start');
     if (onCloud) return onCloud;
-    // Nothing new starts on a Server in maintenance (spec #1420).
+    // Nothing new starts on a Server in maintenance (spec #1420), nor on a
+    // Bought Server an Operator powered off (#1401).
+    await refuseWhilePoweredOff(
+      this.db,
+      [owned.serverId],
+      'start the database',
+    );
     await refuseWhileInMaintenance(this.db, [owned.serverId]);
     await scaleDatabaseService(
       this.remoteExec,
@@ -1432,7 +1441,13 @@ export abstract class BaseDatabaseService<
     if (onCloud) return onCloud;
     // Refused before the running service is removed: a rebuild on a Server
     // in maintenance would stop at its deploy with the database gone (spec
-    // #1420).
+    // #1420), and so would one on a Bought Server an Operator powered off
+    // (#1401), at its first SSH call.
+    await refuseWhilePoweredOff(
+      this.db,
+      [owned.serverId],
+      'rebuild the database',
+    );
     await refuseWhileInMaintenance(this.db, [owned.serverId]);
     const volumeName = `${owned.appName}-data`;
 

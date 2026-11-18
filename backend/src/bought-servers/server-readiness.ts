@@ -155,12 +155,54 @@ export async function deployRefusal(
 }
 
 /**
- * The refusal's words for a Bought Server an Operator powered off (#1401):
- * its machine is off, so a deploy could only fail on it, and only an
- * Operator powers it back on.
+ * Refuses an action that starts or runs something on any of these Servers
+ * that is a Bought Server an Operator powered off (#1401), with a 409 naming
+ * it: a rollback, a Start or restart, a Run now, an upload. Its machine is
+ * off, so the action could only fail on it over SSH. `action` is what the
+ * caller was asked to do ("restart the stack"), for the refusal's words.
+ *
+ * Power-off only, unlike {@link refuseDeployUntilReady}: a Bought Server
+ * still Setting up or being changed is not held back here, since these
+ * actions never were. Each caller is one that refuses a Server in
+ * maintenance (`powered-off-refusals.spec.ts`). `null` (the platform host)
+ * and an absent id are skipped.
  */
-export function poweredOffMessage(serverName: string): string {
-  return `${serverName} is powered off by an operator: deploy to it once it is powered back on`;
+export async function refuseWhilePoweredOff(
+  db: DrizzleDB,
+  serverIds: readonly (string | null | undefined)[],
+  action: string,
+): Promise<void> {
+  const ids = [...new Set(serverIds.filter((id): id is string => Boolean(id)))];
+  if (ids.length === 0) return;
+  const [held] = await db
+    .select({ name: server.name })
+    .from(boughtServer)
+    .innerJoin(server, eq(server.serverId, boughtServer.serverId))
+    .where(
+      and(
+        inArray(boughtServer.serverId, ids),
+        isNotNull(boughtServer.poweredOffAt),
+      ),
+    )
+    .limit(1);
+  if (held) {
+    throw new ConflictException({
+      code: BOUGHT_SERVER_NOT_READY_CODE,
+      message: poweredOffMessage(held.name, action),
+    });
+  }
+}
+
+/**
+ * The refusal's words for a Bought Server an Operator powered off (#1401):
+ * its machine is off, so a deploy, or `action`, could only fail on it, and
+ * only an Operator powers it back on.
+ */
+export function poweredOffMessage(
+  serverName: string,
+  action = 'deploy to it',
+): string {
+  return `${serverName} is powered off by an operator: ${action} once it is powered back on`;
 }
 
 /** The refusal's words: what the Server is doing, and what to wait for. */

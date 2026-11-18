@@ -28,6 +28,7 @@ import type {
   CredentialRefResolvers,
 } from '../common/credential-refs';
 import { checkServerAccess } from '../common/owned-server';
+import { refuseWhilePoweredOff } from '../bought-servers/server-readiness';
 import { refuseWhileInMaintenance } from '../servers/server-maintenance';
 import { InstanceMode } from '../instance-mode/instance-mode.service';
 import { workloadKeptRefusal } from '../common/workload-kept-refusal';
@@ -1244,7 +1245,9 @@ export class ComposeService {
         'Start applies only to a compose stack of the docker-compose type; a swarm stack is (re)started by deploying it, so Deploy is the action you want',
       );
     }
-    // Nothing new starts on a Server in maintenance (spec #1420).
+    // Nothing new starts on a Server in maintenance (spec #1420), nor on a
+    // Bought Server an Operator powered off (#1401).
+    await refuseWhilePoweredOff(this.db, [row.serverId], 'start the stack');
     await refuseWhileInMaintenance(this.db, [row.serverId]);
 
     // `''` is "nothing on disk", which still runs the `up -d`: on a stack that
@@ -1352,7 +1355,9 @@ export class ComposeService {
       );
     }
     // A restart starts the stack's containers again, which a Server in
-    // maintenance refuses as it refuses Start (spec #1420).
+    // maintenance refuses as it refuses Start (spec #1420), and so does a
+    // Bought Server an Operator powered off (#1401).
+    await refuseWhilePoweredOff(this.db, [row.serverId], 'restart the stack');
     await refuseWhileInMaintenance(this.db, [row.serverId]);
     if (row.cloudAccountId !== null && (await this.stackVms.isDown(row))) {
       throw new ConflictException(

@@ -29,6 +29,7 @@ import type { PermissionCtx } from '../rbac/permission.service';
 import { PermissionService } from '../rbac/permission.service';
 import { execOnServer } from '../remote/exec-dispatch';
 import { RemoteExecService } from '../remote/remote-exec.service';
+import { refuseWhilePoweredOff } from '../bought-servers/server-readiness';
 import { refuseWhileInMaintenance } from '../servers/server-maintenance';
 import { formatTimeout } from './cron-fields';
 import { starterWords } from './cron-run.types';
@@ -230,6 +231,9 @@ export class CronRunsService implements CronRunStopper {
         'Only a Cron service has runs; this Service is deployed instead',
       );
     }
+    // A run starts on the Server, which a powered-off Bought Server (#1401)
+    // or one in maintenance (spec #1420) refuses.
+    await refuseWhilePoweredOff(this.db, [found.serverId], 'run it');
     await refuseWhileInMaintenance(this.db, [found.serverId]);
     return this.start(applicationId, {
       kind: 'member',
