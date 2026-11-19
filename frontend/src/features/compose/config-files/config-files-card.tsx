@@ -45,9 +45,9 @@ export const CONFIG_FILE_UNSAVED =
  * the role's reason. Only the content changes: adding, renaming or deleting a
  * file is not offered, because the stack's compose file names each one.
  *
- * **Restart to apply** follows a save rather than being a step of it: some apps
- * read their config only at startup, and when to restart is the operator's
- * call. It is the stack's own Restart (`docker compose restart`), so it is
+ * **Restart to apply** follows a save rather than being a step of it: some
+ * programs read a Config file only at startup, and when to restart is the
+ * operator's call. It is the stack's own Restart (`docker compose restart`), so it is
  * absent for a Swarm stack, whose restart route refuses that type and whose
  * Deploy is what applies a change.
  */
@@ -142,8 +142,8 @@ export function ConfigFilesCard({
         />
         {changed ? (
           <MetaStrip>
-            <strong>Unsaved changes.</strong> Nothing is written until this is
-            saved.
+            <strong>Unsaved changes:</strong> nothing is written until this
+            is saved.
           </MetaStrip>
         ) : null}
         <Card.Body className="flex flex-col gap-3">
@@ -207,7 +207,7 @@ function Saved({ compose }: { compose: ComposeDetail }) {
   if (compose.composeType === "stack") {
     return (
       <p role="status" className="text-meta text-tx-2">
-        Saved. Deploy the stack to apply it.
+        Saved; deploy the stack to apply it.
       </p>
     );
   }
@@ -239,8 +239,8 @@ function Saved({ compose }: { compose: ComposeDetail }) {
       className="flex flex-wrap items-center gap-2 rounded-lg border border-ok-line bg-ok-tint px-3 py-2.5"
     >
       <p className="text-meta text-tx">
-        <strong className="font-medium">Saved.</strong> An app that reads this
-        file only at startup picks it up after a restart.
+        <strong className="font-medium">Saved:</strong> a program that reads
+        it only at startup picks it up after a restart.
       </p>
       <Button
         size="sm"
