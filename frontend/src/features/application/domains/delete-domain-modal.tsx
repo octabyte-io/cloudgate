@@ -94,9 +94,9 @@ export function DeleteDomainModal({
 
   const when = onCompose ? (
     <>
-      after {others.length > 0 ? "this stack’s" : "its"} next Deployment — a
-      stack&rsquo;s routers travel as labels injected then, so the old one stays
-      in place until it runs.
+      after {others.length > 0 ? "this stack’s" : "its"}{" "}
+      next Deployment — a stack&rsquo;s routers travel as labels injected then,
+      so the old one stays in place until it runs.
     </>
   ) : (
     <>
@@ -127,15 +127,11 @@ export function DeleteDomainModal({
             {path && rootRemains ? (
               <>
                 A request under <span className="font-mono">{path}</span> is
-                served by the <span className="font-mono">/</span> route
-                instead.
+                served by the <span className="font-mono">/</span> route instead.
               </>
             ) : (
               <>
-                A request{" "}
-                {others.length === 1
-                  ? "it does not cover"
-                  : "none of them covers"}{" "}
+                A request {others.length === 1 ? "it does not cover" : "none of them covers"}{" "}
                 gets Traefik&rsquo;s 404.
               </>
             )}{" "}
@@ -144,8 +140,8 @@ export function DeleteDomainModal({
         ) : (
           <p className="text-body text-tx-2">
             This {owner} stops answering on{" "}
-            <strong className="font-medium text-tx">{route}</strong> {when} You
-            can add the {path ? "route" : "host"} back at any time.
+            <strong className="font-medium text-tx">{route}</strong> {when}{" "}
+            You can add the {path ? "route" : "host"} back at any time.
           </p>
         )}
         {lastOfBucket ? (

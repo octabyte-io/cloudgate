@@ -98,8 +98,8 @@ export function DnsHelper({
               address — so it resolves to nothing.{" "}
               {serverIp === null ? (
                 <>
-                  Record this host&rsquo;s public address in <InstanceLink />{" "}
-                  and generate a host again.
+                  Record this host&rsquo;s public address in <InstanceLink /> and
+                  generate a host again.
                 </>
               ) : (
                 <>
@@ -139,13 +139,12 @@ export function DnsHelper({
             </p>
           ) : (
             <p className="text-meta text-tx-2">
-              Name is the part in front of your zone, and this takes your zone
-              to be the last two labels —{" "}
+              Name is the part in front of your zone, and this takes your zone to
+              be the last two labels —{" "}
               <span className="font-mono tracking-mono">{record.zone}</span>. A
-              longer zone, like <span className="font-mono">example.co.uk</span>
-              , means a shorter Name: take off the labels your zone already
-              covers, or use <span className="font-mono">@</span> if that leaves
-              none.
+              longer zone, like <span className="font-mono">example.co.uk</span>,
+              means a shorter Name: take off the labels your zone already covers,
+              or use <span className="font-mono">@</span> if that leaves none.
             </p>
           )}
 
@@ -155,10 +154,11 @@ export function DnsHelper({
                   line, and a JSXText containing a newline loses its leading space —
                   "This stackruns on…" is what that looks like. Three phases have now
                   paid for this rule; the fourth is this one. */}
-              This {noun} runs on Cloudgate&rsquo;s own host, which has no
-              Server row, so point the record at whatever address reaches this
-              machine. Recording it in <InstanceLink /> puts it in Value above
-              and lets Check DNS compare the two.
+              This {noun}{" "}
+              runs on Cloudgate&rsquo;s own host, which has no Server row, so
+              point the record at whatever address reaches this machine.
+              Recording it in <InstanceLink /> puts it in Value above and lets
+              Check DNS compare the two.
             </p>
           ) : null}
         </>
@@ -221,11 +221,7 @@ function Verdict({
         name={tone === "ok" ? "check" : tone === "warn" ? "info" : "alert"}
         size={14}
         className={
-          tone === "ok"
-            ? "mt-0.5 text-ok"
-            : tone === "warn"
-              ? "mt-0.5 text-warn"
-              : "mt-0.5 text-bad"
+          tone === "ok" ? "mt-0.5 text-ok" : tone === "warn" ? "mt-0.5 text-warn" : "mt-0.5 text-bad"
         }
       />
       <div className="min-w-0">
@@ -249,9 +245,9 @@ function Verdict({
         ) : null}
         {result.cdnProvider ? (
           <p className="mt-0.5 text-tx-2">
-            Cloudgate cannot see past the proxy to check the origin, so this is
-            as far as the check goes. Make sure the CDN&rsquo;s own origin is
-            the address above.
+            Cloudgate cannot see past the proxy to check the origin, so this is as
+            far as the check goes. Make sure the CDN&rsquo;s own origin is the
+            address above.
           </p>
         ) : result.error && !result.isValid ? (
           <p className="mt-0.5 text-tx-2">{failNote}</p>
