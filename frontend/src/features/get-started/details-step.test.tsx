@@ -101,6 +101,7 @@ const GHOST: TemplateSummary = {
   links: {},
   logo: "/backend/templates/uptime-kuma/logo?rev=c0ffee1",
   runsOn: ["server"],
+  page: null,
 };
 
 const SERVER = {

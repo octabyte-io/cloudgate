@@ -51,6 +51,7 @@ interface Listed {
     links: Record<string, string>;
     logo: string;
     runsOn: string[];
+    page: string | null;
   }[];
   copy: { fetchedAt: string; checkedAt: string; problem: string | null };
 }
@@ -136,6 +137,8 @@ describe('The Template catalogue reader (e2e)', () => {
           // An address on our own origin, never the logo itself (#123).
           logo: '/backend/templates/uptime-kuma/logo?rev=c0ffee1',
           runsOn: ['server', 'aws', 'gcp'],
+          // The official catalogue's templates open their directory page.
+          page: 'https://octabyte-io.github.io/cg-templates/templates/uptime-kuma/',
         },
       ]);
       expect(body.copy.problem).toBeNull();

@@ -173,6 +173,7 @@ const GHOST: TemplateSummary = {
   links: {},
   logo: "/backend/templates/uptime-kuma/logo?rev=c0ffee1",
   runsOn: ["server"],
+  page: null,
 };
 
 function readyServer(serverId: string, name: string): Server {

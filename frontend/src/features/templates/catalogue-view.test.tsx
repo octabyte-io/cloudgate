@@ -34,6 +34,7 @@ const KUMA: TemplateSummary = {
   },
   logo: LOGO,
   runsOn: ["server", "aws", "gcp"],
+  page: "https://octabyte-io.github.io/cg-templates/templates/uptime-kuma/",
 };
 
 const GHOST: TemplateSummary = {
@@ -46,6 +47,7 @@ const GHOST: TemplateSummary = {
   links: {},
   logo: LOGO,
   runsOn: ["server"],
+  page: null,
 };
 
 const FRESH: CatalogueCopy = {
@@ -111,8 +113,9 @@ describe("CatalogueView", () => {
         .map((link) => [link.textContent, link.getAttribute("href")]),
     );
     expect(links).toEqual({
-      // The name opens the website too (template-home.test.tsx).
-      "Uptime Kuma (website, opens in a new tab)": "https://uptime.kuma.pet",
+      // The name opens its cg-templates page (template-home.test.tsx).
+      "Uptime Kuma (template page, opens in a new tab)":
+        "https://octabyte-io.github.io/cg-templates/templates/uptime-kuma/",
       "Set up": "/templates?template=uptime-kuma",
       Website: "https://uptime.kuma.pet",
       Docs: "https://github.com/louislam/uptime-kuma/wiki",

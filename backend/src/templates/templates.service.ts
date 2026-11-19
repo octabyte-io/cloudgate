@@ -17,7 +17,7 @@ import { FETCH_CLIENT } from '../git-providers/fetch.provider';
 import { CONSOLE_BACKEND_PREFIX } from '../git-providers/oauth-callback.util';
 import { CLOUDGATE_VERSION } from '../settings/version';
 import { downloadCatalogue } from './catalogue-download';
-import { catalogueSource } from './catalogue-source';
+import { catalogueSource, directoryPage } from './catalogue-source';
 import type { CatalogueSource } from './catalogue-source';
 import { checkCatalogue } from './check';
 import type { Template, TemplateLogo } from './check';
@@ -70,6 +70,12 @@ export interface TemplateSummary {
   readonly logo: string;
   /** Where it can run: a Server, and each cloud that makes every entry. */
   readonly runsOn: readonly RunsOn[];
+  /**
+   * Its page in the `cg-templates` directory, which the console's name and
+   * logo open; null when the catalogue is not the official one, since a
+   * mirror's or a private catalogue's templates may have no page there.
+   */
+  readonly page: string | null;
 }
 
 /** The saved copy the list was read from, for the screen's staleness note. */
@@ -304,7 +310,7 @@ export class TemplatesService implements OnApplicationBootstrap {
               problem: null,
             },
           });
-        const templates = result.offered.map(summarize);
+        const templates = result.offered.map((one) => summarize(one, url));
         const logos = logosOf(result.offered);
         this.checked = {
           sourceUrl: url,
@@ -381,7 +387,9 @@ export class TemplatesService implements OnApplicationBootstrap {
         `The saved template catalogue cannot be read by this Cloudgate: ${result.reason}`,
       );
     }
-    const templates = result.offered.map(summarize);
+    const templates = result.offered.map((one) =>
+      summarize(one, saved.sourceUrl),
+    );
     const logos = logosOf(result.offered);
     this.checked = {
       sourceUrl: saved.sourceUrl,
@@ -409,7 +417,7 @@ function copyOf(saved: CopyFacts): CatalogueCopy {
   };
 }
 
-function summarize(template: Template): TemplateSummary {
+function summarize(template: Template, sourceUrl: string): TemplateSummary {
   return {
     id: template.id,
     revision: template.revision,
@@ -420,6 +428,7 @@ function summarize(template: Template): TemplateSummary {
     links: template.links,
     logo: templateLogoPath(template),
     runsOn: whereItRuns(template.config),
+    page: directoryPage(sourceUrl, template.id),
   };
 }
 
