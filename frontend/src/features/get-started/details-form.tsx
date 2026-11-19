@@ -173,7 +173,12 @@ export function DetailsForm({
             {setup.asked.length > 0 ? (
               <div className="grid gap-4">
                 {setup.asked.map((input, at) => (
-                  <AskedField key={input.name} input={input} at={at} />
+                  <AskedField
+                    key={input.name}
+                    input={input}
+                    at={at}
+                    hint={signInHint(template, input.name)}
+                  />
                 ))}
               </div>
             ) : null}
@@ -267,4 +272,19 @@ function placeIn(
           existing.environments.map((env) => env.name),
         ),
       };
+}
+
+/**
+ * Step 2's hint under the sign-in username (#131): its password, made at
+ * setup, is shown on the done card, so the person needn't hunt for it later.
+ */
+function signInHint(
+  template: TemplateSummary,
+  name: string,
+): string | undefined {
+  const signIn = template.signIn;
+  if (!signIn || "firstVisit" in signIn || signIn.username !== name) {
+    return undefined;
+  }
+  return `The password is shown on the next screen once ${template.name} is running.`;
 }
