@@ -8,6 +8,8 @@ import type {
 import { FAMILIES } from "./buy-model";
 import { ExtrasCard } from "./extras-card";
 import { ImageCard } from "./image-card";
+import type { WhereYouAre } from "./location-cards";
+import { LocationChooser } from "./location-chooser";
 import { SizeTable } from "./size-table";
 import { Suggested } from "./suggestion-cards";
 import type { BuyForm } from "./use-buy-form";
@@ -15,21 +17,22 @@ import type { BuyForm } from "./use-buy-form";
 /**
  * Every option of one Buy, in the order both buy forms show them:
  * Suggested, then 1. Location, 2. Size, 3. Server image and 4. Extras.
- * The Location card's body is the caller's: the Buy screen's has the map,
- * the wizard's only the cards.
+ * The Location card is the same on both, map and all (#127); only where the
+ * buyer is belongs to the caller, which orders the locations by it
+ * (`useWhereYouAre`).
  */
 export function BuyOptions({
   catalogue,
   ordered,
   form,
-  locationSub,
-  locationBody,
+  where,
+  onAsk,
 }: {
   catalogue: BoughtServerCatalogue;
-  ordered: ReadonlyArray<{ location: CatalogueLocation }>;
+  ordered: Array<{ location: CatalogueLocation; km: number | null }>;
   form: BuyForm;
-  locationSub?: string;
-  locationBody: React.ReactNode;
+  where: WhereYouAre;
+  onAsk: () => void;
 }) {
   const { location, size, offer } = form;
   return (
@@ -42,8 +45,20 @@ export function BuyOptions({
       />
 
       <Card>
-        <Card.Header title="1. Location" sub={locationSub} headingLevel={2} />
-        <Card.Body className="grid gap-3">{locationBody}</Card.Body>
+        <Card.Header
+          title="1. Location"
+          sub="Pick a pin or a city."
+          headingLevel={2}
+        />
+        <Card.Body className="grid gap-3">
+          <LocationChooser
+            catalogue={catalogue}
+            ordered={ordered}
+            form={form}
+            where={where}
+            onAsk={onAsk}
+          />
+        </Card.Body>
       </Card>
 
       <Card>

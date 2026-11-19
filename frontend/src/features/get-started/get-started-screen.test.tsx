@@ -455,6 +455,73 @@ describe("GetStartedScreen", () => {
       expect(within(rail).getByRole("button", { name: "Buy" })).toBeTruthy();
     });
 
+    it("shows the Buy screen's Location card: the map, where you are, the distance and the cities", () => {
+      show("template=ghost&path=buy");
+
+      const heading = screen.getByRole("heading", { name: "1. Location" });
+      const card = heading.closest("section, article, div[class*='card']")!;
+      expect(card.textContent).toContain("Pick a pin or a city.");
+      expect(
+        screen.getByRole("group", { name: "World map of Server locations" }),
+      ).toBeTruthy();
+      expect(
+        screen.getByRole("button", { name: "Show where I am" }),
+      ).toBeTruthy();
+      expect(document.body.textContent).toMatch(/from your time zone/);
+      expect(
+        screen.getByRole("list", { name: "Locations, nearest first" }),
+      ).toBeTruthy();
+    });
+
+    it("chooses the location of a pin picked on the map, and the size and summary follow it", () => {
+      show("template=ghost&path=buy");
+
+      const map = screen.getByRole("group", {
+        name: "World map of Server locations",
+      });
+      fireEvent.click(within(map).getByRole("button", { name: /^Helsinki/ }));
+
+      expect(
+        screen.getByRole("heading", { name: "2. Size in Helsinki" }),
+      ).toBeTruthy();
+      expect(
+        screen.getByText("Server, 2 vCPU · 4 GB, Helsinki, Ubuntu 24.04"),
+      ).toBeTruthy();
+    });
+
+    it("asks the browser where it is only when Show where I am is pressed", async () => {
+      const getCurrentPosition = vi.fn(
+        (ok: (position: GeolocationPosition) => void) =>
+          ok({
+            coords: { latitude: 60.1, longitude: 24.9 },
+          } as GeolocationPosition),
+      );
+      vi.stubGlobal("navigator", {
+        ...navigator,
+        geolocation: { getCurrentPosition },
+      });
+      try {
+        show("template=ghost&path=buy");
+        expect(getCurrentPosition).not.toHaveBeenCalled();
+
+        fireEvent.click(
+          screen.getByRole("button", { name: "Show where I am" }),
+        );
+
+        expect(getCurrentPosition).toHaveBeenCalledTimes(1);
+        await waitFor(() =>
+          expect(screen.getByText(/from your browser/)).toBeTruthy(),
+        );
+        // Now nearest first from Helsinki, not from Berlin's time zone.
+        const cities = within(
+          screen.getByRole("list", { name: "Locations, nearest first" }),
+        ).getAllByRole("listitem");
+        expect(cities[0].textContent).toMatch(/Helsinki/);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
     it("opens on the closest suggestion", () => {
       show("template=ghost&path=buy");
 
