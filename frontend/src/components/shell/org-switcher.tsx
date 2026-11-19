@@ -29,9 +29,10 @@ import { useHydrated } from "./use-hydrated";
  * and `organizationChanged()` drops that whole subtree rather than letting one
  * tenant's Projects be handed to the next (`src/lib/api/keys.ts`).
  *
- * The name takes whatever width the masthead can spare: the cell grows
- * past the rail's width for a name that needs it (`masthead.tsx`), and what
- * still does not fit truncates with the whole name in a `title`. On a phone the
+ * The name takes whatever width the cell can spare: the cell is the rail's
+ * width, and the wordmark beside it drops to its glyph before the name is cut
+ * (`masthead.tsx`, #129); what still does not fit truncates with the whole
+ * name in a `title`, the button's label and the menu. On a phone the
  * name stays, truncated — it used to drop to its initial at `lbl`, and "M" told
  * nobody which Organization they were in while the masthead had room to say.
  * Only the 60px icon strip shows the initial, with the name in a tooltip.
@@ -114,7 +115,11 @@ export function OrgSwitcher() {
               {name === null ? (
                 <Skeleton className="h-3.5 w-24 railc:hidden" />
               ) : (
-                <span title={name} className="truncate railc:hidden">
+                <span
+                  title={name}
+                  data-org-name
+                  className="truncate railc:hidden"
+                >
                   {name}
                 </span>
               )}

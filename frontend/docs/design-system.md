@@ -506,10 +506,10 @@ half-dozen things that hide when the rail narrows must hide under exactly the sa
 must come back when the rail becomes a drawer, since a drawer is never an icon strip.
 
 `--rail-w` is the rail's *effective* width: `--spacing-rail` normally, `--spacing-rail-c` when that
-variant's conditions hold. The masthead's Organization cell reads it too, as its *minimum* width, so
-the vertical hairline stays on the rail's edge at both widths — unless the Organization's name needs
-more room beside the logotype, when the cell grows into the masthead's spare width, up to two fifths
-of it, rather than truncating the name.
+variant's conditions hold. The masthead's Organization cell reads it too, as its exact width, so
+the vertical hairline is always on the rail's edge, at both widths and whatever the Organization is
+called. A name that does not fit beside the logotype takes the logotype's room instead: the logotype
+drops to its glyph, as it does below `lbl`, and only a name too long even then truncates.
 
 ## Base layer
 
