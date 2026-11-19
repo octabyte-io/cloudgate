@@ -32,7 +32,12 @@ export function resolveScope(
  * `service:read`, which an Application's Logs tab takes. Absent reads as
  * allowed, the direction `usePermission` fails in.
  */
-export type CallerFacts = { shellAllowed?: boolean; logsAllowed?: boolean };
+export type CallerFacts = {
+  shellAllowed?: boolean;
+  logsAllowed?: boolean;
+  /** `volume:read`, which a Compose stack's Config files tab takes. */
+  volumesAllowed?: boolean;
+};
 
 function resolveFound(
   scope: ScopeRoute,
@@ -211,13 +216,21 @@ function resolveFound(
 
   if (scope.kind === "compose") {
     const row = q.compose.data;
-    // The Shell tab: absent for a role without service:update.
-    const subject = { ...caller };
+    // The Shell tab: absent for a role without service:update. The Config
+    // files tab: there once its `file` mounts are read and there is one.
+    const subject = {
+      ...caller,
+      configFiles: (q.composeMounts.data ?? []).some(
+        (mount) => mount.type === "file",
+      ),
+    };
     return {
       ...base,
       nav: scopeNav(scope, subject),
       subject,
-      pending: q.compose.isPending,
+      // A visit to the Config files tab is not told it is absent while the
+      // mounts that decide it are still being read.
+      pending: q.compose.isPending || q.composeMounts.isLoading,
       identity: row
         ? {
             id: row.composeId,

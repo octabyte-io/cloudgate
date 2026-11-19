@@ -1,5 +1,16 @@
-import { panel, type TabEntry } from "../tab-registry";
+import { panel, type TabEntry, type TabSubject } from "../tab-registry";
 import { noShell } from "./shell";
+
+/** Why a Compose stack has no **Config files** tab, or `null` when it has. */
+function noConfigFiles(subject: TabSubject): string | null {
+  if (subject.volumesAllowed === false) {
+    return "Your role in this Organization cannot read this Compose stack's config files, which takes the read action on volumes. Ask an owner or an admin to change your role.";
+  }
+  if (subject.configFiles !== true) {
+    return "This Compose stack has no config files. A Template that ships one adds it when it is set up.";
+  }
+  return null;
+}
 
 /**
  * Compose scope — `SVC_NAV` as it stands, because a Compose stack is the one
@@ -68,6 +79,15 @@ export const COMPOSE_TABS: readonly TabEntry[] = [
     icon: "term",
     absentBecause: noShell("Compose stack"),
     panel: panel(() => import("@/features/compose/panels/shell")),
+  },
+  // The files a Template shipped with the stack, edited in place (spec
+  // #134). Only on a stack that has one, and to a role that can read them.
+  {
+    slug: "config-files",
+    label: "Config files",
+    icon: "lines",
+    absentBecause: noConfigFiles,
+    panel: panel(() => import("@/features/compose/panels/config-files")),
   },
   {
     slug: "deployments",

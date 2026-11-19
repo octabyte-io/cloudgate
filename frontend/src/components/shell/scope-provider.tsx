@@ -160,7 +160,11 @@ function useScopeValue(): ScopeContext {
   const pathname = usePathname();
   const scope = useMemo(() => scopeFromPath(pathname), [pathname]);
   const { organizationId } = useActiveOrganizationId();
-  const q = useScopeQueries(scope, organizationId);
+  // A Compose stack's Config files tab lists its `file` mounts, which
+  // `GET /mounts` gives only to a role holding volume:read. Fails open the
+  // same way: the read is asked until the role is known not to hold it.
+  const volumesAllowed = usePermission({ volume: ["read"] }).allowed;
+  const q = useScopeQueries(scope, organizationId, { volumesAllowed });
   // The Shell tab takes service:update. Fails open while the role is
   // read, like every gate built on this hook: the tab is there until the role
   // is known not to carry the action.
@@ -173,7 +177,7 @@ function useScopeValue(): ScopeContext {
   // because a query re-reported the same rows. `q` is memoized on those rows by
   // `useScopeQueries`, which is the hook that knows which of its fields matter.
   return useMemo(
-    () => resolveScope(scope, q, { shellAllowed, logsAllowed }),
-    [scope, q, shellAllowed, logsAllowed],
+    () => resolveScope(scope, q, { shellAllowed, logsAllowed, volumesAllowed }),
+    [scope, q, shellAllowed, logsAllowed, volumesAllowed],
   );
 }

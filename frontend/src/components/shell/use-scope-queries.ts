@@ -9,6 +9,7 @@ import {
   type DatabaseKind,
 } from "@/lib/api/endpoints/databases";
 import { environmentsApi } from "@/lib/api/endpoints/environments";
+import { mountsApi } from "@/lib/api/endpoints/mounts";
 import { projectsApi } from "@/lib/api/endpoints/projects";
 import { serversApi } from "@/lib/api/endpoints/servers";
 import { keys } from "@/lib/api/keys";
@@ -29,6 +30,7 @@ export type ScopeQueries = ReturnType<typeof useScopeQueries>;
 export function useScopeQueries(
   scope: ScopeRoute,
   organizationId: OrganizationScope,
+  caller: { volumesAllowed?: boolean } = {},
 ) {
   const id = scope.id;
   const ready = id !== null && organizationId !== null;
@@ -85,6 +87,16 @@ export function useScopeQueries(
     queryKey: keys.compose.detail(organizationId, id ?? ""),
     queryFn: () => composeApi.findOne(id as string),
     enabled: scope.kind === "compose" && ready,
+  });
+
+  // A stack's mounts, for its Config files tab: whether it has one decides
+  // whether the rail offers the tab. Under the key the tab's own read uses,
+  // so opening it costs nothing more.
+  const composeMounts = useQuery({
+    queryKey: keys.mounts.byService(organizationId, id ?? ""),
+    queryFn: () => mountsApi.listByService(id as string, "compose"),
+    enabled:
+      scope.kind === "compose" && ready && caller.volumesAllowed !== false,
   });
 
   // The switcher's list. Only fetched at the scope that offers one, and only
@@ -146,6 +158,7 @@ export function useScopeQueries(
       application,
       database,
       compose,
+      composeMounts,
       servers,
       projects,
       environments,
@@ -166,6 +179,8 @@ export function useScopeQueries(
       database.isPending,
       compose.data,
       compose.isPending,
+      composeMounts.data,
+      composeMounts.isLoading,
       servers.data,
       projects.data,
       environments.data,

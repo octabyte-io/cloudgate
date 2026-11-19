@@ -226,6 +226,12 @@ export const GATED_CONTROLS: GatedControl[] = [
   { file: "features/compose/editor/compose-file-card.tsx", label: "Save the file", requires: { service: ["update"] }, route: "PATCH /compose/:id", checkedIn: "ComposeService.findOwnedForUpdate" },
   { file: "features/compose/advanced/isolation-card.tsx", label: "Save", requires: { service: ["update"] }, route: "PATCH /compose/:id", checkedIn: "ComposeService.findOwnedForUpdate" },
   { file: "features/compose/panels/advanced.tsx", label: "Delete", requires: { service: ["delete"] }, route: "DELETE /compose/:id" },
+  // The Config files tab (spec #134). Its Save asks two statements, so it
+  // is two lines: the route's decorator, then the service check behind it,
+  // which names no route because the route's decorator is only the first.
+  { file: "features/compose/config-files/config-files-card.tsx", label: "Save the file", requires: { volume: ["create"] }, route: "PATCH /mounts/:id" },
+  { file: "features/compose/config-files/config-files-card.tsx", label: "Save the file", requires: { service: ["update"] }, checkedIn: "MountsService.update: checkServiceAccess 'update'" },
+  { file: "features/compose/config-files/config-files-card.tsx", label: "Restart to apply", requires: { deployment: ["create"] }, route: "POST /compose/:id/restart" },
 
   // ── a database (the same routes on all six engines) ────────────
   // The route's decorator. Its service also runs `findOwnedForUpdate`

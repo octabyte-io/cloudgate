@@ -82,6 +82,17 @@ export type TabSubject = {
   logsAllowed?: boolean;
   /** An Application's kind in Project config terms: a `cron` has no Logs tab. */
   configKind?: string | null;
+  /**
+   * Whether the caller's role holds `volume:read`, which listing a Compose
+   * stack's Config files takes. `false` only when the role is known not to.
+   */
+  volumesAllowed?: boolean;
+  /**
+   * Whether a Compose stack has at least one Config file (a `file` mount).
+   * Unlike the facts above it is `true` only once read: most stacks have
+   * none, so the tab waits for the answer rather than showing and going.
+   */
+  configFiles?: boolean;
 };
 
 export type TabEntry = {

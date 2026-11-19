@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { runsOnStackVm, type ComposeDetail } from "@/lib/api/endpoints/compose";
 import type { Deployment } from "@/lib/api/endpoints/deployments";
 import { useActiveOrganizationId } from "@/lib/auth/client";
-import { roleRefusal, usePermission } from "@/lib/auth/use-permission";
+import { usePermission } from "@/lib/auth/use-permission";
 
 import {
   composeDeclaresNoServices,
@@ -16,6 +16,7 @@ import {
 } from "../editor/yaml-check";
 import { stackMembersKey, useStackMembers } from "../containers/stack-members";
 import {
+  COMPOSE_RESTART_REFUSAL,
   useComposeActions,
   useComposeLifecyclePending,
   wasRefused,
@@ -25,9 +26,6 @@ import {
 import { ActionIcon } from "../../application/lifecycle/action-icon";
 import { RemoveContainersModal } from "./remove-containers-modal";
 import { startOrRestart } from "./start-or-restart";
-
-/** Why Restart is off for a role without `deployment: ['create']`. */
-const RESTART_REFUSAL = roleRefusal("restart this stack's containers");
 
 /**
  * What Deploy does to a stack that is already deployed, as its title. Said
@@ -391,7 +389,7 @@ export function ComposeActions({
           aria-disabled={restartRefused || busy || undefined}
           title={
             restartRefused
-              ? RESTART_REFUSAL
+              ? COMPOSE_RESTART_REFUSAL
               : onStackVm
                 ? "docker compose restart — the containers restart. The Stack VM keeps running."
                 : "docker compose restart — the containers restart. Nothing is cloned or built."

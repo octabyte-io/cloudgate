@@ -190,6 +190,15 @@ export const COMPOSE_UPDATE_REFUSAL = roleRefusal(
 export const COMPOSE_DELETE_REFUSAL = roleRefusal("delete a Compose stack");
 
 /**
+ * Why Restart is off for a role without `deployment: ['create']`, which
+ * `POST /compose/:id/restart` asks. The action row's Restart and the Config
+ * files tab's Restart to apply say it alike.
+ */
+export const COMPOSE_RESTART_REFUSAL = roleRefusal(
+  "restart this stack's containers",
+);
+
+/**
  * The row, patched. Name, description, source, the compose file, the isolation
  * flag and the deploy command all go through this one route.
  */
