@@ -10,6 +10,7 @@ import type { RoleVocabulary } from "@/lib/api/endpoints/roles";
 import {
   GATED_CALLERS,
   GATED_CONTROLS,
+  GATED_MOUNTS,
   GATED_SPECS,
   GATED_SPECS_MULTI,
   type GatedControl,
@@ -68,7 +69,7 @@ const EXEMPT: Record<string, string> = {
   "features/operator/orphan-machines-section.tsx::Delete":
     "ADR-0050: mounted only on the Operator page, which is the not-found screen for anyone who is not an Operator (useIsOperator); no role statement can say instance authority.",
   "features/server/local/local-shell-card.tsx::Change the user or port":
-    "ADR-0010: the host shell form is rendered for everyone and its refusal is the gateway's.",
+    "The card is mounted only for instance authority (GATED_MOUNTS), and the session it changes is re-checked by the gateway (ADR-0013).",
   "app/(auth)/_components/invitation-doors.tsx::Create an account":
     "Signing up: there is no Organization, so no role, yet.",
   "app/(auth)/_components/sign-up-form.tsx::Create account":
@@ -665,6 +666,77 @@ describe("GATED_CONTROLS", () => {
       (id) => !ungated.has(id),
     );
     expect(stale, "delete these from CARD_BASELINE or CARD_EXEMPT: gone, or gated now").toEqual([]);
+  });
+});
+
+/** Every `<component …>` render in a file, with the expression it sits under, if any. */
+function mountsIn(
+  source: ts.SourceFile,
+  component: string,
+): { condition: ts.Node | null }[] {
+  const found: { condition: ts.Node | null }[] = [];
+  source.forEachChild(function visit(node): void {
+    const opening = ts.isJsxElement(node)
+      ? node.openingElement
+      : ts.isJsxSelfClosingElement(node)
+        ? node
+        : null;
+    if (opening && opening.tagName.getText() === component) {
+      let condition: ts.Node | null = null;
+      for (let at: ts.Node = node; at.parent && !condition; at = at.parent) {
+        const parent = at.parent;
+        if (ts.isConditionalExpression(parent) && parent.condition !== at) {
+          condition = parent.condition;
+        }
+        if (
+          ts.isBinaryExpression(parent) &&
+          parent.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken &&
+          parent.right === at
+        ) {
+          condition = parent.left;
+        }
+        if (ts.isFunctionLike(parent)) break;
+      }
+      found.push({ condition });
+    }
+    node.forEachChild(visit);
+  });
+  return found;
+}
+
+describe("GATED_MOUNTS", () => {
+  it.each(GATED_MOUNTS.map((entry) => [`${entry.file}::${entry.component}`, entry] as const))(
+    "%s is mounted only under a verdict",
+    (_, entry) => {
+      const source = parse(join(SRC, entry.file));
+      const scope = bindings(source);
+      const sites = mountsIn(source, entry.component);
+      expect(sites.length, `${entry.file} does not render ${entry.component}`).toBeGreaterThan(0);
+      for (const site of sites) {
+        expect(
+          site.condition !== null && consults(site.condition, scope),
+          `${entry.component} in ${entry.file} is mounted without consulting a verdict`,
+        ).toBe(true);
+      }
+      const text = source.getText();
+      if (entry.requires === "instance") expect(text).toMatch(/useInstanceGate\(\)/);
+      else expect(permissionCalls(source)).toContainEqual(entry.requires);
+    },
+  );
+
+  it("knows every file that mounts one of its cards", () => {
+    const registered = new Set(GATED_MOUNTS.map((entry) => `${entry.file}::${entry.component}`));
+    const components = [...new Set(GATED_MOUNTS.map((entry) => entry.component))];
+    const unregistered = sourceFiles(SRC)
+      .flatMap((path) => {
+        const source = parse(path);
+        const file = relative(SRC, path).split(sep).join("/");
+        return components
+          .filter((component) => mountsIn(source, component).length > 0)
+          .map((component) => `${file}::${component}`);
+      })
+      .filter((id) => !registered.has(id));
+    expect(unregistered, "gate these mounts and add them to GATED_MOUNTS").toEqual([]);
   });
 });
 

@@ -21,10 +21,10 @@ describe("a shell on the platform's own host", () => {
     expect(port().value).toBe("22");
   });
 
-  it("says who may open one, and still offers the form to everybody", () => {
-    // The gate is the gateway's (ADR-0010): it closes 4403 with a reason the
-    // terminal renders. A role read in the browser would be a claim about
-    // authority made where the caller controls the answer, so this is copy.
+  it("says who may open one", () => {
+    // The gate is the gateway's (ADR-0010, ADR-0013): it closes 4403 with a
+    // reason the terminal renders. Who is offered the card at all is the fleet
+    // screen's to decide (`fleet-screen.test.tsx`).
     render(<LocalShellCard />);
 
     expect(document.body.textContent).toContain(
