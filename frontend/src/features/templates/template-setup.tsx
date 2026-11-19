@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Card } from "@/components/console/card";
 import { Cols } from "@/components/console/cols";
@@ -13,6 +13,7 @@ import { useCloudAccounts } from "@/lib/api/use-cloud-accounts";
 import { useInstanceMode } from "@/lib/api/use-instance-mode";
 import { useProjects } from "@/lib/api/use-projects";
 import { useServers } from "@/lib/api/use-servers";
+import { GET_STARTED_PATH } from "@/lib/auth/routes";
 import { usePermission } from "@/lib/auth/use-permission";
 import { environmentPlanHref } from "@/lib/format/plan-href";
 
@@ -82,6 +83,34 @@ export function TemplateSetup({
   const targetsPending =
     servers.isPending || (readsClouds && cloudAccounts.isPending);
 
+  const targets =
+    creating && form.data
+      ? newProjectTargets(
+          servers.data,
+          readsClouds ? cloudAccounts.data : [],
+          form.data.deployTargets,
+          { platformHost: !hosted },
+        )
+      : undefined;
+  // Nowhere to deploy a new Project (#128): no Server, no Cloud account, and
+  // no platform host, which is a Hosted customer before their first Server.
+  // The form could not be submitted, so the screen hands over to the wizard
+  // that gets them one (ADR-0073), replacing itself so Back does not land on
+  // a page that sends them forward again. Decided from the targets, not the
+  // mode, and never for a setup placed in an existing Project or Environment.
+  const nowhereToDeploy =
+    from.projectId === null &&
+    from.environmentId === null &&
+    !targetsPending &&
+    targets?.length === 0;
+  useEffect(() => {
+    if (nowhereToDeploy) {
+      router.replace(
+        `${GET_STARTED_PATH}?template=${encodeURIComponent(templateId)}`,
+      );
+    }
+  }, [nowhereToDeploy, router, templateId]);
+
   const name = template?.name ?? form.data?.templateName ?? templateId;
   const pick = (next: string) => {
     setPicked(next);
@@ -126,7 +155,9 @@ export function TemplateSetup({
               </p>
             </Card.Body>
           </Card>
-        ) : form.isPending || (creating && targetsPending) ? (
+        ) : form.isPending ||
+          (creating && targetsPending) ||
+          nowhereToDeploy ? (
           <Skeleton className="h-96" />
         ) : form.error ? (
           <Card>
@@ -149,18 +180,7 @@ export function TemplateSetup({
                 : undefined
             }
             onNewProject={() => pick(NEW_PROJECT)}
-            newProject={
-              creating
-                ? {
-                    targets: newProjectTargets(
-                      servers.data,
-                      readsClouds ? cloudAccounts.data : [],
-                      form.data.deployTargets,
-                      { platformHost: !hosted },
-                    ),
-                  }
-                : undefined
-            }
+            newProject={targets ? { targets } : undefined}
             onSubmit={async (choice) => {
               const result = await setUp.mutateAsync(
                 "newProject" in choice

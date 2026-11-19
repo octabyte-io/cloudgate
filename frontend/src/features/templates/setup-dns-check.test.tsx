@@ -205,6 +205,65 @@ describe("DomainHostFields, on this Cloudgate host", () => {
   });
 });
 
+describe("DomainHostFields, off this Cloudgate host", () => {
+  // A Hosted customer cannot deploy to the platform host nor change Instance
+  // settings (#128), so its sentence is for the platform host only.
+  const SERVER_TARGETS = newProjectTargets(
+    [
+      {
+        serverId: "srv-1",
+        name: "edge-1",
+        ipAddress: "203.0.113.4",
+        serverType: "deploy",
+      },
+    ] as never,
+    [],
+    { server: null, platformHost: null, aws: null, gcp: null },
+    { platformHost: false },
+  );
+
+  function saysPlatformHost() {
+    const said = document.body.textContent ?? "";
+    return (
+      said.includes("this Cloudgate host") ||
+      screen.queryAllByRole("link", { name: /Settings/ }).length > 0
+    );
+  }
+
+  it("does not point a new Project's Server with no generated host at this Cloudgate host", () => {
+    renderForm(
+      {
+        ...FORM,
+        environments: [],
+        newProjectHosts: { servers: {}, platformHost: null },
+      },
+      { newProject: { targets: SERVER_TARGETS } },
+    );
+
+    expect(document.body.textContent).toContain("ghost");
+    expect(saysPlatformHost()).toBe(false);
+  });
+
+  it("does not point an Environment on a Server with no generated host at this Cloudgate host", () => {
+    renderForm({
+      ...FORM,
+      environments: [
+        {
+          environmentId: "env-srv",
+          name: "on-a-server",
+          canTake: true,
+          reason: null,
+          hosts: null,
+          cloudDomains: null,
+          machine: { serverId: "srv-1" },
+        },
+      ],
+    });
+
+    expect(saysPlatformHost()).toBe(false);
+  });
+});
+
 describe("DomainHostFields, Check DNS", () => {
   it("asks about the typed host and the Server's address, and says it points here", async () => {
     const validate = answer({ isValid: true, resolvedIp: SERVER_IP });

@@ -12,6 +12,7 @@ import type { SetupForm, TemplateSummary } from "@/lib/api/endpoints/templates";
 import { useInvalidate } from "@/lib/api/use-invalidate";
 import { usePermission } from "@/lib/auth/use-permission";
 
+import { PLATFORM_HOST_VALUE } from "../environment/deploy-target";
 import { AskedField, DomainHostFields } from "../templates/setup-fields";
 import {
   SETUP_LABELS,
@@ -188,6 +189,7 @@ export function DetailsForm({
                   domains={setup.domains}
                   generated={generated}
                   cloud={null}
+                  platformHost={serverId === PLATFORM_HOST_VALUE}
                 />
               </section>
             ) : null}

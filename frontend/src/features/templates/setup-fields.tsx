@@ -96,12 +96,15 @@ export function DomainHostFields({
   domains,
   generated,
   cloud,
+  platformHost,
 }: {
   domains: readonly SetupDomain[];
   /** The generated host of each Domain, by its name; null where none is. */
   generated: Readonly<Record<string, string>> | null;
   /** Set in a Cloud Environment: where its Domains point. */
   cloud: SetupEnvironment["cloudDomains"];
+  /** Whether the setup goes on this Cloudgate host, the platform host. */
+  platformHost: boolean;
 }) {
   return domains.map((domain, at) => (
     <DomainHostField
@@ -110,6 +113,7 @@ export function DomainHostFields({
       at={at}
       offered={cloud ? undefined : generated?.[domain.name]}
       cloud={cloud}
+      platformHost={platformHost}
     />
   ));
 }
@@ -137,11 +141,13 @@ function DomainHostField({
   at,
   offered,
   cloud,
+  platformHost,
 }: {
   domain: SetupDomain;
   at: number;
   offered: string | undefined;
   cloud: SetupEnvironment["cloudDomains"];
+  platformHost: boolean;
 }) {
   const { setValue } = useFormContext();
   const host = hostnameValue(
@@ -184,6 +190,7 @@ function DomainHostField({
           offered,
           address,
           onOffered: offered !== undefined && host === offered,
+          platformHost,
         })}
       >
         <Input
@@ -211,12 +218,15 @@ function hostHint(
     offered,
     address,
     onOffered,
+    platformHost,
   }: {
     cloud: boolean;
     offered: string | undefined;
     /** The address the generated host carries; null where it carries none. */
     address: string | null;
     onOffered: boolean;
+    /** Whether the setup goes on this Cloudgate host. */
+    platformHost: boolean;
   },
 ): React.ReactNode {
   if (cloud) {
@@ -229,8 +239,15 @@ function hostHint(
   if (offered !== undefined) {
     return `The address people open ${service} at: your own domain, with ${record}, or a free sslip.io one.`;
   }
-  // Nothing generated off the cloud: the platform host has no IP address
-  // recorded, and its public address is where one is set.
+  // Nothing generated on a Server, or before a Deploy target is chosen: the
+  // record points at the Server, and there is no Instance setting to send
+  // anyone to. Said in place of the platform host's sentence, which a Hosted
+  // customer can neither deploy to nor change (#128).
+  if (!platformHost) {
+    return `The address people open ${service} at: your own domain, with ${record}.`;
+  }
+  // Nothing generated on the platform host: it has no IP address recorded,
+  // and its public address is where one is set.
   return (
     <>
       The address people open {service}{" "}
