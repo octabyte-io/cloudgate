@@ -1,4 +1,7 @@
-import { catalogueSource } from '../../src/templates/catalogue-source';
+import {
+  catalogueSource,
+  directoryPage,
+} from '../../src/templates/catalogue-source';
 
 /** The official address, written out rather than imported (§1.7). */
 const OFFICIAL =
@@ -42,5 +45,17 @@ describe('catalogueSource', () => {
       message:
         '`CLOUDGATE_TEMPLATES_BASE_URL` is no longer read. Set `CLOUDGATE_TEMPLATES_URL`, or remove the old setting to use the official catalogue.',
     });
+  });
+});
+
+describe('directoryPage', () => {
+  it("is the template's page in the cg-templates directory for the official catalogue", () => {
+    expect(directoryPage(OFFICIAL, 'uptime-kuma')).toBe(
+      'https://octabyte-io.github.io/cg-templates/templates/uptime-kuma/',
+    );
+  });
+
+  it('is null for any other catalogue, whose templates may have no page there', () => {
+    expect(directoryPage(MIRROR, 'uptime-kuma')).toBeNull();
   });
 });

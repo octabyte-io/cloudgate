@@ -24,7 +24,11 @@ const KUMA: TemplateSummary = {
   },
   logo: LOGO,
   runsOn: ["server", "aws", "gcp"],
+  page: null,
 };
+
+const PAGE =
+  "https://octabyte-io.github.io/cg-templates/templates/uptime-kuma/";
 
 const withLinks = (links: TemplateSummary["links"]): TemplateSummary => ({
   ...KUMA,
@@ -61,7 +65,23 @@ const surfaces = {
 describe.each(Object.entries(surfaces))(
   "A Template's name and logo on its %s",
   (_, show) => {
-    it("open its website in a new tab, the logo out of the tab order", () => {
+    it("open its cg-templates page in a new tab, the logo out of the tab order", () => {
+      const scope = show({ ...KUMA, page: PAGE });
+
+      const link = nameLink(scope, "template page");
+      expect(link.getAttribute("href")).toBe(PAGE);
+      expect(link.getAttribute("target")).toBe("_blank");
+      expect(link.getAttribute("rel")).toContain("noopener");
+
+      const logo = logoLink(scope);
+      expect(logo?.getAttribute("href")).toBe(PAGE);
+      expect(logo?.getAttribute("target")).toBe("_blank");
+      expect(logo?.getAttribute("rel")).toContain("noopener");
+      expect(logo?.getAttribute("tabindex")).toBe("-1");
+      expect(logo?.getAttribute("aria-hidden")).toBe("true");
+    });
+
+    it("open its website when the catalogue gives no page (a mirror's)", () => {
       const scope = show(KUMA);
 
       const link = nameLink(scope, "website");

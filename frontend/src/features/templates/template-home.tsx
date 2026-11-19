@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { TemplateSummary } from "@/lib/api/endpoints/templates";
 import { cn } from "@/lib/utils";
 
-/** Where a Template's name and logo lead, best first. */
+/** Where a Template's name and logo lead without a directory page, best first. */
 const HOMES = [
   ["website", "website"],
   ["docs", "docs"],
@@ -11,13 +11,17 @@ const HOMES = [
 ] as const;
 
 /**
- * The page a Template's name and logo open: its website, else its docs, else
- * its source. `null` when it has none of the three, and the name stays text,
- * because a link that leads nowhere is worse than no link.
+ * The page a Template's name and logo open: its page in the `cg-templates`
+ * directory, which the backend gives only for the official catalogue; else,
+ * from a mirror or a private catalogue, its website, else its docs, else its
+ * source. `null` when it has none of these, and the name stays text, because
+ * a link that leads nowhere is worse than no link.
  */
 export function templateHome(
-  links: TemplateSummary["links"],
+  template: Pick<TemplateSummary, "page" | "links">,
 ): { href: string; what: string } | null {
+  if (template.page) return { href: template.page, what: "template page" };
+  const { links } = template;
   for (const [key, what] of HOMES) {
     const href = links[key];
     if (href) return { href, what };
@@ -26,8 +30,8 @@ export function templateHome(
 }
 
 /**
- * A Template's name as a link to its home page, in a new tab, like the
- * Website / Docs / Source links beside it. The page it opens and the new tab
+ * A Template's name as a link to its home page (`templateHome`), in a new
+ * tab, like the Website / Docs / Source links beside it. The page it opens and the new tab
  * are said in an `sr-only` span rather than an `aria-label`, so the name a
  * screen reader reads still starts with the name on screen. `relative` holds
  * that span: an absolutely positioned `sr-only` with no containing block
@@ -42,7 +46,7 @@ export function TemplateHomeName({
   className?: string;
   children: ReactNode;
 }) {
-  const home = templateHome(template.links);
+  const home = templateHome(template);
   if (!home) return <span className={className}>{children}</span>;
   return (
     <a
@@ -75,7 +79,7 @@ export function TemplateHomeLogo({
   className: string;
   children: ReactNode;
 }) {
-  const home = templateHome(template.links);
+  const home = templateHome(template);
   if (!home) return <span className={className}>{children}</span>;
   return (
     <a
@@ -84,7 +88,10 @@ export function TemplateHomeLogo({
       rel="noreferrer noopener"
       tabIndex={-1}
       aria-hidden
-      className={cn(className, "transition-colors duration-100 hover:border-line-2")}
+      className={cn(
+        className,
+        "transition-colors duration-100 hover:border-line-2",
+      )}
     >
       {children}
     </a>

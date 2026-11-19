@@ -48,9 +48,11 @@ function everywhere(template: TemplateSummary): boolean {
  * on a Server or in either cloud, and the same line on every card was read
  * once and then skipped; a Template a cloud cannot make says so.
  *
- * **The logo and the name open the Template's website** (else its docs,
- * else its source; see `templateHome`), in a new tab: they are what a pointer
- * aims at first, and clicking them used to do nothing. They are two links to
+ * **The logo and the name open the Template's page in the `cg-templates`
+ * directory** (from a mirror or a private catalogue, its website, else its
+ * docs, else its source; see `templateHome`), in a new tab: they are what a
+ * pointer aims at first, and the Website link beside the name already opens
+ * the app's own site. They are two links to
  * one page side by side, never one link around the text column, which holds
  * Set up and the other links. The logo's is out of the tab order.
  *

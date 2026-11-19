@@ -50,6 +50,7 @@ interface Listed {
     links: Record<string, string>;
     logo: string;
     runsOn: string[];
+    page: string | null;
   }[];
   copy: { fetchedAt: string; checkedAt: string; problem: string | null };
 }
@@ -134,6 +135,8 @@ describe('The Template catalogue reader (e2e)', () => {
           },
           logo: `data:image/svg+xml;base64,${Buffer.from(SQUARE_SVG).toString('base64')}`,
           runsOn: ['server', 'aws', 'gcp'],
+          // The official catalogue's templates open their directory page.
+          page: 'https://octabyte-io.github.io/cg-templates/templates/uptime-kuma/',
         },
       ]);
       expect(body.copy.problem).toBeNull();
