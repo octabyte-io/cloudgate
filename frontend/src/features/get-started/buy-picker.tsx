@@ -14,23 +14,20 @@ import { errorMessage } from "@/lib/api/error-message";
 import { SUGGESTED_MEMORY_GB } from "../server/buy/buy-model";
 import { BuyOptions } from "../server/buy/buy-options";
 import { BuySummary } from "../server/buy/buy-summary";
-import { LocationCards } from "../server/buy/location-cards";
+import { useWhereYouAre } from "../server/buy/location-chooser";
 import { closestAndCheapest } from "../server/buy/suggestions";
 import { useBoughtServerCatalogue } from "../server/buy/use-bought-servers";
 import { useBuyForm } from "../server/buy/use-buy-form";
-import {
-  browserTimeZone,
-  byDistance,
-  guessFromTimeZone,
-} from "../server/buy/where-you-are";
+import { byDistance } from "../server/buy/where-you-are";
 import { wizardHref } from "./wizard-state";
 
 /**
  * *Buy a Server* inside the wizard: the Buy screen's own two columns and
  * parts (`features/server/buy/`), every option on the left and the summary
- * with Buy on the right, kept in view. It opens on the Closest suggestion,
- * worked out from the browser's time zone here and never sent, so a
- * first-time buyer can press Buy without choosing anything.
+ * with Buy on the right, kept in view, and the same Location card with its
+ * map (#127). It opens on the Closest suggestion, worked out from the
+ * browser's time zone here and never sent, so a first-time buyer can press
+ * Buy without choosing anything.
  *
  * Unlike the Buy screen, Buy comes back to the wizard: Checkout and a
  * bank's check return to it, and a Server charged at once is followed here.
@@ -84,11 +81,14 @@ function Chooser({
   catalogue: BoughtServerCatalogue;
 }) {
   const router = useRouter();
+  const { where, askBrowser } = useWhereYouAre();
   const ordered = useMemo(
-    () => byDistance(catalogue.locations, guessFromTimeZone(browserTimeZone())),
-    [catalogue.locations],
+    () => byDistance(catalogue.locations, where.guess),
+    [catalogue.locations, where.guess],
   );
-  // Worked out once: the form opens on it, and is the buyer's from then on.
+  // Worked out once, from the time zone: the form opens on it, and is the
+  // buyer's from then on, so Show where I am reorders the cities but does not
+  // change a choice.
   const [start] = useState(
     () =>
       closestAndCheapest(ordered, catalogue.sizes, SUGGESTED_MEMORY_GB).closest,
@@ -130,13 +130,8 @@ function Chooser({
         catalogue={catalogue}
         ordered={ordered}
         form={form}
-        locationBody={
-          <LocationCards
-            ordered={ordered}
-            chosen={form.location?.id ?? null}
-            onChoose={form.chooseLocation}
-          />
-        }
+        where={where}
+        onAsk={askBrowser}
       />
     </Cols>
   );
