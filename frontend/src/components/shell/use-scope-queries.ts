@@ -181,6 +181,7 @@ export function useScopeQueries(
       compose.isPending,
       composeMounts.data,
       composeMounts.isLoading,
+      composeMounts.isError,
       servers.data,
       projects.data,
       environments.data,

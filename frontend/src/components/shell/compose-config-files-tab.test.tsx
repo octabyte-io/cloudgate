@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ApiError } from "@/lib/api/api-error";
 import type { ComposeDetail } from "@/lib/api/endpoints/compose";
 import type { Mount } from "@/lib/api/endpoints/mounts";
 import type { RequiredPermissions } from "@/lib/auth/use-permission";
@@ -126,6 +127,16 @@ describe("a Compose stack's Config files tab", () => {
     await waitFor(() => expect(api.mounts).toHaveBeenCalled());
     await waitFor(() => expect(labels()).toContain("Shell"));
     expect(labels()).not.toContain("Config files");
+  });
+
+  it("is offered when the mounts cannot be read, so its panel says why rather than the rail claiming none", async () => {
+    api.mounts.mockRejectedValue(
+      new ApiError(500, "Internal server error", { path: "/mounts" }),
+    );
+    const labels = railLabels();
+
+    await waitFor(() => expect(api.mounts).toHaveBeenCalled());
+    await waitFor(() => expect(labels()).toContain("Config files"));
   });
 
   it("is absent for a role that cannot read volumes, and their mounts are not asked for", async () => {

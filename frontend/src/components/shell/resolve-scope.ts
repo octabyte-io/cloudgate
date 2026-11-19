@@ -217,12 +217,14 @@ function resolveFound(
   if (scope.kind === "compose") {
     const row = q.compose.data;
     // The Shell tab: absent for a role without service:update. The Config
-    // files tab: there once its `file` mounts are read and there is one.
+    // files tab: there once its `file` mounts are read and there is one —
+    // and there too when the read failed, so its panel shows the refusal
+    // rather than the rail claiming the stack has none (§3.5).
     const subject = {
       ...caller,
-      configFiles: (q.composeMounts.data ?? []).some(
-        (mount) => mount.type === "file",
-      ),
+      configFiles:
+        q.composeMounts.isError ||
+        (q.composeMounts.data ?? []).some((mount) => mount.type === "file"),
     };
     return {
       ...base,
