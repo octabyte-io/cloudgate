@@ -276,7 +276,27 @@ describe("Config files: Restart to apply", () => {
     });
     expect(button.getAttribute("aria-disabled")).toBe("true");
     expect(button.getAttribute("title")).toBe(COMPOSE_RESTART_REFUSAL);
+    const described = button.getAttribute("aria-describedby");
+    expect(described).toBeTruthy();
+    expect(document.getElementById(described as string)?.textContent).toBe(
+      COMPOSE_RESTART_REFUSAL,
+    );
     fireEvent.click(button);
+    expect(restart).not.toHaveBeenCalled();
+  });
+
+  it("is not offered on a Swarm stack, which is told to deploy instead", async () => {
+    vi.mocked(composeApi.findOne).mockResolvedValue({
+      ...STACK,
+      composeType: "stack",
+    } as ComposeDetail);
+    const restart = vi.spyOn(composeApi, "restart");
+    await saveEdit();
+
+    expect(
+      await screen.findByText(/deploy the stack to apply it/i),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Restart to apply" })).toBeNull();
     expect(restart).not.toHaveBeenCalled();
   });
 });
