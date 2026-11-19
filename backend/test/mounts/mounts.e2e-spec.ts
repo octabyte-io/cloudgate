@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { z } from 'zod';
 import { ApplicationsService } from '../../src/applications/applications.service';
+import { ComposeService } from '../../src/compose/compose.service';
 import { cloudgateDirectoryOn } from '../../src/common/config/cloudgate-directory';
 import { fileMountsDirectoryOnRunServer } from '../../src/deployment-engine/deployment-engine.paths';
 import {
@@ -125,6 +126,7 @@ describe('Mounts (e2e)', () => {
   let applications: ApplicationsService;
   let postgres: PostgresService;
   let mounts: MountsService;
+  let composes: ComposeService;
 
   /**
    * Creates a mount from a request-shaped fixture. `serviceType` carries a
@@ -174,6 +176,7 @@ describe('Mounts (e2e)', () => {
     applications = ctx.app.get(ApplicationsService);
     postgres = ctx.app.get(PostgresService);
     mounts = ctx.app.get(MountsService);
+    composes = ctx.app.get(ComposeService);
   });
 
   afterAll(async () => {
@@ -650,6 +653,70 @@ describe('Mounts (e2e)', () => {
           'echo "aGVsbG8gYWdhaW4=" | base64 -d > ' +
           `"${files}/config.json";\n`,
       );
+    });
+
+    /**
+     * A Compose stack's Config file (spec #134): the console's Config files
+     * tab sends the new content and nothing else, and the file is rewritten
+     * in the stack's own files directory where the stack runs — this
+     * instance, for a stack on the platform host.
+     */
+    it('rewrites a Compose stack’s config file where the stack runs, from its content alone', async () => {
+      const { organizationId, owner: ownerSession } = await setUpOwner(server);
+      const ownerCtx = permissionCtx(ownerSession.id, organizationId);
+      const project = await projects.create(ownerCtx, { name: 'cloudgate' });
+      const environment = await environments.create(ownerCtx, {
+        name: 'production',
+        projectId: project.projectId,
+        deployTarget: { kind: 'platform-host' },
+      });
+      const stack = await composes.create(ownerCtx, {
+        name: 'Grafana',
+        appName: 'grafana-stack',
+        environmentId: environment.environmentId,
+      });
+      const created = await createMount(ownerCtx, {
+        type: 'file',
+        filePath: 'grafana.ini',
+        content: 'http_port = 3000',
+        serviceType: 'compose',
+        serviceId: stack.composeId,
+      });
+      execMock.execAsync.mockClear();
+
+      const updated = await request(server)
+        .patch(`/mounts/${created.mountId}`)
+        .set('Cookie', ownerSession.cookie)
+        .send({ content: 'http_port = 4000' });
+
+      expect(updated.status).toBe(200);
+      expect(updated.body).toMatchObject({
+        mountId: created.mountId,
+        type: 'file',
+        filePath: 'grafana.ini',
+        content: 'http_port = 4000',
+        composeId: stack.composeId,
+      });
+      // 'http_port = 4000', base64-encoded in transit, over the same file.
+      const files = `${cloudgateDirectoryOn(null)}/compose/grafana-stack/files`;
+      expect(execMock.execAsync).toHaveBeenCalledWith(
+        `${closeServiceDirectory(files)};\n` +
+          `mkdir -p "${files}";\n` +
+          'echo "aHR0cF9wb3J0ID0gNDAwMA==" | base64 -d > ' +
+          `"${files}/grafana.ini";\n`,
+      );
+
+      const listed = await request(server)
+        .get('/mounts')
+        .query({ serviceId: stack.composeId, serviceType: 'compose' })
+        .set('Cookie', ownerSession.cookie);
+      expect(listed.status).toBe(200);
+      expect(listed.body).toEqual([
+        expect.objectContaining({
+          mountId: created.mountId,
+          content: 'http_port = 4000',
+        }),
+      ]);
     });
 
     it('updates a volume mount without touching the build server', async () => {
