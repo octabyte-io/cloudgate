@@ -7,7 +7,7 @@ import type { Deployment } from "@/lib/api/endpoints/deployments";
 import { hasSource } from "@/lib/format/source";
 import { usePermission } from "@/lib/auth/use-permission";
 
-import { ActionIcon } from "../lifecycle/action-icon";
+import { ActionIcon } from "@/components/console/action-icon";
 import {
   APPLICATION_DEPLOY_REFUSAL,
   useDeployApplication,

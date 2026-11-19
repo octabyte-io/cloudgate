@@ -26,7 +26,7 @@ import {
   useApplicationLifecycle,
   wasRefused,
 } from "../use-application";
-import { ActionIcon } from "./action-icon";
+import { ActionIcon } from "@/components/console/action-icon";
 
 /**
  * What Stop on a Service in a Cloud account still leaves on the bill

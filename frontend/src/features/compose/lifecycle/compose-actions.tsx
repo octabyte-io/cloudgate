@@ -23,7 +23,7 @@ import {
 } from "../use-compose";
 // The Application row's pending glyph, so every Service kind's lifecycle row
 // says "working" the same way.
-import { ActionIcon } from "../../application/lifecycle/action-icon";
+import { ActionIcon } from "@/components/console/action-icon";
 import { RemoveContainersModal } from "./remove-containers-modal";
 import { startOrRestart } from "./start-or-restart";
 

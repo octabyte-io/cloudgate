@@ -23,7 +23,7 @@ import {
 } from "./cloud-database";
 // The Application row's pending glyph, so every Service kind's lifecycle row
 // says "working" the same way.
-import { ActionIcon } from "../../application/lifecycle/action-icon";
+import { ActionIcon } from "@/components/console/action-icon";
 import { RebuildModal } from "./rebuild-modal";
 
 /** Why Start and Stop are off on a database no Deploy has created. */

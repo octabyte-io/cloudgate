@@ -10,7 +10,7 @@ import {
   APPLICATION_DEPLOY_REFUSAL,
   useApplicationLifecycle,
 } from "../use-application";
-import { ActionIcon } from "./action-icon";
+import { ActionIcon } from "@/components/console/action-icon";
 
 /**
  * Build the same source again.

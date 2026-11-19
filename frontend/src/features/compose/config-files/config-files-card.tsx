@@ -16,7 +16,7 @@ import type { Mount } from "@/lib/api/endpoints/mounts";
 import { roleRefusal, usePermission } from "@/lib/auth/use-permission";
 import { cn } from "@/lib/utils";
 
-import { ActionIcon } from "../../application/lifecycle/action-icon";
+import { ActionIcon } from "@/components/console/action-icon";
 import {
   COMPOSE_RESTART_REFUSAL,
   useComposeActions,

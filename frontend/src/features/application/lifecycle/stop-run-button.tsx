@@ -11,7 +11,7 @@ import type { Deployment } from "@/lib/api/endpoints/deployments";
 import { roleRefusal, usePermission } from "@/lib/auth/use-permission";
 
 import { useApplicationLifecycle, wasRefused } from "../use-application";
-import { ActionIcon } from "./action-icon";
+import { ActionIcon } from "@/components/console/action-icon";
 
 /** The confirmation the spec words (US69). */
 export const STOP_RUN_CONSEQUENCE =

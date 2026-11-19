@@ -8,7 +8,7 @@ import type { Deployment } from "@/lib/api/endpoints/deployments";
 import { roleRefusal, usePermission } from "@/lib/auth/use-permission";
 
 import { useApplicationLifecycle, wasRefused } from "../use-application";
-import { ActionIcon } from "./action-icon";
+import { ActionIcon } from "@/components/console/action-icon";
 
 /**
  * Stop a build: take a queued one back out of the queue
