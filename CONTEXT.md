@@ -445,6 +445,10 @@ _Avoid_: Draft, pending set, staged template
 The fact, kept on a Project, that some of its Config names came from a Template: the template's id, its catalogue revision, the setup name and those names. It is never a link, so nothing updates from it; a plan holds back its parts in an Environment that has none of them until the template is set up there too (ADR-0065).
 _Avoid_: Template link, origin, installation
 
+**Config file**:
+A file a Template ships with one of its Services, filled in once at setup and then kept by Cloudgate as that Service's file mount; it is shown on its Service, edited there, and written to where the Service runs on every save. It is not the Project config.
+_Avoid_: template file, mount file, config (alone)
+
 **Template catalogue**:
 The published list of Templates an install offers, read from one address set for the whole install, the official one unless its operator changes or turns it off (ADR-0062). Each published version is fixed once published, and an install reads the newest one it can use.
 _Avoid_: Marketplace, blueprint repo, registry (a **Registry** is something else)
