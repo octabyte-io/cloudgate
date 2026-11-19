@@ -14,6 +14,10 @@ import { SearchInput } from "@/components/console/search-input";
 import { Skeleton } from "@/components/console/skeleton";
 import { Toolbar, ToolbarGap } from "@/components/console/toolbar";
 import { Button } from "@/components/ui/button";
+import {
+  useInfrastructureHealth,
+  useInstanceGate,
+} from "@/features/settings/platform/use-platform";
 import { errorMessage } from "@/lib/api/error-message";
 import { useServers } from "@/lib/api/use-servers";
 import { usePermission } from "@/lib/auth/use-permission";
@@ -76,6 +80,18 @@ export function FleetScreen() {
   // Hosted only, and only with the provider's tokens set (ADR-0071): anywhere
   // else the action is not there at all, rather than off.
   const buying = useBoughtServerOffer();
+  // The This host card is offered only to a caller with instance authority
+  // (ADR-0013): owner or admin of the instance Organization, which is what the
+  // gateway asks before it dials `serverId=local`. A customer on Hosted owns
+  // their own Organization and is refused there, so the card is left out
+  // rather than shown with a button that only gets a refusal. It fails closed,
+  // like the Dock's offer of the same host (`hostShellOffers`): `readGate`
+  // keeps a control live while its read is pending, but a card that appears
+  // and then vanishes a round trip later would tell a customer the host is
+  // there. The gateway stays the enforcement; this is what the screen offers.
+  const hostShell = useInstanceGate();
+  const hostAuthority = useInfrastructureHealth();
+  const offersHostShell = hostShell.allowed && hostAuthority.isSuccess;
   // Memoized, so the filter below does not re-run on every render just because
   // `?? []` made a new array. TanStack's own `data` is stable; the fallback is not.
   const rows = useMemo(() => servers.data ?? [], [servers.data]);
@@ -239,8 +255,9 @@ export function FleetScreen() {
             no Server row, is never returned by `GET /servers`, and cannot be
             deployed onto by name. It is here because it is a machine in this
             install that an operator sometimes needs a shell on, and until now
-            the console offered no way to ask for one. */}
-        <LocalShellCard />
+            the console offered no way to ask for one. Only to an operator,
+            though: see `offersHostShell`. */}
+        {offersHostShell ? <LocalShellCard /> : null}
       </Cols>
 
       <AddServerDialogs

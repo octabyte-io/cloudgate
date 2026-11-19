@@ -361,6 +361,26 @@ export const GATED_CALLERS: GatedCaller[] = [
 ];
 
 /**
+ * A card **left out**, rather than shown disabled, unless the caller holds the
+ * authority behind it: for a surface whose existence is itself the claim, where
+ * a disabled card would still tell everybody it is there. The census finds
+ * every render of each `component` and holds it to a condition that consults a
+ * verdict, and fails on a render of one in a file missing here.
+ */
+export type GatedMount = {
+  file: string;
+  component: string;
+  requires: RequiredPermissions | "instance";
+};
+
+export const GATED_MOUNTS: GatedMount[] = [
+  // This host: a shell on the platform host. The gateway asks
+  // `checkInstanceAuthority` before it dials `serverId=local` (ADR-0013's H-63),
+  // so a customer on Hosted is refused there, and the card is not offered.
+  { file: "features/server/fleet/fleet-screen.tsx", component: "LocalShellCard", requires: "instance" },
+];
+
+/**
  * Every `ResourceSpec`, and the three routes its writes go to. The statements
  * are in the spec itself (`permissions`, required by the type — which is this
  * surface's census); the test reads them from there and holds them to these

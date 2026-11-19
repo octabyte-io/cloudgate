@@ -49,12 +49,16 @@ import {
  * in this card that never sees it. It reports the request now, and points at the
  * terminal for the answer.
  *
- * **The copy says who this is for; it is not a gate.** Only an owner or admin
- * may open a shell on the platform host, and the gateway is what enforces that
- * (ADR-0010) — it closes the socket 4403 with its reason, which
- * `socket-stream-store.ts` already renders as a refusal. Hiding the form behind
- * a role read in the browser would be a claim about authority made where the
- * caller controls the answer, so the sentence is here and the decision is not.
+ * **The gateway is the gate; the fleet screen decides who is offered it.** Only
+ * an owner or admin of the instance Organization may open a shell on the
+ * platform host, and the gateway is what enforces that (ADR-0010, moved to
+ * `checkInstanceAuthority` by ADR-0013) — it closes the socket 4403 with its
+ * reason, which `socket-stream-store.ts` already renders as a refusal. The
+ * fleet screen mounts this card only once `useInstanceGate` has answered yes
+ * (`GATED_MOUNTS`): rendered for everybody, it told every customer on Hosted
+ * that an operator's machine sits behind the console, and its "Only an owner or
+ * an admin" read as *you can* to the owner of their own Organization. That is a
+ * choice about what the screen offers, not the enforcement.
  */
 export function LocalShellCard() {
   const [draft, setDraft] = useState(DEFAULT_LOCAL_SHELL);
@@ -143,8 +147,7 @@ export function LocalShellCard() {
         {/* There is no Server row to read a port and a user from, and the
             gateway refuses rather than guessing. It also asks who you are
             before it dials, since every Organization on the instance runs
-            here — so the form is shown to everybody rather than pretending a
-            hidden button is a lock. */}
+            here: the fleet screen leaving this card out is not the lock. */}
         <p className="text-body text-tx-2">
           Name the user to sign in as, and Cloudgate opens a shell on its own
           host over SSH with a key it generates for itself. Only an owner or an
