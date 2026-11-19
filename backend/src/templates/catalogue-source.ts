@@ -11,6 +11,30 @@ export const DEFAULT_TEMPLATES_URL =
   'https://github.com/octabyte-io/cg-templates/releases/latest/download/catalogue.zip';
 
 /**
+ * The `cg-templates` directory's page for each Template, by its id: the
+ * public website the same repository builds from its template folders,
+ * served by GitHub Pages at the repository's project address.
+ */
+export const TEMPLATES_DIRECTORY_URL =
+  'https://octabyte-io.github.io/cg-templates/templates/';
+
+/**
+ * A Template's page in the `cg-templates` directory, when the catalogue it
+ * was read from is the official one. A mirror may hold the same templates,
+ * but an address set by its operator says nothing about which, and a
+ * private catalogue's templates have no page there: null for any address
+ * but the official one, and the console falls back to the template's own
+ * links.
+ */
+export function directoryPage(
+  sourceUrl: string,
+  templateId: string,
+): string | null {
+  if (sourceUrl !== DEFAULT_TEMPLATES_URL) return null;
+  return `${TEMPLATES_DIRECTORY_URL}${encodeURIComponent(templateId)}/`;
+}
+
+/**
  * ADR-0066's sentence, word for word: what the startup log and the templates
  * screen say while only the old setting is set.
  */

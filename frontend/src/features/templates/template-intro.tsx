@@ -29,7 +29,8 @@ const LINKS = [
  * scale: the `h1` is the Template's name, and every tag is shown in full,
  * because here, unlike in a grid of 500, there is room.
  *
- * **Its logo and name open the Template's website** in a new tab, as they do
+ * **Its logo and name open the Template's page in the `cg-templates`
+ * directory** (see `templateHome`) in a new tab, as they do
  * on the catalogue card (`TemplateHomeName`), so the two agree on what
  * clicking a Template's name does.
  *

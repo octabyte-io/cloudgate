@@ -101,6 +101,7 @@ const GHOST: TemplateSummary = {
   links: {},
   logo: "data:image/svg+xml,%3Csvg/%3E",
   runsOn: ["server"],
+  page: null,
 };
 
 const SERVER = {

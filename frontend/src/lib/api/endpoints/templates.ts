@@ -39,6 +39,11 @@ export interface TemplateSummary {
   logo: string;
   /** Always `server` first, then each cloud that makes every entry. */
   runsOn: TemplateRunsOn[];
+  /**
+   * Its page in the `cg-templates` directory, which its name and logo open;
+   * null when the catalogue is not the official one.
+   */
+  page: string | null;
 }
 
 /** The saved copy the list came from, for the staleness note. */
