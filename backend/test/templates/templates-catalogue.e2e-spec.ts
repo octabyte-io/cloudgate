@@ -13,7 +13,8 @@ import {
   SQUARE_SVG,
   webTemplate,
 } from './catalogue-host.fixture';
-import { zipOf } from './zip.fixture';
+import { png } from './check/catalogue.fixture';
+import { catalogueZip, zipOf } from './zip.fixture';
 
 jest.setTimeout(120_000);
 
@@ -132,7 +133,8 @@ describe('The Template catalogue reader (e2e)', () => {
             website: 'https://uptime.kuma.pet',
             source: 'https://github.com/louislam/uptime-kuma',
           },
-          logo: `data:image/svg+xml;base64,${Buffer.from(SQUARE_SVG).toString('base64')}`,
+          // An address on our own origin, never the logo itself (#123).
+          logo: '/backend/templates/uptime-kuma/logo?rev=c0ffee1',
           runsOn: ['server', 'aws', 'gcp'],
         },
       ]);
@@ -406,6 +408,111 @@ describe('The Template catalogue reader (e2e)', () => {
         /templates\/gatus\/index\.md, a website file/,
       );
       expect(await ctx.db.select().from(templateCatalogue)).toEqual([]);
+    });
+  });
+  /**
+   * #123: the list carries each logo's address, not the logo, so the
+   * catalogue's ~580 logos no longer travel inside one 10 MB answer. The
+   * logo route serves the bytes from the saved copy.
+   */
+  describe("a Template's logo", () => {
+    const logo = (id: string) =>
+      request(server).get(`/templates/${id}/logo`).set('Cookie', cookie);
+
+    it('is listed as an address on our own origin, never a data: address', async () => {
+      host.served = {
+        body: catalogueFile(
+          webTemplate('uptime-kuma'),
+          webTemplate('gatus', { name: 'Gatus' }),
+        ),
+      };
+
+      const body = (await list()).body as Listed;
+
+      expect(body.templates.map((t) => t.logo)).toEqual([
+        '/backend/templates/uptime-kuma/logo?rev=c0ffee1',
+        '/backend/templates/gatus/logo?rev=c0ffee1',
+      ]);
+    });
+
+    it('serves an SVG logo with its type, a year of caching and nosniff', async () => {
+      host.served = { body: catalogueFile(webTemplate('uptime-kuma')) };
+
+      const res = await logo('uptime-kuma').buffer(true);
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toBe('image/svg+xml');
+      expect(res.headers['cache-control']).toBe(
+        'public, max-age=31536000, immutable',
+      );
+      expect(res.headers['x-content-type-options']).toBe('nosniff');
+      expect(Buffer.from(res.body as Buffer).toString('utf8')).toBe(SQUARE_SVG);
+    });
+
+    it('serves an SVG opened directly under a policy that runs no script', async () => {
+      const scripted =
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><script>alert(document.cookie)</script><circle cx="32" cy="32" r="30"/></svg>';
+      const folder = webTemplate('uptime-kuma');
+      host.served = {
+        body: catalogueFile({
+          ...folder,
+          files: { ...folder.files, 'logo.svg': scripted },
+        }),
+      };
+
+      const res = await logo('uptime-kuma').buffer(true);
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-security-policy']).toBe(
+        "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+      );
+    });
+
+    it('serves a PNG logo as image/png, byte for byte, with no SVG policy', async () => {
+      const logoPng = png(64, 64);
+      const rest = Object.fromEntries(
+        Object.entries(webTemplate('uptime-kuma').files).filter(
+          ([path]) => path !== 'logo.svg',
+        ),
+      );
+      host.served = {
+        body: catalogueZip([
+          { id: 'uptime-kuma', files: { ...rest, 'logo.png': logoPng } },
+        ]),
+      };
+
+      const res = await logo('uptime-kuma').buffer(true);
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toBe('image/png');
+      expect(res.headers['x-content-type-options']).toBe('nosniff');
+      expect(res.headers['content-security-policy']).toBeUndefined();
+      expect(
+        Buffer.from(res.body as Buffer).equals(
+          Buffer.from(logoPng.base64, 'base64'),
+        ),
+      ).toBe(true);
+    });
+
+    it('answers 404 for a Template the catalogue does not hold', async () => {
+      host.served = { body: catalogueFile(webTemplate('uptime-kuma')) };
+
+      const res = await logo('no-such-template');
+
+      expect(res.status).toBe(404);
+    });
+
+    it('answers 404 for a Template the check hides', async () => {
+      host.served = {
+        body: catalogueFile(
+          webTemplate('uptime-kuma'),
+          webTemplate('from-the-future', { cloudgate: '99.0.0' }),
+        ),
+      };
+
+      const res = await logo('from-the-future');
+
+      expect(res.status).toBe(404);
     });
   });
 });

@@ -7,8 +7,8 @@ import { createTestApp, TestAppContext } from '../utils/test-app';
 jest.setTimeout(120_000);
 
 /**
- * `CLOUDGATE_TEMPLATES_URL=off` (ADR-0062): templates are off, both catalogue
- * routes answer the coded 503 saying so, and nothing is fetched. The old
+ * `CLOUDGATE_TEMPLATES_URL=off` (ADR-0062): templates are off, every catalogue
+ * route (the list, its tags and a logo) answers the coded 503 saying so, and nothing is fetched. The old
  * setting is set too, to show the new one wins over it.
  *
  * Set at module scope, before `createTestApp` requires `AppModule`, because
@@ -59,7 +59,7 @@ describe('Templates turned off (e2e)', () => {
     else process.env.CLOUDGATE_TEMPLATES_BASE_URL = oldUrlBefore;
   });
 
-  it.each(['/templates', '/templates/tags'])(
+  it.each(['/templates', '/templates/tags', '/templates/uptime-kuma/logo'])(
     'GET %s answers the coded 503 saying templates are off, and fetches nothing',
     async (path) => {
       const res = await request(server).get(path).set('Cookie', cookie);

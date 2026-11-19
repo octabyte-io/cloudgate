@@ -18,7 +18,7 @@ import { CatalogueView } from "./catalogue-view";
 
 afterEach(cleanup);
 
-const LOGO = "data:image/svg+xml;base64,PHN2Zy8+";
+const LOGO = "/backend/templates/uptime-kuma/logo?rev=c0ffee1";
 
 const KUMA: TemplateSummary = {
   id: "uptime-kuma",

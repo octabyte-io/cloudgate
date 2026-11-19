@@ -99,7 +99,7 @@ const GHOST: TemplateSummary = {
   version: "5",
   tags: [],
   links: {},
-  logo: "data:image/svg+xml,%3Csvg/%3E",
+  logo: "/backend/templates/uptime-kuma/logo?rev=c0ffee1",
   runsOn: ["server"],
 };
 

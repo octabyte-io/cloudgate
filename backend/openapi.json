@@ -15939,6 +15939,29 @@
         ]
       }
     },
+    "/templates/{templateId}/logo": {
+      "get": {
+        "operationId": "TemplatesController_logo",
+        "parameters": [
+          {
+            "name": "templateId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Templates"
+        ]
+      }
+    },
     "/templates/{templateId}/setup": {
       "get": {
         "operationId": "TemplatesController_findOne",

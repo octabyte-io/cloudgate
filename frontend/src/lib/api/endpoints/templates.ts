@@ -9,8 +9,9 @@ import type { Plan } from "./project-config";
  *
  * **Only the backend talks to the catalogue.** It reads the instance's
  * `CLOUDGATE_TEMPLATES_URL` (by default the newest `cg-templates` release),
- * keeps the last good copy, and serves each Template's logo out of the file,
- * so every request in this file goes to our own origin.
+ * keeps the last good copy, and serves each Template's logo out of the file
+ * at an address of its own (`GET /templates/:templateId/logo`), so every
+ * request in this file, and every logo, goes to our own origin.
  *
  * **Off is a coded 503** (`ApiError.isCatalogueNotConfigured`), whose message
  * says why: `CLOUDGATE_TEMPLATES_URL=off`, or an install still setting the old
@@ -33,8 +34,9 @@ export interface TemplateSummary {
   tags: string[];
   links: { website?: string; docs?: string; source?: string };
   /**
-   * The logo as a `data:` address, from the catalogue file. Drawn with an
-   * `<img>`, where an SVG runs no script.
+   * The logo's address on our own origin, `/backend/templates/<id>/logo?rev=…`
+   * (#123): the backend serves it out of the catalogue file, cached for good.
+   * Drawn with an `<img>`, where an SVG runs no script.
    */
   logo: string;
   /** Always `server` first, then each cloud that makes every entry. */

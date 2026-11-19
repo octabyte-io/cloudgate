@@ -14,12 +14,13 @@ import { DRIZZLE } from '../db/drizzle.module';
 import type { DrizzleDB } from '../db/drizzle.module';
 import type { FetchClient } from '../git-providers/fetch.provider';
 import { FETCH_CLIENT } from '../git-providers/fetch.provider';
+import { CONSOLE_BACKEND_PREFIX } from '../git-providers/oauth-callback.util';
 import { CLOUDGATE_VERSION } from '../settings/version';
 import { downloadCatalogue } from './catalogue-download';
 import { catalogueSource } from './catalogue-source';
 import type { CatalogueSource } from './catalogue-source';
 import { checkCatalogue } from './check';
-import type { Template } from './check';
+import type { Template, TemplateLogo } from './check';
 import { templateCatalogue } from './template-catalogue.schema';
 import type { TemplateCatalogueRow } from './template-catalogue.schema';
 import { whereItRuns } from './where-it-runs';
@@ -55,10 +56,16 @@ export interface TemplateSummary {
     readonly source?: string;
   };
   /**
-   * The logo from the catalogue zip, as a `data:` address. The backend is
-   * the only thing that talks to the catalogue, so the logo travels with the
-   * list rather than as a third-party image request; and an SVG drawn by an
-   * `<img>` from a `data:` address runs no script.
+   * The logo's address on the console's own origin,
+   * `/backend/templates/<id>/logo?rev=<revision>`: {@link templateLogoPath}.
+   *
+   * **An address, not the logo (#123).** The logos once travelled inside the
+   * list as `data:` addresses, which made it 10 MB for the official catalogue
+   * and kept the Templates screen grey until all of it had arrived. Served by
+   * `GET /templates/:templateId/logo` instead, a logo is still read only from
+   * the saved copy, so the backend stays the only thing that talks to the
+   * catalogue and an `<img>` makes no third-party request; and an `<img>`
+   * runs no SVG script however it is loaded.
    */
   readonly logo: string;
   /** Where it can run: a Server, and each cloud that makes every entry. */
@@ -78,6 +85,11 @@ export interface CatalogueCopy {
 export interface TemplateCatalogue {
   readonly templates: readonly TemplateSummary[];
   readonly copy: CatalogueCopy;
+}
+
+/** A catalogue as read, with each offered Template's logo by its id. */
+interface ReadCatalogue extends TemplateCatalogue {
+  readonly logos: ReadonlyMap<string, TemplateLogo>;
 }
 
 /** A saved copy, without the body: what deciding whether to check needs. */
@@ -106,13 +118,14 @@ export class TemplatesService implements OnApplicationBootstrap {
   private readonly logger = new Logger(TemplatesService.name);
 
   /** Checks in flight, per address, so concurrent opens share one. */
-  private readonly checking = new Map<string, Promise<TemplateCatalogue>>();
+  private readonly checking = new Map<string, Promise<ReadCatalogue>>();
 
   /** The last saved copy checked, so a copy is not re-read on every list. */
   private checked: {
     readonly sourceUrl: string;
     readonly fetchedAt: string;
     readonly templates: readonly TemplateSummary[];
+    readonly logos: ReadonlyMap<string, TemplateLogo>;
   } | null = null;
 
   constructor(
@@ -129,7 +142,23 @@ export class TemplatesService implements OnApplicationBootstrap {
 
   /** The Templates this instance offers, and the copy they were read from. */
   async listTemplates(now = new Date()): Promise<TemplateCatalogue> {
-    return this.catalogue(now);
+    const { templates, copy } = await this.catalogue(now);
+    return { templates, copy };
+  }
+
+  /**
+   * An offered Template's logo, from the copy the list is read from (#123),
+   * so it costs no read of the zip while that copy stands. A Template the
+   * catalogue does not hold, or the Template check hides, has none.
+   */
+  async templateLogo(
+    templateId: string,
+    now = new Date(),
+  ): Promise<TemplateLogo> {
+    const { logos } = await this.catalogue(now);
+    const logo = logos.get(templateId);
+    if (!logo) throw new NotFoundException('Template not found');
+    return logo;
   }
 
   /** Every tag on an offered Template, once each. */
@@ -189,7 +218,7 @@ export class TemplatesService implements OnApplicationBootstrap {
     });
   }
 
-  private async catalogue(now: Date): Promise<TemplateCatalogue> {
+  private async catalogue(now: Date): Promise<ReadCatalogue> {
     const source = this.source();
     if (!source.on) {
       throw new ServiceUnavailableException({
@@ -220,7 +249,7 @@ export class TemplatesService implements OnApplicationBootstrap {
     url: string,
     saved: CopyFacts | null,
     now: Date,
-  ): Promise<TemplateCatalogue> {
+  ): Promise<ReadCatalogue> {
     const checkedAt = now.toISOString();
     const download = await downloadCatalogue(
       this.fetchClient,
@@ -276,8 +305,14 @@ export class TemplatesService implements OnApplicationBootstrap {
             },
           });
         const templates = result.offered.map(summarize);
-        this.checked = { sourceUrl: url, fetchedAt: checkedAt, templates };
-        return { templates, copy: copyOf(row) };
+        const logos = logosOf(result.offered);
+        this.checked = {
+          sourceUrl: url,
+          fetchedAt: checkedAt,
+          templates,
+          logos,
+        };
+        return { templates, logos, copy: copyOf(row) };
       }
       refusal = `The newest template catalogue was refused: ${result.reason}`;
     } else if (download.kind === 'refused') {
@@ -320,13 +355,17 @@ export class TemplatesService implements OnApplicationBootstrap {
   }
 
   /** The saved copy's Templates, read and checked once per copy. */
-  private async serve(saved: CopyFacts): Promise<TemplateCatalogue> {
+  private async serve(saved: CopyFacts): Promise<ReadCatalogue> {
     const copy = copyOf(saved);
     if (
       this.checked?.sourceUrl === saved.sourceUrl &&
       this.checked.fetchedAt === saved.fetchedAt
     ) {
-      return { templates: this.checked.templates, copy };
+      return {
+        templates: this.checked.templates,
+        logos: this.checked.logos,
+        copy,
+      };
     }
     const [row] = await this.db
       .select({ body: templateCatalogue.body })
@@ -343,12 +382,14 @@ export class TemplatesService implements OnApplicationBootstrap {
       );
     }
     const templates = result.offered.map(summarize);
+    const logos = logosOf(result.offered);
     this.checked = {
       sourceUrl: saved.sourceUrl,
       fetchedAt: saved.fetchedAt,
       templates,
+      logos,
     };
-    return { templates, copy };
+    return { templates, logos, copy };
   }
 }
 
@@ -377,7 +418,25 @@ function summarize(template: Template): TemplateSummary {
     version: template.version ?? null,
     tags: template.tags,
     links: template.links,
-    logo: `data:${template.logo.mediaType};base64,${Buffer.from(template.logo.bytes).toString('base64')}`,
+    logo: templateLogoPath(template),
     runsOn: whereItRuns(template.config),
   };
+}
+
+/**
+ * Where the console reads a Template's logo: `GET /templates/:templateId/logo`
+ * under its same-origin `/backend` rewrite. The revision is the last catalogue
+ * commit that changed the Template's folder, so a logo is cached for good and
+ * a catalogue that changes it changes its address.
+ */
+export function templateLogoPath(
+  template: Pick<Template, 'id' | 'revision'>,
+): string {
+  return `${CONSOLE_BACKEND_PREFIX}/templates/${encodeURIComponent(template.id)}/logo?rev=${encodeURIComponent(template.revision)}`;
+}
+
+function logosOf(
+  templates: readonly Template[],
+): ReadonlyMap<string, TemplateLogo> {
+  return new Map(templates.map((template) => [template.id, template.logo]));
 }

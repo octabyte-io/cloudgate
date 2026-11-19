@@ -34,9 +34,11 @@ function everywhere(template: TemplateSummary): boolean {
  *
  * **The logo sits on a tile** rather than bare beside the name: catalogue
  * logos are any shape and colour, and a 24px mark next to 14px text read as an
- * icon glitch. It is a `data:` address from the backend, read out of the
- * catalogue file, so the card makes no request of its own and an SVG logo
- * runs no script — hence a plain `<img>` rather than `next/image`.
+ * icon glitch. Its address is the backend's own (`/backend/templates/<id>/logo`),
+ * served out of the saved catalogue file and cached for good, so the card asks
+ * nothing of a third party and an SVG logo runs no script — hence a plain
+ * `<img>` rather than `next/image`. It loads lazily: the catalogue lists
+ * hundreds of Templates, and a logo below the fold need not be fetched yet.
  *
  * **Whole tags on one line.** As many chips as fit, each in full; the rest
  * wrap below the line and are clipped, so every card in a row is the same
@@ -78,7 +80,12 @@ export function TemplateCard({
         className="grid size-11 flex-none place-items-center rounded-lg border border-line bg-panel-2"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={template.logo} alt="" className="size-6.5 object-contain" />
+        <img
+          src={template.logo}
+          alt=""
+          loading="lazy"
+          className="size-6.5 object-contain"
+        />
       </TemplateHomeLogo>
 
       <div className="flex min-w-0 flex-1 flex-col gap-2">

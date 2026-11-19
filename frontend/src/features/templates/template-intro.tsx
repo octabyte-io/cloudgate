@@ -63,8 +63,9 @@ export function TemplateIntro({
       <div className="flex min-w-0 items-start gap-4">
         {template ? (
           <TemplateHomeLogo template={template} className={TILE}>
-            {/* A `data:` address from the catalogue file, so no request and
-                no script, hence a plain `<img>` (see `TemplateCard`). */}
+            {/* The backend's own logo address, out of the catalogue file, so
+                no third party and no script, hence a plain `<img>` (see
+                `TemplateCard`). */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={template.logo}
