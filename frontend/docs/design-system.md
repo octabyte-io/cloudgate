@@ -652,8 +652,9 @@ src/lib/shell/tabs/project.ts    Project scope's two               → F08's
 src/lib/shell/tabs/environment.ts  Environment scope's five        → F08's
 src/lib/shell/tabs/application.ts  Application scope's five        → F09's, and Advanced is F10's
 src/lib/shell/tabs/database.ts     database scope's three          → F11's
-src/lib/shell/tabs/compose.ts      Compose scope's eight           → F12's
-                                   (F12 added Converted, Containers, Logs — rule 2; that file says why)
+src/lib/shell/tabs/compose.ts      Compose scope's thirteen        → F12's, and later tabs' own
+                                   (F12 added Converted, Containers, Logs — rule 2; that file says why;
+                                    #135 added Config files after Shell, offered only on a stack with one)
 src/features/<scope>/panels/<slug>.tsx   one file per tab. **Yours.**
 src/app/(console)/<segment>/…/[[...tab]]/page.tsx   one route file per scope. **Not yours.**
 ```
@@ -1232,7 +1233,7 @@ Five things F09 leaned on that are worth restating:
    same reason — a per-domain Status, a per-variable Scope, and the Overview's requests chart. Each was
    drawn as a shipped feature and each is backed by nothing.
 
-#### `compose/` (F12 — eight tabs, one file at the centre)
+#### `compose/` (F12 — thirteen tabs now, one file at the centre)
 
 The one service kind whose source of truth is a **file**, which is why the editor is on the first tab
 rather than behind one: an Application has a source, a builder, a run command and eleven Swarm
@@ -1252,6 +1253,7 @@ that file — which containers exist, what they log, which service a domain rout
 | `logs/container-output.tsx` · `panels/logs.tsx` | **A stack has no stack-wide log**: the gateway follows one container. So "the logs" is a choice before it is a stream, and that is why this is a tab. A Swarm stack gets a second reading (`runType=swarm` runs `docker service logs`, which takes a *service* name and aggregates every task and survives Swarm replacing one); a `docker-compose` stack has no such command, so the choice is absent rather than broken. Lines are **not toned** — third-party images have as many log formats. |
 | `advanced/isolation-card.tsx` | The one rewrite toggle this backend has, stating what it will change **before** it is switched on, which is the brief's instruction and the right shape for a control that edits the file the platform is about to apply. The trade is one sentence: isolation buys a stack that cannot collide with — or reach — the rest of the platform. **Randomize is absent**: `compose.schema.ts:23` says those columns were deliberately left out, and an unbuilt feature gets nothing on screen (locked decision 1). |
 | `lifecycle/compose-actions.tsx` · `start-or-restart.ts` · `delete-compose-modal.tsx` · `remove-containers-modal.tsx` | Deploy / Start or Restart / Stop / Remove containers. **Start and Restart share one slot and are never both on screen**: while every container of the stack is up (its membership read, the Containers tab's; on a Stack VM, whose containers are not read, a `done` status), Start would be `up -d` over running containers, a press that does nothing, so the slot is **Restart** (`docker compose restart`, on a Stack VM never the VM). One container down, none there, or the stack stopped, and it is Start. Once the stack is deployed, Deploy's `title` says what pressing it again does (the file as it is now; a build runs again, an image already there is pulled again only by its `pull_policy`), since it now sits beside a Restart that reads alike; the label stays Deploy, because Redeploy names a different action. **Two of the four are absent for a Swarm stack**: Start or Restart, because both routes refuse that type and Deploy is what restarts one, and **Remove containers**, because there `docker stack rm` is already what Stop runs. Delete carries the typed confirmation and the volumes switch — which is **absent for a Swarm stack too**, since `docker stack rm` does not touch volumes and the flag would be a control that does nothing. **Remove containers deliberately does not** carry the typed name: ADR-0011 keeps that ritual for the irreversible destruction of a record, and this rung is undone by pressing Start, so its dialog is a plain one naming both lists — the containers and their writable layer go, the volumes, the project directory and the stack stay. |
+| `panels/config-files.tsx` · `config-files/config-files-card.tsx` · `config-files/use-config-files.ts` | **The Config files tab** (#135): the files a Template shipped with the stack, its `file` mounts, listed by path and edited one at a time with `CodeEditor` and the compose file card's save pattern. Save sends only the content to `PATCH /mounts/:id`, which writes it where the stack runs, and is gated on that route's two statements (`volume: ['create']`, then `service: ['update']`). After a save it offers **Restart to apply**, the stack's own Restart, and for a Swarm stack says to deploy instead. **The tab is offered only once the mounts are read and one is a file**, or when that read failed so the panel can say why (`resolve-scope.ts`); it never shows and then goes on the many stacks with none. |
 | `create/create-compose-modal.tsx` | Mounted on the Environment's Services tab beside F11's — **one more button in F08's file**, on F11's argument unchanged: `POST /compose` returns the row, so creating ends on the new stack's own screen. It asks where the file comes from because `createComposeSchema` accepts no `sourceType` and the column defaults to `github`, so a stack created silently would claim a GitHub source it has no connection for. |
 
 **Six defects found by driving it rather than reading it**, and two of them are in shared files:
