@@ -20,7 +20,7 @@ import type { SetupForm } from "@/lib/api/endpoints/templates";
 import { GET_STARTED_PATH } from "@/lib/auth/routes";
 import { cn } from "@/lib/utils";
 
-import { CLOUDS } from "../environment/deploy-target";
+import { CLOUDS, PLATFORM_HOST_VALUE } from "../environment/deploy-target";
 import type { NewProjectTarget } from "./new-project-targets";
 import { AskedField, DomainHostFields } from "./setup-fields";
 import { SetupKernelNote } from "./setup-kernel-note";
@@ -285,6 +285,13 @@ export function SetupFormView({
                       : (setup.environments.find(
                           (env) => env.environmentId === environmentId,
                         )?.hosts ?? null)
+                  }
+                  platformHost={
+                    newProject
+                      ? target === PLATFORM_HOST_VALUE
+                      : setup.environments.find(
+                          (env) => env.environmentId === environmentId,
+                        )?.machine?.serverId === null
                   }
                   cloud={
                     newProject
