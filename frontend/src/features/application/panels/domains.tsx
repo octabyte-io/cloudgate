@@ -165,6 +165,7 @@ export default function Panel({ id, label, icon }: PanelProps) {
         ) : (
           <DomainsCard
             domains={domains}
+            serverId={row?.serverId ?? null}
             status={traefik}
             canAdd={Boolean(row)}
             onAdd={openAddDialog}

@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/console/skeleton";
 import type { Domain } from "@/lib/api/endpoints/domains";
 import { Icon } from "@/lib/design/icons";
 
-import { certificateCell } from "./domain-columns";
+import { CertificateCell, ServedCertificateLine } from "./served-certificate";
 import { useApplicationDomains } from "./use-domains";
 
 const LINK =
@@ -91,15 +91,24 @@ export function DomainsAsideCard({
               label="URL"
               title={first.host}
               value={
-                <a
-                  href={`${first.https ? "https" : "http"}://${first.host}`}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="inline-flex max-w-full min-w-0 items-center gap-1.5 font-mono text-meta tracking-mono text-brand-tx underline-offset-3 hover:underline focus-visible:underline"
-                >
-                  <span className="truncate">{first.host}</span>
-                  <Icon name="ext" size={12} className="flex-none opacity-70" />
-                </a>
+                <span className="grid min-w-0 gap-0.5">
+                  <a
+                    href={`${first.https ? "https" : "http"}://${first.host}`}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex max-w-full min-w-0 items-center gap-1.5 font-mono text-meta tracking-mono text-brand-tx underline-offset-3 hover:underline focus-visible:underline"
+                  >
+                    <span className="truncate">{first.host}</span>
+                    <Icon
+                      name="ext"
+                      size={12}
+                      className="flex-none opacity-70"
+                    />
+                  </a>
+                  {/* While its certificate is being issued, or is not: beside
+                      the address a browser would warn about (#130). */}
+                  <ServedCertificateLine row={first} />
+                </span>
               }
             />
             {service ? (
@@ -114,7 +123,10 @@ export function DomainsAsideCard({
               value={first.port === null ? "unset" : `:${first.port}`}
               mono
             />
-            <KVRow label="Certificate" value={certificateCell(first)} />
+            <KVRow
+              label="Certificate"
+              value={<CertificateCell row={first} />}
+            />
             {rows.length > 1 ? (
               <KVRow
                 label="Others"

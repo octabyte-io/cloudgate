@@ -85,7 +85,11 @@ describe("DnsHelper, for an sslip.io host", () => {
 describe("DnsHelper, for a hostname with a record to create", () => {
   it("still derives the record, and names the zone it assumed", () => {
     render(
-      <DnsHelper host="api.example.com" serverIp="203.0.113.10" result={null} />,
+      <DnsHelper
+        host="api.example.com"
+        serverIp="203.0.113.10"
+        result={null}
+      />,
     );
 
     const said = document.body.textContent ?? "";
@@ -107,9 +111,7 @@ describe("DnsHelper, for a hostname with a record to create", () => {
 
 describe("DnsHelper, on what Check DNS answered", () => {
   it("does not promise a certificate for a host it could not compare", () => {
-    render(
-      <DnsHelper host="dns.google" serverIp={null} result={OK} />,
-    );
+    render(<DnsHelper host="dns.google" serverIp={null} result={OK} />);
 
     const said = document.body.textContent ?? "";
     expect(said).toContain("dns.google resolves.");
@@ -118,13 +120,7 @@ describe("DnsHelper, on what Check DNS answered", () => {
   });
 
   it("keeps the promise where there was an address to compare against", () => {
-    render(
-      <DnsHelper
-        host="api.example.com"
-        serverIp="8.8.8.8"
-        result={OK}
-      />,
-    );
+    render(<DnsHelper host="api.example.com" serverIp="8.8.8.8" result={OK} />);
 
     const said = document.body.textContent ?? "";
     expect(said).toContain("api.example.com points here.");
