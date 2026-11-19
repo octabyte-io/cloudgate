@@ -149,8 +149,8 @@ function stepKey(step: WizardStep, state: WizardState): string {
 function AppHeader({ template }: { template: TemplateSummary }) {
   return (
     <header className="flex items-center gap-3.5">
-      {/* A `data:` address from the catalogue file, as on the catalogue's
-          cards: nothing to optimise or fetch. */}
+      {/* The backend's own logo address, as on the catalogue's cards:
+          nothing to optimise. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={template.logo}

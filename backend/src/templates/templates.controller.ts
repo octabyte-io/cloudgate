@@ -6,7 +6,10 @@ import {
   Param,
   Post,
   Query,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
+import type { Response } from 'express';
 
 import type { AuthSession } from '../auth/auth.config';
 import type { ValidatedRequest } from '../auth/auth.service';
@@ -25,6 +28,14 @@ import { TemplateSetups } from './setup/template-setups.service';
 import { TemplatesService } from './templates.service';
 
 type Session = NonNullable<ValidatedRequest['session']>;
+
+/**
+ * The policy an SVG logo is served under: nothing loads, nothing runs, and
+ * the document is sandboxed, so one opened in its own tab is inert; inline
+ * styles are the one thing an SVG logo may need to draw.
+ */
+const SVG_LOGO_POLICY =
+  "default-src 'none'; style-src 'unsafe-inline'; sandbox";
 
 /** The caller's permission ctx in the session's active organization. */
 function toCtx(user: AuthSession['user'], session: Session): PermissionCtx {
@@ -72,6 +83,38 @@ export class TemplatesController {
   /* eslint-disable-next-line @typescript-eslint/no-unused-vars -- validated, not read */
   tags(@Query() _query: CatalogueQueryDto) {
     return this.templatesService.getTags();
+  }
+
+  /**
+   * A Template's logo, from the saved catalogue copy (#123): what each
+   * Template's `logo` address in the list points at, so the list carries no
+   * logo bytes.
+   *
+   * - **Cached for good.** The address names the Template's revision, so a
+   *   catalogue that changes the logo changes the address.
+   * - **`nosniff`**, so the type said is the type drawn.
+   * - **An SVG runs no script, even opened directly.** An `<img>` never runs
+   *   one; a tab opened on the address would, on our origin, without
+   *   `sandbox` and a `default-src 'none'` that admits only inline styles.
+   *
+   * 404 for a Template not offered (unknown or hidden), and the list's coded
+   * 503 while templates are off.
+   */
+  @Get(':templateId/logo')
+  async logo(
+    @Param('templateId') templateId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const logo = await this.templatesService.templateLogo(templateId);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    if (logo.mediaType === 'image/svg+xml') {
+      res.setHeader('Content-Security-Policy', SVG_LOGO_POLICY);
+    }
+    return new StreamableFile(Buffer.from(logo.bytes), {
+      type: logo.mediaType,
+      length: logo.bytes.byteLength,
+    });
   }
 
   /**
