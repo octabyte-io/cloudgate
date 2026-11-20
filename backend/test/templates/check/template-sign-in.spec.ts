@@ -10,9 +10,17 @@ import { ghost, hiddenReason, offered } from './catalogue.fixture';
 /**
  * flatnotes-shaped: an asked username and a generated password, both in its
  * compose file, and two Domains, the app's and its admin's. `reads` are more
- * variables the compose file reads, for inputs a test adds.
+ * variables the compose file reads, for inputs a test adds; `domains` the
+ * Domains it lists, when a test needs others.
  */
-function withSignIn(signIn: string, inputs?: string, reads: string[] = []) {
+function withSignIn(
+  signIn: string,
+  inputs?: string,
+  reads: string[] = [],
+  domains = `  - { service: ghost, port: 2368 }
+  - { service: admin, port: 2369 }
+`,
+) {
   return ghost({
     cloudgateYaml: `version: 1
 services:
@@ -32,9 +40,7 @@ ${
   SITE_ID: { generate: uuid }
 `
 }domains:
-  - { service: ghost, port: 2368 }
-  - { service: admin, port: 2369 }
-files:
+${domains}files:
   - { path: config.production.json }
 ${signIn}`,
     compose: `services:
@@ -134,7 +140,7 @@ describe('signIn', () => {
 `),
       ),
     ).toBe(
-      'template.yaml: signIn is one form: username and password, or firstVisit, not both',
+      'template.yaml: signIn is one form: a password (with a username if the app asks one), or firstVisit, not both',
     );
   });
 
@@ -149,16 +155,6 @@ describe('signIn', () => {
     ).toBe(
       'template.yaml: signIn.password names SITE_ID, which is not a secret: ask it with secret: true, or generate a password',
     );
-  });
-
-  it('refuses an account with no password', () => {
-    expect(
-      hiddenReason(
-        withSignIn(`signIn:
-  username: ADMIN_USER
-`),
-      ),
-    ).toBe('template.yaml: signIn.password is required');
   });
 
   describe('the forms the catalogue needs (#140)', () => {
@@ -261,7 +257,35 @@ ${Object.entries(more)
       );
     });
 
-    it('refuses an account with only a username, or with neither', () => {
+    it('refuses a Domain whose service several Domains share, as it names none of them', () => {
+      expect(
+        hiddenReason(
+          withSignIn(
+            `signIn:
+  password: ADMIN_PASSWORD
+  domain: admin
+`,
+            undefined,
+            [],
+            `  - { service: ghost, port: 2368 }
+  - { service: admin, port: 2369 }
+  - { service: admin, port: 2370 }
+`,
+          ),
+        ),
+      ).toBe(
+        'template.yaml: signIn.domain names admin, which has 2 Domains in domains, so it names none of them: give the sign-in its own service, or leave domain out',
+      );
+    });
+
+    it('refuses an account with only a username, only a path, or neither', () => {
+      expect(
+        hiddenReason(
+          withSignIn(`signIn:
+  username: ADMIN_USER
+`),
+        ),
+      ).toBe('template.yaml: signIn.password is required');
       expect(
         hiddenReason(
           withSignIn(`signIn:

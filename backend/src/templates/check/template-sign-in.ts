@@ -6,7 +6,9 @@ import type { InputRule } from './template-yaml';
  * `signIn` against the rest of the template (#131, #140): every input it
  * names is one the template has, and is one the compose file reads, so its
  * value is in the stack's variables where Get started's done card reads it.
- * The Domain it names, on either form, is one `domains` lists.
+ * The Domain it names, on either form, is one `domains` lists, and lists
+ * once: a service several Domains share names none of them, as
+ * `{{domains.<name>.url}}` does not (`template-inputs.ts`).
  *
  * The password is a secret: asked with `secret: true`, or generated as a
  * password, hex or base64 string, never a JWT or a uuid. A `value` input is
@@ -31,11 +33,14 @@ export function signInRule({
     'firstVisit' in signIn
       ? ['firstVisit.domain', signIn.firstVisit.domain]
       : ['domain', signIn.domain];
-  if (
-    domain !== undefined &&
-    !domains.some(({ service }) => service === domain)
-  ) {
-    return `template.yaml: signIn.${domainField} names ${domain}, which domains does not list: name a Domain by its service`;
+  if (domain !== undefined) {
+    const count = domains.filter(({ service }) => service === domain).length;
+    if (count === 0) {
+      return `template.yaml: signIn.${domainField} names ${domain}, which domains does not list: name a Domain by its service`;
+    }
+    if (count > 1) {
+      return `template.yaml: signIn.${domainField} names ${domain}, which has ${count} Domains in domains, so it names none of them: give the sign-in its own service, or leave domain out`;
+    }
   }
   if ('firstVisit' in signIn) return null;
 

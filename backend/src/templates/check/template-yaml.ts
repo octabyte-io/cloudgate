@@ -192,9 +192,10 @@ const file = z.strictObject({
  *
  * Either form may name the Domain its path is on, by its `service` as
  * `domains` lists it (`domain`, beside the path), for an app that signs in on
- * another Domain than its first: an admin dashboard, a bundled Keycloak. When
- * several Domains share that service, the first of them in `domains` is
- * meant. Without `domain`, the first Domain is.
+ * another Domain than its first: an admin dashboard, a bundled Keycloak. A
+ * service several Domains share names none of them, so the template rules
+ * refuse it, as they refuse `{{domains.<name>.url}}` for one. Without
+ * `domain`, the first Domain is meant.
  *
  * Both forms at once, or neither, is refused, by the keys that name each.
  */
@@ -247,7 +248,7 @@ const signIn = z.unknown().transform((raw, context): SignIn => {
     context.addIssue({
       code: 'custom',
       message: firstVisit
-        ? 'is one form: username and password, or firstVisit, not both'
+        ? 'is one form: a password (with a username if the app asks one), or firstVisit, not both'
         : 'must be a password (with a username if the app asks one), or firstVisit',
     });
     return z.NEVER;
