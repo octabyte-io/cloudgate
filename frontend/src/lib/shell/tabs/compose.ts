@@ -1,4 +1,4 @@
-import { panel, type TabEntry } from "../tab-registry";
+import { panel, type TabEntry, type TabSubject } from "../tab-registry";
 import { noShell } from "./shell";
 
 /**
@@ -69,6 +69,15 @@ export const COMPOSE_TABS: readonly TabEntry[] = [
     absentBecause: noShell("Compose stack"),
     panel: panel(() => import("@/features/compose/panels/shell")),
   },
+  // The files a Template shipped with the stack (#135), after Shell.
+  // Absent for a stack with none, or a role that cannot read volumes.
+  {
+    slug: "config-files",
+    label: "Config files",
+    icon: "lines",
+    absentBecause: noConfigFiles,
+    panel: panel(() => import("@/features/compose/panels/config-files")),
+  },
   {
     slug: "deployments",
     label: "Deployments",
@@ -118,3 +127,16 @@ export const COMPOSE_TABS: readonly TabEntry[] = [
     panel: panel(() => import("@/features/compose/panels/advanced")),
   },
 ];
+
+/**
+ * Why a Compose stack has no Config files tab (#135). Its config files are
+ * its `file` mounts, which only a Template makes, read through
+ * `GET /mounts` (`volume: ['read']`).
+ */
+function noConfigFiles(subject: TabSubject): string | null {
+  if (subject.configFiles === true) return null;
+  if (subject.configFiles === "refused") {
+    return "Your role in this Organization cannot read this Compose stack's config files, which takes the read action on volumes. Ask an owner or an admin to do it, or to change your role.";
+  }
+  return "Only a stack set up from a Template that ships config files has this tab, and this one has none.";
+}

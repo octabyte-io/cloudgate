@@ -9,6 +9,7 @@ import {
   type DatabaseKind,
 } from "@/lib/api/endpoints/databases";
 import { environmentsApi } from "@/lib/api/endpoints/environments";
+import { mountsApi } from "@/lib/api/endpoints/mounts";
 import { projectsApi } from "@/lib/api/endpoints/projects";
 import { serversApi } from "@/lib/api/endpoints/servers";
 import { keys } from "@/lib/api/keys";
@@ -87,6 +88,15 @@ export function useScopeQueries(
     enabled: scope.kind === "compose" && ready,
   });
 
+  // A stack's mounts, for its Config files tab (#135): the tab is there
+  // only when one of them is a `file`. Shared with the tab's own read.
+  const composeMounts = useQuery({
+    queryKey: keys.mounts.byService(organizationId, id ?? ""),
+    queryFn: () => mountsApi.listByService(id as string, "compose"),
+    enabled: scope.kind === "compose" && ready,
+    retry: false,
+  });
+
   // The switcher's list. Only fetched at the scope that offers one, and only
   // once the parent is known for Environments.
   const servers = useQuery({
@@ -146,6 +156,7 @@ export function useScopeQueries(
       application,
       database,
       compose,
+      composeMounts,
       servers,
       projects,
       environments,
@@ -166,6 +177,9 @@ export function useScopeQueries(
       database.isPending,
       compose.data,
       compose.isPending,
+      composeMounts.data,
+      composeMounts.isPending,
+      composeMounts.error,
       servers.data,
       projects.data,
       environments.data,

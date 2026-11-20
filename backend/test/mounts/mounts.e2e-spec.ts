@@ -5,6 +5,7 @@ import { App } from 'supertest/types';
 import { z } from 'zod';
 import { ApplicationsService } from '../../src/applications/applications.service';
 import { cloudgateDirectoryOn } from '../../src/common/config/cloudgate-directory';
+import { ComposeService } from '../../src/compose/compose.service';
 import { fileMountsDirectoryOnRunServer } from '../../src/deployment-engine/deployment-engine.paths';
 import {
   generateBindMounts,
@@ -650,6 +651,62 @@ describe('Mounts (e2e)', () => {
           'echo "aGVsbG8gYWdhaW4=" | base64 -d > ' +
           `"${files}/config.json";\n`,
       );
+    });
+
+    /**
+     * A Compose stack's Config files tab (#135) saves through this route with
+     * the new content alone. The file is rewritten in place on the machine
+     * the stack runs on, and its path, its kind and where it is mounted stay
+     * as they were, since the stack's compose file names them.
+     */
+    it("rewrites a stack's config file from its content alone", async () => {
+      const { ownerSession, ownerCtx, environment } = await setUpApplication();
+      const stack = await ctx.app.get(ComposeService).create(ownerCtx, {
+        name: 'Grafana',
+        appName: 'grafana-stack',
+        environmentId: environment.environmentId,
+      });
+      const created = await createMount(ownerCtx, {
+        serviceType: 'compose',
+        serviceId: stack.composeId,
+        type: 'file',
+        filePath: 'grafana.ini',
+        content: '[server]\nhttp_port = 3000\n',
+        mountPath: '/etc/grafana/grafana.ini',
+      });
+      execMock.execAsync.mockClear();
+
+      const updated = await request(server)
+        .patch(`/mounts/${created.mountId}`)
+        .set('Cookie', ownerSession.cookie)
+        .send({ content: '[server]\nhttp_port = 4000\n' });
+
+      expect(updated.status).toBe(200);
+      expect(updated.body).toMatchObject({
+        mountId: created.mountId,
+        type: 'file',
+        filePath: 'grafana.ini',
+        mountPath: '/etc/grafana/grafana.ini',
+        content: '[server]\nhttp_port = 4000\n',
+      });
+      const encoded = Buffer.from('[server]\nhttp_port = 4000\n').toString(
+        'base64',
+      );
+      const writes = execMock.execAsync.mock.calls
+        .map(([command]) => String(command))
+        .filter((command) => command.includes(encoded));
+      expect(writes).toHaveLength(1);
+      expect(writes[0]).toContain('grafana-stack/files');
+      expect(writes[0]).toContain('/grafana.ini"');
+
+      const listed = await request(server)
+        .get('/mounts')
+        .query({ serviceId: stack.composeId, serviceType: 'compose' })
+        .set('Cookie', ownerSession.cookie);
+      expect(listed.status).toBe(200);
+      expect(listed.body).toEqual([
+        expect.objectContaining({ content: '[server]\nhttp_port = 4000\n' }),
+      ]);
     });
 
     it('updates a volume mount without touching the build server', async () => {

@@ -1,6 +1,8 @@
 import { COMPOSE_TYPE_LABEL } from "@/lib/api/endpoints/compose";
 import { DATABASE_LABEL } from "@/lib/api/endpoints/databases";
 import { serverMark } from "@/lib/design/server-mark";
+import { isApiError } from "@/lib/api/api-error";
+import type { TabSubject } from "@/lib/shell/tab-registry";
 
 import { scopeExit, scopeNav } from "./nav";
 import { scopeRoot, type ScopeRoute } from "./scope";
@@ -211,13 +213,26 @@ function resolveFound(
 
   if (scope.kind === "compose") {
     const row = q.compose.data;
-    // The Shell tab: absent for a role without service:update.
-    const subject = { ...caller };
+    // The Shell tab: absent for a role without service:update. The Config
+    // files tab: absent with no `file` mount, or none readable (#135).
+    const mounts = q.composeMounts;
+    const configFiles: TabSubject["configFiles"] = mounts.data
+      ? mounts.data.some((mount) => mount.type === "file")
+      : isApiError(mounts.error) && mounts.error.status === 403
+        ? "refused"
+        : mounts.error
+          ? false
+          : undefined;
+    const subject = { ...caller, configFiles };
     return {
       ...base,
       nav: scopeNav(scope, subject),
       subject,
-      pending: q.compose.isPending,
+      // A deep link to Config files waits for the mounts read, so it never
+      // says "no config files" about a stack that has them.
+      pending:
+        q.compose.isPending ||
+        (scope.tab === "config-files" && mounts.isPending),
       identity: row
         ? {
             id: row.composeId,

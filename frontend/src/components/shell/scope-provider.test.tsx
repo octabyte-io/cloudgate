@@ -11,6 +11,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api/api-error";
 import type { ApplicationDetail } from "@/lib/api/endpoints/applications";
+import { composeApi, type ComposeDetail } from "@/lib/api/endpoints/compose";
+import { mountsApi, type Mount } from "@/lib/api/endpoints/mounts";
 import type { Environment } from "@/lib/api/endpoints/environments";
 import type { Project } from "@/lib/api/endpoints/projects";
 
@@ -41,7 +43,10 @@ vi.mock("next/navigation", async (original) => ({
 vi.mock("@/lib/auth/client", async (original) => ({
   ...(await original<typeof import("@/lib/auth/client")>()),
   useSession: () => ({
-    data: { user: { id: who.userId }, session: { activeOrganizationId: "org" } },
+    data: {
+      user: { id: who.userId },
+      session: { activeOrganizationId: "org" },
+    },
     isPending: false,
   }),
   useActiveOrganizationId: () => ({ organizationId: "org", pending: false }),
@@ -354,7 +359,79 @@ describe("Starred, from a resource scope", () => {
     fireEvent.click(screen.getByRole("button", { name: "Unstar staging" }));
 
     // Gone at once, from the same store the toggle wrote — no reload.
-    expect(screen.queryByRole("link", { name: "ui-main / staging" })).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "ui-main / staging" }),
+    ).toBeNull();
     expect(screen.getByText("Nothing starred yet.")).toBeTruthy();
+  });
+});
+
+/**
+ * A Compose stack's Config files tab (#135) is in its rail only when its
+ * mounts read lists a `file`; a 403 on that read is the role's refusal.
+ */
+describe("a Compose stack's Config files tab", () => {
+  const STACK = {
+    composeId: "cmp-1",
+    name: "grafana",
+    composeStatus: "done",
+    composeType: "docker-compose",
+    environment: {
+      environmentId: "env-1",
+      name: "production",
+      project: { projectId: "prj-1", name: "ui-main" },
+    },
+  } as unknown as ComposeDetail;
+
+  function Tabs() {
+    const { nav, subject, pending } = useScope();
+    return (
+      <output data-testid="tabs" data-pending={String(pending)}>
+        {`${String(subject?.configFiles)}|${nav
+          .flatMap((row) => (row.kind === "item" ? [row.tab] : []))
+          .join(",")}`}
+      </output>
+    );
+  }
+  const tabs = () => screen.getByTestId("tabs").textContent ?? "";
+
+  beforeEach(() => {
+    vi.spyOn(composeApi, "findOne").mockResolvedValue(STACK);
+  });
+
+  it("is there for a stack with a file mount", async () => {
+    vi.spyOn(mountsApi, "listByService").mockResolvedValue([
+      { mountId: "m-1", type: "file" } as Mount,
+    ]);
+    mount("/compose/cmp-1", <Tabs />);
+    await waitFor(() => expect(tabs()).toMatch(/^true\|.*config-files/));
+    expect(mountsApi.listByService).toHaveBeenCalledWith("cmp-1", "compose");
+  });
+
+  it("is absent for a stack with only volumes", async () => {
+    vi.spyOn(mountsApi, "listByService").mockResolvedValue([
+      { mountId: "m-1", type: "volume" } as Mount,
+    ]);
+    mount("/compose/cmp-1", <Tabs />);
+    await waitFor(() => expect(tabs()).toMatch(/^false\|/));
+    expect(tabs()).not.toContain("config-files");
+  });
+
+  it("is absent, as refused, for a role the mounts read answers 403", async () => {
+    vi.spyOn(mountsApi, "listByService").mockRejectedValue(
+      new ApiError(403, "Forbidden"),
+    );
+    mount("/compose/cmp-1", <Tabs />);
+    await waitFor(() => expect(tabs()).toMatch(/^refused\|/));
+    expect(tabs()).not.toContain("config-files");
+  });
+
+  it("holds a deep link to the tab pending until the mounts read answers", async () => {
+    vi.spyOn(mountsApi, "listByService").mockReturnValue(new Promise(() => {}));
+    mount("/compose/cmp-1/config-files", <Tabs />);
+    await waitFor(() => expect(tabs()).toMatch(/^undefined\|/));
+    expect(screen.getByTestId("tabs").getAttribute("data-pending")).toBe(
+      "true",
+    );
   });
 });
