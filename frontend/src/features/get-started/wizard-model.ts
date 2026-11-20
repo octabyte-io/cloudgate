@@ -230,11 +230,19 @@ function sentence(message: string): string {
 /**
  * The app's address: the first Domain in the Environment, as a URL a
  * browser opens. Null with none (an app the template gives no Domain).
+ *
+ * With `service`, the first Domain routed into that compose service instead,
+ * as a template's `signIn.domain` names one (#140); null when it has none
+ * here, rather than another service's address the sign-in is not on.
  */
 export function appAddress(
   domains: readonly EnvironmentDomain[] | undefined,
+  service?: string,
 ): string | null {
-  const domain = domains?.[0];
+  const domain =
+    service === undefined
+      ? domains?.[0]
+      : domains?.find((one) => one.serviceName === service);
   if (!domain) return null;
   const path = domain.path && domain.path !== "/" ? domain.path : "";
   return `${domain.https ? "https" : "http"}://${domain.host}${path}`;

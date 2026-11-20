@@ -93,6 +93,31 @@ describe("SignInBlock (#131)", () => {
     expect(screen.queryByText("admin")).toBeNull();
   });
 
+  it("shows only the password when the template names no username (#140)", async () => {
+    show({ password: "FLATNOTES_PASSWORD" });
+
+    expect(await screen.findByRole("button", { name: "Show" })).toBeTruthy();
+    expect(screen.getByText("Password")).toBeTruthy();
+    expect(screen.queryByText("Username")).toBeNull();
+    expect(screen.queryByText("admin")).toBeNull();
+  });
+
+  it("points an account made at setup at its sign-in path (#140)", async () => {
+    show({ ...FLATNOTES, path: "/admin" });
+
+    expect(await screen.findByText("admin")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Open /admin" }).getAttribute("href"),
+    ).toBe("https://notes.example.com/admin");
+  });
+
+  it("gives an account made at setup no Open link without a path", async () => {
+    show(FLATNOTES);
+
+    expect(await screen.findByText("admin")).toBeTruthy();
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
   it("points a first-visit sign-in at its path, reading no variables", () => {
     show({ firstVisit: { path: "/ghost" } });
 

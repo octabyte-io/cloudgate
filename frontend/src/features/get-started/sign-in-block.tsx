@@ -24,8 +24,13 @@ const MASK = "••••••••";
  * - An account made at setup: its username and password, read from the
  *   stack's own variables, the Variables tab's read and so no new exposure.
  *   A member that read refuses sees no block, so no password and no Show.
- *   The password stays masked until Show; Copy copies it either way.
+ *   The password stays masked until Show; Copy copies it either way. With
+ *   no username in the template (an app that asks only a password or a
+ *   token, #140), no Username row; with a `path`, an Open link to it.
  * - An account made on the first visit: where to go to make it.
+ *
+ * `address` is the Domain the sign-in is on: the one `signIn.domain` names,
+ * or else the first. The caller picks it, with `appAddress`.
  */
 export function SignInBlock({
   appName,
@@ -35,7 +40,7 @@ export function SignInBlock({
 }: {
   appName: string;
   signIn: TemplateSignIn;
-  /** The app's address, for the first visit's Open; null with none. */
+  /** The sign-in's Domain's address, for its path's Open; null with none. */
   address: string | null;
   /** The template's stack, whose variables hold the account. */
   composeId: string | null;
@@ -49,32 +54,29 @@ export function SignInBlock({
           <span className="font-mono text-tx">{path}</span> and create yours.
           {note ? ` ${note}` : null}
         </p>
-        {address ? (
-          <a
-            href={`${address.replace(/\/+$/, "")}${path}`}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="inline-flex items-center gap-1 text-body text-brand-tx underline underline-offset-2"
-          >
-            Open {path}
-            <Icon name="ext" size={13} className="flex-none" />
-          </a>
-        ) : null}
+        <OpenPath address={address} path={path} />
       </Section>
     );
   }
   return composeId ? (
-    <MadeAtSetup appName={appName} signIn={signIn} composeId={composeId} />
+    <MadeAtSetup
+      appName={appName}
+      signIn={signIn}
+      address={address}
+      composeId={composeId}
+    />
   ) : null;
 }
 
 function MadeAtSetup({
   appName,
   signIn,
+  address,
   composeId,
 }: {
   appName: string;
   signIn: Extract<TemplateSignIn, { password: string }>;
+  address: string | null;
   composeId: string;
 }) {
   const { organizationId } = useActiveOrganizationId();
@@ -99,9 +101,11 @@ function MadeAtSetup({
   const valueOf = (name: string) =>
     variables.find((variable) => variable.key === name)?.value ?? null;
   const username =
-    typeof signIn.username === "string"
-      ? valueOf(signIn.username)
-      : signIn.username.value;
+    signIn.username === undefined
+      ? null
+      : typeof signIn.username === "string"
+        ? valueOf(signIn.username)
+        : signIn.username.value;
   const password = valueOf(signIn.password);
   if (username === null && password === null) return null;
 
@@ -160,7 +164,24 @@ function MadeAtSetup({
           />
         ) : null}
       </KVList>
+      {signIn.path ? <OpenPath address={address} path={signIn.path} /> : null}
     </Section>
+  );
+}
+
+/** Open, at a sign-in's path below its Domain's address; none without one. */
+function OpenPath({ address, path }: { address: string | null; path: string }) {
+  if (!address) return null;
+  return (
+    <a
+      href={`${address.replace(/\/+$/, "")}${path}`}
+      target="_blank"
+      rel="noreferrer noopener"
+      className="inline-flex items-center gap-1 text-body text-brand-tx underline underline-offset-2"
+    >
+      Open {path}
+      <Icon name="ext" size={13} className="flex-none" />
+    </a>
   );
 }
 

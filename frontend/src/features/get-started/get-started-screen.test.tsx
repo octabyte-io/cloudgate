@@ -453,6 +453,41 @@ describe("GetStartedScreen", () => {
     expect(screen.queryByText("Password")).toBeNull();
   });
 
+  it("opens the sign-in on the Domain its template names (#140)", () => {
+    reads.templates = [
+      {
+        ...GHOST,
+        signIn: { firstVisit: { path: "/console", domain: "admin" } },
+      },
+    ];
+    reads.phase = { phase: "running" };
+    reads.domains = [
+      {
+        host: "ghost-ab12-203-0-113-7.sslip.io",
+        https: false,
+        path: null,
+        serviceName: "ghost",
+        service: { serviceType: "compose", serviceId: "cmp_1", name: "ghost" },
+      },
+      {
+        host: "admin-ab12-203-0-113-7.sslip.io",
+        https: false,
+        path: null,
+        serviceName: "admin",
+        service: { serviceType: "compose", serviceId: "cmp_1", name: "ghost" },
+      },
+    ];
+    show("template=ghost&server=srv_1&env=env_1");
+
+    expect(
+      screen.getByRole("link", { name: "Open /console" }).getAttribute("href"),
+    ).toBe("http://admin-ab12-203-0-113-7.sslip.io/console");
+    // The app's own Open is still its first Domain.
+    expect(
+      screen.getByRole("link", { name: "Open Ghost" }).getAttribute("href"),
+    ).toBe("http://ghost-ab12-203-0-113-7.sslip.io");
+  });
+
   describe("an https address (#130)", () => {
     const HTTPS_DOMAIN = {
       domainId: "dom_1",

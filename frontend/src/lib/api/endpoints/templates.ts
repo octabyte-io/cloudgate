@@ -55,15 +55,22 @@ export interface TemplateSummary {
   signIn?: TemplateSignIn | null;
 }
 
-/** A template's `signIn` (#131): one of its two forms. */
+/**
+ * A template's `signIn` (#131, #140): one of its two forms. `domain` names
+ * the Domain its path is on, by the compose service it routes into (the
+ * first Domain of that service); absent, the first Domain.
+ */
 export type TemplateSignIn =
   | {
-      /** An input's name, or a fixed username. */
-      username: string | { value: string };
-      /** An input's name: asked secret, or generated. */
+      /** An input's name, or a fixed username; absent when the app asks none. */
+      username?: string | { value: string };
+      /** An input's name: asked secret, generated, or a value that is one of those. */
       password: string;
+      /** Where the sign-in page is, when it is not `/`. */
+      path?: string;
+      domain?: string;
     }
-  | { firstVisit: { path: string; note?: string } };
+  | { firstVisit: { path: string; note?: string; domain?: string } };
 
 /** The saved copy the list came from, for the staleness note. */
 export interface CatalogueCopy {

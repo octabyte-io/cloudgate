@@ -343,6 +343,19 @@ describe("appAddress", () => {
     expect(appAddress([])).toBeNull();
     expect(appAddress(undefined)).toBeNull();
   });
+
+  it("is the first Domain of a compose service, when one is named (#140)", () => {
+    const domains = [
+      domain({ host: "logto.example.com", serviceName: "app" }),
+      domain({ host: "admin.example.com", serviceName: "admin" }),
+      domain({ host: "admin-2.example.com", serviceName: "admin" }),
+    ];
+
+    expect(appAddress(domains, "admin")).toBe("https://admin.example.com");
+    expect(appAddress(domains, undefined)).toBe("https://logto.example.com");
+    // A service with no Domain here names no address, rather than another's.
+    expect(appAddress(domains, "keycloak")).toBeNull();
+  });
 });
 
 describe("freeProjectName", () => {

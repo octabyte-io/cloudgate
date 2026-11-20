@@ -10,7 +10,10 @@ import type {
   EnvironmentDetail,
   EnvironmentDomain,
 } from "@/lib/api/endpoints/environments";
-import type { TemplateSummary } from "@/lib/api/endpoints/templates";
+import type {
+  TemplateSignIn,
+  TemplateSummary,
+} from "@/lib/api/endpoints/templates";
 import { errorMessage } from "@/lib/api/error-message";
 import {
   useServedCertificate,
@@ -236,6 +239,11 @@ function Launched({
   );
 }
 
+/** The compose service whose Domain a sign-in is on, when it names one (#140). */
+function signInDomain(signIn: TemplateSignIn): string | undefined {
+  return "firstVisit" in signIn ? signIn.firstVisit.domain : signIn.domain;
+}
+
 /** The app is running: its address, and the next things people do. */
 function Running({
   template,
@@ -344,7 +352,11 @@ function Running({
           <SignInBlock
             appName={template.name}
             signIn={template.signIn}
-            address={pending ? null : address}
+            address={
+              pending
+                ? null
+                : appAddress(domains, signInDomain(template.signIn))
+            }
             composeId={composeId}
           />
         ) : null}
