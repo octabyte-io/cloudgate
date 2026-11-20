@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### The console has a Help & support page
+
+A **Help & support** row at the foot of the Organization rail opens `/help`: the guides published on cloudgate.octabyte.io (Quickstart, User guide, how Cloudgate fits together, the CLI, MCP and agents, the API reference), the common answers (Troubleshooting, FAQ, Limits, Changelog), and the support address, support@octabyte.io, with **Email support** and a copy button. Every docs link opens in a new tab.
+
+**What to do on upgrade**: nothing.
+
 ## 0.3.11 (2026-11-20)
 
 ### Get started's done card says how to sign in to the app
