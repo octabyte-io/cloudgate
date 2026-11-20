@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### A template's `signIn` takes the forms the catalogue needs
+
+The template check, which an Instance and `cloudgate template check` share, takes more of `template.yaml`'s `signIn` (#140), so the templates in cg-templates can say how each app signs in. An account made at setup may name only a `password`, for an app that asks no username, and a `path` where its sign-in page is (`path: /admin`). Either form may name the Domain its path is on, `domain: <service>`, one of `domains` by its service (the first of several on that service), for an app that signs in on an admin or Keycloak Domain. A password held in a `value` input is taken when its text is exactly one reference to a secret input, `{ value: "{{ADMIN_PASSWORD_RANDOM}}" }`; any other value is still refused as not a secret, as is a `domain` that `domains` does not list. Get started's done card follows: no Username row when the template names none, **Open /admin** under an account made at setup with a path, and either form's Open link on the named Domain.
+
+**What to do on upgrade**: nothing.
+
 ## 0.3.10 (2026-11-18)
 
 ### Expand a file editor to fill the window
