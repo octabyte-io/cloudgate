@@ -82,6 +82,12 @@ export type TabSubject = {
   logsAllowed?: boolean;
   /** An Application's kind in Project config terms: a `cron` has no Logs tab. */
   configKind?: string | null;
+  /**
+   * A Compose stack's Config files (#135): `true` when it has one or more
+   * `file` mounts, `false` when it has none, `"refused"` when the role
+   * cannot read volumes. Absent until the mounts read answers.
+   */
+  configFiles?: boolean | "refused";
 };
 
 export type TabEntry = {

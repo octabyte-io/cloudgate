@@ -224,6 +224,10 @@ export const GATED_CONTROLS: GatedControl[] = [
   // ── a Compose stack ───────────────────────────────────────────
   { file: "features/compose/source/compose-source-card.tsx", label: "Change source", requires: { service: ["update"] }, route: "PATCH /compose/:id", checkedIn: "ComposeService.findOwnedForUpdate" },
   { file: "features/compose/editor/compose-file-card.tsx", label: "Save the file", requires: { service: ["update"] }, route: "PATCH /compose/:id", checkedIn: "ComposeService.findOwnedForUpdate" },
+  // A stack's Config files tab (#135). The mount update also asks
+  // service:update in MountsService.update, which Save reads beside this.
+  { file: "features/compose/config-files/config-files-card.tsx", label: "Save the file", requires: { volume: ["create"] }, route: "PATCH /mounts/:id" },
+  { file: "features/compose/config-files/config-files-card.tsx", label: "Restart to apply", requires: { deployment: ["create"] }, route: "POST /compose/:id/restart" },
   { file: "features/compose/advanced/isolation-card.tsx", label: "Save", requires: { service: ["update"] }, route: "PATCH /compose/:id", checkedIn: "ComposeService.findOwnedForUpdate" },
   { file: "features/compose/panels/advanced.tsx", label: "Delete", requires: { service: ["delete"] }, route: "DELETE /compose/:id" },
 
