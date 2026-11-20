@@ -2,6 +2,19 @@
 
 The Cloudgate CLI's own changes, published to npm as `@octabyte-io/cloudgate`. A server change a CLI feature needs gets its own entry in the root `CHANGELOG.md` as well.
 
+## Unreleased
+
+### `template check` and `template pack` take `signIn`
+
+A template's `template.yaml` may say how a person signs in to the app once it runs, in an optional `signIn` block, which Get started's done card shows (#131, #140). 0.1.0 refuses every template that has it (`signIn is not a field a template has`). The check now takes both forms:
+
+- **An account made at setup**: `password`, the input holding it, and `username` when the app asks one (an input, or a fixed `{ value: admin }`). An app that asks only a password or a token writes only `password`. `path` is where its sign-in page is when it is not `/` (`path: /admin`).
+- **An account made on the first visit**: `firstVisit: { path: /ghost, note: … }`.
+- **On another Domain**: either form may write `domain: <service>`, beside `path`, naming one of `domains` by its service, when the app signs in on another Domain than its first. With several Domains on that service, the first is meant.
+- **A password held in a `value` input** is taken when its text is exactly one reference to a secret input, such as `ADMIN_PASSWORD: { value: "{{ADMIN_PASSWORD_RANDOM}}" }` with `ADMIN_PASSWORD_RANDOM: { generate: password }`. Fixed text, text around the reference, or a reference to an input that is not a secret is still refused.
+
+The check refuses a `signIn` that names an input the template has no rule for, or one its compose file does not read; a `domain` that `domains` does not list; both forms at once; a setup form with no `password`; and a `password` that is not a secret (asked with `secret: true`, or generated as a password, hex or base64).
+
 ## 0.1.0
 
 The first stable release, published to npm's `latest` dist-tag, so `npm install -g @octabyte-io/cloudgate` installs it. It holds everything in the 0.0.2 betas below, plus these changes since 0.0.2-beta.3. Anyone on a beta is told about it by the update notice.

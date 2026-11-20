@@ -112,6 +112,41 @@ describe('template check', () => {
     expect(result.stdout).toBe('✓ uptime-kuma\n');
   });
 
+  it('passes a template that signs in with only a password, on a Domain and path it names (#140)', async () => {
+    const parent = mkdtempSync(join(tmpdir(), 'cloudgate-templates-'));
+    const folder = templateFolder(parent, 'sftpgo');
+    writeFileSync(
+      join(folder, 'template.yaml'),
+      `name: SFTPGo
+description: File transfer.
+tags: [files]
+cloudgate: 0.1.0
+compose: app
+inputs:
+  ADMIN_PASSWORD: { generate: password }
+domains:
+  - { service: web, port: 8080 }
+signIn:
+  password: ADMIN_PASSWORD
+  path: /web/admin
+  domain: web
+`,
+    );
+    writeFileSync(
+      join(folder, 'cloudgate.yaml'),
+      'version: 1\nservices:\n  app: { kind: compose, managed: console }\n',
+    );
+    writeFileSync(
+      join(folder, 'docker-compose.yml'),
+      'services:\n  web:\n    image: drakkan/sftpgo:v2.6\n    environment:\n      SFTPGO_DEFAULT_ADMIN_PASSWORD: ${ADMIN_PASSWORD}\n',
+    );
+
+    const result = await check(folder);
+
+    expect(result.stdout).toBe('✓ sftpgo\n');
+    expect(result.code).toBe(0);
+  });
+
   it("refuses the whole folder over a stray file at a template's root", async () => {
     const parent = mkdtempSync(join(tmpdir(), 'cloudgate-templates-'));
     templateFolder(parent, 'uptime-kuma');
