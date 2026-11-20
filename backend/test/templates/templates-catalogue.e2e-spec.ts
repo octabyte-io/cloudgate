@@ -139,6 +139,8 @@ describe('The Template catalogue reader (e2e)', () => {
           runsOn: ['server', 'aws', 'gcp'],
           // The official catalogue's templates open their directory page.
           page: 'https://octabyte-io.github.io/cg-templates/templates/uptime-kuma/',
+          // It says nothing of signing in (#131).
+          signIn: null,
         },
       ]);
       expect(body.copy.problem).toBeNull();

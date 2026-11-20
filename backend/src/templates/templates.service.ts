@@ -20,7 +20,7 @@ import { downloadCatalogue } from './catalogue-download';
 import { catalogueSource, directoryPage } from './catalogue-source';
 import type { CatalogueSource } from './catalogue-source';
 import { checkCatalogue } from './check';
-import type { Template, TemplateLogo } from './check';
+import type { SignIn, Template, TemplateLogo } from './check';
 import { templateCatalogue } from './template-catalogue.schema';
 import type { TemplateCatalogueRow } from './template-catalogue.schema';
 import { whereItRuns } from './where-it-runs';
@@ -76,6 +76,14 @@ export interface TemplateSummary {
    * mirror's or a private catalogue's templates may have no page there.
    */
   readonly page: string | null;
+  /**
+   * How a person signs in to the app once it runs (#131): the inputs that
+   * hold an account made at setup, or the path where the first visit makes
+   * one; null when the template says neither. Names, never values: the done
+   * card reads the values from the stack's variables, under that Service's
+   * own read.
+   */
+  readonly signIn: SignIn | null;
 }
 
 /** The saved copy the list was read from, for the screen's staleness note. */
@@ -429,6 +437,7 @@ function summarize(template: Template, sourceUrl: string): TemplateSummary {
     logo: templateLogoPath(template),
     runsOn: whereItRuns(template.config),
     page: directoryPage(sourceUrl, template.id),
+    signIn: template.signIn ?? null,
   };
 }
 

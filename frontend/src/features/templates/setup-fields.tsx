@@ -31,15 +31,27 @@ import { SetupDnsRecords } from "./setup-dns-records";
  * stays within the file budget; each is a `Field` of the form around it.
  */
 
-/** The asked value at `at` in the template's list. */
-export function AskedField({ input, at }: { input: AskedInput; at: number }) {
+/**
+ * The asked value at `at` in the template's list. `hint`, when given, says
+ * what the console knows in place of the template's own description: Get
+ * started's sign-in username (#131).
+ */
+export function AskedField({
+  input,
+  at,
+  hint,
+}: {
+  input: AskedInput;
+  at: number;
+  hint?: string;
+}) {
   if (isYesNo(input)) return <YesNoField input={input} at={at} />;
   return (
     <Field
       name={`values.${at}`}
       label={input.label}
       optional={!input.required}
-      hint={input.description ?? undefined}
+      hint={hint ?? input.description ?? undefined}
     >
       {input.secret ? (
         <PasswordInput autoComplete="off" />

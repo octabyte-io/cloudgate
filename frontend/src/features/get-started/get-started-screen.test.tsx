@@ -406,6 +406,51 @@ describe("GetStartedScreen", () => {
         .getByRole("link", { name: "Use your own domain" })
         .getAttribute("href"),
     ).toBe("/compose/cmp_1/domains");
+    // Its passwords are one click away, on the stack's own Variables tab
+    // (#131); with no `signIn` in its template, no sign-in block.
+    expect(
+      screen.getByRole("link", { name: "Variables" }).getAttribute("href"),
+    ).toBe("/compose/cmp_1/variables");
+    expect(
+      screen.queryByRole("heading", { name: "How to sign in" }),
+    ).toBeNull();
+  });
+
+  it("says where Ghost's first visit makes its account (#131)", () => {
+    reads.templates = [
+      {
+        ...GHOST,
+        signIn: {
+          firstVisit: {
+            path: "/ghost",
+            note: "The first account made is the owner.",
+          },
+        },
+      },
+    ];
+    reads.phase = { phase: "running" };
+    reads.domains = [
+      {
+        host: "ghost-ab12-203-0-113-7.sslip.io",
+        https: false,
+        path: null,
+        service: { serviceType: "compose", serviceId: "cmp_1", name: "ghost" },
+      },
+    ];
+    show("template=ghost&server=srv_1&env=env_1");
+
+    expect(
+      screen.getByRole("heading", { name: "How to sign in" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/makes its first account on the first visit/)
+        .textContent,
+    ).toContain("The first account made is the owner.");
+    expect(
+      screen.getByRole("link", { name: "Open /ghost" }).getAttribute("href"),
+    ).toBe("http://ghost-ab12-203-0-113-7.sslip.io/ghost");
+    // No password: a first-visit sign-in has none to show.
+    expect(screen.queryByText("Password")).toBeNull();
   });
 
   describe("an https address (#130)", () => {
@@ -694,6 +739,41 @@ describe("GetStartedScreen", () => {
         /Your server: 1 of 4 steps done, now Creating your server/,
       );
       expect(screen.getByRole("form", { name: "Deploy Ghost" })).toBeTruthy();
+    });
+
+    it("says under the sign-in username that its password comes next (#131)", () => {
+      reads.templates = [
+        {
+          ...GHOST,
+          signIn: { username: "GHOST_USER", password: "GHOST_PASSWORD" },
+        },
+      ];
+      reads.purchases = [purchase("bs_1", "ghost-1", "creating")];
+      reads.setupForm = {
+        ...GHOST_SETUP,
+        asked: [
+          {
+            name: "GHOST_USER",
+            label: "Username",
+            description: "Shown afterwards on the app's variables page.",
+            default: "admin",
+            required: true,
+            secret: false,
+            format: null,
+            pattern: null,
+          },
+        ],
+      };
+      show(DETAILS.slice("/get-started?".length));
+
+      expect(
+        screen.getByText(
+          "The password is shown on the next screen once Ghost is running.",
+        ),
+      ).toBeTruthy();
+      expect(
+        screen.queryByText("Shown afterwards on the app's variables page."),
+      ).toBeNull();
     });
 
     it.each([

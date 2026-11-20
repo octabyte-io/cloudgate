@@ -7,6 +7,7 @@ import {
   inputNamesRule,
   inputReferencesRule,
 } from './template-inputs';
+import { signInRule } from './template-sign-in';
 
 /**
  * A template's compose file, read as far as the rules need it: its services
@@ -47,6 +48,7 @@ export const TEMPLATE_RULES: readonly TemplateRule[] = [
   composeOutputRule,
   inputNamesRule,
   inputReferencesRule,
+  signInRule,
   filesRule,
 ];
 

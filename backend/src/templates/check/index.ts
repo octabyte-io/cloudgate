@@ -19,7 +19,7 @@ export {
 export type { CatalogueFolder } from './catalogue-file';
 export { isLeftOutOfCatalogue, TEST_VALUES_FILE } from './catalogue-layout';
 export type { TemplateLogo } from './template-logo';
-export type { InputRule, TemplateYaml } from './template-yaml';
+export type { InputRule, SignIn, TemplateYaml } from './template-yaml';
 export { askedValueProblem } from './template-inputs';
 export { referencesIn } from './template-references';
 export { composeVariables } from './compose-variables';

@@ -36,7 +36,7 @@ export function serviceHref(service: {
 
 /**
  * A service's own tab of the same name, for a row that gathers something the
- * service owns — its Deployments, its domains.
+ * service owns — its Deployments, its domains, its Variables (#131).
  *
  * **Only the two deployable kinds have those tabs** (`tabs/application.ts`,
  * `tabs/compose.ts`); a managed database's scope has no Deployments and no
@@ -47,7 +47,7 @@ export function serviceHref(service: {
  */
 export function serviceTabHref(
   service: { serviceType: ServiceType; serviceId: string },
-  tab: "deployments" | "domains",
+  tab: "deployments" | "domains" | "variables",
 ): string {
   const base = serviceHref(service);
   return service.serviceType === "application" ||

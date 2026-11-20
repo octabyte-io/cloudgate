@@ -177,6 +177,71 @@ const file = z.strictObject({
 });
 
 /**
+ * How a person signs in to the app once it runs (#131), for Get started's done
+ * card. Cloudgate cannot infer it from the inputs: a generated password is as
+ * often a database's as an account's, and some apps make their first account
+ * on the first visit. So the template says, in one of two forms:
+ *
+ * - an account made at setup: `username` and `password`, each the name of an
+ *   input (the password one asked secret, or generated; the template rules
+ *   hold both to the inputs), or the username a fixed `{ value: … }`;
+ * - an account made on the first visit: `firstVisit`, the path to open and
+ *   an optional note.
+ *
+ * Both at once, or neither, is refused, by the one key that names each form.
+ */
+/** An input's name, which a sign-in cannot do without. */
+const inputName = z
+  .string({
+    error: (issue) =>
+      issue.input === undefined ? 'is required' : 'must be an input name',
+  })
+  .regex(VARIABLE_NAME, 'must be an input name, e.g. ADMIN_PASSWORD');
+
+const madeAtSetup = z.strictObject({
+  username: z.union([inputName, z.strictObject({ value: text() })], {
+    error: 'must be an input name, or { value: <fixed text> }',
+  }),
+  password: inputName,
+});
+
+const madeOnFirstVisit = z.strictObject({
+  firstVisit: z.strictObject({
+    path: z
+      .string()
+      .default('/')
+      .refine((path) => path.startsWith('/'), {
+        message: 'must start with /',
+      }),
+    note: z.string().trim().min(1, 'must not be empty').optional(),
+  }),
+});
+
+export type SignIn =
+  z.infer<typeof madeAtSetup> | z.infer<typeof madeOnFirstVisit>;
+
+const signIn = z.unknown().transform((raw, context): SignIn => {
+  const object = raw !== null && typeof raw === 'object' && !Array.isArray(raw);
+  const atSetup = object && ('username' in raw || 'password' in raw);
+  const firstVisit = object && 'firstVisit' in raw;
+  if (!object || atSetup === firstVisit) {
+    context.addIssue({
+      code: 'custom',
+      message: firstVisit
+        ? 'is one form: username and password, or firstVisit, not both'
+        : 'must be username and password, or firstVisit',
+    });
+    return z.NEVER;
+  }
+  const result = (firstVisit ? madeOnFirstVisit : madeAtSetup).safeParse(raw);
+  if (result.success) return result.data;
+  for (const issue of result.error.issues) {
+    context.addIssue({ ...issue, path: issue.path });
+  }
+  return z.NEVER;
+});
+
+/**
  * The version a template needs, and the field read before every other: a
  * template written for a newer Cloudgate may carry fields this one does not
  * know, and must be hidden for its version rather than for those fields.
@@ -230,6 +295,7 @@ export const templateYamlSchema = z.strictObject({
   inputs: z.record(variableName, inputRule).default({}),
   domains: z.array(domain).default([]),
   files: z.array(file).default([]),
+  signIn: signIn.optional(),
 });
 
 export type TemplateYaml = z.infer<typeof templateYamlSchema>;

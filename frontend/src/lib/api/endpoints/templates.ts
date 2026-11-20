@@ -46,7 +46,24 @@ export interface TemplateSummary {
    * null when the catalogue is not the official one.
    */
   page: string | null;
+  /**
+   * How a person signs in to the app once it runs (#131), as the template
+   * says: the inputs that hold an account made at setup, or the path where
+   * the first visit makes one. Names, never values. Null or absent when the
+   * template says neither.
+   */
+  signIn?: TemplateSignIn | null;
 }
+
+/** A template's `signIn` (#131): one of its two forms. */
+export type TemplateSignIn =
+  | {
+      /** An input's name, or a fixed username. */
+      username: string | { value: string };
+      /** An input's name: asked secret, or generated. */
+      password: string;
+    }
+  | { firstVisit: { path: string; note?: string } };
 
 /** The saved copy the list came from, for the staleness note. */
 export interface CatalogueCopy {

@@ -6,7 +6,10 @@ import { LinkButton } from "@/components/console/link-button";
 import { Skeleton } from "@/components/console/skeleton";
 import { serviceTabHref } from "@/components/shell/service-href";
 import { buttonVariants } from "@/components/ui/button";
-import type { EnvironmentDomain } from "@/lib/api/endpoints/environments";
+import type {
+  EnvironmentDetail,
+  EnvironmentDomain,
+} from "@/lib/api/endpoints/environments";
 import type { TemplateSummary } from "@/lib/api/endpoints/templates";
 import { errorMessage } from "@/lib/api/error-message";
 import {
@@ -17,6 +20,7 @@ import { Icon } from "@/lib/design/icons";
 
 import { addressInSslipName } from "../application/domains/dns-helper";
 import { LaunchDetail } from "./launch-progress";
+import { SignInBlock } from "./sign-in-block";
 import { useLaunch, useWizardServers } from "./use-get-started";
 import { StageList } from "./wizard-parts";
 import {
@@ -86,6 +90,7 @@ export function LaunchView({
         template={template}
         domains={launch.domains.data}
         pending={launch.domains.isPending}
+        environment={launch.environment?.data}
         environmentHref={environmentHref}
         serverId={serverId}
       />
@@ -174,12 +179,14 @@ function Launched({
   template,
   domains,
   pending,
+  environment,
   environmentHref,
   serverId,
 }: {
   template: TemplateSummary;
   domains: EnvironmentDomain[] | undefined;
   pending: boolean;
+  environment: EnvironmentDetail | undefined;
   environmentHref: string;
   serverId: string | null;
 }) {
@@ -221,6 +228,7 @@ function Launched({
       template={template}
       domains={domains}
       pending={pending}
+      environment={environment}
       environmentHref={environmentHref}
       certificateLate={https && certificate.state === "not-issued"}
       serverId={serverId}
@@ -233,6 +241,7 @@ function Running({
   template,
   domains,
   pending,
+  environment,
   environmentHref,
   certificateLate,
   serverId,
@@ -240,13 +249,21 @@ function Running({
   template: TemplateSummary;
   domains: EnvironmentDomain[] | undefined;
   pending: boolean;
+  /** The Environment's read, for the template's stack when no Domain names it. */
+  environment: EnvironmentDetail | undefined;
   environmentHref: string;
   /** Its HTTPS certificate was waited for, and is still not issued. */
   certificateLate: boolean;
   serverId: string | null;
 }) {
   const address = appAddress(domains);
-  const service = domains?.[0]?.service;
+  // The template's stack: its Domain's Service, or else the Environment's
+  // one stack (Get started's Environment is the template's own).
+  const service =
+    domains?.[0]?.service ??
+    environment?.services.find((one) => one.serviceType === "compose");
+  const composeId =
+    service?.serviceType === "compose" ? service.serviceId : null;
   const servers = useWizardServers();
   const host = domains?.[0]?.host ?? "";
   // Where an A record has to point: the sslip.io name carries it; an own
@@ -323,6 +340,15 @@ function Running({
           </p>
         )}
 
+        {template.signIn ? (
+          <SignInBlock
+            appName={template.name}
+            signIn={template.signIn}
+            address={pending ? null : address}
+            composeId={composeId}
+          />
+        ) : null}
+
         <div className="grid w-full gap-2 border-t border-line pt-4">
           <h2 className="text-body font-medium text-tx">What next</h2>
           <ul className="grid gap-1.5 text-body text-tx-2">
@@ -337,6 +363,18 @@ function Running({
                 so {template.name} is served over https.
               </li>
             ) : null}
+            {service ? (
+              <li>
+                All of {template.name}&rsquo;s settings and passwords are on its{" "}
+                <Link
+                  href={serviceTabHref(service, "variables")}
+                  className="text-brand-tx underline underline-offset-2"
+                >
+                  Variables
+                </Link>{" "}
+                tab.
+              </li>
+            ) : null}
             <li>
               <Link
                 href={environmentHref}
@@ -344,7 +382,9 @@ function Running({
               >
                 See {template.name} in your Project
               </Link>
-              : its logs, settings and passwords.
+              {service
+                ? ": its logs and settings."
+                : ": its logs, settings and passwords."}
             </li>
             <li>
               <Link
