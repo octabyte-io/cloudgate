@@ -57,8 +57,9 @@ export interface TemplateSummary {
 
 /**
  * A template's `signIn` (#131, #140): one of its two forms. `domain` names
- * the Domain its path is on, by the compose service it routes into (the
- * first Domain of that service); absent, the first Domain.
+ * the Domain its path is on, by the compose service it routes into (one
+ * only Domain routes into; the template check refuses a shared one);
+ * absent, the first Domain.
  */
 export type TemplateSignIn =
   | {

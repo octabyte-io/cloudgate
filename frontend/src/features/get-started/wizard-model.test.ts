@@ -19,6 +19,7 @@ import {
   launchParts,
   launchPhase,
   serverBeingMade,
+  signInDomain,
   startingPrice,
   waitsForGeneratedHost,
 } from "./wizard-model";
@@ -355,6 +356,17 @@ describe("appAddress", () => {
     expect(appAddress(domains, undefined)).toBe("https://logto.example.com");
     // A service with no Domain here names no address, rather than another's.
     expect(appAddress(domains, "keycloak")).toBeNull();
+  });
+});
+
+describe("signInDomain", () => {
+  it("is the service either form of a sign-in names, if any (#140)", () => {
+    expect(signInDomain({ password: "P", domain: "admin" })).toBe("admin");
+    expect(
+      signInDomain({ firstVisit: { path: "/", domain: "keycloak" } }),
+    ).toBe("keycloak");
+    expect(signInDomain({ password: "P", path: "/admin" })).toBeUndefined();
+    expect(signInDomain({ firstVisit: { path: "/" } })).toBeUndefined();
   });
 });
 

@@ -10,10 +10,7 @@ import type {
   EnvironmentDetail,
   EnvironmentDomain,
 } from "@/lib/api/endpoints/environments";
-import type {
-  TemplateSignIn,
-  TemplateSummary,
-} from "@/lib/api/endpoints/templates";
+import type { TemplateSummary } from "@/lib/api/endpoints/templates";
 import { errorMessage } from "@/lib/api/error-message";
 import {
   useServedCertificate,
@@ -29,6 +26,7 @@ import { StageList } from "./wizard-parts";
 import {
   appAddress,
   launchParts,
+  signInDomain,
   type LaunchPhase,
   type StageState,
 } from "./wizard-model";
@@ -199,10 +197,9 @@ function Launched({
   const certificate = useServedCertificate(domain?.domainId ?? null, {
     enabled: https,
   });
-  if (
-    https &&
-    (certificate.state === "reading" || certificate.state === "issuing")
-  ) {
+  const waiting =
+    certificate.state === "reading" || certificate.state === "issuing";
+  if (https && waiting) {
     return (
       <Card>
         <Card.Header
@@ -237,11 +234,6 @@ function Launched({
       serverId={serverId}
     />
   );
-}
-
-/** The compose service whose Domain a sign-in is on, when it names one (#140). */
-function signInDomain(signIn: TemplateSignIn): string | undefined {
-  return "firstVisit" in signIn ? signIn.firstVisit.domain : signIn.domain;
 }
 
 /** The app is running: its address, and the next things people do. */
@@ -352,11 +344,7 @@ function Running({
           <SignInBlock
             appName={template.name}
             signIn={template.signIn}
-            address={
-              pending
-                ? null
-                : appAddress(domains, signInDomain(template.signIn))
-            }
+            address={appAddress(domains, signInDomain(template.signIn))}
             composeId={composeId}
           />
         ) : null}

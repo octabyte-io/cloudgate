@@ -111,11 +111,41 @@ describe("SignInBlock (#131)", () => {
     ).toBe("https://notes.example.com/admin");
   });
 
-  it("gives an account made at setup no Open link without a path", async () => {
+  it("opens the Domain an account made at setup names, at / without a path (#140)", async () => {
+    show({ ...FLATNOTES, domain: "admin" });
+
+    expect(await screen.findByText("admin")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Open /" }).getAttribute("href"),
+    ).toBe("https://notes.example.com/");
+  });
+
+  it("gives an account made at setup no Open link with neither a path nor a Domain", async () => {
     show(FLATNOTES);
 
     expect(await screen.findByText("admin")).toBeTruthy();
     expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("still points a member the stack's read refuses at the sign-in path, with no password (#140)", async () => {
+    findOne.mockRejectedValue(new Error("Forbidden"));
+    const { container } = show({ ...FLATNOTES, path: "/admin" });
+
+    // After the refusal, not while the read is pending.
+    await waitFor(() => expect(findOne).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(container.querySelector('[data-slot="skeleton"]')).toBeNull(),
+    );
+    expect(
+      (await screen.findByRole("link", { name: "Open /admin" })).getAttribute(
+        "href",
+      ),
+    ).toBe("https://notes.example.com/admin");
+    expect(
+      screen.getByRole("heading", { name: "How to sign in" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Show" })).toBeNull();
+    expect(screen.queryByText("admin")).toBeNull();
   });
 
   it("points a first-visit sign-in at its path, reading no variables", () => {

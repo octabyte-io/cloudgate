@@ -26,7 +26,9 @@ const MASK = "••••••••";
  *   A member that read refuses sees no block, so no password and no Show.
  *   The password stays masked until Show; Copy copies it either way. With
  *   no username in the template (an app that asks only a password or a
- *   token, #140), no Username row; with a `path`, an Open link to it.
+ *   token, #140), no Username row. With a `path` or a `domain`, an Open link
+ *   to that path (`/` without one), shown whether or not the read succeeds:
+ *   where to sign in is no secret.
  * - An account made on the first visit: where to go to make it.
  *
  * `address` is the Domain the sign-in is on: the one `signIn.domain` names,
@@ -58,25 +60,31 @@ export function SignInBlock({
       </Section>
     );
   }
+  const path = signIn.path ?? (signIn.domain ? "/" : null);
+  const open =
+    path && address ? <OpenPath address={address} path={path} /> : null;
   return composeId ? (
     <MadeAtSetup
       appName={appName}
       signIn={signIn}
-      address={address}
+      open={open}
       composeId={composeId}
     />
+  ) : open ? (
+    <Section>{open}</Section>
   ) : null;
 }
 
 function MadeAtSetup({
   appName,
   signIn,
-  address,
+  open,
   composeId,
 }: {
   appName: string;
   signIn: Extract<TemplateSignIn, { password: string }>;
-  address: string | null;
+  /** The Open link to the sign-in, outside what the read gates; null with none. */
+  open: ReactNode;
   composeId: string;
 }) {
   const { organizationId } = useActiveOrganizationId();
@@ -92,10 +100,12 @@ function MadeAtSetup({
     return (
       <Section>
         <Skeleton className="h-12 w-full max-w-80" />
+        {open}
       </Section>
     );
   }
-  if (stack.error) return null;
+  const onlyOpen = open ? <Section>{open}</Section> : null;
+  if (stack.error) return onlyOpen;
 
   const variables = parseEnvBlob(stack.data.env);
   const valueOf = (name: string) =>
@@ -107,7 +117,7 @@ function MadeAtSetup({
         ? valueOf(signIn.username)
         : signIn.username.value;
   const password = valueOf(signIn.password);
-  if (username === null && password === null) return null;
+  if (username === null && password === null) return onlyOpen;
 
   return (
     <Section>
@@ -164,7 +174,7 @@ function MadeAtSetup({
           />
         ) : null}
       </KVList>
-      {signIn.path ? <OpenPath address={address} path={signIn.path} /> : null}
+      {open}
     </Section>
   );
 }
