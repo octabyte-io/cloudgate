@@ -2,9 +2,44 @@
 
 ## Unreleased
 
+## 0.3.11 (2026-11-20)
+
+### Get started's done card says how to sign in to the app
+
+A template may say how a person signs in once the app runs, in an optional `signIn` block in `template.yaml` (#131): the inputs holding an account made at setup, or the path where the first visit makes one. The done card shows a **How to sign in** block from it: the username and a masked password with **Show** and **Copy**, read from the stack's own variables under the stack's read, so a member that read refuses sees no password; or where to open the app to make the first account. With no `signIn`, no block. The What next list links straight to the stack's Variables tab. The template check refuses both forms at once, an input the template has no rule for or its compose file does not read, and a password that is not a secret.
+
+**What to do on upgrade**: nothing. Templates that carry `signIn` name `cloudgate: "0.3.11"`, so an older Instance hides them for their version.
+
 ### A template's `signIn` takes the forms the catalogue needs
 
-The template check, which an Instance and `cloudgate template check` share, takes more of `template.yaml`'s `signIn` (#140), so the templates in cg-templates can say how each app signs in. An account made at setup may name only a `password`, for an app that asks no username, and a `path` where its sign-in page is (`path: /admin`). Either form may name the Domain its path is on, `domain: <service>`, one of `domains` by its service (the first of several on that service), for an app that signs in on an admin or Keycloak Domain. A password held in a `value` input is taken when its text is exactly one reference to a secret input, `{ value: "{{ADMIN_PASSWORD_RANDOM}}" }`; any other value is still refused as not a secret, as is a `domain` that `domains` does not list. Get started's done card follows: no Username row when the template names none, **Open /admin** under an account made at setup with a path, and either form's Open link on the named Domain.
+The template check, which an Instance and `cloudgate template check` share, takes more of `template.yaml`'s `signIn` (#140), so the templates in cg-templates can say how each app signs in. An account made at setup may name only a `password`, for an app that asks no username, and a `path` where its sign-in page is (`path: /admin`). Either form may name the Domain its path is on, `domain: <service>`, one of `domains` by its service, for an app that signs in on an admin or Keycloak Domain. A password held in a `value` input is taken when its text is exactly one reference to a secret input, `{ value: "{{ADMIN_PASSWORD_RANDOM}}" }`; any other value is still refused as not a secret, as is a `domain` that `domains` does not list or that several of its Domains share. Get started's done card follows: no Username row when the template names none, **Open /admin** under an account made at setup with a path or a Domain, shown even to a member who cannot read the stack's variables, and either form's Open link on the named Domain.
+
+**What to do on upgrade**: nothing.
+
+### A stack's Config files tab edits the files its Template shipped
+
+A Template's config files were kept as the stack's file mounts but never shown on the stack's page, so changing one meant SSH and an edit Cloudgate's copy would later overwrite (#134, #135). A **Config files** tab, after Shell, lists them by path and opens one in the editor; Save writes only the new content where the stack runs, and **Restart to apply** restarts the stack. The tab is absent for a stack with no file mount or a role that cannot read its mounts.
+
+**What to do on upgrade**: nothing.
+
+### A Domain says when its HTTPS certificate is still being issued
+
+Until Let's Encrypt answers, Traefik serves its self-signed default certificate, so Get started's Open landed on a browser warning and the Domains tab said "Let's Encrypt" whatever was served (#130). `GET /domains/:id/served-certificate` reads what the Domain's host serves; Get started adds a "Getting its HTTPS certificate" stage and shows Open once it is issued, and the Domains tab and the Overview's Domain card say issuing, valid until a date, or not issued yet.
+
+**What to do on upgrade**: nothing.
+
+### The Templates list no longer carries every logo inline
+
+`GET /templates` carried each logo base64-encoded, so the official catalogue's list was about 10 MB and the Templates screen sat on skeletons (#123, #125). The list now carries an address, and `GET /templates/:templateId/logo` serves the bytes, cached, with an SVG sandboxed so it runs no script. A Template from the official catalogue also opens its page in the cg-templates directory from its name and logo (#124).
+
+**What to do on upgrade**: nothing.
+
+### Smaller fixes
+
+- The This host card, a shell on the platform host, was offered to every Organization on Hosted; it is now shown only to the instance's operators (#126).
+- Get started's Location card shows the map, as Buy a server does (#127).
+- Template setup for a new Project with nowhere to deploy opens Get started instead of a form with no Deploy target (#128).
+- The masthead's Organization cell is exactly the rail's width, so their borders meet (#129).
 
 **What to do on upgrade**: nothing.
 
