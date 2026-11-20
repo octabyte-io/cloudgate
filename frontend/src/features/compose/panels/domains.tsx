@@ -137,10 +137,10 @@ function Body({ compose }: { compose: ComposeDetail }) {
           <>
             {rows.length > 0 ? (
               <MetaStrip>
-                Traefik reads these as <strong>labels on the containers</strong>,
-                written into the compose file when the stack is deployed — so a
-                host added or changed here starts or stops being served on the next
-                Deployment. The Converted tab says exactly what gets added.
+                Traefik reads these as <strong>labels on the containers</strong>
+                , written into the compose file when the stack is deployed — so
+                a host added or changed here starts or stops being served on the
+                next Deployment. The Converted tab says exactly what gets added.
               </MetaStrip>
             ) : null}
             <Card.Body flush>
@@ -150,6 +150,7 @@ function Body({ compose }: { compose: ComposeDetail }) {
                 getRowId={(domain) => domain.domainId}
                 defaultSort={{ id: "host", dir: "asc" }}
                 columns={domainColumns({
+                  serverId: compose.serverId,
                   service: (domain) => domain.serviceName,
                   action: (domain) => (
                     <span className="inline-flex gap-1.5">
@@ -177,7 +178,8 @@ function Body({ compose }: { compose: ComposeDetail }) {
                     }
                   >
                     Add a domain to reach this stack from the internet. The
-                    dialog can generate a working host if you do not own one yet.
+                    dialog can generate a working host if you do not own one
+                    yet.
                   </EmptyState>
                 }
               />

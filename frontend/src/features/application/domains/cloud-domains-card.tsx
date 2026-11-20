@@ -99,12 +99,12 @@ export function CloudDomainsCard({
           stackVm
             ? `On the Environment network's ${cloudRun ? "Google Cloud" : "AWS"} load balancer, each with its own ${cloudRun ? "Google-managed" : "ACM"} certificate, reaching a service on this stack's Stack VM. A Stack VM has no generated host: each Domain is a host of your own. Each change runs at once as a short Deployment of the stack.`
             : cloudFront
-            ? "On this site's CloudFront distribution, with its own ACM certificate. A static site on AWS takes one Domain; each change runs at once as its own short Deployment."
-            : cloudCdn
-              ? "On the Environment network's Google Cloud load balancer, each with its own Google-managed certificate, serving this site's Cloud CDN backend bucket. Each change runs at once as a short run of the Environment network."
-              : cloudRun
-                ? "Its own run.app address, on Google's certificate, and the Domains on the Environment network's Google Cloud load balancer, each with its own Google-managed certificate. Each change runs at once as a short run of the Environment network."
-                : "On the Environment's AWS load balancer, each with its own ACM certificate. Each change runs at once as its own short Deployment."
+              ? "On this site's CloudFront distribution, with its own ACM certificate. A static site on AWS takes one Domain; each change runs at once as its own short Deployment."
+              : cloudCdn
+                ? "On the Environment network's Google Cloud load balancer, each with its own Google-managed certificate, serving this site's Cloud CDN backend bucket. Each change runs at once as a short run of the Environment network."
+                : cloudRun
+                  ? "Its own run.app address, on Google's certificate, and the Domains on the Environment network's Google Cloud load balancer, each with its own Google-managed certificate. Each change runs at once as a short run of the Environment network."
+                  : "On the Environment's AWS load balancer, each with its own ACM certificate. Each change runs at once as its own short Deployment."
         }
         headingLevel={2}
       />
@@ -125,12 +125,12 @@ export function CloudDomainsCard({
               {stackVm
                 ? "No Domain yet. A Stack VM has no generated host and no public address, so until you add a host of your own this stack is reachable only from inside the Environment network."
                 : cloudFront
-                ? "No Domain yet. Until one is added this site is reached at its CloudFront name."
-                : cloudCdn
-                  ? "No Domain yet. Until one is added this site answers nowhere: a static site on Google Cloud has no address of its own."
-                  : cloudRun
-                    ? "No Domain yet. Until one is added this Service is reached at its run.app address."
-                    : "No Domain yet. Until one is added this Service is reached only through its load balancer."}
+                  ? "No Domain yet. Until one is added this site is reached at its CloudFront name."
+                  : cloudCdn
+                    ? "No Domain yet. Until one is added this site answers nowhere: a static site on Google Cloud has no address of its own."
+                    : cloudRun
+                      ? "No Domain yet. Until one is added this Service is reached at its run.app address."
+                      : "No Domain yet. Until one is added this Service is reached only through its load balancer."}
             </p>
             <Button
               disabled={!canAdd.allowed}

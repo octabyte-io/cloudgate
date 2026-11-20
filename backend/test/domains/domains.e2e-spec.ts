@@ -12,6 +12,7 @@ import { ComposeService } from '../../src/compose/compose.service';
 import { DeploymentEngineService } from '../../src/deployment-engine/deployment-engine.service';
 import { domain as domainRow } from '../../src/db/schema';
 import { DomainsService } from '../../src/domains/domains.service';
+import { SERVED_CERTIFICATE_READER } from '../../src/domains/served-certificate.service';
 import { EnvironmentsService } from '../../src/environments/environments.service';
 import { ProjectsService } from '../../src/projects/projects.service';
 import { RemoteExecService } from '../../src/remote/remote-exec.service';
@@ -111,12 +112,15 @@ describe('Domains (e2e)', () => {
     writeConfig: jest.fn(),
     removeConfig: jest.fn(),
   };
+  // What a host serves, without dialling one.
+  const readServed = jest.fn();
 
   beforeAll(async () => {
     ctx = await createTestApp({
       overrideProviders: [
         { provide: RemoteExecService, useValue: execMock },
         { provide: TraefikWriterService, useValue: traefikWriterMock },
+        { provide: SERVED_CERTIFICATE_READER, useValue: readServed },
       ],
     });
     server = ctx.app.getHttpServer() as App;
@@ -145,6 +149,11 @@ describe('Domains (e2e)', () => {
       .mockResolvedValue({ http: { routers: {}, services: {} } });
     traefikWriterMock.writeConfig.mockReset().mockResolvedValue(undefined);
     traefikWriterMock.removeConfig.mockReset().mockResolvedValue(undefined);
+    readServed.mockReset().mockResolvedValue({
+      valid: true,
+      issuer: "Let's Encrypt",
+      notAfter: '2027-02-17T12:00:00.000Z',
+    });
   });
 
   /** Every shell command the mocked exec saw, local and remote. */
@@ -1297,6 +1306,74 @@ describe('Domains (e2e)', () => {
         // which is the half of the branch `null` deliberately skips.
         expect(res.status).toBe(404);
       });
+    });
+  });
+
+  describe('the served certificate (#130)', () => {
+    it("reads the certificate the Domain's own stored host serves", async () => {
+      const { ownerSession, ownerCtx, application } = await setUpApplication();
+      const created = await domains.create(ownerCtx, {
+        host: 'blog.example.com',
+        applicationId: application.applicationId,
+        https: true,
+        certificateType: 'letsencrypt',
+      });
+
+      const res = await request(server)
+        .get(`/domains/${created.domainId}/served-certificate`)
+        .set('Cookie', ownerSession.cookie);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({
+        valid: true,
+        issuer: "Let's Encrypt",
+        notAfter: '2027-02-17T12:00:00.000Z',
+      });
+      expect(readServed).toHaveBeenCalledTimes(1);
+      expect(readServed).toHaveBeenCalledWith('blog.example.com');
+    });
+
+    it('refuses a Domain the caller cannot read, and one that exists nowhere, before dialling anything', async () => {
+      const { ownerSession, ownerCtx, application } = await setUpApplication();
+      const created = await domains.create(ownerCtx, {
+        host: 'blog.example.com',
+        applicationId: application.applicationId,
+        https: true,
+        certificateType: 'letsencrypt',
+      });
+      const member = await inviteUser(
+        server,
+        ownerSession.cookie,
+        'ida@example.com',
+        'member',
+      );
+
+      const refused = await request(server)
+        .get(`/domains/${created.domainId}/served-certificate`)
+        .set('Cookie', member.cookie);
+      expect(refused.status).toBe(403);
+
+      const nowhere = await request(server)
+        .get('/domains/no-such-domain-id/served-certificate')
+        .set('Cookie', ownerSession.cookie);
+      expect(nowhere.status).toBe(404);
+
+      expect(readServed).not.toHaveBeenCalled();
+    });
+
+    it('answers a Domain served over HTTP that it has no certificate, without dialling', async () => {
+      const { ownerSession, ownerCtx, application } = await setUpApplication();
+      const created = await domains.create(ownerCtx, {
+        host: 'blog.example.com',
+        applicationId: application.applicationId,
+      });
+
+      const res = await request(server)
+        .get(`/domains/${created.domainId}/served-certificate`)
+        .set('Cookie', ownerSession.cookie);
+
+      expect(res.status).toBe(400);
+      expect(readServed).not.toHaveBeenCalled();
     });
   });
 

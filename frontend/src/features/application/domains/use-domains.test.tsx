@@ -15,9 +15,8 @@ vi.mock("@/lib/auth/client", async (original) => ({
   useActiveOrganizationId,
 }));
 
-const { useCreateDomain, useDeleteDomain, useUpdateDomain } = await import(
-  "./use-domains"
-);
+const { useCreateDomain, useDeleteDomain, useUpdateDomain } =
+  await import("./use-domains");
 
 const status = keys.traefik.configStatus("org-1", "app-1");
 
@@ -122,8 +121,8 @@ describe("an Application's domain writes", () => {
     await act(() => result.current.mutateAsync("d1"));
     await act(() => vi.advanceTimersByTimeAsync(10_000));
 
-    expect(
-      keysInvalidated().some((key) => key?.includes("traefik")),
-    ).toBe(false);
+    expect(keysInvalidated().some((key) => key?.includes("traefik"))).toBe(
+      false,
+    );
   });
 });

@@ -570,6 +570,14 @@ export const keys = {
       [...org(organizationId), "domains", "by-compose", composeId] as const,
     byBucket: (organizationId: OrganizationScope, bucketId: string) =>
       [...org(organizationId), "domains", "by-bucket", bucketId] as const,
+    /** What its host serves now (#130); under `all`, so a Domain write re-reads it. */
+    servedCertificate: (organizationId: OrganizationScope, domainId: string) =>
+      [
+        ...org(organizationId),
+        "domains",
+        "served-certificate",
+        domainId,
+      ] as const,
   },
 
   /**

@@ -180,6 +180,16 @@ export interface DomainValidation {
   error?: string;
 }
 
+/** `GET /domains/:id/served-certificate`. */
+export interface ServedCertificate {
+  /** The chain verifies and the certificate names the host. */
+  valid: boolean;
+  /** Who issued what was served; null when nothing was. */
+  issuer: string | null;
+  /** When it expires, as ISO; null when nothing was served. */
+  notAfter: string | null;
+}
+
 export const domainsApi = {
   byApplication: (applicationId: string) =>
     api.get<Domain[]>(`/applications/${applicationId}/domains`),
@@ -192,6 +202,15 @@ export const domainsApi = {
     api.get<Domain[]>(`/buckets/${bucketId}/domains`),
 
   findOne: (domainId: string) => api.get<Domain>(`/domains/${domainId}`),
+
+  /**
+   * The certificate the Domain's host serves right now (#130), read by a TLS
+   * handshake from the platform host: not the stored setting, but what a
+   * browser would be shown. Traefik's default certificate, served until Let's
+   * Encrypt has answered, reads as not `valid`.
+   */
+  servedCertificate: (domainId: string) =>
+    api.get<ServedCertificate>(`/domains/${domainId}/served-certificate`),
 
   create: (input: CreateDomainInput) => api.post<Domain>("/domains", input),
 

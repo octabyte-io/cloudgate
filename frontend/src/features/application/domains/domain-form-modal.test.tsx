@@ -78,7 +78,9 @@ describe("DomainFormModal", () => {
     // The service field is present only for a Compose stack, whose routers do
     // travel as labels injected at deploy time.
     const said = open({ names: ["web"], pending: false });
-    expect(said).toContain("Changes reach Traefik on this stack's next Deployment.");
+    expect(said).toContain(
+      "Changes reach Traefik on this stack's next Deployment.",
+    );
   });
 
   it("refuses a path Traefik would drop, at the field, without the round trip", async () => {
@@ -225,13 +227,11 @@ describe("DomainFormModal", () => {
     // a checked host relabelled the old lookup with the new name — "nope.invalid
     // is behind Cloudflare. It resolves to 104.20.23.154" about a host nobody
     // had looked up. Only Generate cleared it.
-    const validate = vi
-      .spyOn(domainsApi, "validate")
-      .mockResolvedValue({
-        isValid: true,
-        resolvedIp: "104.20.23.154, 172.66.147.243",
-        cdnProvider: "Cloudflare",
-      });
+    const validate = vi.spyOn(domainsApi, "validate").mockResolvedValue({
+      isValid: true,
+      resolvedIp: "104.20.23.154, 172.66.147.243",
+      cdnProvider: "Cloudflare",
+    });
     mount();
 
     const field = screen.getByLabelText(/Host/);

@@ -7,6 +7,10 @@ import { ComposeDomainsAside } from "./compose-domains-aside";
 import { useComposeDomains } from "./use-compose-domains";
 
 vi.mock("./use-compose-domains", () => ({ useComposeDomains: vi.fn() }));
+// What the host serves is the served-certificate read's, tested beside it.
+vi.mock("@/lib/api/use-served-certificate", () => ({
+  useServedCertificate: () => ({ state: "reading" }),
+}));
 
 afterEach(cleanup);
 

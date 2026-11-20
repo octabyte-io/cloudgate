@@ -19,6 +19,7 @@ import {
 import { RequirePermission } from '../rbac/decorators/require-permission.decorator';
 import type { PermissionCtx } from '../rbac/permission.service';
 import { DomainsService } from './domains.service';
+import { ServedCertificateService } from './served-certificate.service';
 import {
   CreateDomainDto,
   GenerateDomainDto,
@@ -42,7 +43,10 @@ function toCtx(user: AuthSession['user'], session: Session): PermissionCtx {
 // nest under their services' paths (mirroring preview-deployments).
 @Controller()
 export class DomainsController {
-  constructor(private readonly domainsService: DomainsService) {}
+  constructor(
+    private readonly domainsService: DomainsService,
+    private readonly servedCertificates: ServedCertificateService,
+  ) {}
 
   @Post('domains')
   @RequirePermission('domain', 'create')
@@ -111,6 +115,21 @@ export class DomainsController {
     @Param('id') id: string,
   ) {
     return this.domainsService.findOne(toCtx(user, session), id);
+  }
+
+  /**
+   * The certificate the Domain's host serves now (#130). `domain: read`, and
+   * then `findOne`'s own checks, as reading the Domain; the host is the
+   * stored one.
+   */
+  @Get('domains/:id/served-certificate')
+  @RequirePermission('domain', 'read')
+  servedCertificate(
+    @CurrentUser() user: AuthSession['user'],
+    @CurrentSession() session: Session,
+    @Param('id') id: string,
+  ) {
+    return this.servedCertificates.servedCertificate(toCtx(user, session), id);
   }
 
   @Patch('domains/:id')

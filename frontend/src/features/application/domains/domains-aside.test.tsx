@@ -6,9 +6,21 @@ import type { Domain } from "@/lib/api/endpoints/domains";
 import { DomainsAside } from "./domains-aside";
 import { useApplicationDomains } from "./use-domains";
 
-vi.mock("./use-domains", () => ({ useApplicationDomains: vi.fn() }));
+const served = vi.hoisted(() => ({
+  current: { state: "reading" } as Record<string, unknown>,
+}));
 
-afterEach(cleanup);
+vi.mock("./use-domains", () => ({ useApplicationDomains: vi.fn() }));
+// What the host serves is the served-certificate read's, tested beside it.
+vi.mock("@/lib/api/use-served-certificate", () => ({
+  useServedCertificate: (id: string | null) =>
+    id === null ? { state: "reading" } : served.current,
+}));
+
+afterEach(() => {
+  cleanup();
+  served.current = { state: "reading" };
+});
 
 /** The rail card, fed one domain. */
 function asideSays(domain: Partial<Domain>): string {
@@ -52,5 +64,53 @@ describe("DomainsAside", () => {
     });
     expect(said).toContain("wildcard");
     expect(said).toContain("instead of Let's Encrypt");
+  });
+
+  describe("what a Let's Encrypt host serves (#130)", () => {
+    const LETS_ENCRYPT = {
+      certificateType: "letsencrypt" as const,
+      createdAt: "2026-11-19T22:00:00Z",
+    };
+
+    it("says it is issuing, beside the address and on the Certificate row", () => {
+      served.current = { state: "issuing" };
+      const said = asideSays(LETS_ENCRYPT);
+
+      expect(said).toContain(
+        "HTTPS certificate issuing: your browser may warn for a minute.",
+      );
+      expect(said).toContain("Let's Encrypt · issuing, usually under a minute");
+    });
+
+    it("says until when it is valid once issued, and nothing beside the address", () => {
+      served.current = {
+        state: "issued",
+        issuer: "Let's Encrypt",
+        notAfter: "2027-02-17T12:00:00.000Z",
+      };
+      const said = asideSays(LETS_ENCRYPT);
+
+      expect(said).toContain("Let's Encrypt · valid until Feb 17, 2027");
+      expect(said).not.toContain("HTTPS certificate");
+    });
+
+    it("says it is not issued yet, and what to check", () => {
+      served.current = { state: "not-issued" };
+      const said = asideSays(LETS_ENCRYPT);
+
+      expect(said).toContain("Let's Encrypt · not issued yet");
+      expect(said).toContain(
+        "Check that the A record for shop.example.com points at this Server’s address and that port 80 is reachable.",
+      );
+      expect(said).toContain("HTTPS certificate not issued yet");
+    });
+
+    it("reads nothing for a host served over HTTP", () => {
+      served.current = { state: "not-issued" };
+      const said = asideSays({ ...LETS_ENCRYPT, https: false });
+
+      expect(said).not.toContain("not issued");
+      expect(said).toContain("Not managed here");
+    });
   });
 });

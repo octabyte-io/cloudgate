@@ -28,6 +28,7 @@ const reads = vi.hoisted(() => ({
   canCreate: true,
   phase: { phase: "preparing" } as LaunchPhase,
   domains: [] as unknown[],
+  certificate: { state: "reading" } as { state: string },
 }));
 
 vi.mock("next/navigation", () => ({
@@ -143,6 +144,12 @@ vi.mock("../server/buy/use-bought-servers", () => ({
   }),
   useBuyServer: () => ({ mutate: buy, isPending: false }),
 }));
+// What the address serves is the served-certificate read's, tested beside it.
+vi.mock("@/lib/api/use-served-certificate", async (original) => ({
+  ...(await original<typeof import("@/lib/api/use-served-certificate")>()),
+  useServedCertificate: (_id: string | null, { enabled = true } = {}) =>
+    enabled ? reads.certificate : { state: "reading" },
+}));
 vi.mock("./use-get-started", () => ({
   useWizardServers: () => ({
     isPending: false,
@@ -253,6 +260,7 @@ beforeEach(() => {
   reads.canCreate = true;
   reads.phase = { phase: "preparing" };
   reads.domains = [];
+  reads.certificate = { state: "reading" };
 });
 
 afterEach(() => {
@@ -398,6 +406,63 @@ describe("GetStartedScreen", () => {
         .getByRole("link", { name: "Use your own domain" })
         .getAttribute("href"),
     ).toBe("/compose/cmp_1/domains");
+  });
+
+  describe("an https address (#130)", () => {
+    const HTTPS_DOMAIN = {
+      domainId: "dom_1",
+      host: "ghost-ab12-203-0-113-7.sslip.io",
+      https: true,
+      path: null,
+      service: { serviceType: "compose", serviceId: "cmp_1", name: "ghost" },
+    };
+
+    it("waits for its HTTPS certificate before saying it is running, with no Open yet", () => {
+      reads.phase = { phase: "running" };
+      reads.domains = [HTTPS_DOMAIN];
+      reads.certificate = { state: "issuing" };
+      show("template=ghost&server=srv_1&env=env_1");
+
+      const stages = screen.getByRole("list", { name: "Launching Ghost" });
+      expect(
+        within(stages).getByText("Getting its HTTPS certificate"),
+      ).toBeTruthy();
+      expect(within(stages).getByText("Usually under a minute.")).toBeTruthy();
+      expect(screen.queryByRole("link", { name: /Open Ghost/ })).toBeNull();
+    });
+
+    it("offers Open once the certificate is issued", () => {
+      reads.phase = { phase: "running" };
+      reads.domains = [HTTPS_DOMAIN];
+      reads.certificate = {
+        state: "issued",
+        issuer: "Let's Encrypt",
+        notAfter: "2027-02-17T12:00:00.000Z",
+      } as { state: string };
+      show("template=ghost&server=srv_1&env=env_1");
+
+      expect(screen.getByText("Ghost is running")).toBeTruthy();
+      expect(
+        screen.getByRole("link", { name: /Open Ghost/ }).getAttribute("href"),
+      ).toBe("https://ghost-ab12-203-0-113-7.sslip.io");
+      expect(document.body.textContent).not.toMatch(/isn.t issued yet/);
+    });
+
+    it("finishes with a note and Open when the certificate takes too long", () => {
+      reads.phase = { phase: "running" };
+      reads.domains = [HTTPS_DOMAIN];
+      reads.certificate = { state: "not-issued" };
+      show("template=ghost&server=srv_1&env=env_1");
+
+      expect(screen.getByRole("link", { name: /Open Ghost/ })).toBeTruthy();
+      const said = document.body.textContent ?? "";
+      expect(said).toContain(
+        "Ghost is running, but its HTTPS certificate isn’t issued yet.",
+      );
+      expect(said).toContain(
+        "If you used your own domain, check its A record points at 203.0.113.7.",
+      );
+    });
   });
 
   it("says why a launch failed and where to look", () => {

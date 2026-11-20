@@ -3,6 +3,8 @@ import { Chip } from "@/components/console/chip";
 import { Icon } from "@/lib/design/icons";
 import type { Domain } from "@/lib/api/endpoints/domains";
 
+import { CertificateCell } from "./served-certificate";
+
 /**
  * A domain, as a table row (the reference's `svcDomainsTab`,
  * `e-console.html:4250-4276`).
@@ -24,7 +26,13 @@ export function domainColumns({
   service,
   gate,
   troubled,
+  serverId,
 }: {
+  /**
+   * The Server the Domains are served on, for the Traefik log a certificate
+   * not issued yet links to; null on this Cloudgate host.
+   */
+  serverId?: string | null;
   action: (row: Domain) => React.ReactNode;
   /**
    * The compose service this host routes into — **F12 only**.
@@ -117,7 +125,8 @@ export function domainColumns({
       // thing in its column.
       className: "whitespace-normal",
       compare: (a, b) => a.certificateType.localeCompare(b.certificateType),
-      cell: certificateCell,
+      // What the host serves, beside what it is set to (#130).
+      cell: (row) => <CertificateCell row={row} serverId={serverId} />,
     },
     {
       id: "action",

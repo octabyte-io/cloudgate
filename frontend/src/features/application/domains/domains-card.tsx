@@ -42,6 +42,7 @@ import type { useApplicationDomains } from "./use-domains";
  */
 export function DomainsCard({
   domains,
+  serverId,
   status,
   canAdd,
   onAdd,
@@ -49,6 +50,8 @@ export function DomainsCard({
   onRemove,
 }: {
   domains: ReturnType<typeof useApplicationDomains>;
+  /** The Server they are served on, for a certificate's Traefik log (#130). */
+  serverId?: string | null;
   /**
    * Traefik's verdict on the configuration these rows generated.
    *
@@ -99,8 +102,8 @@ export function DomainsCard({
           ) : null}
           {rows.length > 0 ? (
             <MetaStrip>
-              Traefik&rsquo;s configuration is rewritten as soon as a host here is
-              added, changed or removed, so it starts or stops being served{" "}
+              Traefik&rsquo;s configuration is rewritten as soon as a host here
+              is added, changed or removed, so it starts or stops being served{" "}
               <strong>within a second</strong> — no Deployment needed.
             </MetaStrip>
           ) : null}
@@ -111,6 +114,7 @@ export function DomainsCard({
               getRowId={(domain) => domain.domainId}
               defaultSort={{ id: "host", dir: "asc" }}
               columns={domainColumns({
+                serverId,
                 // F18's one line on this screen. The switch cannot live on
                 // F18's own settings page because nothing enumerates an
                 // Organization's domains — the services are enumerable now,
