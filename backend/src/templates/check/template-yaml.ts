@@ -177,18 +177,26 @@ const file = z.strictObject({
 });
 
 /**
- * How a person signs in to the app once it runs (#131), for Get started's done
- * card. Cloudgate cannot infer it from the inputs: a generated password is as
- * often a database's as an account's, and some apps make their first account
- * on the first visit. So the template says, in one of two forms:
+ * How a person signs in to the app once it runs (#131, #140), for Get
+ * started's done card. Cloudgate cannot infer it from the inputs: a generated
+ * password is as often a database's as an account's, and some apps make their
+ * first account on the first visit. So the template says, in one of two forms:
  *
- * - an account made at setup: `username` and `password`, each the name of an
- *   input (the password one asked secret, or generated; the template rules
- *   hold both to the inputs), or the username a fixed `{ value: … }`;
+ * - an account made at setup: `password`, the name of an input holding a
+ *   secret (the template rules hold it to the inputs), and `username` when
+ *   the app asks one, an input's name or a fixed `{ value: … }`. Some apps
+ *   ask only a password or a token, so `username` may be left out. `path` is
+ *   where the app's sign-in page is when it is not `/`, e.g. `/admin`;
  * - an account made on the first visit: `firstVisit`, the path to open and
  *   an optional note.
  *
- * Both at once, or neither, is refused, by the one key that names each form.
+ * Either form may name the Domain its path is on, by its `service` as
+ * `domains` lists it (`domain`, beside the path), for an app that signs in on
+ * another Domain than its first: an admin dashboard, a bundled Keycloak. When
+ * several Domains share that service, the first of them in `domains` is
+ * meant. Without `domain`, the first Domain is.
+ *
+ * Both forms at once, or neither, is refused, by the keys that name each.
  */
 /** An input's name, which a sign-in cannot do without. */
 const inputName = z
@@ -198,38 +206,49 @@ const inputName = z
   })
   .regex(VARIABLE_NAME, 'must be an input name, e.g. ADMIN_PASSWORD');
 
+/** Where the sign-in is, below its Domain's address. */
+const signInPath = z.string().refine((path) => path.startsWith('/'), {
+  message: 'must start with /',
+});
+
+/** The Domain a sign-in is on, by its service; the rules hold it to `domains`. */
+const signInDomain = text('the service of a Domain in domains');
+
 const madeAtSetup = z.strictObject({
-  username: z.union([inputName, z.strictObject({ value: text() })], {
-    error: 'must be an input name, or { value: <fixed text> }',
-  }),
+  username: z
+    .union([inputName, z.strictObject({ value: text() })], {
+      error: 'must be an input name, or { value: <fixed text> }',
+    })
+    .optional(),
   password: inputName,
+  path: signInPath.optional(),
+  domain: signInDomain.optional(),
 });
 
 const madeOnFirstVisit = z.strictObject({
   firstVisit: z.strictObject({
-    path: z
-      .string()
-      .default('/')
-      .refine((path) => path.startsWith('/'), {
-        message: 'must start with /',
-      }),
+    path: signInPath.default('/'),
     note: z.string().trim().min(1, 'must not be empty').optional(),
+    domain: signInDomain.optional(),
   }),
 });
 
 export type SignIn =
   z.infer<typeof madeAtSetup> | z.infer<typeof madeOnFirstVisit>;
 
+/** The keys only an account made at setup has. */
+const AT_SETUP_KEYS = ['username', 'password', 'path'];
+
 const signIn = z.unknown().transform((raw, context): SignIn => {
   const object = raw !== null && typeof raw === 'object' && !Array.isArray(raw);
-  const atSetup = object && ('username' in raw || 'password' in raw);
+  const atSetup = object && AT_SETUP_KEYS.some((key) => key in raw);
   const firstVisit = object && 'firstVisit' in raw;
   if (!object || atSetup === firstVisit) {
     context.addIssue({
       code: 'custom',
       message: firstVisit
         ? 'is one form: username and password, or firstVisit, not both'
-        : 'must be username and password, or firstVisit',
+        : 'must be a password (with a username if the app asks one), or firstVisit',
     });
     return z.NEVER;
   }
