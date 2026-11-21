@@ -124,6 +124,9 @@ const ORGANIZATION_NAV: NavEntry[] = [
   // its twelve sections. `⌘K`'s `go:` pages are read off this table, so the
   // palette follows for free.
   { kind: "item", icon: "cog", label: "Settings", tab: "/settings" },
+  // Below Settings, after the rule with it: neither is the work itself. The
+  // screen links out to the public docs and names the support address.
+  { kind: "item", icon: "buoy", label: "Help & support", tab: "/help" },
 ];
 
 /** A tab, as a rail row. The `ruleAbove` flag becomes the rule before it. */

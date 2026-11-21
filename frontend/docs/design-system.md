@@ -1880,3 +1880,7 @@ that render `HealthPanel` with their `serviceType`, so the seven kinds cannot dr
 
 `ResourceSpec` gained **`deleteDescription`** here: the confirmation's default "removes the *noun* and
 nothing else" is false for a check, whose Probes and Incident history go with it.
+
+#### `help/` (Help & support)
+
+`help-screen.tsx` is `/help`, the Organization rail's last row: the public docs as two link cards and the support address (`OCTABYTE_CONTACT`) in the rail. It fetches nothing. `help-links.ts` is the one table of docs addresses, so a page that moves on the website is one line; `help-link-list.tsx` renders a card's list, each row one `<a>` opening in a new tab. No issue-tracker link, on `no-tracker-links.test.ts`'s rule.
