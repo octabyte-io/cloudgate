@@ -13,10 +13,11 @@ export const DEFAULT_TEMPLATES_URL =
 /**
  * The `cg-templates` directory's page for each Template, by its id: the
  * public website the same repository builds from its template folders,
- * served by GitHub Pages at the repository's project address.
+ * served by GitHub Pages at its custom domain, cgt.octabyte.io, rather
+ * than the repository's project address.
  */
 export const TEMPLATES_DIRECTORY_URL =
-  'https://octabyte-io.github.io/cg-templates/templates/';
+  'https://cgt.octabyte.io/templates/';
 
 /**
  * A Template's page in the `cg-templates` directory, when the catalogue it

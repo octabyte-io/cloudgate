@@ -28,7 +28,7 @@ const KUMA: TemplateSummary = {
 };
 
 const PAGE =
-  "https://octabyte-io.github.io/cg-templates/templates/uptime-kuma/";
+  "https://cgt.octabyte.io/templates/uptime-kuma/";
 
 const withLinks = (links: TemplateSummary["links"]): TemplateSummary => ({
   ...KUMA,

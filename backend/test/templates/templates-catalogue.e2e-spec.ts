@@ -138,7 +138,7 @@ describe('The Template catalogue reader (e2e)', () => {
           logo: '/backend/templates/uptime-kuma/logo?rev=c0ffee1',
           runsOn: ['server', 'aws', 'gcp'],
           // The official catalogue's templates open their directory page.
-          page: 'https://octabyte-io.github.io/cg-templates/templates/uptime-kuma/',
+          page: 'https://cgt.octabyte.io/templates/uptime-kuma/',
           // It says nothing of signing in (#131).
           signIn: null,
         },
