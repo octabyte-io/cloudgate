@@ -15,13 +15,28 @@
  * and not as part of the drawing. It is decoration and nothing else:
  * `aria-hidden`, no pointer events, and nothing in it moves.
  *
- * Drawn on a 1440×900 canvas and cropped with `slice`, so a phone sees the
- * gate and a wide screen sees the racks as well.
+ * Drawn on a 1440×900 stage, inside a canvas with sky above it and floor and
+ * sky on either side. The canvas is always as tall as the viewport and is
+ * cropped only at its sides, so the whole gate, crown and keystone included,
+ * is in view on every screen: a phone sees the gate, a laptop the racks as
+ * well, and a wide monitor more floor and sky. (Cropping with `slice` scaled
+ * to the width instead, and a wide screen lost the top of the arch.)
  */
 
 const W = 1440;
 const H = 900;
 const CX = W / 2;
+
+/** Sky above the stage, so the crown never touches the top edge. */
+const HEADROOM = 70;
+/** Floor and sky either side of the stage, for screens wider than it. */
+const WINGS = 1080;
+const VIEW = {
+  x: -WINGS,
+  y: -HEADROOM,
+  w: W + 2 * WINGS,
+  h: H + HEADROOM,
+};
 
 /** Where the floor meets the sky. */
 const HORIZON = 650;
@@ -30,8 +45,8 @@ const PLUG = 330;
 
 /** The floor: rays to a point above the horizon, and rows that widen toward you. */
 const VANISH = { x: CX, y: 520 };
-const FLOOR_RAYS = Array.from({ length: 31 }, (_, i) => {
-  const xb = -1680 + i * 160;
+const FLOOR_RAYS = Array.from({ length: 72 }, (_, i) => {
+  const xb = -5000 + i * 160;
   const t = (HORIZON - VANISH.y) / (H - VANISH.y);
   return { x1: VANISH.x + (xb - VANISH.x) * t, x2: xb };
 });
@@ -106,6 +121,11 @@ const SKY_CLOUDS = [
   { x: 280, y: 78, s: 0.55 },
   { x: 1170, y: 70, s: 0.6 },
   { x: 1180, y: 250, s: 1 },
+  // Out in the wings, for wide screens.
+  { x: -560, y: 120, s: 0.8 },
+  { x: -880, y: 300, s: 0.65 },
+  { x: 1700, y: 140, s: 0.85 },
+  { x: 2060, y: 320, s: 0.6 },
 ];
 /** Clouds around the gate's feet, in front of the floor and filled so they hide it. */
 const LOW_CLOUDS = [
@@ -125,6 +145,10 @@ const STARS: [number, number][] = [
   [1300, 90],
   [70, 300],
   [1380, 360],
+  [-300, 40],
+  [-700, 230],
+  [1620, 40],
+  [1960, 210],
 ];
 
 export function AuthBackdrop() {
@@ -132,9 +156,11 @@ export function AuthBackdrop() {
     <svg
       aria-hidden
       focusable="false"
-      viewBox={`0 0 ${W} ${H}`}
-      preserveAspectRatio="xMidYMid slice"
-      className="pointer-events-none fixed inset-0 -z-10 size-full text-line-2"
+      viewBox={`${VIEW.x} ${VIEW.y} ${VIEW.w} ${VIEW.h}`}
+      // As tall as the viewport, as wide as that makes it, centred: the sides
+      // fall off a narrow screen and the gate never does.
+      style={{ aspectRatio: `${VIEW.w} / ${VIEW.h}` }}
+      className="pointer-events-none fixed inset-y-0 left-1/2 -z-10 h-full w-auto max-w-none -translate-x-1/2 text-line-2"
     >
       <defs>
         <radialGradient id="auth-backdrop-glow" cx="50%" cy="50%" r="50%">
@@ -154,13 +180,19 @@ export function AuthBackdrop() {
           <stop offset="60%" stopColor="#fff" stopOpacity={1} />
         </radialGradient>
         <mask id="auth-backdrop-mask">
-          <rect width={W} height={H} fill="url(#auth-backdrop-fade)" />
+          <rect
+            x={VIEW.x}
+            y={VIEW.y}
+            width={VIEW.w}
+            height={VIEW.h}
+            fill="url(#auth-backdrop-fade)"
+          />
         </mask>
       </defs>
 
       <ellipse
         cx={CX}
-        cy={470}
+        cy={430}
         rx={360}
         ry={300}
         fill="url(#auth-backdrop-glow)"
@@ -182,12 +214,12 @@ export function AuthBackdrop() {
         ))}
 
         {/* Floor */}
-        <line x1={0} y1={HORIZON} x2={W} y2={HORIZON} />
+        <line x1={VIEW.x} y1={HORIZON} x2={VIEW.x + VIEW.w} y2={HORIZON} />
         {FLOOR_RAYS.map((r) => (
           <line key={r.x2} x1={r.x1} y1={HORIZON} x2={r.x2} y2={H} />
         ))}
         {FLOOR_ROWS.map((y) => (
-          <line key={y} x1={0} y1={y} x2={W} y2={y} />
+          <line key={y} x1={VIEW.x} y1={y} x2={VIEW.x + VIEW.w} y2={y} />
         ))}
 
         {RACKS.map((r) => (
