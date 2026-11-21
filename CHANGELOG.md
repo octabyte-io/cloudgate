@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.12 (2026-11-21)
+
 ### The console has a Help & support page
 
 A **Help & support** row at the foot of the Organization rail opens `/help`: the guides published on cloudgate.octabyte.io (Quickstart, User guide, how Cloudgate fits together, the CLI, MCP and agents, the API reference), the common answers (Troubleshooting, FAQ, Limits, Changelog), and the support address, support@octabyte.io, with **Email support** and a copy button. Every docs link opens in a new tab.
@@ -11,6 +13,12 @@ A **Help & support** row at the foot of the Organization rail opens `/help`: the
 ### A Template's page opens on cgt.octabyte.io, and a shown password is whole
 
 A Template's name and logo open its page on the template directory's own domain, `https://cgt.octabyte.io/templates/<id>/`, rather than its GitHub Pages project address. On Get started's done card, **Show** widens the How to sign in rows to the card and wraps a long password onto more lines, where it used to end in "…".
+
+**What to do on upgrade**: nothing.
+
+### Smaller fixes
+
+- The gate behind the sign-in and sign-up screens is drawn whole, its crown and keystone in view on a wide monitor, with only its sides falling off a narrow screen (#144).
 
 **What to do on upgrade**: nothing.
 
