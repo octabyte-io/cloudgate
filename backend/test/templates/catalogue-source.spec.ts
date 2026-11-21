@@ -51,7 +51,7 @@ describe('catalogueSource', () => {
 describe('directoryPage', () => {
   it("is the template's page in the cg-templates directory for the official catalogue", () => {
     expect(directoryPage(OFFICIAL, 'uptime-kuma')).toBe(
-      'https://octabyte-io.github.io/cg-templates/templates/uptime-kuma/',
+      'https://cgt.octabyte.io/templates/uptime-kuma/',
     );
   });
 

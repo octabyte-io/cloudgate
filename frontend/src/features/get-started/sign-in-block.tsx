@@ -13,6 +13,7 @@ import { keys } from "@/lib/api/keys";
 import { useActiveOrganizationId } from "@/lib/auth/client";
 import { Icon } from "@/lib/design/icons";
 import { parseEnvBlob } from "@/lib/format/env-blob";
+import { cn } from "@/lib/utils";
 
 const MASK = "••••••••";
 
@@ -24,7 +25,8 @@ const MASK = "••••••••";
  * - An account made at setup: its username and password, read from the
  *   stack's own variables, the Variables tab's read and so no new exposure.
  *   A member that read refuses sees no block, so no password and no Show.
- *   The password stays masked until Show; Copy copies it either way. With
+ *   The password stays masked until Show; Copy copies it either way. Shown,
+ *   it is whole: the rows widen to the card and a long one wraps. With
  *   no username in the template (an app that asks only a password or a
  *   token, #140), no Username row. With a `path` or a `domain`, an Open link
  *   to that path (`/` without one), shown whether or not the read succeeds:
@@ -124,7 +126,11 @@ function MadeAtSetup({
       <p className="text-meta text-tx-3">
         {`The account ${appName} was set up with.`}
       </p>
-      <KVList className="w-full max-w-96">
+      {/*
+        A shown password is read and copied whole: the list takes the card's
+        width and the value breaks onto more lines rather than ending in "…".
+      */}
+      <KVList className={cn("w-full", !shown && "max-w-96")}>
         {username !== null ? (
           <KVRow
             label="Username"
@@ -140,10 +146,12 @@ function MadeAtSetup({
           <KVRow
             label="Password"
             mono
+            wrap={shown}
             title={shown ? password : undefined}
             value={
               shown ? (
-                password
+                // Its lines start together, the block still against the right.
+                <span className="inline-block text-left">{password}</span>
               ) : (
                 <>
                   <span

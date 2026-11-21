@@ -34,7 +34,7 @@ const KUMA: TemplateSummary = {
   },
   logo: LOGO,
   runsOn: ["server", "aws", "gcp"],
-  page: "https://octabyte-io.github.io/cg-templates/templates/uptime-kuma/",
+  page: "https://cgt.octabyte.io/templates/uptime-kuma/",
 };
 
 const GHOST: TemplateSummary = {
@@ -115,7 +115,7 @@ describe("CatalogueView", () => {
     expect(links).toEqual({
       // The name opens its cg-templates page (template-home.test.tsx).
       "Uptime Kuma (template page, opens in a new tab)":
-        "https://octabyte-io.github.io/cg-templates/templates/uptime-kuma/",
+        "https://cgt.octabyte.io/templates/uptime-kuma/",
       "Set up": "/templates?template=uptime-kuma",
       Website: "https://uptime.kuma.pet",
       Docs: "https://github.com/louislam/uptime-kuma/wiki",

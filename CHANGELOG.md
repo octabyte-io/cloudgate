@@ -8,6 +8,12 @@ A **Help & support** row at the foot of the Organization rail opens `/help`: the
 
 **What to do on upgrade**: nothing.
 
+### A Template's page opens on cgt.octabyte.io, and a shown password is whole
+
+A Template's name and logo open its page on the template directory's own domain, `https://cgt.octabyte.io/templates/<id>/`, rather than its GitHub Pages project address. On Get started's done card, **Show** widens the How to sign in rows to the card and wraps a long password onto more lines, where it used to end in "…".
+
+**What to do on upgrade**: nothing.
+
 ## 0.3.11 (2026-11-20)
 
 ### Get started's done card says how to sign in to the app

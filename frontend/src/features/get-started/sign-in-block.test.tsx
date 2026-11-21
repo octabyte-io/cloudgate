@@ -73,6 +73,25 @@ describe("SignInBlock (#131)", () => {
     ).toBe("true");
   });
 
+  it("shows a long password whole: the rows widen and it wraps", async () => {
+    const long = `eyJhbGciOiJIUzI1NiJ9.${"x".repeat(80)}`;
+    findOne.mockResolvedValue({
+      composeId: "cmp_1",
+      env: `FLATNOTES_USERNAME=admin\nFLATNOTES_PASSWORD=${long}\n`,
+    });
+    const { container } = show(FLATNOTES);
+    await screen.findByText("admin");
+    const list = container.querySelector('[data-slot="kv-list"]')!;
+    expect(list.className).toContain("max-w-96");
+
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
+
+    const value = screen.getByText(long).closest("dd")!;
+    expect(value.className).toContain("wrap-anywhere");
+    expect(value.className).not.toContain("truncate");
+    expect(list.className).not.toContain("max-w-96");
+  });
+
   it("takes a fixed username from the template", async () => {
     show({ username: { value: "owner" }, password: "FLATNOTES_PASSWORD" });
 
