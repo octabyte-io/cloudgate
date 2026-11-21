@@ -16,8 +16,7 @@ export const DEFAULT_TEMPLATES_URL =
  * served by GitHub Pages at its custom domain, cgt.octabyte.io, rather
  * than the repository's project address.
  */
-export const TEMPLATES_DIRECTORY_URL =
-  'https://cgt.octabyte.io/templates/';
+export const TEMPLATES_DIRECTORY_URL = 'https://cgt.octabyte.io/templates/';
 
 /**
  * A Template's page in the `cg-templates` directory, when the catalogue it
