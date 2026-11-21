@@ -1,23 +1,214 @@
+<div align="center">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="frontend/public/cloudgate-mark-dark.svg">
+  <img alt="Cloudgate" src="frontend/public/cloudgate-mark.svg" width="88">
+</picture>
+
 # Cloudgate
 
-Cloudgate is a self-hosted deployment platform. You connect your own Servers — the machine it runs on, or remote ones over SSH — and it builds and runs Applications, managed databases and Compose stacks on them through Docker and Docker Swarm, with the build logs, domains, certificates, backups, metrics and access control that implies. The backend is a single NestJS application, and the console is a Next.js app written against its API.
+**Deploy on your own Servers, with the console you'd expect from a hosted platform.**
 
-## The model
+Cloudgate builds and runs your Applications, databases and Compose stacks on machines you own,
+and handles the domains, certificates, backups, metrics and access control around them.
 
-**Organization → Project → Environment → Application / database / Compose stack, deployed onto Servers.**
+[![CI](https://github.com/octabyte-io/cloudgate/actions/workflows/ci.yml/badge.svg)](https://github.com/octabyte-io/cloudgate/actions/workflows/ci.yml)
+[![E2E](https://github.com/octabyte-io/cloudgate/actions/workflows/e2e-shards.yml/badge.svg)](https://github.com/octabyte-io/cloudgate/actions/workflows/e2e-shards.yml)
+[![License: ELv2](https://img.shields.io/badge/license-Elastic%202.0-6d57e0)](LICENSE)
+[![CLI on npm](https://img.shields.io/npm/v/@octabyte-io/cloudgate?label=cli&color=6d57e0)](https://www.npmjs.com/package/@octabyte-io/cloudgate)
 
-An Organization is the tenant boundary — every row belongs to exactly one, and members act within it. A Project groups related services and contains nothing but Environments. An Environment (production, staging) is what actually owns the services. A Deployment is one attempt to build and release a version of one of them: Deployments are records, and the Application is the thing they deploy.
+[Website](https://cloudgate.octabyte.io) · [Install](#install) · [Features](#features) · [Docs](docs/deploy.md) · [Development](#development)
 
-Those six words are not casual. `CONTEXT.md` is the glossary, it names what each term rules out — no team, workspace, tenant, stage, namespace, app, service, workload, release, host, node or machine — and the codebase holds to it in schema columns, controller names and UI copy alike. Third-party strings keep their own names: Docker Swarm has managers and workers, DNS has a Host column.
+</div>
 
-## Requirements
+<br>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme/environment-dark.png">
+  <img alt="An Environment in the Cloudgate console, listing its Applications, PostgreSQL and Redis databases" src="docs/images/readme/environment-light.png">
+</picture>
+
+## Why Cloudgate
+
+- **Your machines, your data.** Run on the host Cloudgate is installed on, add more Servers over SSH, or deploy into your own AWS or Google Cloud account.
+- **One install, no moving parts to assemble.** A single command sets up the console, PostgreSQL, Docker Swarm and a Traefik edge on a bare Ubuntu machine.
+- **Push code, get a URL.** Connect a git repository and Cloudgate builds it, deploys it, routes a Domain to it and issues the HTTPS certificate.
+- **Built for teams and agents.** Organizations, roles and an audit log for people, and an MCP endpoint so AI agents can operate Cloudgate within the same rules.
+
+## Features
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**Deploy anything**
+- Applications from GitHub, GitLab, Bitbucket, Gitea, a Docker image or raw files
+- Builds with Nixpacks, Railpack, a Dockerfile, Heroku or Paketo buildpacks, or as a static site
+- Workers, cron services and private web services
+- Docker Compose stacks
+- 570+ ready-made Templates, set up in one click
+
+</td>
+<td width="50%" valign="top">
+
+**Managed databases**
+- PostgreSQL, MySQL, MariaDB, MongoDB, Redis and libSQL
+- Scheduled backups and volume backups to your own storage Destinations
+- Buckets for files your Services share
+- Variables wired between Services, so connection details stay in sync
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+**Ship with confidence**
+- Live build and runtime logs, and a shell into any container
+- Pull-request previews and on-demand preview deployments
+- One-click rollbacks to an earlier Deployment
+- Domains with automatic Let's Encrypt certificates, redirects and forward auth
+
+</td>
+<td valign="top">
+
+**Operate and observe**
+- CPU, memory, disk and network for every Server, streamed live
+- Request logs, error rates, traces and uptime checks
+- Alerts to Slack, Discord, Teams, Telegram, email, ntfy and more
+- Self-hosted AI models behind an OpenAI-compatible gateway
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+**Teams and access**
+- Organizations, Projects and Environments to keep things separate
+- Built-in and custom roles, scoped down to a single Service
+- SSO, two-factor sign-in and a full audit log
+
+</td>
+<td valign="top">
+
+**Automate it**
+- The `cloudgate` CLI to deploy a folder from your terminal or CI
+- A REST API with a checked-in OpenAPI schema
+- An MCP endpoint for AI agents, with their own keys and limits
+- Project config files, reviewed as a plan before they apply
+
+</td>
+</tr>
+</table>
+
+## A look around
+
+<table>
+<tr>
+<td width="50%">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme/application-dark.png">
+  <img alt="An Application's overview: its source, build settings and where it runs" src="docs/images/readme/application-light.png">
+</picture>
+
+<p align="center"><sub><b>Application overview</b>: source, build and where it runs</sub></p>
+</td>
+<td width="50%">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme/templates-dark.png">
+  <img alt="The Templates catalogue, with ready-made apps to set up" src="docs/images/readme/templates-light.png">
+</picture>
+
+<p align="center"><sub><b>Templates</b>: hundreds of ready-made apps</sub></p>
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme/home-dark.png">
+  <img alt="The Organization home, with Servers, Projects, recents and starred items" src="docs/images/readme/home-light.png">
+</picture>
+
+<p align="center"><sub><b>Organization home</b>: everything you run, one page</sub></p>
+</td>
+<td width="50%">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme/sign-in-dark.png">
+  <img alt="The Cloudgate sign-in page" src="docs/images/readme/sign-in-light.png">
+</picture>
+
+<p align="center"><sub><b>Your own instance</b>: the first sign-up owns it</sub></p>
+</td>
+</tr>
+</table>
+
+<p align="center"><sub>Screenshots show the console in your system's light or dark theme, with sample data.</sub></p>
+
+## How it fits together
+
+```
+Organization → Project → Environment → Application / database / Compose stack → deployed onto Servers
+```
+
+An **Organization** is your team. A **Project** groups what ships together (say, *Storefront*), and its
+**Environments** (*production*, *staging*) hold the Services. Each attempt to build and release one is a
+**Deployment**, with its own log. Cloudgate runs everything on **Servers**: the host it is installed on,
+or any machine it can reach over SSH. `CONTEXT.md` is the full glossary.
+
+## Install
+
+On a bare Ubuntu 24.04 or 26.04 amd64 machine:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo sh
+```
+
+That downloads the latest Cloudgate version, prebuilt, checks its sha256, unpacks it at
+`/opt/cloudgate` and runs its `deploy/install.sh`: Node under systemd, Postgres on the box, a Swarm
+of one, and a Traefik container it owns. Then open the address it prints. **The first sign-up claims
+the instance**; everyone after that joins by invitation.
+
+[`docs/deploy.md`](docs/deploy.md) is the operating guide: the origin model, the security posture,
+upgrades, instance backup and the known traps. There is no Dockerfile or compose file for Cloudgate
+itself; it deploys containers, it does not ship as one.
+
+### Deploy from your terminal
+
+```bash
+npm install -g @octabyte-io/cloudgate
+cloudgate login --instance cloud.acme.dev   # approve the code in the console
+cloudgate --help
+```
+
+### Guides
+
+| Guide | What it covers |
+| --- | --- |
+| [Deploying Cloudgate](docs/deploy.md) | Installing and operating an instance |
+| [Linking a database](docs/linking-a-database.md) | Connecting an Application to a database |
+| [Linking a bucket](docs/linking-a-bucket.md) | Sharing files between Services |
+| [Running a worker](docs/running-a-worker.md) | Always-on Services with no Domain |
+| [Running a cron service](docs/running-a-cron-service.md) | Commands on a timetable |
+| [Private web services](docs/private-web-services.md) | HTTP reachable only by your other Services |
+| [Connecting an agent](docs/connecting-an-agent.md) | The MCP endpoint and its limits |
+| [Calling an AI model](docs/calling-an-ai-model.md) | Chat front ends and vector stores through the gateway |
+
+## Development
+
+Cloudgate is one pnpm workspace: a NestJS backend (`backend/`), a Next.js console (`frontend/`) and
+the CLI (`cli/`). The backend is a single NestJS application, and the console is written against its API.
+
+### Requirements
 
 - **Node 24** and **pnpm 10.33.2**. The package manager is pinned by `packageManager` in the root `package.json`, so CI and a local clone cannot drift apart. Node is not pinned by an `engines` field; 24 is what CI installs and what this was built and verified on.
 - **PostgreSQL.** One database, reached over `DATABASE_URL`.
 - **A Docker daemon**, for two unrelated reasons. The product's actual job is to build images and run Swarm services, so a machine that is to deploy anything needs Docker with Swarm initialised. Separately, the backend's e2e suite starts a real Postgres container per run (ADR 0002), so running those tests needs a daemon whether or not you intend to deploy.
 - **`nixpacks` on the host**, if you want the default builder to succeed — `backend/src/builders/strategies/nixpacks.strategy.ts` shells out to the binary. Without it the API, the console and every test suite still run, and the Dockerfile and Docker-image strategies still build.
 
-## Local setup
+### Local setup
 
 ```bash
 pnpm install
@@ -40,7 +231,7 @@ pnpm dev                           # backend on :4000, console on :3000
 
 **The first sign-up claims the instance.** Until an owner exists, `GET /auth/sign-up-open` answers `{"open":true}` and `/sign-up` renders its form; once one does, uninvited sign-up closes and further accounts arrive by invitation. There is no seed step and no default account.
 
-## Commands
+### Commands
 
 | Command | Notes |
 |---|---|
@@ -68,7 +259,7 @@ pnpm --filter backend exec jest --config ./test/jest-e2e.json --maxWorkers=2
 
 **Prefer `db:migrate` to `db:push` on any database you intend to keep.** A push writes the column and no journal row, so a later `db:migrate` reaches a migration whose `ALTER TABLE … ADD COLUMN` has already happened — and drizzle-kit reports that by exiting 1 with nothing at all on stdout or stderr. It is an easy state to reach and a confusing one to diagnose.
 
-## What CI runs
+### What CI runs
 
 `.github/workflows/ci.yml` runs two jobs on every push to `main` and every pull request.
 
@@ -77,7 +268,7 @@ pnpm --filter backend exec jest --config ./test/jest-e2e.json --maxWorkers=2
 
 **It does not run the e2e suite or `test:db`; `.github/workflows/e2e-shards.yml` does.** On every push to `main`, every `build/**` branch and every pull request, it splits the e2e suite across eight runners and runs `test:db` beside them, and its `E2E` check is green only when all of them are. A red suite is re-run alone first, so only a suite red alone too (or a wedged run) fails it. `/build` waits for that check on a `build/<spec>` branch before it moves `main`.
 
-## Repo layout
+### Repo layout
 
 ```
 backend/                   NestJS API, WebSocket gateways, the deploy engine and the job queue
@@ -109,37 +300,17 @@ docs/linking-a-database.md, linking-a-bucket.md, running-a-worker.md, running-a-
 private-web-services.md    operator guides for each kind of Service
 ```
 
-## Where the decisions are recorded
+### Where the decisions are recorded
 
 Every architecture decision is a short record in `docs/adr/`: the decision, the alternatives that
 were rejected, and why. Read the ones that touch the area you are changing before you change it.
 `CONTEXT.md` is the vocabulary those records and the code are written in.
 
-## Status
-
-Cloudgate is feature-complete for its first release. One command installs it natively on a bare
-Ubuntu 24.04 or 26.04 amd64 machine, its platform host:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh | sudo sh
-```
-
-That downloads the latest Cloudgate version, prebuilt, checks its sha256, unpacks it at
-`/opt/cloudgate` and runs its `deploy/install.sh`: Node under systemd,
-Postgres on the box, a Swarm of one, and a Traefik container it owns. `docs/deploy.md` is the
-operating guide: the origin model, the security posture, upgrades, instance backup and the known
-traps. There is no Dockerfile or compose file for
-Cloudgate itself; it deploys containers, it does not ship as one.
-
-CI runs typecheck, lint and the unit lanes on every push and pull request, and the e2e suite and
-`test:db` split eight ways (`.github/workflows/e2e-shards.yml`). `.github/workflows/e2e.yml` also
-runs them on one runner on every pushed `v*` release tag — see `docs/testing.md`.
-
 ## Contributing and security
 
-Bug reports and feature ideas are welcome as GitHub issues; see `CONTRIBUTING.md` for how to set up,
-test and send a change. Please do not report a security problem in a public issue: `SECURITY.md`
-says how to report one privately.
+Bug reports and feature ideas are welcome as GitHub issues; see [`CONTRIBUTING.md`](CONTRIBUTING.md) for
+how to set up, test and send a change. Please do not report a security problem in a public issue:
+[`SECURITY.md`](SECURITY.md) says how to report one privately.
 
 ## License
 
