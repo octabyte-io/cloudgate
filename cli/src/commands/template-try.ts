@@ -70,11 +70,12 @@ USAGE
   cloudgate template try <template folder> [--timeout <minutes>]
 
   Checks the template as template check does, and stops (exit 1) with the
-  reason if Cloudgate would hide it. Then makes its values as setup does (an
-  ask input takes its value in the folder's test-values.yaml (or .yml), else its
-  default, else a sample that fits its format or pattern), lays out the
-  compose part as a Server's stack folder, publishes each Domain's container
-  port on a free 127.0.0.1 port, and runs docker compose up --wait. Each Domain is asked at
+  reason if Cloudgate would hide it. Then makes its values as setup does:
+  an ask input takes its value in the folder's test-values.yaml or
+  test-values.yml, else its default, else a sample that fits its format or
+  pattern. It lays out the compose part as a Server's stack folder,
+  publishes each Domain's container port on a free 127.0.0.1 port, and
+  runs docker compose up --wait. Each Domain is asked at
   http://localhost:<port><path> every 2 seconds until it answers anything
   but a 5xx.
 
@@ -161,7 +162,7 @@ function minutesText(minutes: number): string {
 function checkedTemplate(folder: string): Template {
   if (!isTemplateFolder(folder)) {
     throw usageError(
-      `${folder} is not a template folder: it has no template.yaml`,
+      `${folder} is not a template folder: it has no template.yaml or template.yml`,
       'Give the folder of one template.',
     );
   }

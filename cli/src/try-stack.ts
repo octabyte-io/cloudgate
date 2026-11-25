@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import type { AddressInfo } from 'node:net';
 
-import { TEST_VALUES_FILE } from 'cloudgate-template-check';
+import { spellingsOf } from 'cloudgate-template-check';
 import type { Template } from 'cloudgate-template-check';
 import {
   applyComposeDefaults,
@@ -37,6 +37,22 @@ export interface TryDomain {
 }
 
 /**
+ * The values a template folder's test values file gives its `ask` inputs,
+ * and that file's name as the folder spells it, or both spellings when it
+ * has none: the file a refusal tells the person to add a value to.
+ */
+export interface TestValues {
+  readonly values: Readonly<Record<string, string>>;
+  readonly file: string;
+}
+
+/** A folder with no test values file. */
+const NO_TEST_VALUES: TestValues = {
+  values: {},
+  file: spellingsOf('test-values').join(' or '),
+};
+
+/**
  * A Template's compose part as an Instance's stack folder holds it
  * (spec #5): `code/docker-compose.yml`, `code/.env`, and `files/<path>`,
  * so the Template's `../files/…` mounts resolve as they do on a Server.
@@ -64,7 +80,7 @@ export interface TryStack {
 export async function prepareStack(
   template: Template & { readonly composeFile: string },
   project: string,
-  testValues: Readonly<Record<string, string>> = {},
+  testValues: TestValues = NO_TEST_VALUES,
 ): Promise<TryStack> {
   const hostPorts = new Map<string, number>();
   const named = new Map<string, TryDomain>();
@@ -77,7 +93,7 @@ export async function prepareStack(
     domains.push(reached);
   }
   const answers: SetupAnswers = {
-    asked: { ...askedSamples(template.inputs), ...testValues },
+    asked: { ...askedSamples(template.inputs), ...testValues.values },
     domain: (name, part) => {
       const domain = named.get(name);
       if (domain === undefined) return null;
@@ -88,7 +104,7 @@ export async function prepareStack(
   };
 
   const made = makeValues(template.inputs, answers);
-  if (!made.ok) throw noValue(template, made.problems);
+  if (!made.ok) throw noValue(template, made.problems, testValues.file);
 
   let published: string;
   try {
@@ -137,13 +153,14 @@ export async function prepareStack(
 
 /**
  * Why `try` cannot make `template`'s values. Only an `ask` input's value can
- * be given in `test-values.yaml`, so only those problems point there: an
- * input made any other way (a `{{domains.…}}` reference with no host here)
- * is the Template's to change, and the file would refuse its name.
+ * be given in the test values file, `file`, so only those problems point
+ * there: an input made any other way (a `{{domains.…}}` reference with no
+ * host here) is the Template's to change, and the file would refuse its name.
  */
 function noValue(
   template: Template,
   problems: readonly ValueProblem[],
+  file: string,
 ): CliError {
   const isAsk = ({ input }: ValueProblem) =>
     Object.hasOwn(template.inputs, input) && 'ask' in template.inputs[input];
@@ -154,7 +171,7 @@ function noValue(
   const lines: string[] = [];
   if (asked.length > 0) {
     lines.push(
-      `try has no value it can use for ${listed(asked)}; give ${asked.length === 1 ? 'it' : 'each'} one in ${TEST_VALUES_FILE}: ${asked.map(({ input }) => input).join(', ')}`,
+      `try has no value it can use for ${listed(asked)}; give ${asked.length === 1 ? 'it' : 'each'} one in ${file}: ${asked.map(({ input }) => input).join(', ')}`,
     );
   }
   if (made.length > 0) lines.push(`try cannot make ${listed(made)}`);
@@ -186,22 +203,14 @@ function envFile(
  * The values `template`'s folder gives its `ask` inputs in
  * `test-values.yaml` or `test-values.yml` (ADR-0078, ADR-0090), none when it
  * has no such file. Every value is read as text, as written: `1` is `"1"`,
- * not a number. Refused, naming them, when the folder holds both spellings,
- * or the file is not a map of names to text or names anything but an `ask`
- * input.
+ * not a number. Refused, naming them, when the folder holds both spellings
+ * (`testValuesIn`), or the file is not a map of names to text or names
+ * anything but an `ask` input.
  */
-export function readTestValues(
-  folder: string,
-  template: Template,
-): Record<string, string> {
+export function readTestValues(folder: string, template: Template): TestValues {
   const found = testValuesIn(folder);
-  if (found === null) return {};
-  if ('both' in found) {
-    throw new CliError(
-      `${template.id} holds both ${found.both.join(' and ')}; a template folder holds one`,
-      EXIT.failed,
-    );
-  }
+  if (found === null) return NO_TEST_VALUES;
+  const file = found.path;
   const text = readFileSync(found.content, 'utf8');
   const refused = (why: string) =>
     new CliError(`${template.id}: ${found.path} ${why}`, EXIT.failed);
@@ -212,7 +221,7 @@ export function readTestValues(
   } catch (error) {
     throw refused(`is not YAML: ${(error as Error).message}`);
   }
-  if (document === null || document === undefined) return {};
+  if (document === null || document === undefined) return { values: {}, file };
   if (typeof document !== 'object' || Array.isArray(document)) {
     throw refused("is not a map of an ask input's name to its text");
   }
@@ -236,7 +245,7 @@ export function readTestValues(
       `gives a value for ${notAsked.join(', ')}, but only an ask input of this template takes one`,
     );
   }
-  return values as Record<string, string>;
+  return { values: values as Record<string, string>, file };
 }
 
 /** A sample for each `format`, fixed so a run's values can be read. */

@@ -537,7 +537,7 @@ files:
     expect(commands(docker).some((line) => line.includes(' up'))).toBe(false);
   });
 
-  it('names an ask input with no acceptable value as one to add to test-values.yaml', async () => {
+  it('names an ask input with no acceptable value as one to add to test-values.yaml or test-values.yml', async () => {
     const { runner } = fakeDocker();
 
     const result = await tryTemplate(
@@ -549,7 +549,9 @@ files:
     );
 
     expect(result.code).toBe(1);
-    expect(result.stderr).toMatch(/LICENCE.*test-values\.yaml/s);
+    expect(result.stderr).toMatch(
+      /LICENCE.*give it one in test-values\.yaml or test-values\.yml: LICENCE/s,
+    );
   });
 
   it('does not point at test-values.yaml for a value input it cannot fill, which no file can answer', async () => {
@@ -666,6 +668,24 @@ files:
       });
     });
 
+    it('points an ask input with no acceptable value at the test-values.yml the folder holds', async () => {
+      const { docker, runner } = fakeDocker();
+      const folder = ghost(
+        '  LICENCE: { ask: { label: Licence, pattern: "(?=x)y" } }\n',
+        'services:\n  ghost:\n    image: ghost:5.96.0\n    environment:\n      licence: ${LICENCE}\n',
+      );
+      writeFileSync(join(folder, 'test-values.yml'), '{}\n');
+
+      const result = await tryTemplate(folder, { runner });
+
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain(
+        'give it one in test-values.yml: LICENCE',
+      );
+      expect(result.stderr).not.toContain('test-values.yaml');
+      expect(commands(docker).some((line) => line.includes(' up'))).toBe(false);
+    });
+
     it('refuses a folder holding test-values.yaml and test-values.yml, naming both, and starts nothing', async () => {
       const { docker, runner } = fakeDocker();
       const folder = ghost();
@@ -681,7 +701,7 @@ files:
       expect(docker.calls).toEqual([]);
     });
 
-    it('refuses a folder whose template file is spelled any other way', async () => {
+    it('refuses a folder whose template.yaml is spelled any other way', async () => {
       const { docker, runner } = fakeDocker();
       const folder = ghost();
       writeFileSync(

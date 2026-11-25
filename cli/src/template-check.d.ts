@@ -84,12 +84,6 @@ declare module 'cloudgate-template-check' {
   ): Uint8Array;
 
   /**
-   * `test-values.yaml`: the values `template try` gives a template's `ask`
-   * inputs (ADR-0078), which a folder may hold and a catalogue leaves out.
-   */
-  export const TEST_VALUES_FILE: string;
-
-  /**
    * Whether a path inside a template folder is one a folder may hold and a
    * catalogue leaves out: the website's (`index.md`, `screenshots/…`) and
    * `test-values.yaml` or `test-values.yml`.
