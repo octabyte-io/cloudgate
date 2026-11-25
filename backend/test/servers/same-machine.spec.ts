@@ -4,6 +4,7 @@ import type { InstanceMode } from '../../src/instance-mode/instance-mode.service
 import { OwnAddresses } from '../../src/outbound/own-addresses';
 import {
   isSameMachineAddress,
+  SAME_MACHINE_TIMEOUT_MS,
   SameMachine,
 } from '../../src/servers/same-machine';
 
@@ -93,6 +94,50 @@ describe('SameMachine', () => {
     ])('a Server at %s is not on the same machine', async (host) => {
       await expect(sameMachine.isSameMachine(host)).resolves.toBe(false);
     });
+  });
+
+  describe('when a name never resolves', () => {
+    const mode = { isHosted: false } as InstanceMode;
+    const never = () => new Promise<string[]>(() => undefined);
+    const stalled = (publicHost: string) =>
+      new SameMachine(
+        mode,
+        never,
+        new OwnAddresses(
+          never,
+          {
+            select: () => ({ from: () => Promise.resolve([]) }),
+          } as unknown as DrizzleDB,
+          {
+            get: (name: string) =>
+              name === 'CLOUDGATE_PUBLIC_HOST' ? publicHost : undefined,
+          } as unknown as ConfigService,
+          mode,
+        ),
+      );
+
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    it.each([
+      ['the Server address', 'stuck.example.com', OWN_PUBLIC],
+      ["one of the box's own names", OWN_PUBLIC, 'stuck.example.com'],
+    ])(
+      'answers not same-machine after %s stalls for SAME_MACHINE_TIMEOUT_MS',
+      async (_what, host, publicHost) => {
+        let answer: boolean | undefined;
+        void stalled(publicHost)
+          .isSameMachine(host)
+          .then((value) => {
+            answer = value;
+          });
+
+        await jest.advanceTimersByTimeAsync(SAME_MACHINE_TIMEOUT_MS - 1);
+        expect(answer).toBeUndefined();
+        await jest.advanceTimersByTimeAsync(1);
+        expect(answer).toBe(false);
+      },
+    );
   });
 
   describe('on the Hosted instance', () => {

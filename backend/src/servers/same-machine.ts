@@ -38,6 +38,15 @@ export function isSameMachineAddress(
 }
 
 /**
+ * How long the whole same-machine check may take before it answers "not
+ * same-machine". The check resolves names (the Server's address and the box's
+ * own, `OwnAddresses.list`) with no timeout of their own, and it runs inside
+ * a Server save, so a resolver that never answers would stall the save. Two
+ * seconds is well past a healthy lookup; a warning is never worth more.
+ */
+export const SAME_MACHINE_TIMEOUT_MS = 2_000;
+
+/**
  * Whether a Server's address is Cloudgate's own machine, for the
  * Same-machine warning (spec #146). Asked when the address is saved
  * (`ServersService.create`/`update`) and stored on the row as `sameMachine`,
@@ -50,7 +59,9 @@ export function isSameMachineAddress(
  * A name counts when **any** address it resolves to is the box, since one is
  * enough for the Server to be it; one that does not resolve counts as another
  * machine, because a warning nothing can vouch for is noise. `localhost` is
- * answered without asking the resolver.
+ * answered without asking the resolver. A check that takes longer than
+ * {@link SAME_MACHINE_TIMEOUT_MS} answers false too, for the same reason, and
+ * the save goes on.
  */
 @Injectable()
 export class SameMachine {
@@ -62,6 +73,18 @@ export class SameMachine {
 
   async isSameMachine(host: string): Promise<boolean> {
     if (this.instanceMode.isHosted) return false;
+    let timer: NodeJS.Timeout | undefined;
+    const timedOut = new Promise<false>((resolve) => {
+      timer = setTimeout(() => resolve(false), SAME_MACHINE_TIMEOUT_MS);
+    });
+    try {
+      return await Promise.race([this.check(host), timedOut]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private async check(host: string): Promise<boolean> {
     const bare = bareHost(host.trim()).toLowerCase().replace(/\.$/, '');
     if (bare === 'localhost') return true;
 
