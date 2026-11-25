@@ -62,7 +62,7 @@ export function composeOutputRule(reading: TemplateReading): string | null {
     const wiring = wired.get(name);
     if (wiring) {
       const { entry, link } = wiring;
-      return `docker-compose.yml uses \${${name}}, which ${entry} wires from ${link.source}.${link.output} in cloudgate.yaml; a compose part never takes an Output`;
+      return `${reading.names.compose} uses \${${name}}, which ${entry} wires from ${link.source}.${link.output} in ${reading.names.cloudgate}; a compose part never takes an Output`;
     }
   }
   return null;
@@ -71,6 +71,7 @@ export function composeOutputRule(reading: TemplateReading): string | null {
 /** Exactly one rule for each name that needs one, and none for any other. */
 export function inputNamesRule(reading: TemplateReading): string | null {
   const { inputs } = reading.template;
+  const names = reading.names;
   const { listed, wired } = usesIn(reading);
   const compose = reading.compose?.variables;
 
@@ -78,22 +79,22 @@ export function inputNamesRule(reading: TemplateReading): string | null {
     const wiring = wired.get(name);
     if (wiring) {
       const { entry, link } = wiring;
-      return `template.yaml: inputs has a rule for ${name}, which ${entry} wires from ${link.source}.${link.output} in cloudgate.yaml; a Wired variable takes no rule`;
+      return `${names.template}: inputs has a rule for ${name}, which ${entry} wires from ${link.source}.${link.output} in ${names.cloudgate}; a Wired variable takes no rule`;
     }
   }
   for (const [name, entry] of listed) {
     if (!(name in inputs)) {
-      return `template.yaml: inputs has no rule for ${name}, which ${entry} lists in cloudgate.yaml`;
+      return `${names.template}: inputs has no rule for ${name}, which ${entry} lists in ${names.cloudgate}`;
     }
   }
   for (const name of compose?.needs ?? []) {
     if (!(name in inputs)) {
-      return `template.yaml: inputs has no rule for ${name}, which docker-compose.yml uses`;
+      return `${names.template}: inputs has no rule for ${name}, which ${names.compose} uses`;
     }
   }
   for (const name of Object.keys(inputs)) {
     if (!listed.has(name) && !compose?.mentions.has(name)) {
-      return `template.yaml: inputs has a rule for ${name}, which neither cloudgate.yaml nor docker-compose.yml uses`;
+      return `${names.template}: inputs has a rule for ${name}, which neither ${names.cloudgate} nor ${names.compose} uses`;
     }
   }
   return null;
@@ -107,6 +108,7 @@ export function inputNamesRule(reading: TemplateReading): string | null {
  */
 export function inputReferencesRule({
   template,
+  names,
 }: TemplateReading): string | null {
   const { inputs } = template;
   const domains = domainCounts(template);
@@ -119,16 +121,16 @@ export function inputReferencesRule({
           : 'value' in rule
             ? valueProblem(rule.value, inputs, domains)
             : null;
-    if (problem) return `template.yaml: inputs.${name}${problem}`;
+    if (problem) return `${names.template}: inputs.${name}${problem}`;
   }
   for (const name of Object.keys(inputs)) {
     if (domains.has(name)) {
-      return `template.yaml: ${name} is both an input and a Domain, so {{${name}}} and {{domains.${name}.url}} would read alike; rename the input`;
+      return `${names.template}: ${name} is both an input and a Domain, so {{${name}}} and {{domains.${name}.url}} would read alike; rename the input`;
     }
   }
   const loop = loopIn(inputs);
   return loop
-    ? `template.yaml: inputs refer to each other in a loop: ${loop.join(' → ')}`
+    ? `${names.template}: inputs refer to each other in a loop: ${loop.join(' → ')}`
     : null;
 }
 

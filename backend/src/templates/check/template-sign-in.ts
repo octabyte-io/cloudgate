@@ -25,6 +25,7 @@ import type { InputRule } from './template-yaml';
 export function signInRule({
   template,
   compose,
+  names,
 }: TemplateReading): string | null {
   const { signIn, inputs, domains } = template;
   if (signIn === undefined) return null;
@@ -36,20 +37,20 @@ export function signInRule({
   if (domain !== undefined) {
     const count = domains.filter(({ service }) => service === domain).length;
     if (count === 0) {
-      return `template.yaml: signIn.${domainField} names ${domain}, which domains does not list: name a Domain by its service`;
+      return `${names.template}: signIn.${domainField} names ${domain}, which domains does not list: name a Domain by its service`;
     }
     if (count > 1) {
-      return `template.yaml: signIn.${domainField} names ${domain}, which has ${count} Domains in domains, so it names none of them: give the sign-in its own service, or leave domain out`;
+      return `${names.template}: signIn.${domainField} names ${domain}, which has ${count} Domains in domains, so it names none of them: give the sign-in its own service, or leave domain out`;
     }
   }
   if ('firstVisit' in signIn) return null;
 
   const named = (field: string, name: string): string | null => {
     if (!Object.hasOwn(inputs, name)) {
-      return `template.yaml: signIn.${field} names ${name}, which inputs has no rule for`;
+      return `${names.template}: signIn.${field} names ${name}, which inputs has no rule for`;
     }
     if (!compose?.variables.mentions.has(name)) {
-      return `template.yaml: signIn.${field} names ${name}, which docker-compose.yml does not read, so its value is not in the stack's variables`;
+      return `${names.template}: signIn.${field} names ${name}, which ${names.compose} does not read, so its value is not in the stack's variables`;
     }
     return null;
   };
@@ -65,16 +66,16 @@ export function signInRule({
   if (!('value' in rule)) {
     return isSecret(rule)
       ? null
-      : `template.yaml: signIn.password names ${signIn.password}, which is not a secret: ask it with secret: true, or generate a password`;
+      : `${names.template}: signIn.password names ${signIn.password}, which is not a secret: ask it with secret: true, or generate a password`;
   }
   const [only] = referencesIn(rule.value);
   if (only?.written !== rule.value || only.reference?.kind !== 'input') {
-    return `template.yaml: signIn.password names ${signIn.password}, a value that is not a secret: a value is taken only when it is exactly one reference, {{NAME}}, to an input asked with secret: true or generated as a password`;
+    return `${names.template}: signIn.password names ${signIn.password}, a value that is not a secret: a value is taken only when it is exactly one reference, {{NAME}}, to an input asked with secret: true or generated as a password`;
   }
   const referred = only.reference.name;
   return Object.hasOwn(inputs, referred) && isSecret(inputs[referred])
     ? null
-    : `template.yaml: signIn.password names ${signIn.password}, a value that refers to ${referred}, which is not a secret: ask it with secret: true, or generate a password`;
+    : `${names.template}: signIn.password names ${signIn.password}, a value that refers to ${referred}, which is not a secret: ask it with secret: true, or generate a password`;
 }
 
 /** Asked with `secret: true`, or generated as a password, hex or base64. */

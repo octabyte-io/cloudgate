@@ -6,7 +6,7 @@ import type { Template } from './template-check';
 import { domainCounts } from './template-domains';
 import { referenceProblem } from './template-inputs';
 import { referencesIn } from './template-references';
-import type { TemplateReading } from './template-rules';
+import type { TemplateFileNames, TemplateReading } from './template-rules';
 
 /**
  * `template.yaml`'s `files` against the files under `files/` (spec #1356):
@@ -21,24 +21,24 @@ import type { TemplateReading } from './template-rules';
  * and the path written plainly, so the name a reviewer reads is the name
  * the file lands at.
  */
-export function filesRule({ template }: TemplateReading): string | null {
+export function filesRule({ template, names }: TemplateReading): string | null {
   const listed = new Set<string>();
   for (const [at, file] of template.files.entries()) {
     const problem = configPathProblem(file.path);
-    if (problem) return `template.yaml: files.${at}.path ${problem}`;
+    if (problem) return `${names.template}: files.${at}.path ${problem}`;
     if (listed.has(file.path)) {
-      return `template.yaml: files lists ${file.path} twice`;
+      return `${names.template}: files lists ${file.path} twice`;
     }
     listed.add(file.path);
     if (template.configFiles[file.path] === undefined) {
-      return `template.yaml: files.${at} lists ${file.path}, which is not under files/`;
+      return `${names.template}: files.${at} lists ${file.path}, which is not under files/`;
     }
-    const belonging = belongingProblem(template, file);
-    if (belonging) return `template.yaml: files.${at}${belonging}`;
+    const belonging = belongingProblem(template, names, file);
+    if (belonging) return `${names.template}: files.${at}${belonging}`;
   }
   for (const file of Object.keys(template.configFiles)) {
     if (!listed.has(file)) {
-      return `files/${file} is not listed in template.yaml's files`;
+      return `files/${file} is not listed in ${names.template}'s files`;
     }
   }
   return referencesProblem(template);
@@ -67,6 +67,7 @@ export function configPathProblem(file: string): string | null {
  */
 function belongingProblem(
   template: Template,
+  names: TemplateFileNames,
   file: Template['files'][number],
 ): string | null {
   const name = file.entry ?? template.compose;
@@ -75,12 +76,12 @@ function belongingProblem(
   }
   const entry = template.config.services[name];
   if (entry === undefined) {
-    return `.entry names ${name}, which cloudgate.yaml does not list`;
+    return `.entry names ${name}, which ${names.cloudgate} does not list`;
   }
   if (name === template.compose) {
     return file.mount === undefined
       ? null
-      : ` belongs to the compose part, which takes no mount: its docker-compose.yml binds ../files/${file.path}`;
+      : ` belongs to the compose part, which takes no mount: its ${names.compose} binds ../files/${file.path}`;
   }
   if (entry.kind === 'bucket') {
     return ` belongs to ${name}, a bucket, which runs no container to mount it in`;

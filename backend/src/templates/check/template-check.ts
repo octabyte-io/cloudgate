@@ -5,13 +5,13 @@ import { parseProjectConfig } from '../../project-config/format/parse-config';
 import type { ProjectConfig } from '../../project-config/project-config.types';
 import { readCatalogueFile } from './catalogue-file';
 import type { CatalogueEntry } from './catalogue-file';
-import { CONFIG_FILES, folderFile } from './catalogue-layout';
+import { CONFIG_FILES, eitherSpelling, folderFile } from './catalogue-layout';
 import type { FolderYaml } from './catalogue-layout';
 import { composeVariables } from './compose-variables';
 import { readLogo } from './template-logo';
 import type { TemplateLogo } from './template-logo';
 import { TEMPLATE_RULES } from './template-rules';
-import type { ComposeFile } from './template-rules';
+import type { ComposeFile, TemplateReading } from './template-rules';
 import { readTemplateYaml } from './template-yaml';
 import type { TemplateYaml } from './template-yaml';
 
@@ -117,12 +117,17 @@ function checkTemplate(
   const templateYaml = textOf(text, 'template');
   const cloudgateYaml = textOf(text, 'cloudgate');
   const composeYaml = textOf(text, 'docker-compose');
-  if (!templateYaml) return { ok: false, reason: 'has no template.yaml' };
-  if (!cloudgateYaml) return { ok: false, reason: 'has no cloudgate.yaml' };
+  if (!templateYaml) {
+    return { ok: false, reason: `has no ${eitherSpelling('template')}` };
+  }
+  if (!cloudgateYaml) {
+    return { ok: false, reason: `has no ${eitherSpelling('cloudgate')}` };
+  }
 
   const yaml = readTemplateYaml(
     templateYaml.content,
     instance.cloudgateVersion,
+    templateYaml.path,
   );
   if (!yaml.ok) return { ok: false, reason: yaml.reason };
 
@@ -160,7 +165,15 @@ function checkTemplate(
     ),
     logo: logo.logo,
   };
-  const reading = { template, compose };
+  const reading: TemplateReading = {
+    template,
+    compose,
+    names: {
+      template: templateYaml.path,
+      cloudgate: cloudgateYaml.path,
+      compose: composeYaml?.path ?? eitherSpelling('docker-compose'),
+    },
+  };
   for (const rule of TEMPLATE_RULES) {
     const reason = rule(reading);
     if (reason) return { ok: false, reason };

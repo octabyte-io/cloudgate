@@ -122,7 +122,7 @@ domains:
           }),
         ),
       ).toBe(
-        'template.yaml: domains.0 names ghost, but there is no docker-compose.yml',
+        'template.yaml: domains.0 names ghost, but there is no docker-compose.yaml or docker-compose.yml',
       );
     });
 

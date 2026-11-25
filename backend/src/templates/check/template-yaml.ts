@@ -325,13 +325,15 @@ export type TemplateYamlRead =
   | { readonly ok: false; readonly reason: string; readonly newer?: true };
 
 /**
- * Reads `template.yaml`. A template needing a newer Cloudgate than
+ * Reads `template.yaml`, which the folder spells `path` (ADR-0090), the name
+ * every reason gives it. A template needing a newer Cloudgate than
  * `cloudgateVersion` is refused for that alone, with `newer` set, before its
  * other fields are read.
  */
 export function readTemplateYaml(
   source: string,
   cloudgateVersion: string,
+  path: string,
 ): TemplateYamlRead {
   let document: unknown;
   try {
@@ -343,8 +345,8 @@ export function readTemplateYaml(
     return {
       ok: false,
       reason: twice
-        ? `template.yaml: inputs has two rules for ${twice}; a name has exactly one`
-        : `template.yaml is not valid YAML: ${error.message.split('\n')[0]}`,
+        ? `${path}: inputs has two rules for ${twice}; a name has exactly one`
+        : `${path} is not valid YAML: ${error.message.split('\n')[0]}`,
     };
   }
   if (
@@ -352,7 +354,7 @@ export function readTemplateYaml(
     typeof document !== 'object' ||
     Array.isArray(document)
   ) {
-    return { ok: false, reason: 'template.yaml must be a map of fields' };
+    return { ok: false, reason: `${path} must be a map of fields` };
   }
 
   const needed = templateYamlSchema.shape.cloudgate.safeParse(
@@ -361,7 +363,7 @@ export function readTemplateYaml(
   if (!needed.success) {
     return {
       ok: false,
-      reason: `template.yaml: ${describe(needed.error.issues[0], ['cloudgate'])}`,
+      reason: `${path}: ${describe(needed.error.issues[0], ['cloudgate'])}`,
     };
   }
   if (semver.gt(needed.data, cloudgateVersion)) {
@@ -376,7 +378,7 @@ export function readTemplateYaml(
   if (!result.success) {
     return {
       ok: false,
-      reason: `template.yaml: ${describe(result.error.issues[0], [])}`,
+      reason: `${path}: ${describe(result.error.issues[0], [])}`,
     };
   }
   return { ok: true, template: result.data };

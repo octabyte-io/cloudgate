@@ -48,6 +48,14 @@ export function spellingsOf(name: FolderYaml): readonly [string, string] {
 }
 
 /**
+ * `name` as a reason names a file the folder does not have: both spellings,
+ * since neither is the one it lacks more than the other (ADR-0090).
+ */
+export function eitherSpelling(name: FolderYaml): string {
+  return spellingsOf(name).join(' or ');
+}
+
+/**
  * The file `name` in a folder's `files` (by path inside the folder), under
  * whichever spelling it has: null when it has neither, and the two paths
  * when it has both, which the folder may not (ADR-0090). The one place a

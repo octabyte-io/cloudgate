@@ -10,6 +10,7 @@ import type { TemplateReading } from './template-rules';
 export function domainsRule({
   template,
   compose,
+  names,
 }: TemplateReading): string | null {
   for (const [at, { service }] of template.domains.entries()) {
     if (compose?.services[service] !== undefined) continue;
@@ -18,9 +19,9 @@ export function domainsRule({
       entry?.kind === 'web' && entry.managed !== 'console'
         ? `${service}, an own web, which gets its generated Domain without being listed; domains lists only compose services`
         : compose === null
-          ? `${service}, but there is no docker-compose.yml`
-          : `${service}, which is not a service in docker-compose.yml`;
-    return `template.yaml: domains.${at} names ${problem}`;
+          ? `${service}, but there is no ${names.compose}`
+          : `${service}, which is not a service in ${names.compose}`;
+    return `${names.template}: domains.${at} names ${problem}`;
   }
   return null;
 }

@@ -9,6 +9,7 @@ import {
   CONFIG_FILES,
   TEMPLATE_CONFIG_FILES_MAX_BYTES,
   TEMPLATES_FOLDER,
+  eitherSpelling,
   fileCap,
   folderFile,
   isLeftOutOfCatalogue,
@@ -299,7 +300,7 @@ function configFilesProblem(
     if (!path.startsWith(CONFIG_FILES)) continue;
     const below = path.slice(CONFIG_FILES.length);
     if (!listed.has(below)) {
-      return `${path}, which its ${found?.path ?? 'template.yaml'} does not list in files`;
+      return `${path}, which its ${found?.path ?? eitherSpelling('template')} does not list in files`;
     }
     const problem = configPathProblem(below);
     if (problem) return `${path}, whose path ${problem}`;

@@ -20,11 +20,23 @@ export interface ComposeFile {
   readonly variables: ComposeVariables;
 }
 
+/**
+ * The names a reason gives the folder's YAML files: each as the folder
+ * spells it (ADR-0090), and the compose file's two spellings when the folder
+ * has none.
+ */
+export interface TemplateFileNames {
+  readonly template: string;
+  readonly cloudgate: string;
+  readonly compose: string;
+}
+
 /** Everything a rule may look at: the template, and its compose file read. */
 export interface TemplateReading {
   readonly template: Template;
   /** Null when the template has no compose part. */
   readonly compose: ComposeFile | null;
+  readonly names: TemplateFileNames;
 }
 
 /**
@@ -54,40 +66,42 @@ export const TEMPLATE_RULES: readonly TemplateRule[] = [
 
 /**
  * The compose part is written as it will be after setup,
- * `{ kind: compose, managed: console }`, beside its file at the one fixed name
- * `docker-compose.yml`; `template.yaml`'s `compose` names it. It is the only
+ * `{ kind: compose, managed: console }`, beside its file,
+ * `docker-compose.yaml` or `docker-compose.yml`; `template.yaml`'s `compose`
+ * names it. It is the only
  * console-managed entry a template may have, since a Plan creates a
  * console-managed Service only from a Pending setup's stack (ADR-0065).
  */
 function composePartRule({
   template,
   compose,
+  names,
 }: TemplateReading): string | null {
   const { services } = template.config;
   for (const [name, entry] of Object.entries(services)) {
     if (name === template.compose) continue;
     if (entry.managed === 'console') {
-      return `cloudgate.yaml: ${name} is console-managed; a template's only console-managed entry is its compose part, named by compose in template.yaml`;
+      return `${names.cloudgate}: ${name} is console-managed; a template's only console-managed entry is its compose part, named by compose in ${names.template}`;
     }
     if (entry.kind === 'compose') {
-      return `cloudgate.yaml: ${name} names a repository's compose file; a template's compose part is written { kind: compose, managed: console }, with its file beside it as docker-compose.yml`;
+      return `${names.cloudgate}: ${name} names a repository's compose file; a template's compose part is written { kind: compose, managed: console }, with its file beside it as ${names.compose}`;
     }
   }
   if (template.compose === undefined) {
     if (compose !== null) {
-      return 'docker-compose.yml is here, but template.yaml names no compose entry';
+      return `${names.compose} is here, but ${names.template} names no compose entry`;
     }
     if (template.size !== undefined) {
-      return "template.yaml: size is the compose part's minimum size, but there is no compose entry";
+      return `${names.template}: size is the compose part's minimum size, but there is no compose entry`;
     }
     return null;
   }
   const entry = services[template.compose];
   if (entry?.kind !== 'compose' || entry.managed !== 'console') {
-    return `template.yaml: compose names ${template.compose}, which cloudgate.yaml must list as { kind: compose, managed: console }`;
+    return `${names.template}: compose names ${template.compose}, which ${names.cloudgate} must list as { kind: compose, managed: console }`;
   }
   if (compose === null) {
-    return `template.yaml: compose names ${template.compose}, but there is no docker-compose.yml`;
+    return `${names.template}: compose names ${template.compose}, but there is no ${names.compose}`;
   }
   return null;
 }
@@ -97,21 +111,25 @@ function composePartRule({
  * that comes from a variable would let the app's version drift under the
  * people who set it up. A digest is not required, and alone is not a tag.
  */
-function imageTagRule({ template, compose }: TemplateReading): string | null {
+function imageTagRule({
+  template,
+  compose,
+  names,
+}: TemplateReading): string | null {
   for (const [name, service] of Object.entries(compose?.services ?? {})) {
     const image = service.image;
     if (image === undefined) continue;
     const problem =
       typeof image === 'string' ? imageTagProblem(image) : 'must be text';
     if (problem) {
-      return `docker-compose.yml: ${name}'s image ${problem}`;
+      return `${names.compose}: ${name}'s image ${problem}`;
     }
   }
   for (const [name, entry] of Object.entries(template.config.services)) {
     if (entry.managed === 'console' || !('source' in entry)) continue;
     if (entry.source?.sourceType !== 'docker') continue;
     const problem = imageTagProblem(entry.source.dockerImage);
-    if (problem) return `cloudgate.yaml: ${name}'s image ${problem}`;
+    if (problem) return `${names.cloudgate}: ${name}'s image ${problem}`;
   }
   return null;
 }

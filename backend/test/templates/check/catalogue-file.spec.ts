@@ -589,6 +589,15 @@ describe('readCatalogueFile', () => {
       );
     });
 
+    it('names both spellings of template.yaml for a folder that has neither', () => {
+      const folder = ghostShipping({ 'files/a.conf': 'x' });
+      delete folder.files['template.yaml'];
+
+      expect(refusal(catalogue(folder))).toBe(
+        'The catalogue holds templates/ghost/files/a.conf, which its template.yaml or template.yml does not list in files',
+      );
+    });
+
     it('refuses a folder holding both spellings of one file, naming both', () => {
       expect(refusal(ghostWith('template.yml', 'name: Ghost\n'))).toBe(
         'The catalogue holds templates/ghost/template.yaml and templates/ghost/template.yml, two spellings of one file; a template folder holds one',

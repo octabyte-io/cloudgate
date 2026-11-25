@@ -439,7 +439,7 @@ ${REQUIRED}inputs:
 
     it('is required, beside template.yaml', () => {
       expect(hiddenReason(ghost({ files: { 'cloudgate.yaml': null } }))).toBe(
-        'has no cloudgate.yaml',
+        'has no cloudgate.yaml or cloudgate.yml',
       );
       expect(
         hiddenReason(
@@ -450,7 +450,7 @@ ${REQUIRED}inputs:
             },
           }),
         ),
-      ).toBe('has no template.yaml');
+      ).toBe('has no template.yaml or template.yml');
     });
   });
 
@@ -483,7 +483,7 @@ ${REQUIRED}inputs:
 
     it('needs docker-compose.yml when named, and a name when the file is there', () => {
       expect(hiddenReason(ghost({ compose: null }))).toBe(
-        'template.yaml: compose names app, but there is no docker-compose.yml',
+        'template.yaml: compose names app, but there is no docker-compose.yaml or docker-compose.yml',
       );
       expect(
         hiddenReason(
@@ -659,7 +659,12 @@ ${REQUIRED}inputs:
   describe('spellings (ADR-0090)', () => {
     /** Ghost with its three YAML files spelled the other way. */
     function respelled(
-      overrides: { cloudgateYaml?: string; compose?: string } = {},
+      overrides: {
+        templateYaml?: string;
+        cloudgateYaml?: string;
+        compose?: string | null;
+        files?: Record<string, string | null>;
+      } = {},
     ): ReturnType<typeof ghost> {
       const files = ghost(overrides).files;
       return ghost({
@@ -669,7 +674,10 @@ ${REQUIRED}inputs:
           'docker-compose.yml': null,
           'template.yml': files['template.yaml'],
           'cloudgate.yml': files['cloudgate.yaml'],
-          'docker-compose.yaml': files['docker-compose.yml'],
+          ...(files['docker-compose.yml'] === undefined
+            ? {}
+            : { 'docker-compose.yaml': files['docker-compose.yml'] }),
+          ...overrides.files,
         },
       });
     }
@@ -699,6 +707,79 @@ ${REQUIRED}inputs:
       expect(hiddenReason(respelled({ compose: 'version: "3"\n' }))).toBe(
         'docker-compose.yaml must have services, each a map',
       );
+    });
+
+    it('names template.yml, cloudgate.yml and docker-compose.yaml in every reason, as the folder spells them', () => {
+      const templateYaml = ghost().files['template.yaml'] as string;
+      expect(
+        hiddenReason(
+          respelled({
+            templateYaml: 'name: [Ghost\n',
+            // Unread, it lists no config file, which the zip would refuse.
+            files: { 'files/config.production.json': null },
+          }),
+        ),
+      ).toMatch(/^template\.yml is not valid YAML: /);
+      expect(
+        hiddenReason(
+          respelled({ templateYaml: templateYaml.replace('small', 'huge') }),
+        ),
+      ).toMatch(/^template\.yml: size/);
+      expect(
+        hiddenReason(
+          respelled({
+            cloudgateYaml:
+              'version: 1\nservices:\n  app: { kind: compose, managed: console }\n  cache: { kind: mongo, managed: console }\n',
+          }),
+        ),
+      ).toBe(
+        "cloudgate.yml: cache is console-managed; a template's only console-managed entry is its compose part, named by compose in template.yml",
+      );
+      expect(
+        hiddenReason(
+          respelled({
+            compose: 'services:\n  ghost: { image: "ghost:latest" }\n',
+          }),
+        ),
+      ).toBe(
+        "docker-compose.yaml: ghost's image ghost:latest is tagged latest; name the version it runs instead",
+      );
+      expect(
+        hiddenReason(
+          respelled({
+            compose:
+              'services:\n  blog:\n    image: "ghost:5"\n    environment:\n      A: ${DB_PASSWORD}\n      B: ${ADMIN_EMAIL}\n',
+          }),
+        ),
+      ).toBe(
+        'template.yml: domains.0 names ghost, which is not a service in docker-compose.yaml',
+      );
+      expect(
+        hiddenReason(
+          respelled({
+            compose:
+              'services:\n  ghost:\n    image: "ghost:5"\n    environment:\n      A: ${DB_PASSWORD}\n      B: ${ADMIN_EMAIL}\n      C: ${MAIL_KEY}\n',
+          }),
+        ),
+      ).toBe(
+        'template.yml: inputs has no rule for MAIL_KEY, which docker-compose.yaml uses',
+      );
+    });
+
+    it('names both spellings of a file the folder does not have', () => {
+      expect(hiddenReason(respelled({ compose: null }))).toBe(
+        'template.yml: compose names app, but there is no docker-compose.yaml or docker-compose.yml',
+      );
+      expect(
+        hiddenReason(
+          respelled({
+            files: {
+              'template.yml': null,
+              'files/config.production.json': null,
+            },
+          }),
+        ),
+      ).toBe('has no template.yaml or template.yml');
     });
 
     it('refuses the whole zip over both spellings of one file, naming both', () => {
