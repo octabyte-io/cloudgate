@@ -178,6 +178,14 @@ export const server = pgTable('server', {
   // of address, so the next connect records it afresh. Not a secret: it is
   // a hash of a public key, and the API answers it as is.
   hostKeyFingerprint: text('host_key_fingerprint'),
+  // Whether `ipAddress` is Cloudgate's own machine — loopback or one of the
+  // box's own addresses (`same-machine.ts`) — so the console shows the
+  // Same-machine warning for it (spec #146). Worked out when the address is
+  // saved, on create and on every update that names one, and stored so a
+  // Server read never resolves a name. Always false on the Hosted instance.
+  // False on every Server saved before it existed, until its address is
+  // saved again: the box's own addresses are not knowable from SQL.
+  sameMachine: boolean('same_machine').notNull().default(false),
   // When this Server's Maintenance began, as an ISO instant; null while it is
   // not in maintenance. While it is set nothing new starts containers on the
   // Server (`server-maintenance.ts`, spec #1420). Separate from the unused

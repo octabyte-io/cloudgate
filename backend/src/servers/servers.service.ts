@@ -52,6 +52,7 @@ import {
   isServerAddressRefusal,
   ServerAddressGuard,
 } from './server-address-guard';
+import { SameMachine } from './same-machine';
 
 /**
  * How many rows of one category a refusal names before it starts counting.
@@ -129,6 +130,7 @@ export class ServersService {
     private readonly billing: BillingService,
     private readonly sshKeys: SshKeysService,
     private readonly addressGuard: ServerAddressGuard,
+    private readonly sameMachine: SameMachine,
     // Forward: the stages start a first Setup run through ServerSetupRuns,
     // which provisions through this service.
     @Inject(forwardRef(() => BoughtServerStages))
@@ -189,11 +191,15 @@ export class ServersService {
     // Hosted: an address on loopback, link-local, a private range or the
     // box's own is refused. Checked again at every connect.
     await this.addressGuard.addressToDial(fields.ipAddress);
+    // Self-hosted: whether the address is Cloudgate's own machine, for the
+    // Same-machine warning. Always false on the Hosted instance.
+    const sameMachine = await this.sameMachine.isSameMachine(fields.ipAddress);
 
     const [created] = await this.db
       .insert(server)
       .values({
         ...fields,
+        sameMachine,
         sshKeyId: ownedKeyId,
         organizationId: ctx.session.activeOrganizationId,
       })
@@ -258,13 +264,20 @@ export class ServersService {
     // An absent `sshKeyId` means "leave the key alone": nothing is resolved
     // and nothing is written for it, so a rename does not have to name a key.
     const { sshKeyId, ...fields } = data;
+    let addressed: typeof fields & { sameMachine?: boolean } = fields;
     if (fields.ipAddress !== undefined) {
       await this.addressGuard.addressToDial(fields.ipAddress);
+      // A new address is worked out again for the Same-machine warning; an
+      // update that names none leaves `sameMachine` as it was.
+      addressed = {
+        ...fields,
+        sameMachine: await this.sameMachine.isSameMachine(fields.ipAddress),
+      };
     }
     const keyed =
       sshKeyId === undefined
-        ? fields
-        : { ...fields, sshKeyId: await this.ownedSshKeyId(ctx, sshKeyId) };
+        ? addressed
+        : { ...addressed, sshKeyId: await this.ownedSshKeyId(ctx, sshKeyId) };
     // A new address is a different machine as far as SSH can tell, and the
     // operator changing it is the deliberate act Forget host key otherwise
     // is: its next connect records the host key afresh (ADR-0074).

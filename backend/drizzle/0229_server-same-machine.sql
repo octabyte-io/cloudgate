@@ -1,0 +1,1 @@
+ALTER TABLE "server" ADD COLUMN "same_machine" boolean DEFAULT false NOT NULL;

@@ -76,6 +76,7 @@ function makeService(exec: jest.Mock) {
     } as unknown as SshKeysService,
     {} as never,
     {} as never,
+    {} as never,
   );
   return { service, writes };
 }

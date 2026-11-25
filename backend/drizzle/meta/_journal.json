@@ -1604,6 +1604,13 @@
       "when": 1794947624873,
       "tag": "0228_bought-server-image",
       "breakpoints": true
+    },
+    {
+      "idx": 229,
+      "version": "7",
+      "when": 1795625778767,
+      "tag": "0229_server-same-machine",
+      "breakpoints": true
     }
   ]
 }

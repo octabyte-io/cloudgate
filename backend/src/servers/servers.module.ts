@@ -6,6 +6,7 @@ import { addressResolverProvider } from '../ai/ai-destination';
 import { BoughtServersModule } from '../bought-servers/bought-servers.module';
 import { SshKeysModule } from '../ssh-keys/ssh-keys.module';
 import { ServerAddressGuard } from './server-address-guard';
+import { SameMachine } from './same-machine';
 import { ServerConnectionProvider } from './server-connection.provider';
 import { ServerSetupRuns } from './server-setup-runs';
 import { ServersController } from './servers.controller';
@@ -44,6 +45,7 @@ import { ServersService } from './servers.service';
     ServersService,
     ServerSetupRuns,
     ServerAddressGuard,
+    SameMachine,
     addressResolverProvider,
     ServerConnectionProvider,
     {
