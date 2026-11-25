@@ -120,26 +120,39 @@ describe('writeLink', () => {
     expect(findNearestLink(root)?.link).toEqual(shopRoot);
   });
 
-  it('adds cloudgate.yaml beside .cloudgate/ to the .gitignore of a Project folder, keeping its lines', () => {
+  it('adds cloudgate.yaml and cloudgate.yml beside .cloudgate/ to the .gitignore of a Project folder, keeping its lines', () => {
     writeFileSync(join(root, '.gitignore'), 'node_modules\ndist');
 
     writeLink(root, shopRoot);
 
     expect(readFileSync(join(root, '.gitignore'), 'utf8')).toBe(
-      'node_modules\ndist\n.cloudgate/\n/cloudgate.yaml\n',
+      'node_modules\ndist\n.cloudgate/\n/cloudgate.yaml\n/cloudgate.yml\n',
     );
   });
 
-  it('leaves a .gitignore that already ignores both alone', () => {
-    for (const line of ['cloudgate.yaml', '/cloudgate.yaml']) {
-      writeFileSync(join(root, '.gitignore'), `.cloudgate\n${line}\n`);
+  it('leaves a .gitignore that already ignores all three alone', () => {
+    for (const [yaml, yml] of [
+      ['cloudgate.yaml', 'cloudgate.yml'],
+      ['/cloudgate.yaml', '/cloudgate.yml'],
+    ]) {
+      writeFileSync(join(root, '.gitignore'), `.cloudgate\n${yaml}\n${yml}\n`);
 
       writeLink(root, shopRoot);
 
       expect(readFileSync(join(root, '.gitignore'), 'utf8')).toBe(
-        `.cloudgate\n${line}\n`,
+        `.cloudgate\n${yaml}\n${yml}\n`,
       );
     }
+  });
+
+  it('adds only cloudgate.yml to a .gitignore an earlier link gave /cloudgate.yaml, not repeating that line', () => {
+    writeFileSync(join(root, '.gitignore'), '.cloudgate/\n/cloudgate.yaml\n');
+
+    writeLink(root, shopRoot);
+
+    expect(readFileSync(join(root, '.gitignore'), 'utf8')).toBe(
+      '.cloudgate/\n/cloudgate.yaml\n/cloudgate.yml\n',
+    );
   });
 
   it('ignores no cloudgate.yaml for a link naming a Service', () => {

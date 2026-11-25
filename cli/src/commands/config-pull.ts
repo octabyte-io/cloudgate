@@ -2,13 +2,14 @@ import { relative } from 'node:path';
 
 import type { Command } from '../command.js';
 import { EXIT } from '../exit-codes.js';
-import { WORKING_COPY_FILE } from '../folder-link.js';
+import { WORKING_COPY_FILE, WORKING_COPY_YML } from '../folder-link.js';
 import { connectToInstance } from '../target-session.js';
 import {
   downloadProjectConfig,
   findProjectFolder,
   mayReplaceWorkingCopy,
   saveWorkingCopy,
+  workingCopyIn,
 } from '../working-copy.js';
 
 /**
@@ -27,12 +28,13 @@ USAGE
   cloudgate config pull [--yes]
 
   Downloads the Project config kept in Cloudgate into ${WORKING_COPY_FILE} at
-  the Project folder (made by cloudgate link --whole-project) and records
-  its version. A ${WORKING_COPY_FILE} edited since it was downloaded is asked
-  about first; with no terminal it is refused unless --yes is given.
+  the Project folder (made by cloudgate link --whole-project), or into
+  ${WORKING_COPY_YML} when that is the copy there, and records its version.
+  A copy edited since it was downloaded is asked about first; with no
+  terminal it is refused unless --yes is given.
 
 FLAGS
-  --yes                  Replace an edited ${WORKING_COPY_FILE} without asking
+  --yes                  Replace an edited copy without asking
 `,
   options: { yes: { type: 'boolean' } },
   maxPositionals: 0,
@@ -49,10 +51,8 @@ FLAGS
           { id: link.projectId, name: link.names.project },
         ),
     );
-    const shown =
-      folder === cwd
-        ? WORKING_COPY_FILE
-        : `${relative(cwd, folder)}/${WORKING_COPY_FILE}`;
+    const shown = (name: string) =>
+      folder === cwd ? name : `${relative(cwd, folder)}/${name}`;
     if (
       !(await mayReplaceWorkingCopy(
         context,
@@ -62,12 +62,14 @@ FLAGS
         values.yes === true,
       ))
     ) {
-      out.note(`Kept ${shown}. Nothing changed.`);
+      out.note(
+        `Kept ${shown(workingCopyIn(folder, out).name)}. Nothing changed.`,
+      );
       return EXIT.ok;
     }
-    saveWorkingCopy(folder, link, downloaded);
+    const { name } = saveWorkingCopy(folder, link, downloaded);
     out.note(
-      `✓ Saved the Project config, version ${downloaded.version}, as ${shown}`,
+      `✓ Saved the Project config, version ${downloaded.version}, as ${shown(name)}`,
     );
     return EXIT.ok;
   },

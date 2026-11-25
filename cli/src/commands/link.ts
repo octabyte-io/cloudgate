@@ -7,6 +7,7 @@ import {
   LINK_FOLDER,
   readLinkIn,
   WORKING_COPY_FILE,
+  WORKING_COPY_YML,
   writeLink,
 } from '../folder-link.js';
 import type { FolderLink } from '../folder-link.js';
@@ -37,7 +38,8 @@ import { linkWholeProject } from '../working-copy.js';
  *
  * With `--whole-project` it names no Service and makes the folder a
  * **Project folder** (ADR-0080): it downloads the Cloudgate-kept Project
- * config into `cloudgate.yaml` and records the version downloaded.
+ * config into `cloudgate.yaml` (or the `cloudgate.yml` there) and records
+ * the version downloaded.
  */
 export const link: Command = {
   name: 'link',
@@ -56,10 +58,11 @@ USAGE
   naming the first flag it needs.
 
   With --whole-project it links no Service, making this a Project folder:
-  it saves the Project config here as ${WORKING_COPY_FILE}, a working copy
-  Cloudgate never reads on its own, and adds it to .gitignore too. A
-  Project whose config is kept in a repository is refused. In a Project
-  folder, status, logs and vars ask for the Service, or take --service.
+  it saves the Project config here as ${WORKING_COPY_FILE} (or into the
+  ${WORKING_COPY_YML} already here), a working copy Cloudgate never reads on
+  its own, and adds it to .gitignore too. A Project whose config is kept
+  in a repository is refused. In a Project folder, status, logs and vars
+  ask for the Service, or take --service.
 
 FLAGS
   --org <name|id>        Organization            (CLOUDGATE_ORG)

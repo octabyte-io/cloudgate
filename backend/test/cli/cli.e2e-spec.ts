@@ -1203,7 +1203,7 @@ describe('Cloudgate CLI (e2e)', () => {
           },
         });
         expect(readFileSync(join(repo, '.gitignore'), 'utf8')).toBe(
-          'node_modules\n.cloudgate/\n/cloudgate.yaml\n',
+          'node_modules\n.cloudgate/\n/cloudgate.yaml\n/cloudgate.yml\n',
         );
       } finally {
         removeFolder(repo);

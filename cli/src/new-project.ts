@@ -15,7 +15,6 @@ import type { CommandContext } from './command.js';
 import { CliError } from './errors.js';
 import { EXIT } from './exit-codes.js';
 import type { ExitCode } from './exit-codes.js';
-import { WORKING_COPY_FILE } from './folder-link.js';
 import type { Connection } from './target-session.js';
 import { linkWholeProject, readWorkingCopy } from './working-copy.js';
 
@@ -30,7 +29,7 @@ import { linkWholeProject, readWorkingCopy } from './working-copy.js';
  * starter has no app to build yet.
  *
  * Everything that can stop it before anything is made is settled first:
- * where its apps could run, a `cloudgate.yaml` already in the folder, the
+ * where its apps could run, a working copy already in the folder, the
  * name and the Deploy target. Then it is made over the console's own routes
  * (`POST /projects`, which makes the empty config, `POST /environments`, and
  * the whole-YAML edit). A failure after the Project exists says what was made
@@ -59,13 +58,14 @@ export async function createProjectHere(
       `Add a Server at ${consoleUrl}/servers or connect a Cloud account at ${consoleUrl}/settings/cloud-accounts, then run cloudgate deploy here again.`,
     );
   }
+  const copy = readWorkingCopy(folder, out);
   if (
-    readWorkingCopy(folder) !== undefined &&
+    copy.text !== undefined &&
     !(await prompter.confirm(
-      `${WORKING_COPY_FILE} is already here. Replace it with a starter for the new Project?`,
+      `${copy.name} is already here. Replace it with a starter for the new Project?`,
     ))
   ) {
-    out.note(`Kept ${WORKING_COPY_FILE}. No Project was created.`);
+    out.note(`Kept ${copy.name}. No Project was created.`);
     return EXIT.failed;
   }
 
@@ -156,9 +156,7 @@ export async function createProjectHere(
       `Run cloudgate link --whole-project --project ${project.name} here to finish, or delete the Project at ${projectPage}/settings.`,
     );
   }
-  out.note(
-    `Add your apps to ${WORKING_COPY_FILE}, then run cloudgate deploy again.`,
-  );
+  out.note(`Add your apps to ${copy.name}, then run cloudgate deploy again.`);
   return EXIT.ok;
 }
 

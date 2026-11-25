@@ -270,6 +270,98 @@ describe('config pull', () => {
   });
 });
 
+describe('config pull, with the copy spelt cloudgate.yml', () => {
+  const BOTH_WARNING =
+    'Warning: this Project folder holds both cloudgate.yaml and cloudgate.yml; using cloudgate.yaml, and cloudgate.yml is not read.';
+
+  it('replaces cloudgate.yml when it is the only copy, writing no cloudgate.yaml and naming the file it wrote', async () => {
+    writeLink(root, rootLink);
+    writeFileSync(join(root, 'cloudgate.yml'), DOWNLOADED);
+
+    const result = await inTerminal(['config', 'pull']);
+
+    expect(result.code).toBe(0);
+    expect(readFileSync(join(root, 'cloudgate.yml'), 'utf8')).toBe(CURRENT);
+    expect(existsSync(join(root, 'cloudgate.yaml'))).toBe(false);
+    expect(result.stderr).toContain(
+      '✓ Saved the Project config, version 5, as cloudgate.yml\n',
+    );
+    expect(result.stderr).not.toContain('Warning');
+  });
+
+  it('asks about edits to cloudgate.yml by its name', async () => {
+    writeLink(root, rootLink);
+    writeFileSync(join(root, 'cloudgate.yml'), `${DOWNLOADED}# mine\n`);
+
+    const result = await inTerminal(['config', 'pull'], { confirm: [false] });
+
+    expect(result.asked).toEqual([
+      'cloudgate.yml has edits not sent to Cloudgate. Replace them with the Project config, version 5?',
+    ]);
+    expect(result.stderr).toContain('Kept cloudgate.yml. Nothing changed.');
+    expect(readFileSync(join(root, 'cloudgate.yml'), 'utf8')).toBe(
+      `${DOWNLOADED}# mine\n`,
+    );
+  });
+
+  it('with both names, replaces cloudgate.yaml, leaves cloudgate.yml as it is and warns once naming it', async () => {
+    writeLink(root, rootLink);
+    writeFileSync(join(root, 'cloudgate.yaml'), DOWNLOADED);
+    writeFileSync(join(root, 'cloudgate.yml'), 'stray\n');
+
+    const result = await inTerminal(['config', 'pull']);
+
+    expect(result.code).toBe(0);
+    expect(readFileSync(join(root, 'cloudgate.yaml'), 'utf8')).toBe(CURRENT);
+    expect(readFileSync(join(root, 'cloudgate.yml'), 'utf8')).toBe('stray\n');
+    expect(result.stderr.split(BOTH_WARNING)).toHaveLength(2);
+    expect(result.stderr).toContain(
+      '✓ Saved the Project config, version 5, as cloudgate.yaml\n',
+    );
+  });
+});
+
+describe('link --whole-project, with the copy spelt cloudgate.yml', () => {
+  it('asks about a cloudgate.yml already here by its name, and on yes writes the Project config back to it', async () => {
+    writeFileSync(join(root, 'cloudgate.yml'), 'mine\n');
+
+    const result = await inTerminal(
+      ['link', '--whole-project', '--project', 'shop', '--env', 'staging'],
+      { confirm: [true] },
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.asked).toEqual([
+      'cloudgate.yml has edits not sent to Cloudgate. Replace them with the Project config, version 5?',
+    ]);
+    expect(readFileSync(join(root, 'cloudgate.yml'), 'utf8')).toBe(CURRENT);
+    expect(existsSync(join(root, 'cloudgate.yaml'))).toBe(false);
+    expect(result.stderr).toContain(
+      '✓ Saved the Project config, version 5, as cloudgate.yml\n',
+    );
+  });
+
+  it('with both names, asks about cloudgate.yaml only and warns once naming cloudgate.yml', async () => {
+    writeFileSync(join(root, 'cloudgate.yaml'), 'mine\n');
+    writeFileSync(join(root, 'cloudgate.yml'), 'stray\n');
+
+    const result = await inTerminal(
+      ['link', '--whole-project', '--project', 'shop', '--env', 'staging'],
+      { confirm: [false] },
+    );
+
+    expect(result.asked).toEqual([
+      'cloudgate.yaml has edits not sent to Cloudgate. Replace them with the Project config, version 5?',
+    ]);
+    expect(
+      result.stderr.split(
+        'Warning: this Project folder holds both cloudgate.yaml and cloudgate.yml; using cloudgate.yaml, and cloudgate.yml is not read.',
+      ),
+    ).toHaveLength(2);
+    expect(result.stderr).toContain('Kept cloudgate.yaml. Nothing changed.');
+  });
+});
+
 describe('link --whole-project', () => {
   it('asks the Organization, Project and Environment, never a Service', async () => {
     const result = await inTerminal(['link', '--whole-project'], {
@@ -617,5 +709,103 @@ describe('config plan', () => {
     } finally {
       rmSync(elsewhere, { recursive: true, force: true });
     }
+  });
+});
+
+describe('config plan, with the copy spelt cloudgate.yml', () => {
+  const downloadedAt3 = {
+    '/projects/prj_1/config': {
+      projectId: 'prj_1',
+      location: {
+        kind: 'cloudgate',
+        text: DOWNLOADED,
+        textHash: 'x',
+        version: 3,
+        updatedAt: now.toISOString(),
+        movedOutOf: null,
+      },
+    },
+    'POST /projects/prj_1/config/plans': {
+      stored: false,
+      plans: [
+        {
+          planId: 'plan_s',
+          environmentId: 'env_s',
+          status: 'open',
+          steps: [],
+          notes: [],
+          results: null,
+        },
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    writeLink(root, rootLink);
+  });
+
+  it('sends cloudgate.yml when it is the only copy', async () => {
+    writeFileSync(join(root, 'cloudgate.yml'), CURRENT);
+
+    const result = await inTerminal(
+      ['config', 'plan'],
+      {},
+      root,
+      downloadedAt3,
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.sent).toEqual([
+      {
+        path: '/projects/prj_1/config/plans',
+        body: { text: CURRENT, version: 3 },
+      },
+    ]);
+    expect(result.stderr).not.toContain('Warning');
+  });
+
+  it('names cloudgate.yml when refusing it as stale', async () => {
+    writeFileSync(join(root, 'cloudgate.yml'), CURRENT);
+
+    const result = await inTerminal(['config', 'plan']);
+
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain(
+      'Error: cloudgate.yml is version 3 of the Project config, which has changed in Cloudgate since; nothing was sent',
+    );
+  });
+
+  it('with both names, sends cloudgate.yaml and warns once naming cloudgate.yml', async () => {
+    writeFileSync(join(root, 'cloudgate.yaml'), CURRENT);
+    writeFileSync(join(root, 'cloudgate.yml'), 'stray\n');
+
+    const result = await inTerminal(
+      ['config', 'plan'],
+      {},
+      root,
+      downloadedAt3,
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.sent).toEqual([
+      {
+        path: '/projects/prj_1/config/plans',
+        body: { text: CURRENT, version: 3 },
+      },
+    ]);
+    expect(
+      result.stderr.split(
+        'Warning: this Project folder holds both cloudgate.yaml and cloudgate.yml; using cloudgate.yaml, and cloudgate.yml is not read.',
+      ),
+    ).toHaveLength(2);
+  });
+
+  it('with neither, refuses naming cloudgate.yaml', async () => {
+    const result = await inTerminal(['config', 'plan']);
+
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain(
+      'Error: this Project folder has no cloudgate.yaml',
+    );
   });
 });

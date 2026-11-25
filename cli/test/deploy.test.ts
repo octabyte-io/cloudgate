@@ -3,6 +3,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  renameSync,
   rmSync,
   symlinkSync,
   truncateSync,
@@ -1320,6 +1321,55 @@ describe('cloudgate deploy in a Project folder', () => {
     expect(result.started).toEqual([]);
   });
 
+  describe('with the copy spelt cloudgate.yml', () => {
+    const BOTH_WARNING =
+      'Warning: this Project folder holds both cloudgate.yaml and cloudgate.yml; using cloudgate.yaml, and cloudgate.yml is not read.';
+
+    beforeEach(() => {
+      writeFileSync(
+        join(root, '.gitignore'),
+        '.cloudgate/\n/cloudgate.yaml\n/cloudgate.yml\n',
+      );
+    });
+
+    it('sends cloudgate.yml as the plan and builds each app from it when it is the only copy', async () => {
+      renameSync(join(root, 'cloudgate.yaml'), join(root, 'cloudgate.yml'));
+
+      const result = await deployProject([]);
+
+      expect(result.code).toBe(0);
+      expect(result.sentPlans).toEqual([{ text: TEXT, version: 3 }]);
+      expect(result.started).toEqual(['app_web', 'app_wrk']);
+      expect(result.stderr).not.toContain('Warning');
+    });
+
+    it('names cloudgate.yml when refusing a subfolder that is not in the Project folder', async () => {
+      rmSync(join(root, 'cloudgate.yaml'));
+      writeFileSync(
+        join(root, 'cloudgate.yml'),
+        TEXT.replace('folder: apps/worker', 'folder: apps/jobs'),
+      );
+
+      const result = await deployProject(['--yes']);
+
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain(
+        "Make apps/jobs, or change worker's source in cloudgate.yml.",
+      );
+      expect(result.sentPlans).toEqual([]);
+    });
+
+    it('with both names, sends cloudgate.yaml and warns once naming cloudgate.yml', async () => {
+      writeFileSync(join(root, 'cloudgate.yml'), 'stray\n');
+
+      const result = await deployProject([]);
+
+      expect(result.code).toBe(0);
+      expect(result.sentPlans).toEqual([{ text: TEXT, version: 3 }]);
+      expect(result.stderr.split(BOTH_WARNING)).toHaveLength(2);
+    });
+  });
+
   it('with --service, deploys that one app only', async () => {
     const result = await deployProject(['--service', 'worker']);
 
@@ -1433,7 +1483,7 @@ describe('cloudgate deploy in a Project folder', () => {
       '✓ Saved the Project config, version 3, as cloudgate.yaml\n',
     );
     expect(readFileSync(join(root, '.gitignore'), 'utf8')).toBe(
-      'node_modules/\n.cloudgate/\n/cloudgate.yaml\n',
+      'node_modules/\n.cloudgate/\n/cloudgate.yaml\n/cloudgate.yml\n',
     );
     expect(result.stderr).toContain(
       '✓ Linked ./ to the whole Project shop, staging by default, on cloud.acme.dev\n',

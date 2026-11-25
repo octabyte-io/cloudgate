@@ -23,7 +23,6 @@ import {
 import { CliError, usageError } from './errors.js';
 import { EXIT } from './exit-codes.js';
 import type { ExitCode } from './exit-codes.js';
-import { WORKING_COPY_FILE } from './folder-link.js';
 import { runPlanStep } from './plan-step.js';
 import { resolveProjectTarget, targetInputs } from './target.js';
 import type { ProjectTarget, Target } from './target.js';
@@ -115,7 +114,8 @@ export async function deployProjectFolder(
 
   // Every subfolder is checked before the plan is sent, so a mistyped one
   // creates nothing.
-  refuseMissingFolders(folder, inputs.service?.value);
+  const copy = readWorkingCopy(folder, out);
+  refuseMissingFolders(folder, copy, inputs.service?.value);
   const plan = await runPlanStep(context, client, project, {
     yes: values.yes === true,
     // Every folder-source app here is uploaded and built next, unless
@@ -140,7 +140,11 @@ export async function deployProjectFolder(
       EXIT.failed,
     );
   }
-  const entries = chosenEntries(sources.services, inputs.service?.value);
+  const entries = chosenEntries(
+    sources.services,
+    copy.name,
+    inputs.service?.value,
+  );
   const builds = entries.flatMap((entry) =>
     entry.source === 'folder' && entry.folder !== null
       ? [{ ...entry, folder: entry.folder }]
@@ -151,7 +155,7 @@ export async function deployProjectFolder(
   if (builds.length === 0) {
     out.note('No app in the Project config is built from this folder.');
     out.note(
-      `  Give one source: { folder: <subfolder> } in ${WORKING_COPY_FILE} to build it from here.`,
+      `  Give one source: { folder: <subfolder> } in ${copy.name} to build it from here.`,
     );
     for (const entry of skipped) {
       out.note(`- ${entry.configName}: skipped, ${skipReason(entry)}`);
@@ -268,13 +272,17 @@ export async function deployProjectFolder(
 }
 
 /**
- * Refuses an app whose source in the working copy is a subfolder that is not
- * in the Project folder, naming it; with `--service`, only the one it names
- * (`wanted`). A copy that is missing or does not parse refuses nothing here:
- * the plan step refuses it, saying why.
+ * Refuses an app whose source in the working copy `copy` is a subfolder that
+ * is not in the Project folder, naming it; with `--service`, only the one it
+ * names (`wanted`). A copy that is missing or does not parse refuses nothing
+ * here: the plan step refuses it, saying why.
  */
-function refuseMissingFolders(folder: string, wanted: string | undefined) {
-  const text = readWorkingCopy(folder);
+function refuseMissingFolders(
+  folder: string,
+  copy: { name: string; text: string | undefined },
+  wanted: string | undefined,
+) {
+  const { text } = copy;
   if (text === undefined) return;
   for (const entry of folderEntries(text)) {
     if (
@@ -288,7 +296,7 @@ function refuseMissingFolders(folder: string, wanted: string | undefined) {
       throw new CliError(
         `${entry.configName} builds from ${entry.folder}, which is not a folder in this Project folder`,
         EXIT.failed,
-        `Make ${entry.folder}, or change ${entry.configName}'s source in ${WORKING_COPY_FILE}.`,
+        `Make ${entry.folder}, or change ${entry.configName}'s source in ${copy.name}.`,
       );
     }
   }
@@ -318,10 +326,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * The entries a run deploys: every one, or with `--service` (or
  * `CLOUDGATE_SERVICE`) the one it names, by Config name ignoring case; that
- * one must be built from this folder.
+ * one must be built from this folder. `copyName` is the working copy's file,
+ * as a refusal names it.
  */
 function chosenEntries(
   entries: readonly ConfigEntry[],
+  copyName: string,
   wanted: string | undefined,
 ): readonly ConfigEntry[] {
   if (wanted === undefined) return entries;
@@ -339,7 +349,7 @@ function chosenEntries(
     throw new CliError(
       `${named.configName} is not built from this Project folder (${skipReason(named)})`,
       EXIT.failed,
-      `Only an app whose source in ${WORKING_COPY_FILE} is a folder (source: { folder: <subfolder> }) is deployed from here.`,
+      `Only an app whose source in ${copyName} is a folder (source: { folder: <subfolder> }) is deployed from here.`,
     );
   }
   return [named];

@@ -1,6 +1,6 @@
 import type { Command } from '../command.js';
 import { EXIT } from '../exit-codes.js';
-import { WORKING_COPY_FILE } from '../folder-link.js';
+import { WORKING_COPY_FILE, WORKING_COPY_YML } from '../folder-link.js';
 import { runPlanStep } from '../plan-step.js';
 import { connectToInstance } from '../target-session.js';
 import { findProjectFolder } from '../working-copy.js';
@@ -21,8 +21,9 @@ USAGE
   cloudgate config plan [--yes]
 
   Sends ${WORKING_COPY_FILE} at the Project folder (made by cloudgate link
-  --whole-project), refused when the Project config has changed in
-  Cloudgate since it was downloaded (cloudgate config pull gets it again).
+  --whole-project), or ${WORKING_COPY_YML} when it holds only that, refused
+  when the Project config has changed in Cloudgate since it was downloaded
+  (cloudgate config pull gets it again).
   Prints what each Environment's plan creates, changes and destroys, and
   asks before applying it. A Service it destroys, or upgrades to a new major
   version, is applied only once its Config name is typed. With no terminal

@@ -10,7 +10,6 @@ import type { ApiClient } from './api-client.js';
 import type { CommandContext } from './command.js';
 import { CliError, usageError } from './errors.js';
 import { EXIT } from './exit-codes.js';
-import { WORKING_COPY_FILE } from './folder-link.js';
 import type { Output } from './output.js';
 import {
   downloadProjectConfig,
@@ -36,7 +35,7 @@ export type PlanStepOutcome =
   | { readonly kind: 'applied'; readonly failed: number };
 
 /**
- * Sends `project`'s `cloudgate.yaml` as a plan, prints each Environment's
+ * Sends `project`'s working copy as a plan, prints each Environment's
  * plan on stdout and applies them on a yes. `client` acts in the link's
  * Organization.
  *
@@ -69,10 +68,10 @@ export async function runPlanStep(
 ): Promise<PlanStepOutcome> {
   const { out, prompter } = context;
   const { folder, link } = project;
-  const text = readWorkingCopy(folder);
+  const { name, text } = readWorkingCopy(folder, out);
   if (text === undefined) {
     throw usageError(
-      `this Project folder has no ${WORKING_COPY_FILE}`,
+      `this Project folder has no ${name}`,
       'Run cloudgate config pull to download it.',
     );
   }
@@ -81,7 +80,7 @@ export async function runPlanStep(
   const current = await out.withSpinner('Reading the Project config…', () =>
     downloadProjectConfig(client, projectRef),
   );
-  if (current.version !== startedFrom) throw staleCopy(startedFrom);
+  if (current.version !== startedFrom) throw staleCopy(name, startedFrom);
 
   const saved = await out
     .withSpinner('Planning…', () =>
@@ -94,7 +93,7 @@ export async function runPlanStep(
     .catch((error: unknown) => {
       throw error instanceof CliError &&
         error.code === CONFIG_VERSION_STALE_CODE
-        ? staleCopy(startedFrom)
+        ? staleCopy(name, startedFrom)
         : error;
     });
   const names = await environmentNames(client, link.projectId);
@@ -184,10 +183,10 @@ export async function runPlanStep(
   return { kind: 'applied', failed };
 }
 
-/** The refusal of a copy the Project config has moved on from. */
-function staleCopy(version: number): CliError {
+/** The refusal of the copy `name`, which the Project config has moved on from. */
+function staleCopy(name: string, version: number): CliError {
   return new CliError(
-    `${WORKING_COPY_FILE} is version ${version} of the Project config, which has changed in Cloudgate since; nothing was sent`,
+    `${name} is version ${version} of the Project config, which has changed in Cloudgate since; nothing was sent`,
     EXIT.failed,
     'Run cloudgate config pull to get the current one, then make your edits again.',
   );

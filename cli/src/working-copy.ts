@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 import { projectConfigCopySchema } from 'api-schemas';
 
@@ -13,19 +12,25 @@ import {
   isProjectFolder,
   linkFileIn,
   readLinkIn,
-  WORKING_COPY_FILE,
+  workingCopyFileIn,
   writeLink,
 } from './folder-link.js';
-import type { FoundLink, ProjectFolderLink } from './folder-link.js';
+import type {
+  FoundLink,
+  ProjectFolderLink,
+  WorkingCopyFile,
+} from './folder-link.js';
+import type { Output } from './output.js';
 import type { ProjectTarget } from './target.js';
 import { hostOf } from './target-session.js';
 import type { Connection } from './target-session.js';
 
 /**
  * A **Project folder**'s working copy of the Project config (ADR-0080):
- * `cloudgate.yaml` beside `.cloudgate/`, downloaded by `cloudgate link
- * --whole-project` and `cloudgate config pull`, which record in the link the
- * version downloaded and the hash of the text written. Cloudgate keeps the
+ * `cloudgate.yaml`, or `cloudgate.yml` when that is the only one (ADR-0089),
+ * beside `.cloudgate/`, downloaded by `cloudgate link --whole-project` and
+ * `cloudgate config pull`, which record in the link the version downloaded
+ * and the hash of the text written. Cloudgate keeps the
  * config; this file is never a place it is kept, and is never committed.
  */
 
@@ -65,23 +70,37 @@ export function hashText(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
-/** The working copy `folder` holds, or undefined when there is none. */
-export function readWorkingCopy(folder: string): string | undefined {
-  const file = join(folder, WORKING_COPY_FILE);
-  return existsSync(file) ? readFileSync(file, 'utf8') : undefined;
+/**
+ * `folder`'s working copy file ({@link workingCopyFileIn}): `cloudgate.yaml`,
+ * else `cloudgate.yml`. A folder holding both is warned about once a run,
+ * naming the one not read.
+ */
+export function workingCopyIn(
+  folder: string,
+  out: Pick<Output, 'noteOnce'>,
+): WorkingCopyFile {
+  const found = workingCopyFileIn(folder);
+  if (found.unread !== undefined) {
+    out.noteOnce(
+      `Warning: this Project folder holds both ${found.name} and ${found.unread}; using ${found.name}, and ${found.unread} is not read.`,
+    );
+  }
+  return found;
 }
 
 /**
- * Whether `folder` holds a working copy that is not the text `recorded` says
- * was downloaded: edited since, or there before any download. No copy at
- * all is not edited.
+ * The working copy `folder` holds, as {@link workingCopyIn} finds it: its
+ * name, and its text, or undefined when there is none.
  */
-export function workingCopyEdited(
+export function readWorkingCopy(
   folder: string,
-  recorded: ProjectFolderLink['workingCopy'] | undefined,
-): boolean {
-  const held = readWorkingCopy(folder);
-  return held !== undefined && hashText(held) !== recorded?.sha256;
+  out: Pick<Output, 'noteOnce'>,
+): { name: string; text: string | undefined } {
+  const found = workingCopyIn(folder, out);
+  return {
+    name: found.name,
+    text: found.held ? readFileSync(found.file, 'utf8') : undefined,
+  };
 }
 
 /** A Cloudgate-kept Project config as downloaded. */
@@ -134,31 +153,37 @@ export async function mayReplaceWorkingCopy(
   incoming: DownloadedConfig,
   yes: boolean,
 ): Promise<boolean> {
-  if (!workingCopyEdited(folder, recorded)) return true;
-  if (readWorkingCopy(folder) === incoming.text) return true;
+  const { name, text: held } = readWorkingCopy(folder, context.out);
+  // No copy at all is not edited; one that is not the text downloaded is,
+  // as is one there before any download.
+  if (held === undefined || hashText(held) === recorded?.sha256) return true;
+  if (held === incoming.text) return true;
   if (yes) return true;
   if (!context.out.mode.canAsk) {
     throw usageError(
-      `${WORKING_COPY_FILE} has edits not sent to Cloudgate`,
+      `${name} has edits not sent to Cloudgate`,
       `Pass --yes to replace them with the Project config, version ${incoming.version}.`,
     );
   }
   return context.prompter.confirm(
-    `${WORKING_COPY_FILE} has edits not sent to Cloudgate. Replace them with the Project config, version ${incoming.version}?`,
+    `${name} has edits not sent to Cloudgate. Replace them with the Project config, version ${incoming.version}?`,
   );
 }
 
 /**
- * Writes `downloaded` to `folder`'s `cloudgate.yaml` and saves `link` there
- * recording it (the version and the hash of the text), adding both to
- * `.gitignore`. Answers the link as saved.
+ * Writes `downloaded` to `folder`'s working copy, under the name already
+ * there ({@link workingCopyFileIn}; `cloudgate.yaml` when there is none),
+ * and saves `link` there recording it (the version and the hash of the
+ * text), adding both to `.gitignore`. Answers the link as saved and the name
+ * written.
  */
 export function saveWorkingCopy(
   folder: string,
   link: Omit<ProjectFolderLink, 'workingCopy'>,
   downloaded: DownloadedConfig,
-): ProjectFolderLink {
-  writeFileSync(join(folder, WORKING_COPY_FILE), downloaded.text);
+): { link: ProjectFolderLink; name: string } {
+  const { name, file } = workingCopyFileIn(folder);
+  writeFileSync(file, downloaded.text);
   const saved: ProjectFolderLink = {
     ...link,
     workingCopy: {
@@ -167,7 +192,7 @@ export function saveWorkingCopy(
     },
   };
   writeLink(folder, saved);
-  return saved;
+  return { link: saved, name };
 }
 
 /**
@@ -199,10 +224,10 @@ export async function linkWholeProject(
   if (
     !(await mayReplaceWorkingCopy(context, folder, recorded, downloaded, yes))
   ) {
-    out.note(`Kept ${WORKING_COPY_FILE}. Nothing changed.`);
+    out.note(`Kept ${workingCopyIn(folder, out).name}. Nothing changed.`);
     return undefined;
   }
-  const link = saveWorkingCopy(
+  const { link, name } = saveWorkingCopy(
     folder,
     {
       instance: connection.instance.url,
@@ -221,7 +246,7 @@ export async function linkWholeProject(
     `✓ Linked ./ to the whole Project ${target.project.name}, ${target.environment.name} by default, on ${hostOf(connection.instance.url)}`,
   );
   out.note(
-    `✓ Saved the Project config, version ${downloaded.version}, as ${WORKING_COPY_FILE}`,
+    `✓ Saved the Project config, version ${downloaded.version}, as ${name}`,
   );
   return { folder, file: linkFileIn(folder), link };
 }

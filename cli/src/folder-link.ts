@@ -77,9 +77,46 @@ export function isProjectFolder(link: FolderLink): link is ProjectFolderLink {
 }
 
 export const LINK_FOLDER = '.cloudgate';
-/** A Project folder's working copy of the Project config, beside `.cloudgate/`. */
+/**
+ * The name of a Project folder's working copy of the Project config, beside
+ * `.cloudgate/`, when it has none yet. One it holds may be spelt
+ * {@link WORKING_COPY_YML} instead (ADR-0089); {@link workingCopyFileIn}
+ * says which.
+ */
 export const WORKING_COPY_FILE = 'cloudgate.yaml';
+/** The other spelling of a working copy, used only when it is the one there. */
+export const WORKING_COPY_YML = 'cloudgate.yml';
 const LINK_FILE = 'link.json';
+
+/** The working copy's file in a Project folder, as {@link workingCopyFileIn} finds it. */
+export interface WorkingCopyFile {
+  /** Its name in the folder: the one there, or `cloudgate.yaml` for a new one. */
+  name: string;
+  /** Its path. */
+  file: string;
+  /** Whether the folder holds it. */
+  held: boolean;
+  /** `cloudgate.yml` when the folder holds both names: there, and not read. */
+  unread?: string;
+}
+
+/**
+ * Which file is `folder`'s working copy (ADR-0089, the same rule as a
+ * repository's config): `cloudgate.yaml`, else `cloudgate.yml`. With both,
+ * `cloudgate.yaml`, naming the other as unread. With neither, `cloudgate.yaml`,
+ * the name a new copy is written under.
+ */
+export function workingCopyFileIn(folder: string): WorkingCopyFile {
+  const yaml = existsSync(join(folder, WORKING_COPY_FILE));
+  const yml = existsSync(join(folder, WORKING_COPY_YML));
+  const name = !yaml && yml ? WORKING_COPY_YML : WORKING_COPY_FILE;
+  return {
+    name,
+    file: join(folder, name),
+    held: yaml || yml,
+    ...(yaml && yml ? { unread: WORKING_COPY_YML } : {}),
+  };
+}
 
 /** A link, and where it was found. */
 export interface FoundLink {
@@ -159,14 +196,17 @@ function readLink(file: string): FolderLink {
 /**
  * Saves `link` in `folder`, replacing any link there, and makes sure the
  * folder's `.gitignore` ignores `.cloudgate/`, and in a Project folder its
- * `cloudgate.yaml` too: a link and a working copy are the person's own and
- * are never committed (ADR-0080). A line already there is left as it is.
+ * `cloudgate.yaml` and `cloudgate.yml` too: a link and a working copy are
+ * the person's own and are never committed (ADR-0080). A line already there
+ * is left as it is.
  */
 export function writeLink(folder: string, link: FolderLink): void {
   mkdirSync(join(folder, LINK_FOLDER), { recursive: true });
   writeFileSync(linkFileIn(folder), `${JSON.stringify(link, null, 2)}\n`);
   ignoreInGit(folder, IGNORES_LINK);
-  if (isProjectFolder(link)) ignoreInGit(folder, IGNORES_WORKING_COPY);
+  if (isProjectFolder(link)) {
+    for (const ignore of IGNORES_WORKING_COPY) ignoreInGit(folder, ignore);
+  }
 }
 
 /** A `.gitignore` line to add, and the spellings that already say it. */
@@ -185,11 +225,14 @@ const IGNORES_LINK: Ignore = {
   ]),
 };
 
-/** Only the copy at the Project folder's root: an app folder's file is not it. */
-const IGNORES_WORKING_COPY: Ignore = {
-  line: `/${WORKING_COPY_FILE}`,
-  spellings: new Set([WORKING_COPY_FILE, `/${WORKING_COPY_FILE}`]),
-};
+/**
+ * Only the copy at the Project folder's root: an app folder's file is not it.
+ * Both spellings, so a copy kept as `cloudgate.yml` is never committed either.
+ */
+const IGNORES_WORKING_COPY: readonly Ignore[] = [
+  WORKING_COPY_FILE,
+  WORKING_COPY_YML,
+].map((name) => ({ line: `/${name}`, spellings: new Set([name, `/${name}`]) }));
 
 function ignoreInGit(folder: string, ignore: Ignore): void {
   const gitignore = join(folder, '.gitignore');

@@ -342,7 +342,7 @@ describe('createProjectHere', () => {
       },
     });
     expect(readFileSync(join(folder, '.gitignore'), 'utf8')).toBe(
-      '.cloudgate/\n/cloudgate.yaml\n',
+      '.cloudgate/\n/cloudgate.yaml\n/cloudgate.yml\n',
     );
     // A terminal's spinners sit between the lines; each line is whole.
     const lines = [
@@ -543,6 +543,42 @@ describe('createProjectHere', () => {
     expect(
       terminal.questions().filter((one) => one.includes('cloudgate.yaml')),
     ).toHaveLength(1);
+  });
+
+  it('asks about a cloudgate.yml already here by its name, and on a yes writes the starter into it', async () => {
+    writeFileSync(join(folder, 'cloudgate.yml'), 'version: 1\n# mine\n');
+    const shop = instance();
+    const replace =
+      'cloudgate.yml is already here. Replace it with a starter for the new Project?';
+    const terminal = scripted({ ...CREATE, [replace]: true });
+
+    const result = await shop.deploy({ terminal: terminal.prompter });
+
+    expect(result.code).toBe(0);
+    expect(terminal.questions()).toContain(replace);
+    expect(readFileSync(join(folder, 'cloudgate.yml'), 'utf8')).toBe(STARTER);
+    expect(existsSync(join(folder, 'cloudgate.yaml'))).toBe(false);
+    expect(result.stderr).toContain(
+      'Add your apps to cloudgate.yml, then run cloudgate deploy again.',
+    );
+  });
+
+  it('with both names, asks about cloudgate.yaml only and warns once naming cloudgate.yml', async () => {
+    writeFileSync(join(folder, 'cloudgate.yaml'), 'version: 1\n# mine\n');
+    writeFileSync(join(folder, 'cloudgate.yml'), 'stray\n');
+    const shop = instance();
+    const terminal = scripted(CREATE);
+
+    const result = await shop.deploy({ terminal: terminal.prompter });
+
+    expect(result.code).toBe(0);
+    expect(readFileSync(join(folder, 'cloudgate.yaml'), 'utf8')).toBe(STARTER);
+    expect(readFileSync(join(folder, 'cloudgate.yml'), 'utf8')).toBe('stray\n');
+    expect(
+      result.stderr.split(
+        'Warning: this Project folder holds both cloudgate.yaml and cloudgate.yml; using cloudgate.yaml, and cloudgate.yml is not read.',
+      ),
+    ).toHaveLength(2);
   });
 
   it('a deploy with the starter unchanged plans nothing and builds nothing', async () => {

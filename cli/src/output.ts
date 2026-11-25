@@ -18,6 +18,9 @@ export class Output {
     readonly mode: TerminalMode,
   ) {}
 
+  /** The lines {@link noteOnce} has written. */
+  private readonly noted = new Set<string>();
+
   /** Data, on stdout. */
   data(text: string): void {
     this.streams.stdout(text);
@@ -31,6 +34,16 @@ export class Output {
   /** A line for the person, on stderr. */
   note(text: string): void {
     this.streams.stderr(`${text}\n`);
+  }
+
+  /**
+   * A line for the person, on stderr, written only the first time a run says
+   * it: for a warning that several steps of one command reach.
+   */
+  noteOnce(text: string): void {
+    if (this.noted.has(text)) return;
+    this.noted.add(text);
+    this.note(text);
   }
 
   /** Styling for stdout, the identity when stdout may not be coloured. */
