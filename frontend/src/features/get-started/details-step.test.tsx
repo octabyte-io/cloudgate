@@ -512,6 +512,13 @@ describe("DetailsForm's Same-machine warning", () => {
     expect(warns()).toBe(false);
   });
 
+  it("warns when the setup goes on a Server that is Cloudgate's own machine (#149)", () => {
+    reads.servers = [{ ...SERVER, sameMachine: true }];
+    show();
+
+    expect(warns()).toBe(true);
+  });
+
   it("never warns on the Hosted instance", () => {
     mode.data = "hosted";
     showOn("platform-host");

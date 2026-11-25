@@ -42,8 +42,9 @@ import { wizardHref } from "./wizard-state";
  * An existing Project is read for its Environments: the setup goes into
  * its Environment on this Server, or a new one made there.
  *
- * On This Cloudgate host it shows the Same-machine warning (#147); step 1
- * opens on the first Ready Server, so the wizard reaches here on a Server.
+ * On This Cloudgate host it shows the Same-machine warning (#147), and on a
+ * Server that is Cloudgate's own machine (#149); step 1 opens on the first
+ * Ready Server, so the wizard reaches here on a Server.
  */
 export function DetailsForm({
   template,
@@ -51,6 +52,7 @@ export function DetailsForm({
   projects,
   serverId,
   serverName,
+  sameMachine = false,
   canDeploy,
 }: {
   template: TemplateSummary;
@@ -59,6 +61,8 @@ export function DetailsForm({
   projects: readonly Project[];
   serverId: string;
   serverName: string;
+  /** Whether the Server is Cloudgate's own machine (`Server.sameMachine`). */
+  sameMachine?: boolean;
   /** False while a Bought Server has no Server row yet (before Setting up). */
   canDeploy: boolean;
 }) {
@@ -202,7 +206,9 @@ export function DetailsForm({
                 />
               </section>
             ) : null}
-            {serverId === PLATFORM_HOST_VALUE ? <SameMachineNote /> : null}
+            {serverId === PLATFORM_HOST_VALUE || sameMachine ? (
+              <SameMachineNote />
+            ) : null}
             <DetailsPlace
               projects={projects}
               projectId={projectId}

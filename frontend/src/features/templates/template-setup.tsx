@@ -181,6 +181,7 @@ export function TemplateSetup({
             }
             onNewProject={() => pick(NEW_PROJECT)}
             newProject={targets ? { targets } : undefined}
+            servers={servers.data}
             onSubmit={async (choice) => {
               const result = await setUp.mutateAsync(
                 "newProject" in choice

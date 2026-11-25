@@ -17,11 +17,11 @@ import { useCloudAccounts } from "@/lib/api/use-cloud-accounts";
 import { useInstanceMode } from "@/lib/api/use-instance-mode";
 import {
   CLOUDS,
-  PLATFORM_HOST_VALUE,
   cloudAccountOf,
   cloudOf,
   deployTargetOptions,
   fromPickerValue,
+  onSameMachine,
   regionOptions,
   toPickerValue,
 } from "./deploy-target";
@@ -192,7 +192,7 @@ export function EnvironmentDeployTargetCard({
                 }}
               />
             </Field>
-            {!hosted && target === PLATFORM_HOST_VALUE ? (
+            {!hosted && onSameMachine(target, servers.data) ? (
               <SameMachineNote />
             ) : null}
             {onCloud ? (

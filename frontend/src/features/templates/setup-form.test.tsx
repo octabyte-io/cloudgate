@@ -751,6 +751,52 @@ describe("SetupFormView's Same-machine warning", () => {
     expect(warns()).toBe(true);
   });
 
+  /** A Server whose address is Cloudgate's own machine (#149). */
+  const BOX = {
+    serverId: "srv-box",
+    name: "box-1",
+    ipAddress: "127.0.0.1",
+    serverType: "deploy",
+    sameMachine: true,
+  };
+
+  it("warns once a new Project's Deploy target is a Server on Cloudgate's own machine", () => {
+    render(
+      <SetupFormView
+        form={{ ...FORM, environments: [] }}
+        newProject={{
+          targets: newProjectTargets([EDGE, BOX] as never, [], CAN_TAKE_ALL, {
+            platformHost: true,
+          }),
+        }}
+        servers={[EDGE, BOX] as never}
+        onSubmit={vi.fn()}
+      />,
+    );
+    expect(warns()).toBe(false);
+
+    fireEvent.click(screen.getByRole("radio", { name: /box-1/ }));
+
+    expect(warns()).toBe(true);
+  });
+
+  it("warns on an Environment on a Server that is Cloudgate's own machine", () => {
+    render(
+      <SetupFormView
+        form={{
+          ...FORM,
+          environments: [
+            { ...FORM.environments[1], machine: { serverId: "srv-box" } },
+          ],
+        }}
+        servers={[EDGE, BOX] as never}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(warns()).toBe(true);
+  });
+
   it("never warns on the Hosted instance", () => {
     mode.data = "hosted";
     renderForm();

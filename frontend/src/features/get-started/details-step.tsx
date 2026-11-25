@@ -147,6 +147,7 @@ export function DetailsStep({
         projects={projects.data}
         serverId={serverId}
         serverName={name}
+        sameMachine={server?.sameMachine === true}
         canDeploy={server !== undefined && canSetUpOn(server)}
       />
     </div>

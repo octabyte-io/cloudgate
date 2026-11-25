@@ -255,7 +255,9 @@ function Details({
                   onValueChange={setServerId}
                 />
               </Field>
-              {picker.onHost(serverId) ? <SameMachineNote /> : null}
+              {picker.onSameMachine(serverId, servers.data) ? (
+                <SameMachineNote />
+              ) : null}
             </>
           )}
 

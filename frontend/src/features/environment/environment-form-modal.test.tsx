@@ -264,6 +264,22 @@ describe("EnvironmentFormModal's Deploy target", () => {
     await waitFor(() => expect(warns()).toBe(true));
   });
 
+  it("warns once a Server on Cloudgate's own machine is picked (#149)", async () => {
+    servers.data = [
+      worker,
+      { serverId: "srv_box", name: "box-1", ipAddress: "127.0.0.1", serverType: "deploy", sameMachine: true },
+    ];
+    open(null);
+    expect(warns()).toBe(false);
+
+    await targetOptions();
+    const box = screen.getByRole("option", { name: /box-1/ });
+    fireEvent.pointerDown(box, { pointerType: "mouse" });
+    fireEvent.click(box, { detail: 1 });
+
+    await waitFor(() => expect(warns()).toBe(true));
+  });
+
   it("warns with no deploy Server, where the Environment lands on this Cloudgate host", () => {
     servers.data = [builder];
     open(null);

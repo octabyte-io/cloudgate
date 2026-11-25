@@ -17,11 +17,17 @@ import { SubmitButton } from "@/components/console/submit-button";
 import { useApiForm } from "@/components/console/use-api-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { Server } from "@/lib/api/endpoints/servers";
 import type { SetupForm } from "@/lib/api/endpoints/templates";
+import { isSameMachineServer } from "@/lib/forms/create-server-picker";
 import { GET_STARTED_PATH } from "@/lib/auth/routes";
 import { cn } from "@/lib/utils";
 
-import { CLOUDS, PLATFORM_HOST_VALUE } from "../environment/deploy-target";
+import {
+  CLOUDS,
+  PLATFORM_HOST_VALUE,
+  onSameMachine,
+} from "../environment/deploy-target";
 import type { NewProjectTarget } from "./new-project-targets";
 import { AskedField, DomainHostFields } from "./setup-fields";
 import { SetupKernelNote } from "./setup-kernel-note";
@@ -64,8 +70,9 @@ export const EMPTY_PROJECT_NOTE =
  * needs shown under it.
  *
  * A new Project opens on the first Ready deploy Server that can take the
- * template (#147), and while the setup goes to This Cloudgate host, a new
- * Project's target or an Environment there, the Same-machine warning shows.
+ * template (#147), and while the setup goes to Cloudgate's own machine
+ * (This Cloudgate host, or a Server that is the box, #149), a new Project's
+ * target or an Environment there, the Same-machine warning shows.
  *
  * A `useApiForm` form: a refusal whose issue names a field is shown beside
  * it, any other above the button. Presentational: the screen fetches the
@@ -76,6 +83,7 @@ export function SetupFormView({
   projectId,
   startOn,
   newProject,
+  servers,
   place,
   onNewProject,
   onSubmit,
@@ -94,6 +102,8 @@ export function SetupFormView({
   projectId?: string;
   /** The Deploy targets a new Project may pick; absent for an existing one. */
   newProject?: { targets: NewProjectTarget[] };
+  /** The Organization's Servers, to tell one that is Cloudgate's own machine. */
+  servers?: readonly Server[];
   /**
    * Sends the setup, rejecting with its refusal: a 400 naming a field lands
    * beside it, anything else above the button.
@@ -127,11 +137,14 @@ export function SetupFormView({
   // A Project with no Environment has nowhere to set the template up, so the
   // rest of the form waits for one rather than asking questions it cannot use.
   const nowhere = !newProject && setup.environments.length === 0;
-  // Where the setup goes is This Cloudgate host: the Same-machine warning.
-  const onHost = newProject
-    ? target === PLATFORM_HOST_VALUE
-    : setup.environments.find((env) => env.environmentId === environmentId)
-        ?.machine?.serverId === null;
+  // Where the setup goes is Cloudgate's own machine: the Same-machine warning.
+  const machine = setup.environments.find(
+    (env) => env.environmentId === environmentId,
+  )?.machine;
+  const sameMachine = newProject
+    ? onSameMachine(target, servers)
+    : machine?.serverId === null ||
+      isSameMachineServer(servers, machine?.serverId);
 
   return (
     // Arrives in place of the skeleton the screen held for it.
@@ -200,7 +213,7 @@ export function SetupFormView({
                     />
                   ))}
                   <ChoiceError message={errors.newProject?.target?.message} />
-                  {onHost ? <SameMachineNote /> : null}
+                  {sameMachine ? <SameMachineNote /> : null}
                 </fieldset>
                 {targetCloud ? (
                   <Field
@@ -269,7 +282,7 @@ export function SetupFormView({
                 {setup.environments.length > 0 ? (
                   <ChoiceError message={errors.environmentId?.message} />
                 ) : null}
-                {onHost ? <SameMachineNote /> : null}
+                {sameMachine ? <SameMachineNote /> : null}
               </fieldset>
             )}
 

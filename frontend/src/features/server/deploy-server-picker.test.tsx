@@ -31,6 +31,14 @@ vi.mock("@/lib/api/use-servers", () => ({
         ipAddress: "203.0.113.7",
         serverType: "deploy",
       },
+      // Cloudgate's own machine (#149).
+      {
+        serverId: "srv_box",
+        name: "box-1",
+        ipAddress: "127.0.0.1",
+        serverType: "deploy",
+        sameMachine: true,
+      },
     ],
     isPending: false,
   }),
@@ -226,6 +234,21 @@ describe("the AI deploy form's create", () => {
     await waitFor(() =>
       expect(ai.deploy).toHaveBeenCalledWith(
         expect.objectContaining({ serverId: null }),
+      ),
+    );
+  });
+
+  it("warns once a Server on Cloudgate's own machine is picked, and sends it", async () => {
+    await aiDeployStep();
+    await serverOptions("web-1");
+    pick("box-1");
+    await waitFor(() => expect(warns()).toBe(true));
+
+    fireEvent.click(screen.getByRole("button", { name: "Create this stack" }));
+
+    await waitFor(() =>
+      expect(ai.deploy).toHaveBeenCalledWith(
+        expect.objectContaining({ serverId: "srv_box" }),
       ),
     );
   });

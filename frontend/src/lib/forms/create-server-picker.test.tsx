@@ -30,6 +30,15 @@ const BOUGHT_SETTING_UP = {
   serverType: "deploy",
   boughtServer: { stage: "setting_up", deletesOn: null, deletedAt: null },
 };
+/** A Server whose address is Cloudgate's own machine (#149). */
+const BOX = {
+  serverId: "srv_3",
+  name: "box-1",
+  ipAddress: "127.0.0.1",
+  serverType: "deploy",
+  boughtServer: null,
+  sameMachine: true,
+};
 const servers = vi.hoisted(() => ({ data: [] as unknown[] }));
 vi.mock("@/lib/api/use-servers", () => ({
   useServers: () => ({ data: servers.data, isPending: false }),
@@ -307,6 +316,19 @@ describe.each(FORMS)("the %s create form's Same-machine warning", (name, form) =
     await waitFor(() => expect(warns()).toBe(true));
 
     await serverOptions("This Cloudgate host");
+    pick("web-1");
+    await waitFor(() => expect(warns()).toBe(false));
+  });
+
+  it("warns once a Server on Cloudgate's own machine is picked, and not once another Server is again", async () => {
+    servers.data = [WEB_1, BOX];
+    render(form(ON_HOST), { wrapper: Wrapper });
+
+    await serverOptions("web-1");
+    pick("box-1");
+    await waitFor(() => expect(warns()).toBe(true));
+
+    await serverOptions("box-1");
     pick("web-1");
     await waitFor(() => expect(warns()).toBe(false));
   });

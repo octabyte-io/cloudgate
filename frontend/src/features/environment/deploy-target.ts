@@ -4,6 +4,7 @@ import type { Cloud, CloudAccount } from "@/lib/api/endpoints/cloud-accounts";
 import type { DeployTarget } from "@/lib/api/endpoints/environments";
 import { notReadyYet } from "@/lib/api/endpoints/servers";
 import type { Server } from "@/lib/api/endpoints/servers";
+import { isSameMachineServer } from "@/lib/forms/create-server-picker";
 
 /**
  * The Deploy target as a `Picker` value, and back.
@@ -14,6 +15,18 @@ import type { Server } from "@/lib/api/endpoints/servers";
  * unset one. A Server id is a nanoid, which never spells this.
  */
 export const PLATFORM_HOST_VALUE = "platform-host";
+
+/**
+ * Whether a Deploy target Picker value is Cloudgate's own machine, where the
+ * Same-machine warning shows: This Cloudgate host, or a Server whose address
+ * is the box (`sameMachine`, #149).
+ */
+export function onSameMachine(
+  value: string,
+  servers: readonly Server[] | undefined,
+): boolean {
+  return value === PLATFORM_HOST_VALUE || isSameMachineServer(servers, value);
+}
 
 /**
  * A Cloud account's Picker value: its id behind a prefix, so it never reads as

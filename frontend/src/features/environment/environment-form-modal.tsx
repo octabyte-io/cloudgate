@@ -21,13 +21,13 @@ import { usePermission } from "@/lib/auth/use-permission";
 import { firstReadyDeployServer } from "@/lib/forms/create-server-picker";
 
 import {
-  PLATFORM_HOST_VALUE,
   CLOUDS,
   cloudAccountOf,
   cloudOf,
   deployServers,
   deployTargetOptions,
   fromPickerValue,
+  onSameMachine,
   regionOptions,
 } from "./deploy-target";
 import { useCreateEnvironment, useUpdateEnvironment } from "./use-environments";
@@ -170,12 +170,13 @@ export function EnvironmentFormModal({
   // Server (#147); the Picker offers no `""`, so `""` is only ever untouched.
   const target = form.watch("deployTarget") || opensOn;
   const region = form.watch("region");
-  // This Cloudgate host, chosen or taken for want of a deploy Server.
-  const onHost =
+  // Cloudgate's own machine: This Cloudgate host, chosen or taken for want
+  // of a deploy Server, or a Server that is the box (#149).
+  const sameMachine =
     !editing &&
     !hosted &&
     !servers.isPending &&
-    (askTarget ? target === PLATFORM_HOST_VALUE : true);
+    (askTarget ? onSameMachine(target, servers.data) : true);
   const onCloud = cloudAccountOf(target) !== null;
   const cloud = cloudOf(target, cloudAccounts.data, region);
 
@@ -249,7 +250,7 @@ export function EnvironmentFormModal({
                 />
               </Field>
             ) : null}
-            {onHost ? <SameMachineNote /> : null}
+            {sameMachine ? <SameMachineNote /> : null}
             {askTarget && onCloud ? (
               <Field
                 name="region"

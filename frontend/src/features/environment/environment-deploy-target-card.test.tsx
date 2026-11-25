@@ -233,6 +233,26 @@ describe("EnvironmentDeployTargetCard's Same-machine warning", () => {
     await waitFor(() => expect(warns()).toBe(true));
   });
 
+  it("warns on a saved Server that is Cloudgate's own machine (#149)", () => {
+    mount(
+      { kind: "server", serverId: "srv_box" },
+      {
+        list: [
+          worker,
+          {
+            serverId: "srv_box",
+            name: "box-1",
+            ipAddress: "127.0.0.1",
+            serverType: "deploy",
+            sameMachine: true,
+          },
+        ],
+      },
+    );
+
+    expect(warns()).toBe(true);
+  });
+
   it("never warns on the Hosted instance, even for a platform-host target from before", () => {
     mode.data = "hosted";
     mount({ kind: "platform-host" });

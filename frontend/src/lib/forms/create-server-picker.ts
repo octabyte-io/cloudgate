@@ -43,8 +43,9 @@ const HOST_CHOSEN = "__cloudgate_platform_host__";
  *
  * **It opens on a Server when the Organization has one Ready** (#147), not
  * on the host: a Service on Cloudgate's own machine is lost with Cloudgate's
- * records, and the form shows `SameMachineNote` while the host is chosen
- * (`onHost`). With none Ready, the host stays the default. Neither changes
+ * records, and the form shows `SameMachineNote` while the host, or a Server
+ * that is Cloudgate's own machine (#149), is chosen (`onSameMachine`). With
+ * none Ready, the host stays the default. Neither changes
  * in a cloud Environment or on the Hosted instance.
  *
  * Used by the Application, AI model, Compose and database create forms, and
@@ -126,13 +127,36 @@ export function useCreateServerPicker(deployTarget: DeployTarget | undefined) {
       return firstReadyDeployServer(servers)?.serverId ?? "";
     },
     /**
-     * Whether what the picker holds puts the Service on this Cloudgate host,
-     * where the form shows the Same-machine warning (`SameMachineNote`).
+     * Whether what the picker holds puts the Service on Cloudgate's own
+     * machine: this Cloudgate host, or a Server whose address is the box
+     * (`sameMachine`, #149). The form then shows the Same-machine warning
+     * (`SameMachineNote`).
      */
-    onHost(value: string): boolean {
-      return platformHost && serverIdOf(value) === null;
+    onSameMachine(
+      value: string,
+      servers: readonly Server[] | undefined,
+    ): boolean {
+      if (!platformHost) return false;
+      const serverId = serverIdOf(value);
+      if (serverId === null) return true;
+      return isSameMachineServer(servers, serverId);
     },
   };
+}
+
+/**
+ * Whether `serverId` names a Server whose address is Cloudgate's own machine
+ * (`sameMachine`, #149), so choosing it gets the Same-machine warning as
+ * this Cloudgate host does. Shared with the Deploy target pickers.
+ */
+export function isSameMachineServer(
+  servers: readonly Server[] | undefined,
+  serverId: string | null | undefined,
+): boolean {
+  return (
+    (servers ?? []).find((server) => server.serverId === serverId)
+      ?.sameMachine === true
+  );
 }
 
 /**
