@@ -10,7 +10,9 @@ import {
   TEMPLATE_CONFIG_FILES_MAX_BYTES,
   TEMPLATES_FOLDER,
   fileCap,
+  folderFile,
   isLeftOutOfCatalogue,
+  twoSpellings,
 } from './catalogue-layout';
 import { readZip, writeZip } from './catalogue-zip';
 import type { ZipFile } from './catalogue-zip';
@@ -154,6 +156,13 @@ export function readCatalogueFile(bytes: Uint8Array): CatalogueRead {
     }
   }
   for (const [id, files] of folders) {
+    const both = twoSpellings(files);
+    if (both) {
+      const [a, b] = both.map((path) => `${TEMPLATES_FOLDER}${id}/${path}`);
+      return refuse(
+        `holds ${a} and ${b}, two spellings of one file; a template folder holds one`,
+      );
+    }
     const problem = configFilesProblem(files);
     if (problem) return refuse(`holds ${TEMPLATES_FOLDER}${id}/${problem}`);
   }
@@ -180,7 +189,7 @@ export interface CatalogueFolder {
  * The `catalogue.zip` holding `folders`: what `cg-templates` CI publishes
  * and what `cloudgate template check` makes of a folder before checking it.
  * The website's `index.md` and `screenshots/`, and the `test-values.yaml`
- * `template try` reads, are left out, so a folder that holds them is
+ * (or `.yml`) `template try` reads, are left out, so a folder that holds them is
  * published, and checked, as Cloudgate reads it. Every
  * other file is kept, so the check names a stray one rather than the build
  * dropping it unseen.
@@ -282,13 +291,15 @@ function contentOf(
 function configFilesProblem(
   files: Readonly<Record<string, CatalogueFileContent>>,
 ): string | null {
-  const listed = listedFiles(files['template.yaml']);
+  const templateYaml = folderFile(files, 'template');
+  const found = templateYaml && 'path' in templateYaml ? templateYaml : null;
+  const listed = listedFiles(found?.content);
   let total = 0;
   for (const [path, content] of Object.entries(files)) {
     if (!path.startsWith(CONFIG_FILES)) continue;
     const below = path.slice(CONFIG_FILES.length);
     if (!listed.has(below)) {
-      return `${path}, which its template.yaml does not list in files`;
+      return `${path}, which its ${found?.path ?? 'template.yaml'} does not list in files`;
     }
     const problem = configPathProblem(below);
     if (problem) return `${path}, whose path ${problem}`;

@@ -298,13 +298,9 @@ describe('readCatalogueFile', () => {
     });
 
     it('refuses a second compose file, by any of its usual names', () => {
-      for (const name of [
-        'docker-compose.yaml',
-        'compose.yml',
-        'compose.yaml',
-      ]) {
+      for (const name of ['compose.yml', 'compose.yaml']) {
         expect(refusal(ghostWith(name, 'services: {}\n'))).toBe(
-          `The catalogue holds templates/ghost/${name}, a second compose file; a template has at most one, docker-compose.yml`,
+          `The catalogue holds templates/ghost/${name}, a second compose file; a template has at most one, docker-compose.yaml or docker-compose.yml`,
         );
       }
     });
@@ -561,6 +557,79 @@ describe('readCatalogueFile', () => {
     });
   });
 
+  describe('spellings (ADR-0090)', () => {
+    /** Ghost's folder with the file at `from` moved to `to`. */
+    function respelled(from: string, to: string): Folder {
+      const text = ghost().files[from];
+      return ghost({ files: { [from]: null, [to]: text } });
+    }
+
+    it('reads template, cloudgate and docker-compose spelled either way', () => {
+      for (const [from, to] of [
+        ['template.yaml', 'template.yml'],
+        ['cloudgate.yaml', 'cloudgate.yml'],
+        ['docker-compose.yml', 'docker-compose.yaml'],
+      ]) {
+        const folder = respelled(from, to);
+        const read = readCatalogueFile(catalogue(folder));
+
+        expect(read.ok && read.entries[0].files).toEqual(folder.files);
+      }
+    });
+
+    it('takes the config files a template.yml lists', () => {
+      const folder = ghostShipping({ 'files/a.conf': 'x' });
+      folder.files['template.yml'] = folder.files['template.yaml'];
+      delete folder.files['template.yaml'];
+
+      expect(readCatalogueFile(catalogue(folder)).ok).toBe(true);
+      folder.files['files/b.conf'] = 'y';
+      expect(refusal(catalogue(folder))).toBe(
+        'The catalogue holds templates/ghost/files/b.conf, which its template.yml does not list in files',
+      );
+    });
+
+    it('refuses a folder holding both spellings of one file, naming both', () => {
+      expect(refusal(ghostWith('template.yml', 'name: Ghost\n'))).toBe(
+        'The catalogue holds templates/ghost/template.yaml and templates/ghost/template.yml, two spellings of one file; a template folder holds one',
+      );
+      expect(refusal(ghostWith('cloudgate.yml', 'version: 1\n'))).toBe(
+        'The catalogue holds templates/ghost/cloudgate.yaml and templates/ghost/cloudgate.yml, two spellings of one file; a template folder holds one',
+      );
+      expect(refusal(ghostWith('docker-compose.yaml', 'services: {}\n'))).toBe(
+        'The catalogue holds templates/ghost/docker-compose.yaml and templates/ghost/docker-compose.yml, two spellings of one file; a template folder holds one',
+      );
+    });
+
+    it('refuses a test-values.yml as it does a test-values.yaml', () => {
+      expect(
+        refusal(ghostWith('test-values.yml', 'LICENCE: ABCD-1234\n')),
+      ).toBe(
+        'The catalogue holds templates/ghost/test-values.yml, the test values template try reads; a catalogue leaves them out',
+      );
+    });
+
+    it('still refuses any other spelling', () => {
+      expect(
+        refusal(catalogue(respelled('template.yaml', 'Template.yaml'))),
+      ).toBe(
+        'The catalogue holds templates/ghost/Template.yaml, which is not a file a template holds; config files go under files/',
+      );
+      expect(
+        refusal(catalogue(respelled('cloudgate.yaml', 'cloudgate.YML'))),
+      ).toBe(
+        'The catalogue holds templates/ghost/cloudgate.YML, which is not a file a template holds; config files go under files/',
+      );
+      expect(
+        refusal(
+          catalogue(respelled('docker-compose.yml', 'docker_compose.yml')),
+        ),
+      ).toBe(
+        'The catalogue holds templates/ghost/docker_compose.yml, a second compose file; a template has at most one, docker-compose.yaml or docker-compose.yml',
+      );
+    });
+  });
+
   it('hides a template failing its own rules alone, in a sound zip', () => {
     const result = checkCatalogue(
       catalogue(
@@ -670,13 +739,31 @@ describe('encodeCatalogue', () => {
         revision: 'r',
         files: {
           ...bytesOf(ghost()),
-          'docker-compose.yaml': Buffer.from('services: {}\n'),
+          'compose.yaml': Buffer.from('services: {}\n'),
         },
       },
     ]);
 
     expect(refusal(encoded)).toBe(
-      'The catalogue holds templates/ghost/docker-compose.yaml, a second compose file; a template has at most one, docker-compose.yml',
+      'The catalogue holds templates/ghost/compose.yaml, a second compose file; a template has at most one, docker-compose.yaml or docker-compose.yml',
     );
+  });
+
+  it('leaves a test-values.yml out too (ADR-0090)', () => {
+    const folder = ghost();
+    const read = readCatalogueFile(
+      encodeCatalogue([
+        {
+          id: 'ghost',
+          revision: 'r',
+          files: {
+            ...bytesOf(folder),
+            'test-values.yml': Buffer.from('LICENCE: ABCD-1234\n'),
+          },
+        },
+      ]),
+    );
+
+    expect(read.ok && read.entries[0].files).toEqual(folder.files);
   });
 });

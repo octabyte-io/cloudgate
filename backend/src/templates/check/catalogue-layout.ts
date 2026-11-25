@@ -12,6 +12,9 @@ import { LOGO_MAX_BYTES } from './template-logo';
  * templates/<id>/logo.svg | logo.png
  * ```
  *
+ * `template`, `cloudgate` and `docker-compose` may each end in `.yaml` or
+ * `.yml` (ADR-0090), but a folder holds one spelling of each.
+ *
  * A path outside this list refuses the whole zip rather than hiding the one
  * template it sits in: the zip is built by `cg-templates` CI from an allow
  * list, so a file it does not name is either a broken build or a zip someone
@@ -24,11 +27,67 @@ export const CATALOGUE_INDEX = 'catalogue.json';
 /** The folder every template's own folder sits in. */
 export const TEMPLATES_FOLDER = 'templates/';
 
+/**
+ * The YAML files a template folder may spell `.yaml` or `.yml`, by the name
+ * before the ending (ADR-0090, amending ADR-0072). A folder holds at most one
+ * spelling of each.
+ */
+export type FolderYaml =
+  'template' | 'cloudgate' | 'docker-compose' | 'test-values';
+
+const FOLDER_YAML: readonly FolderYaml[] = [
+  'template',
+  'cloudgate',
+  'docker-compose',
+  'test-values',
+];
+
+/** `name`'s two spellings, `.yaml` first. */
+export function spellingsOf(name: FolderYaml): readonly [string, string] {
+  return [`${name}.yaml`, `${name}.yml`];
+}
+
+/**
+ * The file `name` in a folder's `files` (by path inside the folder), under
+ * whichever spelling it has: null when it has neither, and the two paths
+ * when it has both, which the folder may not (ADR-0090). The one place a
+ * caller finds these files, so no reader goes by a fixed spelling.
+ */
+export function folderFile<T>(
+  files: Readonly<Record<string, T>>,
+  name: FolderYaml,
+):
+  | { readonly path: string; readonly content: T }
+  | { readonly both: readonly [string, string] }
+  | null {
+  const present = spellingsOf(name).filter((path) =>
+    Object.hasOwn(files, path),
+  );
+  if (present.length === 2) return { both: [present[0], present[1]] };
+  return present.length === 1
+    ? { path: present[0], content: files[present[0]] }
+    : null;
+}
+
+/**
+ * The two paths of the first file `files` holds under both spellings; null
+ * when it holds none twice.
+ */
+export function twoSpellings(
+  files: Readonly<Record<string, unknown>>,
+): readonly [string, string] | null {
+  for (const name of FOLDER_YAML) {
+    const found = folderFile(files, name);
+    if (found && 'both' in found) return found.both;
+  }
+  return null;
+}
+
 /** The files a template folder holds at its root, beside `files/`. */
 export const FOLDER_FILES: ReadonlySet<string> = new Set([
-  'template.yaml',
-  'cloudgate.yaml',
-  'docker-compose.yml',
+  ...spellingsOf('template'),
+  ...spellingsOf('cloudgate'),
+  ...spellingsOf('docker-compose'),
   'logo.svg',
   'logo.png',
 ]);
@@ -55,12 +114,17 @@ export function isWebsiteFile(pathInFolder: string): boolean {
  */
 export const TEST_VALUES_FILE = 'test-values.yaml';
 
+function isTestValues(pathInFolder: string): boolean {
+  return spellingsOf('test-values').includes(pathInFolder);
+}
+
 /**
  * Whether a path inside a template folder is one the repository keeps and a
- * catalogue leaves out: the website's files and the test values.
+ * catalogue leaves out: the website's files and the test values, under
+ * either spelling.
  */
 export function isLeftOutOfCatalogue(pathInFolder: string): boolean {
-  return isWebsiteFile(pathInFolder) || pathInFolder === TEST_VALUES_FILE;
+  return isWebsiteFile(pathInFolder) || isTestValues(pathInFolder);
 }
 
 /**
@@ -146,14 +210,14 @@ export function fileCap(path: string): number | { readonly refused: string } {
   if (isWebsiteFile(inFolder)) {
     return refused('a website file; a catalogue leaves the website out');
   }
-  if (inFolder === TEST_VALUES_FILE) {
+  if (isTestValues(inFolder)) {
     return refused(
       'the test values template try reads; a catalogue leaves them out',
     );
   }
   if (/compose\.ya?ml$/.test(inFolder)) {
     return refused(
-      'a second compose file; a template has at most one, docker-compose.yml',
+      `a second compose file; a template has at most one, ${spellingsOf('docker-compose').join(' or ')}`,
     );
   }
   return refused(

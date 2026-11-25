@@ -507,7 +507,7 @@ ${REQUIRED}inputs:
           }),
         ),
       ).toBe(
-        'The catalogue holds templates/ghost/compose.yaml, a second compose file; a template has at most one, docker-compose.yml',
+        'The catalogue holds templates/ghost/compose.yaml, a second compose file; a template has at most one, docker-compose.yaml or docker-compose.yml',
       );
     });
 
@@ -652,6 +652,78 @@ ${REQUIRED}inputs:
         refusal(ghost({ files: { 'logo.svg': svgOf(100 * 1024 + 1) } })),
       ).toBe(
         'The catalogue holds templates/ghost/logo.svg, which is larger than 100 KB; that file is at most that',
+      );
+    });
+  });
+
+  describe('spellings (ADR-0090)', () => {
+    /** Ghost with its three YAML files spelled the other way. */
+    function respelled(
+      overrides: { cloudgateYaml?: string; compose?: string } = {},
+    ): ReturnType<typeof ghost> {
+      const files = ghost(overrides).files;
+      return ghost({
+        files: {
+          'template.yaml': null,
+          'cloudgate.yaml': null,
+          'docker-compose.yml': null,
+          'template.yml': files['template.yaml'],
+          'cloudgate.yml': files['cloudgate.yaml'],
+          'docker-compose.yaml': files['docker-compose.yml'],
+        },
+      });
+    }
+
+    it('offers a template whose files are spelled template.yml, cloudgate.yml and docker-compose.yaml', () => {
+      const files = ghost().files;
+      const template = offered(respelled());
+
+      expect(template).toMatchObject({
+        id: 'ghost',
+        name: 'Ghost',
+        compose: 'app',
+        configText: files['cloudgate.yaml'],
+        composeFile: files['docker-compose.yml'],
+      });
+    });
+
+    it('names the file under the spelling it has', () => {
+      expect(
+        hiddenReason(
+          respelled({
+            cloudgateYaml:
+              'version: 1\nservices:\n  app: { kind: compose, managed: console }\n  db: { kind: postgres, replicas: 2 }\n',
+          }),
+        ),
+      ).toBe('cloudgate.yml: db.replicas: it is not a field Cloudgate knows');
+      expect(hiddenReason(respelled({ compose: 'version: "3"\n' }))).toBe(
+        'docker-compose.yaml must have services, each a map',
+      );
+    });
+
+    it('refuses the whole zip over both spellings of one file, naming both', () => {
+      expect(
+        refusal(
+          ghost({ id: 'blog' }),
+          ghost({ files: { 'docker-compose.yaml': 'services: {}\n' } }),
+        ),
+      ).toBe(
+        'The catalogue holds templates/ghost/docker-compose.yaml and templates/ghost/docker-compose.yml, two spellings of one file; a template folder holds one',
+      );
+    });
+
+    it('still refuses any other spelling', () => {
+      expect(
+        refusal(
+          ghost({
+            files: {
+              'template.yaml': null,
+              'Template.yaml': ghost().files['template.yaml'],
+            },
+          }),
+        ),
+      ).toBe(
+        'The catalogue holds templates/ghost/Template.yaml, which is not a file a template holds; config files go under files/',
       );
     });
   });

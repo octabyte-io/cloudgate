@@ -4,8 +4,9 @@ import { CONFIG_NAME_REGEX } from '../../project-config/format/config-schema';
 import { parseProjectConfig } from '../../project-config/format/parse-config';
 import type { ProjectConfig } from '../../project-config/project-config.types';
 import { readCatalogueFile } from './catalogue-file';
-import type { CatalogueEntry, CatalogueFileContent } from './catalogue-file';
-import { CONFIG_FILES } from './catalogue-layout';
+import type { CatalogueEntry } from './catalogue-file';
+import { CONFIG_FILES, folderFile } from './catalogue-layout';
+import type { FolderYaml } from './catalogue-layout';
 import { composeVariables } from './compose-variables';
 import { readLogo } from './template-logo';
 import type { TemplateLogo } from './template-logo';
@@ -26,11 +27,14 @@ export interface Template extends TemplateYaml {
   readonly revision: string;
   readonly config: ProjectConfig;
   /**
-   * `cloudgate.yaml` as written: the text setup renames and adds to a
+   * `cloudgate.yaml` (or `cloudgate.yml`) as written: the text setup renames and adds to a
    * Project's config, so the entries it adds are the ones this check read.
    */
   readonly configText: string;
-  /** `docker-compose.yml` as written; null when there is no compose part. */
+  /**
+   * `docker-compose.yaml` or `docker-compose.yml` as written; null when
+   * there is no compose part.
+   */
   readonly composeFile: string | null;
   /** The files under `files/`, by their path below it. */
   readonly configFiles: Readonly<Record<string, string>>;
@@ -109,25 +113,34 @@ function checkTemplate(
     };
   }
 
-  const folder = folderProblem(files);
-  if (folder) return { ok: false, reason: folder };
-  const text = files as Record<string, string | undefined>;
+  const text = files as Readonly<Record<string, string>>;
+  const templateYaml = textOf(text, 'template');
+  const cloudgateYaml = textOf(text, 'cloudgate');
+  const composeYaml = textOf(text, 'docker-compose');
+  if (!templateYaml) return { ok: false, reason: 'has no template.yaml' };
+  if (!cloudgateYaml) return { ok: false, reason: 'has no cloudgate.yaml' };
 
   const yaml = readTemplateYaml(
-    text['template.yaml'] ?? '',
+    templateYaml.content,
     instance.cloudgateVersion,
   );
   if (!yaml.ok) return { ok: false, reason: yaml.reason };
 
-  const config = parseProjectConfig(text['cloudgate.yaml'] ?? '');
+  const config = parseProjectConfig(cloudgateYaml.content);
   if (!config.ok) {
-    return { ok: false, reason: `cloudgate.yaml: ${config.refusal.message}` };
+    return {
+      ok: false,
+      reason: `${cloudgateYaml.path}: ${config.refusal.message}`,
+    };
   }
 
-  const composeFile = text['docker-compose.yml'] ?? null;
-  const compose = composeFile === null ? null : readComposeFile(composeFile);
-  if (compose !== null && !compose.ok) {
-    return { ok: false, reason: `docker-compose.yml ${compose.reason}` };
+  let compose: ComposeFile | null = null;
+  if (composeYaml) {
+    const read = readComposeFile(composeYaml.content);
+    if (!read.ok) {
+      return { ok: false, reason: `${composeYaml.path} ${read.reason}` };
+    }
+    compose = read.file;
   }
 
   const logo = readLogo(files);
@@ -138,19 +151,16 @@ function checkTemplate(
     id,
     revision,
     config: config.config,
-    configText: text['cloudgate.yaml'] ?? '',
-    composeFile,
+    configText: cloudgateYaml.content,
+    composeFile: composeYaml?.content ?? null,
     configFiles: Object.fromEntries(
       Object.entries(text)
         .filter(([path]) => path.startsWith(CONFIG_FILES))
-        .map(([path, content]) => [
-          path.slice(CONFIG_FILES.length),
-          content as string,
-        ]),
+        .map(([path, content]) => [path.slice(CONFIG_FILES.length), content]),
     ),
     logo: logo.logo,
   };
-  const reading = { template, compose: compose?.file ?? null };
+  const reading = { template, compose };
   for (const rule of TEMPLATE_RULES) {
     const reason = rule(reading);
     if (reason) return { ok: false, reason };
@@ -159,17 +169,21 @@ function checkTemplate(
 }
 
 /**
- * The two files every template has. Which other files a folder may hold,
- * and that each is text, is the catalogue's own check (`readCatalogueFile`),
- * which refuses the whole zip over a file it does not know (ADR-0072).
+ * One of the folder's YAML files under whichever spelling it has
+ * (ADR-0090); null when it has neither. Which other files a folder may hold,
+ * that each is text, and that none is there under both spellings, is the
+ * catalogue's own check (`readCatalogueFile`), which refuses the whole zip
+ * over them (ADR-0072), so a folder reaching here holds one spelling at most.
  */
-function folderProblem(
-  files: Readonly<Record<string, CatalogueFileContent>>,
-): string | null {
-  for (const required of ['template.yaml', 'cloudgate.yaml']) {
-    if (files[required] === undefined) return `has no ${required}`;
+function textOf(
+  files: Readonly<Record<string, string>>,
+  name: FolderYaml,
+): { readonly path: string; readonly content: string } | null {
+  const found = folderFile(files, name);
+  if (found && 'both' in found) {
+    throw new Error(`${found.both.join(' and ')} reached the template check`);
   }
-  return null;
+  return found;
 }
 
 /** The compose file, as far as the rules read it: a map of services. */
