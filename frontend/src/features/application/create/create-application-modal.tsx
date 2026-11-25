@@ -1,11 +1,11 @@
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { FormProvider } from "react-hook-form";
 
 import { Field, FormError } from "@/components/console/field";
 import { Modal } from "@/components/console/modal";
 import { Picker } from "@/components/console/picker";
 import { ResourceField } from "@/components/console/resource-field";
+import { SameMachineNote } from "@/components/console/same-machine";
 import { SubmitButton } from "@/components/console/submit-button";
 import { toast } from "@/components/console/toast";
 import { useApiForm } from "@/components/console/use-api-form";
@@ -15,6 +15,7 @@ import { useServers } from "@/lib/api/use-servers";
 import {
   CLOUD_TARGET_HINT,
   useCreateServerPicker,
+  useServerChoice,
 } from "@/lib/forms/create-server-picker";
 
 import {
@@ -72,7 +73,10 @@ import { example } from "@/components/console/form-spec";
  * On the
  * Hosted instance this Cloudgate host is not offered at all
  * so a
- * platform-host or Cloud account target opens on nothing chosen.
+ * platform-host or Cloud account target opens on nothing chosen. A
+ * platform-host target opens on the Organization's first Ready Server when
+ * it has one (#147), and this Cloudgate host, chosen, shows the
+ * Same-machine warning under the picker.
  */
 export function CreateApplicationModal({
   environmentId,
@@ -120,8 +124,10 @@ function Details({
   const create = useCreateApplication(environmentId);
   const servers = useServers();
   const picker = useCreateServerPicker(deployTarget);
-  const [serverId, setServerId] = useState(
-    deployTarget.kind === "server" ? deployTarget.serverId : "",
+  const [serverId, setServerId] = useServerChoice(
+    deployTarget.kind === "server"
+      ? deployTarget.serverId
+      : picker.initial(servers.data),
   );
 
   const form = useApiForm<CreateApplicationValues>({
@@ -180,7 +186,11 @@ function Details({
             label="Server"
             manual
             optional={picker.optional}
-            hint={serverHint(deployTarget, picker.platformHost)}
+            hint={serverHint(
+              deployTarget,
+              picker.platformHost,
+              picker.initial(servers.data) === "",
+            )}
           >
             <Picker
               options={picker.options(servers.data)}
@@ -190,6 +200,7 @@ function Details({
               onValueChange={setServerId}
             />
           </Field>
+          {picker.onHost(serverId) ? <SameMachineNote /> : null}
 
           <FormError message={form.rootError} />
         </Modal.Body>
@@ -207,7 +218,12 @@ function Details({
 }
 
 /** What the Server picker's hint says, by where the Environment deploys. */
-function serverHint(target: DeployTarget, platformHost: boolean): string {
+function serverHint(
+  target: DeployTarget,
+  platformHost: boolean,
+  /** False where it opens on a Ready Server rather than the host (#147). */
+  startsOnHost: boolean,
+): string {
   // On the Hosted instance the host is no choice (ADR-0053).
   if (!platformHost && target.kind !== "server") {
     return "Which of your Servers it runs on.";
@@ -218,6 +234,8 @@ function serverHint(target: DeployTarget, platformHost: boolean): string {
     case "cloud":
       return `Which Server it runs on. ${CLOUD_TARGET_HINT}`;
     default:
-      return "Which Server it runs on. It starts on this Environment's Deploy target, this Cloudgate host.";
+      return startsOnHost
+        ? "Which Server it runs on. It starts on this Environment's Deploy target, this Cloudgate host."
+        : "Which Server it runs on. It starts on your first Ready Server rather than this Cloudgate host.";
   }
 }

@@ -7,6 +7,7 @@ import { Field } from "@/components/console/field";
 import { Modal } from "@/components/console/modal";
 import { PickCard, PickGrid } from "@/components/console/pick-card";
 import { Picker } from "@/components/console/picker";
+import { SameMachineNote } from "@/components/console/same-machine";
 import { Stepper } from "@/components/console/stepper";
 import { toast } from "@/components/console/toast";
 import { aiApi, type AiSuggestion } from "@/lib/api/endpoints/ai";
@@ -17,7 +18,10 @@ import type { DeployTarget } from "@/lib/api/endpoints/environments";
 import { useServers } from "@/lib/api/use-servers";
 import { useActiveOrganizationId } from "@/lib/auth/client";
 import { settingsHref } from "@/lib/settings/sections";
-import { useCreateServerPicker } from "@/lib/forms/create-server-picker";
+import {
+  useCreateServerPicker,
+  useServerChoice,
+} from "@/lib/forms/create-server-picker";
 
 import { DraftFooter } from "./draft-footer";
 import { serviceCount } from "./draft-service-count";
@@ -115,7 +119,9 @@ export function DraftServiceModal({
   // refuses it with its own sentence (ADR-0053 seam 4).
   const servers = useServers();
   const picker = useCreateServerPicker(deployTarget);
-  const [serverId, setServerId] = useState("");
+  const [serverId, setServerId] = useServerChoice(
+    picker.initial(servers.data),
+  );
   const chosenServer = picker.serverIdOf(serverId);
 
   const available = providers.data ?? [];
@@ -262,6 +268,7 @@ export function DraftServiceModal({
                 onValueChange={setServerId}
               />
             </Field>
+            {picker.onHost(serverId) ? <SameMachineNote /> : null}
           </>
         ) : null}
 

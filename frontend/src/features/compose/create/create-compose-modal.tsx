@@ -8,6 +8,7 @@ import { Modal } from "@/components/console/modal";
 import { PickCard, PickGrid } from "@/components/console/pick-card";
 import { Picker } from "@/components/console/picker";
 import { ResourceField } from "@/components/console/resource-field";
+import { SameMachineNote } from "@/components/console/same-machine";
 import { SubmitButton } from "@/components/console/submit-button";
 import { toast } from "@/components/console/toast";
 import { useApiForm } from "@/components/console/use-api-form";
@@ -18,7 +19,10 @@ import {
 } from "@/lib/api/endpoints/compose";
 import type { DeployTarget } from "@/lib/api/endpoints/environments";
 import { useServers } from "@/lib/api/use-servers";
-import { useCreateServerPicker } from "@/lib/forms/create-server-picker";
+import {
+  useCreateServerPicker,
+  useServerChoice,
+} from "@/lib/forms/create-server-picker";
 import { serviceNameField } from "@/lib/forms/service-name";
 
 import { useCreateCompose } from "../use-compose";
@@ -124,7 +128,9 @@ function Details({
   const create = useCreateCompose(environmentId);
   const servers = useServers();
   const picker = useCreateServerPicker(deployTarget);
-  const [serverId, setServerId] = useState("");
+  const [serverId, setServerId] = useServerChoice(
+    picker.initial(servers.data),
+  );
   const [swarm, setSwarm] = useState(false);
   const chosen = picker.serverIdOf(serverId);
   const onStackVm = deployTarget.kind === "cloud";
@@ -237,7 +243,7 @@ function Details({
                 manual
                 optional={picker.optional}
                 hint={picker.hint(
-                  "Which host it runs on. Leave it on this Cloudgate host unless the Environment's other services are somewhere else.",
+                  "Which host it runs on: best beside the Environment's other services.",
                   "Which of your Servers it runs on.",
                 )}
               >
@@ -249,6 +255,7 @@ function Details({
                   onValueChange={setServerId}
                 />
               </Field>
+              {picker.onHost(serverId) ? <SameMachineNote /> : null}
             </>
           )}
 

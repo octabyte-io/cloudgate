@@ -1,5 +1,4 @@
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { FormProvider } from "react-hook-form";
 
 import { Field, FormError } from "@/components/console/field";
@@ -11,6 +10,7 @@ import {
 } from "@/components/console/mongo-kernel";
 import { Picker } from "@/components/console/picker";
 import { ResourceField } from "@/components/console/resource-field";
+import { SameMachineNote } from "@/components/console/same-machine";
 import { Stepper } from "@/components/console/stepper";
 import { SubmitButton } from "@/components/console/submit-button";
 import { toast } from "@/components/console/toast";
@@ -19,7 +19,10 @@ import { Button } from "@/components/ui/button";
 import type { DatabaseKind } from "@/lib/api/endpoints/databases";
 import type { DeployTarget } from "@/lib/api/endpoints/environments";
 import { useServers } from "@/lib/api/use-servers";
-import { useCreateServerPicker } from "@/lib/forms/create-server-picker";
+import {
+  useCreateServerPicker,
+  useServerChoice,
+} from "@/lib/forms/create-server-picker";
 
 import {
   DATABASE_KIND,
@@ -59,7 +62,9 @@ export function Details({
   const create = useCreateDatabase(environmentId);
   const servers = useServers();
   const picker = useCreateServerPicker(deployTarget);
-  const [serverId, setServerId] = useState("");
+  const [serverId, setServerId] = useServerChoice(
+    picker.initial(servers.data),
+  );
 
   const form = useApiForm<DatabaseFormValues>({
     schema: databaseSchema(kind, "create"),
@@ -159,7 +164,7 @@ export function Details({
               manual
               optional={picker.optional}
               hint={picker.hint(
-                "Which host it runs on. Leave it on this Cloudgate host unless the Environment's other services are somewhere else — a database on a different Server than the things using it is a network hop on every query.",
+                "Which host it runs on. A database on a different Server than the things using it is a network hop on every query.",
                 "Which of your Servers it runs on. A database on a different Server than the things using it is a network hop on every query.",
               )}
             >
@@ -171,6 +176,8 @@ export function Details({
                 onValueChange={setServerId}
               />
             </Field>
+
+            {picker.onHost(serverId) ? <SameMachineNote /> : null}
 
             {refusedKernel ? (
               <MongoKernelNote

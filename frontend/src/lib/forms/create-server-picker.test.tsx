@@ -111,6 +111,35 @@ const FORMS: [string, (deployTarget: DeployTarget) => ReactNode][] = [
   ],
 ];
 
+/** Whether the form shows the Same-machine warning (spec #146). */
+function warns(): boolean {
+  return screen.queryByText(/Cloudgate itself runs on this machine/) !== null;
+}
+
+/** The Server picker's text: what it holds, or its placeholder. */
+function pickerText(): string {
+  const picker = screen
+    .getAllByRole("combobox")
+    .find((box) =>
+      /This Cloudgate host|Choose a Server|web-1|bought-1/.test(
+        box.textContent ?? "",
+      ),
+    );
+  return picker?.textContent ?? "";
+}
+
+/**
+ * Picks the option whose text holds `label`, from the open picker, as a
+ * person's pointer does (`optional-pickers.test.tsx`).
+ */
+function pick(label: string) {
+  const option = screen
+    .getAllByRole("option")
+    .find((each) => each.textContent?.includes(label))!;
+  fireEvent.pointerDown(option, { pointerType: "mouse" });
+  fireEvent.click(option, { detail: 1 });
+}
+
 /** The Server picker's options, opened the way a person opens it. */
 async function serverOptions(placeholder: string): Promise<string[]> {
   const picker = screen
@@ -217,7 +246,7 @@ describe.each(FORMS)("the %s create form", (name, form) => {
   it("keeps offering this Cloudgate host when self-hosted (counterpart)", async () => {
     render(form(ON_HOST), { wrapper: Wrapper });
 
-    const options = await serverOptions("This Cloudgate host");
+    const options = await serverOptions("web-1");
 
     expect(options).toEqual(
       expect.arrayContaining([
@@ -239,4 +268,66 @@ it("reads no GPU counts for the platform host on the Hosted instance", () => {
     expect.arrayContaining([null]),
     true,
   );
+});
+
+/**
+ * The Same-machine warning and the default it comes with (#147): a create
+ * form opens on the Organization's first Ready deploy Server, and says so
+ * under the picker whenever this Cloudgate host is the choice.
+ */
+describe.each(FORMS)("the %s create form's Same-machine warning", (name, form) => {
+  it("opens on the first Ready deploy Server when self-hosted, with no warning", () => {
+    render(form(ON_HOST), { wrapper: Wrapper });
+
+    expect(pickerText()).toContain("web-1");
+    expect(warns()).toBe(false);
+  });
+
+  it("opens on this Cloudgate host with no Server, and warns", () => {
+    servers.data = [];
+    render(form(ON_HOST), { wrapper: Wrapper });
+
+    expect(pickerText()).toContain("This Cloudgate host");
+    expect(warns()).toBe(true);
+  });
+
+  it("opens on this Cloudgate host when the only Server is not Ready yet", () => {
+    servers.data = [BOUGHT_SETTING_UP];
+    render(form(ON_HOST), { wrapper: Wrapper });
+
+    expect(pickerText()).toContain("This Cloudgate host");
+    expect(warns()).toBe(true);
+  });
+
+  it("warns once this Cloudgate host is picked, and not once a Server is again", async () => {
+    render(form(ON_HOST), { wrapper: Wrapper });
+
+    await serverOptions("web-1");
+    pick("This Cloudgate host");
+    await waitFor(() => expect(warns()).toBe(true));
+
+    await serverOptions("This Cloudgate host");
+    pick("web-1");
+    await waitFor(() => expect(warns()).toBe(false));
+  });
+
+  it("never warns on the Hosted instance, and opens on nothing chosen", () => {
+    mode.data = "hosted";
+    render(form(ON_HOST), { wrapper: Wrapper });
+
+    expect(pickerText()).toContain("Choose a Server");
+    expect(warns()).toBe(false);
+  });
+
+  if (asksInCloud(name))
+    it("opens on nothing chosen in a cloud Environment, and warns once this Cloudgate host is picked", async () => {
+      render(form(IN_CLOUD), { wrapper: Wrapper });
+
+      expect(pickerText()).toContain("Choose a Server");
+      expect(warns()).toBe(false);
+
+      await serverOptions("Choose a Server");
+      pick("This Cloudgate host");
+      await waitFor(() => expect(warns()).toBe(true));
+    });
 });

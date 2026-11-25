@@ -1,11 +1,11 @@
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { FormProvider } from "react-hook-form";
 
 import { Field, FormError } from "@/components/console/field";
 import { Modal } from "@/components/console/modal";
 import { Picker } from "@/components/console/picker";
 import { ResourceField } from "@/components/console/resource-field";
+import { SameMachineNote } from "@/components/console/same-machine";
 import { SubmitButton } from "@/components/console/submit-button";
 import { toast } from "@/components/console/toast";
 import { useApiForm } from "@/components/console/use-api-form";
@@ -14,7 +14,10 @@ import { TAKES_HF_TOKEN } from "@/lib/api/endpoints/applications";
 import { useGpuCountsEach } from "@/lib/api/use-gpu";
 import type { DeployTarget } from "@/lib/api/endpoints/environments";
 import { useServers } from "@/lib/api/use-servers";
-import { useCreateServerPicker } from "@/lib/forms/create-server-picker";
+import {
+  useCreateServerPicker,
+  useServerChoice,
+} from "@/lib/forms/create-server-picker";
 
 import { MODEL_NAMING, RUNTIME_OPTIONS } from "../model/inference-runtimes";
 
@@ -88,7 +91,9 @@ function Details({
   const create = useCreateApplication(environmentId);
   const servers = useServers();
   const picker = useCreateServerPicker(deployTarget);
-  const [serverId, setServerId] = useState("");
+  const [serverId, setServerId] = useServerChoice(
+    picker.initial(servers.data),
+  );
   // The host's cards are read only where it is a choice: the Hosted
   // instance refuses that read with the host itself.
   const hosts = [
@@ -164,6 +169,7 @@ function Details({
               onValueChange={setServerId}
             />
           </Field>
+          {picker.onHost(serverId) ? <SameMachineNote /> : null}
 
           <ResourceField
             spec={{

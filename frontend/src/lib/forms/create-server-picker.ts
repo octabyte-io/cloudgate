@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import type { PickerOption } from "@/components/console/picker";
 import type { DeployTarget } from "@/lib/api/endpoints/environments";
 import { notReadyYet } from "@/lib/api/endpoints/servers";
@@ -39,6 +41,12 @@ const HOST_CHOSEN = "__cloudgate_platform_host__";
  * choice leaves `serverId` out, which the API answers with its own sentence,
  * as on the Hosted instance. Everywhere else the host is the Picker's `""`.
  *
+ * **It opens on a Server when the Organization has one Ready** (#147), not
+ * on the host: a Service on Cloudgate's own machine is lost with Cloudgate's
+ * records, and the form shows `SameMachineNote` while the host is chosen
+ * (`onHost`). With none Ready, the host stays the default. Neither changes
+ * in a cloud Environment or on the Hosted instance.
+ *
  * Used by the Application, AI model, Compose and database create forms, and
  * by the template and AI deploy forms.
  */
@@ -47,6 +55,16 @@ export function useCreateServerPicker(deployTarget: DeployTarget | undefined) {
   // not offered — a Hosted console must never show it, even for a moment.
   const platformHost = useInstanceMode().data === "self-hosted";
   const hostAsked = platformHost && deployTarget?.kind === "cloud";
+  /**
+   * The body's `serverId` for what the picker holds: a Server's id, `null`
+   * for this Cloudgate host, and `undefined` — left out of the body — for
+   * nothing chosen where the host is not assumed.
+   */
+  const serverIdOf = (value: string): string | null | undefined => {
+    if (value === HOST_CHOSEN) return null;
+    if (value !== "") return value;
+    return hostAsked ? undefined : null;
+  };
   return {
     /** Whether this Cloudgate host is a choice here. */
     platformHost,
@@ -96,15 +114,49 @@ export function useCreateServerPicker(deployTarget: DeployTarget | undefined) {
       if (hostAsked) return `${onServers} ${CLOUD_TARGET_HINT}`;
       return platformHost ? onHost : onServers;
     },
+    serverIdOf,
     /**
-     * The body's `serverId` for what the picker holds: a Server's id, `null`
-     * for this Cloudgate host, and `undefined` — left out of the body — for
-     * nothing chosen where the host is not assumed.
+     * What the picker opens on (#147): the first Ready deploy Server where
+     * this Cloudgate host would otherwise be assumed, else the Picker's `""`
+     * (the host, or nothing chosen in a cloud Environment and on the Hosted
+     * instance, as before).
      */
-    serverIdOf(value: string): string | null | undefined {
-      if (value === HOST_CHOSEN) return null;
-      if (value !== "") return value;
-      return hostAsked ? undefined : null;
+    initial(servers: readonly Server[] | undefined): string {
+      if (!platformHost || hostAsked) return "";
+      return firstReadyDeployServer(servers)?.serverId ?? "";
+    },
+    /**
+     * Whether what the picker holds puts the Service on this Cloudgate host,
+     * where the form shows the Same-machine warning (`SameMachineNote`).
+     */
+    onHost(value: string): boolean {
+      return platformHost && serverIdOf(value) === null;
     },
   };
+}
+
+/**
+ * The deploy Server a create opens on rather than this Cloudgate host
+ * (#147): the first that is Ready, so nobody lands on Cloudgate's own
+ * machine by not looking. Undefined with none, where the host stays the
+ * default. Shared with a new Environment's Deploy target and Template setup.
+ */
+export function firstReadyDeployServer(
+  servers: readonly Server[] | undefined,
+): Server | undefined {
+  return (servers ?? []).find(
+    (server) => server.serverType === "deploy" && notReadyYet(server) === null,
+  );
+}
+
+/**
+ * The picker's value: what the person picked or, until they pick, what it
+ * opens on, which follows the Server list as it arrives since a form mounts
+ * before that read answers.
+ */
+export function useServerChoice(
+  initial: string,
+): [string, (value: string) => void] {
+  const [picked, setPicked] = useState<string | null>(null);
+  return [picked ?? initial, setPicked];
 }

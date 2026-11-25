@@ -124,6 +124,20 @@ async function serverOptions(placeholder: string): Promise<string[]> {
     .map((option) => option.textContent ?? "");
 }
 
+/** Whether the form shows the Same-machine warning (spec #146). */
+function warns(): boolean {
+  return screen.queryByText(/Cloudgate itself runs on this machine/) !== null;
+}
+
+/** Picks the option whose text holds `label`, as a person's pointer does. */
+function pick(label: string) {
+  const option = screen
+    .getAllByRole("option")
+    .find((each) => each.textContent?.includes(label))!;
+  fireEvent.pointerDown(option, { pointerType: "mouse" });
+  fireEvent.click(option, { detail: 1 });
+}
+
 /** Each deploy form that reaches `compose.createByTemplate`. */
 const FORMS: [string, () => Promise<void>][] = [
   ["AI deploy", aiDeployStep],
@@ -157,7 +171,7 @@ describe.each(FORMS)("the %s form", (_name, open) => {
   it("keeps offering this Cloudgate host when self-hosted (counterpart)", async () => {
     await open();
 
-    const options = await serverOptions("This Cloudgate host");
+    const options = await serverOptions("web-1");
 
     expect(options).toEqual(
       expect.arrayContaining([
@@ -188,8 +202,24 @@ describe("the AI deploy form's create", () => {
     );
   });
 
-  it("sends this Cloudgate host as null when self-hosted", async () => {
+  it("opens on the first Ready deploy Server when self-hosted, and sends it", async () => {
     await aiDeployStep();
+    expect(warns()).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Create this stack" }));
+
+    await waitFor(() =>
+      expect(ai.deploy).toHaveBeenCalledWith(
+        expect.objectContaining({ serverId: "srv_1" }),
+      ),
+    );
+  });
+
+  it("warns once this Cloudgate host is picked, and sends it as null", async () => {
+    await aiDeployStep();
+    await serverOptions("web-1");
+    pick("This Cloudgate host");
+    await waitFor(() => expect(warns()).toBe(true));
 
     fireEvent.click(screen.getByRole("button", { name: "Create this stack" }));
 
@@ -198,6 +228,13 @@ describe("the AI deploy form's create", () => {
         expect.objectContaining({ serverId: null }),
       ),
     );
+  });
+
+  it("never warns on the Hosted instance", async () => {
+    mode.data = "hosted";
+    await aiDeployStep();
+
+    expect(warns()).toBe(false);
   });
 
   describe("in a cloud Environment", () => {
