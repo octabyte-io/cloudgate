@@ -6,6 +6,7 @@ import { Field, FormError } from "@/components/console/field";
 import { LinkButton } from "@/components/console/link-button";
 import { Modal } from "@/components/console/modal";
 import { Picker } from "@/components/console/picker";
+import { SameMachineNote } from "@/components/console/same-machine";
 import { SubmitButton } from "@/components/console/submit-button";
 import { toast } from "@/components/console/toast";
 import { useApiForm } from "@/components/console/use-api-form";
@@ -17,8 +18,10 @@ import { useCloudAccounts } from "@/lib/api/use-cloud-accounts";
 import { useInstanceMode } from "@/lib/api/use-instance-mode";
 import { useServers } from "@/lib/api/use-servers";
 import { usePermission } from "@/lib/auth/use-permission";
+import { firstReadyDeployServer } from "@/lib/forms/create-server-picker";
 
 import {
+  PLATFORM_HOST_VALUE,
   CLOUDS,
   cloudAccountOf,
   cloudOf,
@@ -56,7 +59,9 @@ type Values = z.infer<typeof schema>;
  * no deploy Server in the organization the field is not shown and the API
  * takes the platform host, and with one the field is required, as
  * `POST /environments` requires it. A rename never shows it; the Settings
- * tab's own card changes it.
+ * tab's own card changes it. It opens on the first Ready deploy Server
+ * (#147), and while the new Environment would be on this Cloudgate host,
+ * chosen or for want of a deploy Server, the Same-machine warning shows.
  *
  * **On the Hosted instance there is always a choice, and the platform host is not
  * one of them**
@@ -106,6 +111,9 @@ export function EnvironmentFormModal({
   // The Hosted instance with no Server and no Cloud account: an Environment
   // there would have nowhere to point, so the API refuses one.
   const nowhere = askTarget && hosted && !pending && options.length === 0;
+  const opensOn = hosted
+    ? ""
+    : (firstReadyDeployServer(servers.data)?.serverId ?? "");
 
   const form = useApiForm<Values>({
     schema,
@@ -121,10 +129,11 @@ export function EnvironmentFormModal({
         name: values.name.trim(),
         description: values.description.trim(),
       };
+      const chosen = values.deployTarget || opensOn;
       const deployTarget = askTarget
-        ? fromPickerValue(values.deployTarget, values.region)
+        ? fromPickerValue(chosen, values.region)
         : null;
-      if (askTarget && !deployTarget && cloudAccountOf(values.deployTarget)) {
+      if (askTarget && !deployTarget && cloudAccountOf(chosen)) {
         form.setError("region", { type: "manual", message: "Choose the region" });
         return;
       }
@@ -157,8 +166,16 @@ export function EnvironmentFormModal({
     onError: (error) => toast.error(error),
   });
 
-  const target = form.watch("deployTarget");
+  // Until one is picked, a self-hosted create opens on the first Ready deploy
+  // Server (#147); the Picker offers no `""`, so `""` is only ever untouched.
+  const target = form.watch("deployTarget") || opensOn;
   const region = form.watch("region");
+  // This Cloudgate host, chosen or taken for want of a deploy Server.
+  const onHost =
+    !editing &&
+    !hosted &&
+    !servers.isPending &&
+    (askTarget ? target === PLATFORM_HOST_VALUE : true);
   const onCloud = cloudAccountOf(target) !== null;
   const cloud = cloudOf(target, cloudAccounts.data, region);
 
@@ -232,6 +249,7 @@ export function EnvironmentFormModal({
                 />
               </Field>
             ) : null}
+            {onHost ? <SameMachineNote /> : null}
             {askTarget && onCloud ? (
               <Field
                 name="region"

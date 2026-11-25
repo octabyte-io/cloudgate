@@ -194,6 +194,53 @@ describe("EnvironmentDeployTargetCard", () => {
   });
 });
 
+/** Whether the card shows the Same-machine warning (spec #146). */
+function warns(): boolean {
+  return screen.queryByText(/Cloudgate itself runs on this machine/) !== null;
+}
+
+/**
+ * The Same-machine warning (#147): under the picker while This Cloudgate
+ * host is the Deploy target, saved or picked, and never for a Server or a
+ * Cloud account.
+ */
+describe("EnvironmentDeployTargetCard's Same-machine warning", () => {
+  it("warns on a saved platform-host target", () => {
+    mount({ kind: "platform-host" });
+
+    expect(warns()).toBe(true);
+  });
+
+  it("does not warn on a Server or a Cloud account", () => {
+    mount({ kind: "server", serverId: "srv_1" });
+    expect(warns()).toBe(false);
+    cleanup();
+
+    mount({ kind: "cloud", cloudAccountId: "ca_1", region: "eu-west-1" });
+    expect(warns()).toBe(false);
+  });
+
+  it("warns once this Cloudgate host is picked over a Server", async () => {
+    mount({ kind: "server", serverId: "srv_1" });
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Deploy target" }));
+    const host = await screen.findByRole("option", {
+      name: /This Cloudgate host/,
+    });
+    fireEvent.pointerDown(host, { pointerType: "mouse" });
+    fireEvent.click(host, { detail: 1 });
+
+    await waitFor(() => expect(warns()).toBe(true));
+  });
+
+  it("never warns on the Hosted instance, even for a platform-host target from before", () => {
+    mode.data = "hosted";
+    mount({ kind: "platform-host" });
+
+    expect(warns()).toBe(false);
+  });
+});
+
 /**
  * ADR-0053: the Hosted instance never offers its own host as a Deploy
  * target. It is left out, not greyed, and an Environment saved there before

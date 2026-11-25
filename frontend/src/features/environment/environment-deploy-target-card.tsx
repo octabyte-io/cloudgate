@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Card } from "@/components/console/card";
 import { Field, FormError } from "@/components/console/field";
 import { Picker } from "@/components/console/picker";
+import { SameMachineNote } from "@/components/console/same-machine";
 import { SubmitButton } from "@/components/console/submit-button";
 import { toast } from "@/components/console/toast";
 import { useApiForm } from "@/components/console/use-api-form";
@@ -16,6 +17,7 @@ import { useCloudAccounts } from "@/lib/api/use-cloud-accounts";
 import { useInstanceMode } from "@/lib/api/use-instance-mode";
 import {
   CLOUDS,
+  PLATFORM_HOST_VALUE,
   cloudAccountOf,
   cloudOf,
   deployTargetOptions,
@@ -59,6 +61,10 @@ type Values = z.infer<typeof schema>;
  * and the API
  * refuses it: an Environment saved there before shows no choice until one of
  * the Organization's own is saved.
+ *
+ * **While This Cloudgate host is the target**, saved or picked, the
+ * Same-machine warning shows under the picker (#147). An existing
+ * Environment's target is never switched for it.
  */
 export function EnvironmentDeployTargetCard({
   environment,
@@ -186,6 +192,9 @@ export function EnvironmentDeployTargetCard({
                 }}
               />
             </Field>
+            {!hosted && target === PLATFORM_HOST_VALUE ? (
+              <SameMachineNote />
+            ) : null}
             {onCloud ? (
               <Field
                 name="region"

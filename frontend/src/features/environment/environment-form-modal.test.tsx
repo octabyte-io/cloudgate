@@ -84,6 +84,11 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
+/** Whether the form shows the Same-machine warning (spec #146). */
+function warns(): boolean {
+  return screen.queryByText(/Cloudgate itself runs on this machine/) !== null;
+}
+
 /** What a screen reader says after the input's name: its hint and its error. */
 function descriptionOf(input: HTMLElement): string {
   return (input.getAttribute("aria-describedby") ?? "")
@@ -190,6 +195,14 @@ describe("EnvironmentFormModal, after saving", () => {
 describe("EnvironmentFormModal's Deploy target", () => {
   const worker = { serverId: "srv_1", name: "worker-1", ipAddress: "10.0.0.5", serverType: "deploy" };
   const builder = { serverId: "srv_2", name: "builder", ipAddress: "10.0.0.6", serverType: "build" };
+  /** A Bought Server still Setting up: a deploy Server, but not Ready. */
+  const settingUp = {
+    serverId: "srv_3",
+    name: "bought-1",
+    ipAddress: "203.0.113.20",
+    serverType: "deploy",
+    boughtServer: { stage: "setting_up", deletesOn: null, deletedAt: null },
+  };
 
   it("does not ask with no deploy Server, and sends no choice", async () => {
     servers.data = [builder];
@@ -205,7 +218,7 @@ describe("EnvironmentFormModal's Deploy target", () => {
   });
 
   it("asks once there is a deploy Server, and refuses to create without a choice", async () => {
-    servers.data = [worker];
+    servers.data = [settingUp];
     open(null);
 
     expect(screen.getByText("Deploy target")).toBeTruthy();
@@ -218,6 +231,47 @@ describe("EnvironmentFormModal's Deploy target", () => {
       ).toBeTruthy(),
     );
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it("opens on the first Ready deploy Server, with no warning, and sends it", async () => {
+    servers.data = [builder, settingUp, worker];
+    create.mockResolvedValue({ environmentId: "env_new" });
+    open(null);
+
+    expect(screen.getByRole("combobox").textContent).toContain("worker-1");
+    expect(warns()).toBe(false);
+    fireEvent.change(screen.getByLabelText(/Name/), { target: { value: "staging" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create Environment" }));
+
+    await waitFor(() =>
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deployTarget: { kind: "server", serverId: "srv_1" },
+        }),
+      ),
+    );
+  });
+
+  it("warns once this Cloudgate host is picked", async () => {
+    servers.data = [worker];
+    open(null);
+
+    await targetOptions();
+    const host = screen.getByRole("option", { name: /This Cloudgate host/ });
+    fireEvent.pointerDown(host, { pointerType: "mouse" });
+    fireEvent.click(host, { detail: 1 });
+
+    await waitFor(() => expect(warns()).toBe(true));
+  });
+
+  it("warns with no deploy Server, where the Environment lands on this Cloudgate host", () => {
+    servers.data = [builder];
+    open(null);
+
+    expect(warns()).toBe(true);
+    expect(
+      screen.getByRole("link", { name: "Add a Server" }).getAttribute("href"),
+    ).toBe("/servers");
   });
 
   it("never asks on a rename", () => {
@@ -259,6 +313,7 @@ describe("EnvironmentFormModal on the Hosted instance", () => {
     expect(options.some((option) => option.includes("Production AWS"))).toBe(true);
     expect(options.some((option) => option.includes("This Cloudgate host"))).toBe(false);
     expect(document.body.textContent).not.toContain("This Cloudgate host");
+    expect(warns()).toBe(false);
   });
 
   it("asks even with only a Cloud account, and sends it with its region", async () => {
@@ -284,6 +339,8 @@ describe("EnvironmentFormModal on the Hosted instance", () => {
   it("with no Server and no Cloud account links to adding one and does not submit", () => {
     mode.data = "hosted";
     open(null);
+
+    expect(warns()).toBe(false);
 
     expect(screen.getByRole("link", { name: "Add a Server" }).getAttribute("href")).toBe("/servers");
     expect(
