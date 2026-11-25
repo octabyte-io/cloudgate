@@ -92,9 +92,29 @@ declare module 'cloudgate-template-check' {
   /**
    * Whether a path inside a template folder is one a folder may hold and a
    * catalogue leaves out: the website's (`index.md`, `screenshots/…`) and
-   * `test-values.yaml`.
+   * `test-values.yaml` or `test-values.yml`.
    */
   export function isLeftOutOfCatalogue(pathInFolder: string): boolean;
+
+  /** A template folder's YAML files that may end `.yaml` or `.yml` (ADR-0090). */
+  export type FolderYaml =
+    'template' | 'cloudgate' | 'docker-compose' | 'test-values';
+
+  /** `name`'s two spellings, `.yaml` first. */
+  export function spellingsOf(name: FolderYaml): readonly [string, string];
+
+  /**
+   * The file `name` in a folder's `files` (by path inside the folder), under
+   * whichever spelling it has: null when it has neither, and the two paths
+   * when it has both, which a folder may not (ADR-0090).
+   */
+  export function folderFile<T>(
+    files: Readonly<Record<string, T>>,
+    name: FolderYaml,
+  ):
+    | { readonly path: string; readonly content: T }
+    | { readonly both: readonly [string, string] }
+    | null;
 }
 
 /**

@@ -1,11 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import {
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
@@ -19,7 +13,7 @@ import { CliError, usageError } from '../errors.js';
 import { EXIT } from '../exit-codes.js';
 import type { ExitCode } from '../exit-codes.js';
 import { abortOf } from '../stopping.js';
-import { templateFoldersAt } from '../template-folders.js';
+import { isTemplateFolder, templateFoldersAt } from '../template-folders.js';
 import { prepareStack, readTestValues } from '../try-stack.js';
 import type { TryDomain, TryStack } from '../try-stack.js';
 
@@ -77,7 +71,7 @@ USAGE
 
   Checks the template as template check does, and stops (exit 1) with the
   reason if Cloudgate would hide it. Then makes its values as setup does (an
-  ask input takes its value in the folder's test-values.yaml, else its
+  ask input takes its value in the folder's test-values.yaml (or .yml), else its
   default, else a sample that fits its format or pattern), lays out the
   compose part as a Server's stack folder, publishes each Domain's container
   port on a free 127.0.0.1 port, and runs docker compose up --wait. Each Domain is asked at
@@ -181,14 +175,6 @@ function checkedTemplate(folder: string): Template {
     throw new CliError(`${hidden.id}: ${hidden.reason}`, EXIT.failed);
   }
   return result.offered[0];
-}
-
-function isTemplateFolder(folder: string): boolean {
-  try {
-    return statSync(join(folder, 'template.yaml')).isFile();
-  } catch {
-    return false;
-  }
 }
 
 /**

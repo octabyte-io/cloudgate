@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import type { AddressInfo } from 'node:net';
-import { join } from 'node:path';
 
 import { TEST_VALUES_FILE } from 'cloudgate-template-check';
 import type { Template } from 'cloudgate-template-check';
@@ -25,6 +24,7 @@ import { parse, stringify } from 'yaml';
 
 import { CliError } from './errors.js';
 import { EXIT } from './exit-codes.js';
+import { testValuesIn } from './template-folders.js';
 
 /** One Domain as `try` reaches it: on a loopback port of this computer. */
 export interface TryDomain {
@@ -184,24 +184,27 @@ function envFile(
 
 /**
  * The values `template`'s folder gives its `ask` inputs in
- * `test-values.yaml` (ADR-0078), none when it has no such file. Every value
- * is read as text, as written: `1` is `"1"`, not a number. Refused, naming
- * them, when the file is not a map of names to text or names anything but
- * an `ask` input.
+ * `test-values.yaml` or `test-values.yml` (ADR-0078, ADR-0090), none when it
+ * has no such file. Every value is read as text, as written: `1` is `"1"`,
+ * not a number. Refused, naming them, when the folder holds both spellings,
+ * or the file is not a map of names to text or names anything but an `ask`
+ * input.
  */
 export function readTestValues(
   folder: string,
   template: Template,
 ): Record<string, string> {
-  let text: string;
-  try {
-    text = readFileSync(join(folder, TEST_VALUES_FILE), 'utf8');
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
-    throw error;
+  const found = testValuesIn(folder);
+  if (found === null) return {};
+  if ('both' in found) {
+    throw new CliError(
+      `${template.id} holds both ${found.both.join(' and ')}; a template folder holds one`,
+      EXIT.failed,
+    );
   }
+  const text = readFileSync(found.content, 'utf8');
   const refused = (why: string) =>
-    new CliError(`${template.id}: ${TEST_VALUES_FILE} ${why}`, EXIT.failed);
+    new CliError(`${template.id}: ${found.path} ${why}`, EXIT.failed);
 
   let document: unknown;
   try {

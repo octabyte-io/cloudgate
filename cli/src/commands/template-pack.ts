@@ -38,7 +38,7 @@ USAGE
   does, and writes nothing (exit 1) if the catalogue is refused or any
   template would be hidden. Otherwise writes the catalogue.zip to <out>,
   leaving the website files (index.md, screenshots/) and test-values.yaml
-  out, and prints each template packed. The check and the zip are this CLI's copy of Cloudgate
+  (or .yml) out, and prints each template packed. The check and the zip are this CLI's copy of Cloudgate
   ${__CLOUDGATE_CHECK_VERSION__}'s own.
 
 FLAGS

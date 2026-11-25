@@ -35,7 +35,7 @@ USAGE
   <path> is a catalogue.zip, a template folder, or a folder of template
   folders. A folder is checked as the catalogue.zip it would be packed
   into: its website files (index.md, screenshots/) and the test-values.yaml
-  that template try reads are skipped, and any other file a template does
+  (or .yml) that template try reads are skipped, and any other file a template does
   not have refuses the whole catalogue (exit 1).
   Otherwise prints each template with ✓, or ✗ and why Cloudgate would hide
   it, and exits 1 if any is hidden. Makes no request: the check is this

@@ -4,6 +4,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -147,6 +148,88 @@ signIn:
     expect(result.code).toBe(0);
   });
 
+  describe('spellings (ADR-0090)', () => {
+    /** A compose template folder spelling its YAML files the other way. */
+    function spelledYml(parent: string, id: string): string {
+      const folder = join(parent, id);
+      mkdirSync(folder, { recursive: true });
+      writeFileSync(
+        join(folder, 'template.yml'),
+        'name: Ghost\ndescription: A blog.\ntags: [blog]\ncloudgate: 0.1.0\ncompose: app\ndomains:\n  - { service: ghost, port: 2368 }\n',
+      );
+      writeFileSync(
+        join(folder, 'cloudgate.yml'),
+        'version: 1\nservices:\n  app: { kind: compose, managed: console }\n',
+      );
+      writeFileSync(
+        join(folder, 'docker-compose.yaml'),
+        'services:\n  ghost:\n    image: ghost:5.96.0\n',
+      );
+      writeFileSync(join(folder, 'test-values.yml'), '{}\n');
+      writeFileSync(
+        join(folder, 'logo.svg'),
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"></svg>',
+      );
+      return folder;
+    }
+
+    it('passes a template folder spelling template.yml, cloudgate.yml, docker-compose.yaml and test-values.yml', async () => {
+      const parent = mkdtempSync(join(tmpdir(), 'cloudgate-templates-'));
+      const folder = spelledYml(parent, 'ghost');
+
+      expect(await check(folder)).toMatchObject({
+        code: 0,
+        stdout: '✓ ghost\n',
+      });
+      expect(await check(parent)).toMatchObject({
+        code: 0,
+        stdout: '✓ ghost\n',
+      });
+    });
+
+    it('refuses a folder holding both spellings of one file, naming both', async () => {
+      const parent = mkdtempSync(join(tmpdir(), 'cloudgate-templates-'));
+      const folder = templateFolder(parent, 'uptime-kuma');
+      writeFileSync(join(folder, 'cloudgate.yml'), 'version: 1\n');
+
+      const result = await check(folder);
+
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain(
+        'templates/uptime-kuma/cloudgate.yaml and templates/uptime-kuma/cloudgate.yml',
+      );
+    });
+
+    it('refuses a folder holding test-values.yaml and test-values.yml, naming both', async () => {
+      const parent = mkdtempSync(join(tmpdir(), 'cloudgate-templates-'));
+      const folder = templateFolder(parent, 'uptime-kuma');
+      writeFileSync(join(folder, 'test-values.yaml'), '{}\n');
+      writeFileSync(join(folder, 'test-values.yml'), '{}\n');
+
+      const result = await check(folder);
+
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain(
+        'uptime-kuma holds both test-values.yaml and test-values.yml',
+      );
+    });
+
+    it('still refuses any other spelling', async () => {
+      const parent = mkdtempSync(join(tmpdir(), 'cloudgate-templates-'));
+      const folder = templateFolder(parent, 'uptime-kuma');
+      writeFileSync(
+        join(folder, 'Template.yaml'),
+        readFileSync(join(folder, 'template.yaml')),
+      );
+      rmSync(join(folder, 'template.yaml'));
+
+      const result = await check(parent);
+
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain('templates/uptime-kuma/Template.yaml');
+    });
+  });
+
   it("refuses the whole folder over a stray file at a template's root", async () => {
     const parent = mkdtempSync(join(tmpdir(), 'cloudgate-templates-'));
     templateFolder(parent, 'uptime-kuma');
@@ -276,6 +359,31 @@ describe('template pack', () => {
     expect(packed.stdout).toBe('✓ ghost\n');
     // A zip's names are never compressed.
     expect(readFileSync(zip).includes('test-values.yaml')).toBe(false);
+  });
+
+  it('packs a folder spelled template.yml and cloudgate.yml, leaving test-values.yml out', async () => {
+    const parent = mkdtempSync(join(tmpdir(), 'cloudgate-templates-'));
+    const templates = join(parent, 'templates');
+    const ghost = templateFolder(templates, 'ghost');
+    for (const name of ['template', 'cloudgate']) {
+      writeFileSync(
+        join(ghost, `${name}.yml`),
+        readFileSync(join(ghost, `${name}.yaml`)),
+      );
+      rmSync(join(ghost, `${name}.yaml`));
+    }
+    writeFileSync(join(ghost, 'test-values.yml'), 'LICENCE: ABCD-1234\n');
+    const zip = join(parent, 'catalogue.zip');
+
+    const packed = await cloudgate('template', 'pack', templates, zip);
+
+    expect(packed.code).toBe(0);
+    expect(packed.stdout).toBe('✓ ghost\n');
+    // A zip's names are never compressed.
+    expect(readFileSync(zip).includes('templates/ghost/template.yml')).toBe(
+      true,
+    );
+    expect(readFileSync(zip).includes('test-values.yml')).toBe(false);
   });
 
   it('refuses and writes nothing when a template is hidden', async () => {

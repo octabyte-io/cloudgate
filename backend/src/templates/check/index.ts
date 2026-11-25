@@ -17,7 +17,13 @@ export {
   encodeCatalogue,
 } from './catalogue-file';
 export type { CatalogueFolder } from './catalogue-file';
-export { isLeftOutOfCatalogue, TEST_VALUES_FILE } from './catalogue-layout';
+export {
+  folderFile,
+  isLeftOutOfCatalogue,
+  spellingsOf,
+  TEST_VALUES_FILE,
+} from './catalogue-layout';
+export type { FolderYaml } from './catalogue-layout';
 export type { TemplateLogo } from './template-logo';
 export type { InputRule, SignIn, TemplateYaml } from './template-yaml';
 export { askedValueProblem } from './template-inputs';

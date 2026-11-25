@@ -4,6 +4,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -631,6 +632,68 @@ files:
 
       expect(result.code).toBe(1);
       expect(result.stderr).toContain('test-values.yaml');
+      expect(docker.calls).toEqual([]);
+    });
+  });
+
+  describe('spellings (ADR-0090)', () => {
+    it('tries a Template spelled template.yml, cloudgate.yml and docker-compose.yaml, with values from test-values.yml', async () => {
+      const { docker, runner } = fakeDocker();
+      const folder = templateFolder(
+        'compose: app\ninputs:\n  LICENCE: { ask: { label: Licence, pattern: "[A-Z]{4}-[0-9]{4}" } }\ndomains:\n  - { service: ghost, port: 2368 }\n',
+        {
+          'cloudgate.yml': COMPOSE_ENTRY,
+          'docker-compose.yaml':
+            'services:\n  ghost:\n    image: ghost:5.96.0\n    environment:\n      licence: ${LICENCE}\n',
+          'test-values.yml': 'LICENCE: WXYZ-9876\n',
+        },
+      );
+      writeFileSync(
+        join(folder, 'template.yml'),
+        readFileSync(join(folder, 'template.yaml')),
+      );
+      rmSync(join(folder, 'template.yaml'));
+
+      const result = await tryTemplate(folder, {
+        runner,
+        fetch: answering(200).fetch,
+      });
+
+      expect(result.code).toBe(0);
+      expect(docker.stack?.composeFile).toContain('image: ghost:5.96.0');
+      expect(envOf(docker.stack?.env ?? '')).toMatchObject({
+        LICENCE: 'WXYZ-9876',
+      });
+    });
+
+    it('refuses a folder holding test-values.yaml and test-values.yml, naming both, and starts nothing', async () => {
+      const { docker, runner } = fakeDocker();
+      const folder = ghost();
+      writeFileSync(join(folder, 'test-values.yaml'), '{}\n');
+      writeFileSync(join(folder, 'test-values.yml'), '{}\n');
+
+      const result = await tryTemplate(folder, { runner });
+
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain(
+        'holds both test-values.yaml and test-values.yml',
+      );
+      expect(docker.calls).toEqual([]);
+    });
+
+    it('refuses a folder whose template file is spelled any other way', async () => {
+      const { docker, runner } = fakeDocker();
+      const folder = ghost();
+      writeFileSync(
+        join(folder, 'Template.yaml'),
+        readFileSync(join(folder, 'template.yaml')),
+      );
+      rmSync(join(folder, 'template.yaml'));
+
+      const result = await tryTemplate(folder, { runner });
+
+      expect(result.code).toBe(2);
+      expect(result.stderr).toContain('is not a template folder');
       expect(docker.calls).toEqual([]);
     });
   });
