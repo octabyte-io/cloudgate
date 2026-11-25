@@ -14,6 +14,8 @@ export interface NewProjectTarget {
   value: string;
   label: string;
   detail?: string;
+  /** A Bought Server not Ready yet (`deployTargetOptions` greys it out). */
+  disabled?: boolean;
   /** The Cloud account's cloud, whose region is asked; null off a cloud. */
   cloud: Cloud | null;
   /** Why it cannot take the template; null when it can. */

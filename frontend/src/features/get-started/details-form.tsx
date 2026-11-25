@@ -5,6 +5,7 @@ import { FormProvider } from "react-hook-form";
 import { Card } from "@/components/console/card";
 import { FormError } from "@/components/console/field";
 import { LinkButton } from "@/components/console/link-button";
+import { SameMachineNote } from "@/components/console/same-machine";
 import { SubmitButton } from "@/components/console/submit-button";
 import { useApiForm } from "@/components/console/use-api-form";
 import type { Project } from "@/lib/api/endpoints/projects";
@@ -40,6 +41,9 @@ import { wizardHref } from "./wizard-state";
  *
  * An existing Project is read for its Environments: the setup goes into
  * its Environment on this Server, or a new one made there.
+ *
+ * On This Cloudgate host it shows the Same-machine warning (#147); step 1
+ * opens on the first Ready Server, so the wizard reaches here on a Server.
  */
 export function DetailsForm({
   template,
@@ -198,6 +202,7 @@ export function DetailsForm({
                 />
               </section>
             ) : null}
+            {serverId === PLATFORM_HOST_VALUE ? <SameMachineNote /> : null}
             <DetailsPlace
               projects={projects}
               projectId={projectId}

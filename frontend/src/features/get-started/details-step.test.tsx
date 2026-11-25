@@ -86,7 +86,13 @@ vi.mock("./use-get-started", () => ({
   WAIT_POLL_MS: 4_000,
 }));
 
+const mode = vi.hoisted(() => ({
+  data: "self-hosted" as "hosted" | "self-hosted",
+}));
+vi.mock("@/lib/api/use-instance-mode", () => ({ useInstanceMode: () => mode }));
+
 const { DetailsStep } = await import("./details-step");
+const { DetailsForm } = await import("./details-form");
 
 const SERVER_IP = "198.51.100.7";
 const GENERATED = "ghost-ghost-1a2b3c-198-51-100-7.sslip.io";
@@ -192,6 +198,7 @@ const deploy = () =>
   fireEvent.click(screen.getByRole("button", { name: "Deploy Ghost" }));
 
 beforeEach(() => {
+  mode.data = "self-hosted";
   grants.held = null;
   reads.servers = [SERVER];
   reads.projects = [];
@@ -465,5 +472,50 @@ describe("DetailsStep, what the role allows", () => {
       ),
     ).toBeTruthy();
     expect(button().getAttribute("aria-disabled")).toBe("true");
+  });
+});
+
+/**
+ * The Same-machine warning (#147) in step 2's form: shown when the setup
+ * goes on This Cloudgate host, never on a Server, which is where the wizard
+ * opens (its step 1 offers the first Ready Server), and never when hosted.
+ */
+describe("DetailsForm's Same-machine warning", () => {
+  /** Whether the form shows the Same-machine warning (spec #146). */
+  const warns = () =>
+    screen.queryByText(/Cloudgate itself runs on this machine/) !== null;
+
+  function showOn(serverId: string) {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <DetailsForm
+          template={GHOST}
+          setup={NEW_FORM}
+          projects={[]}
+          serverId={serverId}
+          serverName="Your server"
+          canDeploy
+        />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("warns when the setup goes on this Cloudgate host", () => {
+    showOn("platform-host");
+
+    expect(warns()).toBe(true);
+  });
+
+  it("does not warn on a Server", () => {
+    showOn("srv_1");
+
+    expect(warns()).toBe(false);
+  });
+
+  it("never warns on the Hosted instance", () => {
+    mode.data = "hosted";
+    showOn("platform-host");
+
+    expect(warns()).toBe(false);
   });
 });

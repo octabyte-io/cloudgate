@@ -12,10 +12,23 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api/api-error";
 import type { SetupForm } from "@/lib/api/endpoints/templates";
 
-import { newProjectTargets } from "./new-project-targets";
-import { EMPTY_PROJECT_NOTE, SetupFormView } from "./setup-form";
+const mode = vi.hoisted(() => ({
+  data: "self-hosted" as "hosted" | "self-hosted",
+}));
+vi.mock("@/lib/api/use-instance-mode", () => ({ useInstanceMode: () => mode }));
 
-afterEach(cleanup);
+const { newProjectTargets } = await import("./new-project-targets");
+const { EMPTY_PROJECT_NOTE, SetupFormView } = await import("./setup-form");
+
+afterEach(() => {
+  cleanup();
+  mode.data = "self-hosted";
+});
+
+/** Whether the form shows the Same-machine warning (spec #146). */
+function warns(): boolean {
+  return screen.queryByText(/Cloudgate itself runs on this machine/) !== null;
+}
 
 /** In a query client, which an own domain's Check DNS needs, as the console has. */
 function render(ui: ReactElement) {
@@ -276,12 +289,12 @@ describe("SetupFormView", () => {
           screen.getByRole("radio", {
             name: /This Cloudgate host/,
           }) as HTMLInputElement
-        ).checked,
-      ).toBe(true);
+        ).disabled,
+      ).toBe(false);
       expect(
         (screen.getByRole("radio", { name: /edge-1/ }) as HTMLInputElement)
-          .disabled,
-      ).toBe(false);
+          .checked,
+      ).toBe(true);
       expect(
         (
           screen.getByRole("radio", {
@@ -543,6 +556,8 @@ describe("SetupFormView", () => {
       );
 
       const host = screen.getByLabelText(/ghost’s Domain/) as HTMLInputElement;
+      expect(host.value).toBe("ghost-ghost-4d5e6f-203-0-113-4.sslip.io");
+      fireEvent.click(screen.getByRole("radio", { name: /This Cloudgate host/ }));
       expect(host.value).toBe("ghost-ghost-1a2b3c-198-51-100-7.sslip.io");
       fireEvent.click(screen.getByRole("radio", { name: /edge-1/ }));
       expect(host.value).toBe("ghost-ghost-4d5e6f-203-0-113-4.sslip.io");
@@ -637,5 +652,109 @@ describe("SetupFormView", () => {
       (screen.getByRole("radio", { name: /bare/ }) as HTMLInputElement)
         .checked,
     ).toBe(true);
+  });
+});
+
+/**
+ * The Same-machine warning (#147): under the place the setup goes while it
+ * is This Cloudgate host, a new Project's Deploy target or an Environment
+ * there, and a new Project opens on the first Ready deploy Server.
+ */
+describe("SetupFormView's Same-machine warning", () => {
+  const EDGE = {
+    serverId: "srv-1",
+    name: "edge-1",
+    ipAddress: "203.0.113.4",
+    serverType: "deploy",
+  };
+  const SETTING_UP = {
+    serverId: "srv-2",
+    name: "bought-1",
+    ipAddress: "203.0.113.20",
+    serverType: "deploy",
+    boughtServer: { stage: "setting_up", deletesOn: null, deletedAt: null },
+  };
+  const CAN_TAKE_ALL = {
+    server: null,
+    platformHost: null,
+    aws: null,
+    gcp: null,
+  };
+
+  function renderNew(servers: unknown[]) {
+    render(
+      <SetupFormView
+        form={{ ...FORM, environments: [] }}
+        newProject={{
+          targets: newProjectTargets(servers as never, [], CAN_TAKE_ALL, {
+            platformHost: true,
+          }),
+        }}
+        onSubmit={vi.fn()}
+      />,
+    );
+  }
+
+  it("opens a new Project on the first Ready deploy Server, with no warning", () => {
+    renderNew([SETTING_UP, EDGE]);
+
+    expect(
+      (screen.getByRole("radio", { name: /edge-1/ }) as HTMLInputElement)
+        .checked,
+    ).toBe(true);
+    expect(warns()).toBe(false);
+  });
+
+  it("warns once a new Project's Deploy target is this Cloudgate host", () => {
+    renderNew([EDGE]);
+
+    fireEvent.click(screen.getByRole("radio", { name: /This Cloudgate host/ }));
+
+    expect(warns()).toBe(true);
+  });
+
+  it("opens a new Project on this Cloudgate host with no Ready Server, and warns", () => {
+    renderNew([SETTING_UP]);
+
+    expect(
+      (
+        screen.getByRole("radio", {
+          name: /This Cloudgate host/,
+        }) as HTMLInputElement
+      ).checked,
+    ).toBe(true);
+    expect(warns()).toBe(true);
+  });
+
+  it("warns on an Environment on this Cloudgate host, and not on one on a Server", () => {
+    render(
+      <SetupFormView
+        form={{
+          ...FORM,
+          environments: [
+            { ...FORM.environments[1], machine: { serverId: "srv-1" } },
+            {
+              ...FORM.environments[1],
+              environmentId: "env-host",
+              name: "on-host",
+              machine: { serverId: null },
+            },
+          ],
+        }}
+        onSubmit={vi.fn()}
+      />,
+    );
+    expect(warns()).toBe(false);
+
+    fireEvent.click(screen.getByRole("radio", { name: /on-host/ }));
+
+    expect(warns()).toBe(true);
+  });
+
+  it("never warns on the Hosted instance", () => {
+    mode.data = "hosted";
+    renderForm();
+
+    expect(warns()).toBe(false);
   });
 });

@@ -12,6 +12,7 @@ import {
 } from "@/components/console/card";
 import { Field, FormError } from "@/components/console/field";
 import { LinkButton } from "@/components/console/link-button";
+import { SameMachineNote } from "@/components/console/same-machine";
 import { SubmitButton } from "@/components/console/submit-button";
 import { useApiForm } from "@/components/console/use-api-form";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,10 @@ export const EMPTY_PROJECT_NOTE =
  * In a Cloud Environment (#1379) each host is typed, with the DNS record it
  * needs shown under it.
  *
+ * A new Project opens on the first Ready deploy Server that can take the
+ * template (#147), and while the setup goes to This Cloudgate host, a new
+ * Project's target or an Environment there, the Same-machine warning shows.
+ *
  * A `useApiForm` form: a refusal whose issue names a field is shown beside
  * it, any other above the button. Presentational: the screen fetches the
  * form and sends the setup.
@@ -102,9 +107,7 @@ export function SetupFormView({
       setup,
       newProject
         ? {
-            firstTarget:
-              newProject.targets.find((one) => one.reason === null)?.value ??
-              "",
+            firstTarget: firstTargetOf(newProject.targets),
           }
         : null,
       startOn,
@@ -124,6 +127,11 @@ export function SetupFormView({
   // A Project with no Environment has nowhere to set the template up, so the
   // rest of the form waits for one rather than asking questions it cannot use.
   const nowhere = !newProject && setup.environments.length === 0;
+  // Where the setup goes is This Cloudgate host: the Same-machine warning.
+  const onHost = newProject
+    ? target === PLATFORM_HOST_VALUE
+    : setup.environments.find((env) => env.environmentId === environmentId)
+        ?.machine?.serverId === null;
 
   return (
     // Arrives in place of the skeleton the screen held for it.
@@ -192,6 +200,7 @@ export function SetupFormView({
                     />
                   ))}
                   <ChoiceError message={errors.newProject?.target?.message} />
+                  {onHost ? <SameMachineNote /> : null}
                 </fieldset>
                 {targetCloud ? (
                   <Field
@@ -260,6 +269,7 @@ export function SetupFormView({
                 {setup.environments.length > 0 ? (
                   <ChoiceError message={errors.environmentId?.message} />
                 ) : null}
+                {onHost ? <SameMachineNote /> : null}
               </fieldset>
             )}
 
@@ -325,6 +335,20 @@ export function SetupFormView({
       </FormProvider>
     </Card>
   );
+}
+
+/**
+ * The Deploy target a new Project opens on: the first Ready deploy Server
+ * that can take the template (#147), so it does not land on Cloudgate's own
+ * machine by default, else the first target that can.
+ */
+function firstTargetOf(targets: readonly NewProjectTarget[]): string {
+  const takes = targets.filter((one) => one.reason === null);
+  const server = takes.find(
+    (one) =>
+      one.cloud === null && one.value !== PLATFORM_HOST_VALUE && !one.disabled,
+  );
+  return (server ?? takes[0])?.value ?? "";
 }
 
 /** A radio group's refusal, under its last choice. */
