@@ -15,7 +15,7 @@ import { Icon } from "@/lib/design/icons";
 import type { PanelProps } from "@/lib/shell/tab-registry";
 
 import { ComposeFactsCard } from "../compose-facts-card";
-import { COMPOSE_FILE_FOUND, COMPOSE_FILE_HINT } from "../source/compose-source";
+import { COMPOSE_FILE_EXAMPLE, COMPOSE_FILE_HINT } from "../source/compose-source";
 import { ComposePanel } from "../compose-panel";
 import { DeleteComposeModal } from "../lifecycle/delete-compose-modal";
 import { IsolationCard } from "../advanced/isolation-card";
@@ -121,7 +121,7 @@ function Body({ compose }: { compose: ComposeDetail }) {
       label: "Compose file",
       mono: true,
       optional: true,
-      placeholder: COMPOSE_FILE_FOUND,
+      placeholder: COMPOSE_FILE_EXAMPLE,
       hint: COMPOSE_FILE_HINT,
     },
     {

@@ -153,14 +153,17 @@ describe("Compose Advanced — the compose file", () => {
     );
   });
 
-  it("shows a stack that names no file as an empty box found at each deploy", () => {
+  it("shows a stack that names no file as an empty box with an example, found at each deploy", () => {
     const named = row.composePath;
     row.composePath = null;
     try {
       mount();
       const box = screen.getByLabelText(/^Compose file/) as HTMLInputElement;
       expect(box.value).toBe("");
-      expect(box.placeholder).toBe("Found at each deploy");
+      expect(box.placeholder).toBe("e.g. ./deploy/compose.yaml");
+      expect(document.body.textContent).toContain(
+        "Leave it empty and the file is found at each deploy",
+      );
     } finally {
       row.composePath = named;
     }

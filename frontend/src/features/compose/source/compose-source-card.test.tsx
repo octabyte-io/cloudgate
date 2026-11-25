@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -27,7 +28,8 @@ afterEach(() => {
 });
 
 /** A stack created "From a repository": the create route sends no source, so
- *  the row keeps `source_type`'s `github` default and nothing else. */
+ *  the row keeps `source_type`'s `github` default and names no compose file
+ *  (ADR-0091). */
 const fromRepository = {
   composeId: "cmp-1",
   name: "ui-repo",
@@ -36,7 +38,7 @@ const fromRepository = {
   owner: null,
   branch: null,
   customGitUrl: null,
-  composePath: "./docker-compose.yml",
+  composePath: null,
   autoDeploy: true,
   triggerType: "push",
 } as unknown as ComposeDetail;
@@ -163,21 +165,45 @@ describe("ComposeSourceCard — no file named", () => {
   } as ComposeDetail;
 
   it("says the file is found at each deploy", () => {
-    render(
-      <ComposeSourceCard
-        compose={{ ...cloned, composePath: null }}
-        save={async () => undefined}
-      />,
-    );
+    render(<ComposeSourceCard compose={cloned} save={async () => undefined} />);
 
     expect(document.body.textContent).toContain("Found at each deploy");
     expect(document.body.textContent).not.toContain("./docker-compose.yml");
   });
 
   it("names a file the stack names", () => {
-    render(<ComposeSourceCard compose={cloned} save={async () => undefined} />);
+    render(
+      <ComposeSourceCard
+        compose={{ ...cloned, composePath: "./docker-compose.yml" }}
+        save={async () => undefined}
+      />,
+    );
 
     expect(document.body.textContent).toContain("./docker-compose.yml");
     expect(document.body.textContent).not.toContain("Found at each deploy");
+  });
+});
+
+/**
+ * ADR-0091: a new stack names no file, so Change source opens on an empty
+ * Compose file box, whose placeholder is an example and whose hint says the
+ * file is found at each deploy.
+ */
+describe("ComposeSourceCard — Change source on a new stack", () => {
+  it("shows an empty Compose file box with an example", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ComposeSourceCard compose={fromRepository} save={async () => undefined} />
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Change source" }));
+    fireEvent.click(screen.getByRole("button", { name: /Any git URL/ }));
+
+    const box = screen.getByLabelText(/^Compose file/) as HTMLInputElement;
+    expect(box.value).toBe("");
+    expect(box.placeholder).toBe("e.g. ./deploy/compose.yaml");
+    expect(document.body.textContent).toContain(
+      "Leave it empty and the file is found at each deploy",
+    );
   });
 });

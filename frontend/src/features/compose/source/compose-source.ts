@@ -1,4 +1,5 @@
 import type { Compose, ComposeSourceType } from "@/lib/api/endpoints/compose";
+import { example } from "@/components/console/form-spec";
 import type { IconName } from "@/lib/design/icons";
 import { hasSource } from "@/lib/format/source";
 import {
@@ -22,13 +23,17 @@ import {
 
 /**
  * ADR-0091's words for a stack that names no compose file, on every card that
- * shows the file and as the empty box's placeholder.
+ * shows the file. Not the empty box's placeholder: a placeholder is an
+ * example ({@link COMPOSE_FILE_EXAMPLE}), so the box's hint says this instead.
  */
 export const COMPOSE_FILE_FOUND = "Found at each deploy";
 
-/** The file box's hint, on the source form and the Advanced panel alike. */
+/** The empty file box's placeholder: an example of a file a stack may name. */
+export const COMPOSE_FILE_EXAMPLE = example("./deploy/compose.yaml");
+
+/** The file box's hint, on the change form and the Advanced panel alike. */
 export const COMPOSE_FILE_HINT =
-  "Where the file sits in the repository, from its root. Leave it empty and each deploy uses the first of compose.yaml, compose.yml, docker-compose.yaml and docker-compose.yml it finds.";
+  "Where the file sits in the repository, from its root. Leave it empty and the file is found at each deploy: the first of compose.yaml, compose.yml, docker-compose.yaml and docker-compose.yml.";
 
 /**
  * The path field, for a stack.
@@ -47,7 +52,7 @@ export const COMPOSE_PATH: PathSpec = {
   customGitColumn: "composePath",
   label: "Compose file",
   hint: COMPOSE_FILE_HINT,
-  placeholder: COMPOSE_FILE_FOUND,
+  placeholder: COMPOSE_FILE_EXAMPLE,
   fallback: null,
 };
 
