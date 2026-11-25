@@ -188,11 +188,13 @@ export function DatabaseFactsCard({
           />
         </KVList>
         {/* No Server and no Cloud account: it runs on This Cloudgate
-            host, so the Same-machine warning (#148) stands here for as
-            long as it does. */}
-        {database.server || database.cloudAccountId ? null : (
+            host, or on a Server that is Cloudgate's own machine (#149),
+            so the Same-machine warning (#148) stands here for as long as
+            it does. */}
+        {database.server?.sameMachine ||
+        !(database.server || database.cloudAccountId) ? (
           <SameMachineNote className="mt-3" />
-        )}
+        ) : null}
       </Card.Body>
     </Card>
   );

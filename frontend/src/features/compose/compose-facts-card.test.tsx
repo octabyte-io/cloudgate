@@ -76,6 +76,16 @@ describe("ComposeFactsCard's Same-machine warning", () => {
     ).toBe(false);
   });
 
+  it("warns for a stack on a Server that is Cloudgate's own machine", () => {
+    expect(
+      warns({
+        ...stack(),
+        serverId: "srv_1",
+        server: { serverId: "srv_1", name: "box", sameMachine: true },
+      } as unknown as ComposeDetail),
+    ).toBe(true);
+  });
+
   it("does not warn for a stack on its Stack VM in a Cloud account", () => {
     expect(
       warns({ ...stack(), cloudAccountId: "ca_1", region: "eu-west-1" }),

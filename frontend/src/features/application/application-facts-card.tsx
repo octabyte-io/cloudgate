@@ -280,9 +280,12 @@ export function DeployTargetCard({
           />
         </KVList>
         {/* No Server and no Cloud account: it runs on This Cloudgate
-            host, so the Same-machine warning (#148) stands here for as
-            long as it does. */}
-        {server ? null : <SameMachineNote className="mt-3" />}
+            host, or on a Server that is Cloudgate's own machine (#149),
+            so the Same-machine warning (#148) stands here for as long as
+            it does. */}
+        {!server || server.sameMachine ? (
+          <SameMachineNote className="mt-3" />
+        ) : null}
         <p className="mt-3 text-meta text-tx-2">
           Traefik on the Server above routes this Application&rsquo;s domains to
           it over the overlay network.

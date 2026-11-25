@@ -217,12 +217,13 @@ export function ComposeFactsCard({
             value={timeExact(compose.createdAt) ?? <Dash word="Unknown" />}
           />
         </KVList>
-        {/* No Server and no Stack VM: it runs on This Cloudgate host, so
-            the Same-machine warning (#148) stands here for as long as it
-            does. */}
-        {compose.server || runsOnStackVm(compose) ? null : (
+        {/* No Server and no Stack VM: it runs on This Cloudgate host, or
+            on a Server that is Cloudgate's own machine (#149), so the
+            Same-machine warning (#148) stands here for as long as it does. */}
+        {compose.server?.sameMachine ||
+        !(compose.server || runsOnStackVm(compose)) ? (
           <SameMachineNote className="mt-3" />
-        )}
+        ) : null}
       </Card.Body>
     </Card>
   );

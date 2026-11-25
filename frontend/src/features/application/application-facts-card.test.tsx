@@ -211,6 +211,29 @@ describe("DeployTargetCard's Same-machine warning", () => {
     expect(warns(container)).toBe(false);
   });
 
+  it("warns for an Application on a Server that is Cloudgate's own machine", () => {
+    const { container } = render(
+      <DeployTargetCard
+        application={
+          {
+            ...row("done"),
+            serverId: "srv-1",
+            server: {
+              serverId: "srv-1",
+              name: "box",
+              ipAddress: "127.0.0.1",
+              serverStatus: "active",
+              sameMachine: true,
+            },
+          } as unknown as ApplicationDetail
+        }
+      />,
+    );
+
+    expect(container.textContent).toContain("box");
+    expect(warns(container)).toBe(true);
+  });
+
   it("does not warn for an Application in a Cloud account", () => {
     const { container } = render(
       <DeployTargetCard

@@ -186,6 +186,16 @@ describe("DatabaseFactsCard's Same-machine warning", () => {
     ).toBe(false);
   });
 
+  it("warns for a database on a Server that is Cloudgate's own machine", () => {
+    expect(
+      warns({
+        ...row("done"),
+        serverId: "srv-1",
+        server: { serverId: "srv-1", name: "box", sameMachine: true },
+      } as unknown as Database),
+    ).toBe(true);
+  });
+
   it("does not warn for a database in a Cloud account", () => {
     expect(
       warns({ ...row("done"), cloudAccountId: "cloud-1" } as Database),
