@@ -537,6 +537,9 @@ describe('Traces for a Compose (e2e)', () => {
         .set({
           sourceType: 'git',
           customGitUrl: 'https://git.example.com/shop.git',
+          // The file the raw deploy above left, named so the read finds it
+          // with no lookup (ADR-0091).
+          composePath: './docker-compose.yml',
         })
         .where(eq(compose.composeId, composeId));
       onDisk = deployed;

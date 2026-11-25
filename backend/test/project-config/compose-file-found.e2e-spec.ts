@@ -104,9 +104,12 @@ describe('A Compose Service with no file named (e2e)', () => {
       .join('; ');
   });
 
-  /** A Compose from a git repository, with `composePath` as given. */
+  /**
+   * A Compose from a git repository, with `composePath` as given; `undefined`
+   * leaves it as `POST /compose` made it.
+   */
   async function repositoryCompose(
-    composePath: string | null,
+    composePath: string | null | undefined,
   ): Promise<{ composeId: string; appName: string }> {
     const project = await request(httpServer)
       .post('/projects')
@@ -160,6 +163,19 @@ describe('A Compose Service with no file named (e2e)', () => {
       .where(eq(deployment.composeId, composeId));
     return row?.status;
   }
+
+  it('stores no file for a new stack', async () => {
+    const { composeId } = await repositoryCompose(undefined);
+
+    const read = await request(httpServer)
+      .get(`/compose/${composeId}`)
+      .set('Cookie', cookie);
+
+    expect(read.status).toBe(200);
+    expect((read.body as { composePath: string | null }).composePath).toBe(
+      null,
+    );
+  });
 
   it('keeps a cleared file as null', async () => {
     const { composeId } = await repositoryCompose(null);

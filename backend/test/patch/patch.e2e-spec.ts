@@ -540,6 +540,9 @@ describe('Patch (e2e)', () => {
         sourceType: 'git',
         customGitUrl: 'https://git.example.com/acme/stack.git',
         customGitBranch: 'main',
+        // The file the patch writes, named so the deploy reads it with no
+        // lookup (ADR-0091).
+        composePath: './docker-compose.yml',
       });
       await patches.create(ownerCtx, {
         filePath: 'docker-compose.yml',
@@ -613,6 +616,7 @@ describe('Patch (e2e)', () => {
         sourceType: 'git',
         customGitUrl: 'https://git.example.com/acme/stack.git',
         customGitBranch: 'main',
+        composePath: './docker-compose.yml',
       });
       execMock.execAsync.mockImplementation((command: string) =>
         Promise.resolve({

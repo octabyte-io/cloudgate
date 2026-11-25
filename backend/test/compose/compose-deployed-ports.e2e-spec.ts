@@ -155,6 +155,8 @@ describe('A repository Compose’s published ports (e2e)', () => {
         sourceType: 'git',
         customGitUrl: 'https://example.invalid/orders.git',
         customGitBranch: 'main',
+        // Named, so the deploy reads it with no lookup (ADR-0091).
+        composePath: './docker-compose.yml',
       });
     expect(git.status).toBe(200);
     return composeId;

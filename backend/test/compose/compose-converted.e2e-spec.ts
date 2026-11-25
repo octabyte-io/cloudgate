@@ -325,6 +325,10 @@ describe('Compose converted file (e2e)', () => {
       appName: 'wp-stack',
       environmentId: env.environment.environmentId,
     });
+    // Named, so the read is of exactly that file with no lookup (ADR-0091).
+    await compose.update(env.ownerCtx, created.composeId, {
+      composePath: './docker-compose.yml',
+    });
     execMock.execAsync.mockResolvedValue({
       stdout: WORDPRESS_COMPOSE,
       stderr: '',

@@ -96,7 +96,8 @@ export type ComposeSpecSource = Pick<
 export type DeployableComposeSource = ComposeSpecSource &
   Pick<Compose, 'sourceType' | 'command' | 'env' | 'serverId'> &
   // The file this deploy runs, never `null`: a Service that names none has
-  // had it found first (ADR-0091, `withComposeFile`).
+  // had it found first (ADR-0091: `resolveComposeFile` returns a
+  // `WithComposeFile` row).
   { composePath: string } &
   // Where a stack in a Cloud account runs (`stackRootId`); optional only
   // for a builder's narrow test slice.

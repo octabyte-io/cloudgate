@@ -382,8 +382,9 @@ export class ComposeService {
    * signature would let a caller set without the DTO rule that keeps it inside
    * the stack's code directory ever running — `dto/compose.dto.ts` holds that
    * rule, and its one caller (`AiService`) passes
-   * `sourceType: 'raw'` and take the column's default anyway, so nothing is
-   * given up by making the bypass unavailable to a future one.
+   * `sourceType: 'raw'`, which always writes and reads its own
+   * `docker-compose.yml` and stores no path (ADR-0091), so nothing is given
+   * up by making the bypass unavailable to a future one.
    */
   async createByTemplate(
     data: Omit<typeof compose.$inferInsert, 'composePath' | 'configName'> & {

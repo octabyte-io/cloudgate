@@ -306,7 +306,8 @@ describe('Compose (e2e)', () => {
       // was the column's `github`, which the deploy then refused.
       expect(created.sourceType).toBe('raw');
       expect(created.composeType).toBe('docker-compose');
-      expect(created.composePath).toBe('./docker-compose.yml');
+      // ADR-0091: a new stack names no compose file; a deploy finds it.
+      expect(created.composePath).toBeNull();
       expect(created.isolatedDeployment).toBe(false);
 
       const found = await compose.findOne(ownerCtx, created.composeId);
@@ -2040,9 +2041,9 @@ describe('Compose (e2e)', () => {
       expect(refused.status).toBe(400);
 
       // The whole body is refused, so the stack is still the raw one it was —
-      // and the column still holds the schema default the row was created with.
+      // and the column still names no file, as the row was created.
       const found = await compose.findOne(ownerCtx, created.composeId);
-      expect(found.composePath).toBe('./docker-compose.yml');
+      expect(found.composePath).toBeNull();
       expect(found.sourceType).toBe('raw');
     });
   });

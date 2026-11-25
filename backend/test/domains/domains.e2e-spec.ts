@@ -1660,10 +1660,12 @@ describe('Domains (e2e)', () => {
       expect(res.status).toBe(201);
       // Nothing was read off the Server to decide it: a domain write does not
       // depend on the build server being reachable, which is the reason an SSH
-      // `cat` here was rejected rather than the reason it was forgotten.
+      // `cat` here was rejected rather than the reason it was forgotten. The
+      // stack names no file (ADR-0091), so no read names one: nothing may
+      // touch its code directory, whatever the file is called.
       expect(
         executedCommands().filter((command) =>
-          String(command).includes('docker-compose.yml'),
+          String(command).includes('/wordpress-stack/code'),
         ),
       ).toEqual([]);
     });

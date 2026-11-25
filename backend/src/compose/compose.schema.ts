@@ -170,9 +170,10 @@ export const compose = pgTable(
     /**
      * The compose file, relative to the clone. `null` names none, and each
      * deploy then finds it in its own clone by Docker's order (ADR-0091,
-     * `compose-file-lookup.ts`). Rows made before that keep their saved path.
+     * `compose-file-lookup.ts`). A new Service stores `null` unless someone
+     * names a file; rows made before ADR-0091 keep their saved path.
      */
-    composePath: text('compose_path').default('./docker-compose.yml'),
+    composePath: text('compose_path'),
     /** Deploy onto an app-named attachable network instead of cloudgate's shared one. */
     isolatedDeployment: boolean('isolated_deployment').notNull().default(false),
     watchPaths: text('watch_paths').array(),
