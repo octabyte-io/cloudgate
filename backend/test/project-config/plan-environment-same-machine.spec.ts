@@ -64,7 +64,7 @@ function sameMachineNotes(
  * target is that machine; the Hosted instance never says so.
  */
 describe('planEnvironment: the Same-machine warning', () => {
-  it('notes each create on Cloudgate own machine once, by its Config name', () => {
+  it("notes each create on Cloudgate's own machine once, by its Config name", () => {
     expect(sameMachineNotes({ sameMachine: true })).toEqual([
       {
         kind: 'same-machine',
@@ -90,7 +90,7 @@ describe('planEnvironment: the Same-machine warning', () => {
     expect(notes.map((note) => note.configName)).toEqual(['blog-web']);
   });
 
-  it('notes nothing where the Deploy target is not Cloudgate own machine', () => {
+  it("notes nothing where the Deploy target is not Cloudgate's own machine", () => {
     expect(sameMachineNotes({ sameMachine: false })).toEqual([]);
     expect(sameMachineNotes()).toEqual([]);
   });
