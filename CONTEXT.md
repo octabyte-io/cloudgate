@@ -291,6 +291,10 @@ _Avoid_: Cloud mode, IS_CLOUD
 An Instance a customer installs and runs on their own machine, unlocking paid features with an **Enterprise license**.
 _Avoid_: On-prem, community edition
 
+**Same-machine warning**:
+The one warning a **Self-hosted instance** gives wherever a Service is put, or already runs, on Cloudgate's own machine: the platform host, or a Server whose address is loopback or one of the platform host's own addresses. Losing that machine loses the Service and Cloudgate's own records together, so it points to adding another Server or to the **Hosted instance**. It warns and never refuses, and cannot be hidden. The Hosted instance never shows it, since it refuses those places outright (ADR-0053).
+_Avoid_: Same-instance warning, same-server warning, local warning
+
 **Cloudgate version**:
 One tested version of Cloudgate itself, `vX.Y.Z`, published as two prebuilt tarballs, one per CPU (`linux-amd64` and `linux-arm64`), on the GitHub Release for its tag once its E2E run is green. A Self-hosted instance installs only the amd64 one; the arm64 one is for the Hosted instance alone (ADR-0088). It is the only thing the install puts on a platform host: a Self-hosted instance and the Hosted instance both install and upgrade to a Cloudgate version, never a branch (ADR-0082).
 _Avoid_: Release on its own (that word is avoided for a Deployment), build, image, checkout
