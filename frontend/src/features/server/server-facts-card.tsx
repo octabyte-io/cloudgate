@@ -3,6 +3,7 @@ import { CopyButton } from "@/components/console/copy-button";
 import { Dash } from "@/components/console/dash";
 import { KVList, KVRow } from "@/components/console/kv-list";
 import { LinkButton } from "@/components/console/link-button";
+import { SameMachineNote } from "@/components/console/same-machine";
 import { StatusPill } from "@/components/console/status-pill";
 import type { Server } from "@/lib/api/endpoints/servers";
 import { useSshKeys } from "@/lib/api/use-ssh-keys";
@@ -28,6 +29,9 @@ const ROLE: Record<Server["serverType"], string> = {
  * A Server with **no key** is a real state rather than a broken one: deleting a key
  * sets `server.sshKeyId` to null instead of refusing, so this row says so plainly
  * and points at the tab that fixes it.
+ *
+ * A Server whose address is Cloudgate's own machine (`sameMachine`, #149)
+ * carries the Same-machine warning, so it shows as soon as the Server is saved.
  */
 export function ServerFactsCard({ server }: { server: Server }) {
   const sshKeys = useSshKeys();
@@ -96,6 +100,8 @@ export function ServerFactsCard({ server }: { server: Server }) {
             }
           />
         </KVList>
+
+        {server.sameMachine ? <SameMachineNote className="mt-3" /> : null}
 
         {server.sshKeyId === null ? (
           <div className="mt-3 rounded-lg border border-bad-line bg-bad-tint p-2.5">

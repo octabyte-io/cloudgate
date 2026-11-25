@@ -1,12 +1,19 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Server } from "@/lib/api/endpoints/servers";
 
 /**
- * The Server facts card's ID row (#1410), with the browser and the network as
- * the boundaries: `fetch` answers the session read and `GET /ssh-keys`, which
+ * The Server facts card's ID row (#1410) and its Same-machine warning (#149),
+ * with the browser and the network as the boundaries: `fetch` answers the
+ * session read, `GET /settings/about` and `GET /ssh-keys`, which
  * run through the real auth client, API client and `useSshKeys`; the clipboard
  * is `navigator.clipboard`, stubbed as `copy-button.test.tsx` does.
  *
@@ -35,6 +42,9 @@ vi.stubGlobal(
     }) as MediaQueryList,
 );
 
+/** The instance mode `GET /settings/about` answers with. */
+let instanceMode: "hosted" | "self-hosted" = "self-hosted";
+
 function answer(input: RequestInfo | URL): Promise<Response> {
   const url = String(input instanceof Request ? input.url : input);
   const path = new URL(url, "http://console.test").pathname;
@@ -57,6 +67,9 @@ function answer(input: RequestInfo | URL): Promise<Response> {
         organizationId: "org-1",
       },
     ]);
+  }
+  if (path.endsWith("/settings/about")) {
+    return json({ mode: instanceMode });
   }
   if (path.endsWith("/get-session")) {
     return json({
@@ -88,6 +101,7 @@ const server = {
   serverStatus: "active",
   reachCheckedAt: null,
   reachOk: null,
+  sameMachine: false,
   createdAt: "2026-09-17T10:00:00.000Z",
 } as unknown as Server;
 
@@ -99,15 +113,16 @@ afterEach(() => {
   // Only the clipboard is per test; `fetch` and `matchMedia` stay for the file,
   // which is why this is not `vi.unstubAllGlobals()`.
   vi.stubGlobal("navigator", jsdomNavigator);
+  instanceMode = "self-hosted";
 });
 
-function mount() {
+function mount(shown: Server = server) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   render(
     <QueryClientProvider client={client}>
-      <ServerFactsCard server={server} />
+      <ServerFactsCard server={shown} />
       <Toaster />
     </QueryClientProvider>,
   );
@@ -164,5 +179,52 @@ describe("ServerFactsCard, the ID row", () => {
     expect(writeText).toHaveBeenCalledWith(SERVER_ID);
     // The Toaster is mounted and nothing reached it.
     expect(document.querySelectorAll("[data-sonner-toast]")).toHaveLength(0);
+  });
+});
+
+/** The Same-machine warning's sentence (spec #146). */
+const WARNING = /Cloudgate itself runs on this machine/;
+
+/**
+ * The Same-machine warning on a Server whose address is Cloudgate's own
+ * machine (#149), so it shows as soon as the Server is saved.
+ */
+describe("ServerFactsCard, the Same-machine warning", () => {
+  const onTheBox = {
+    ...server,
+    ipAddress: "127.0.0.1",
+    sameMachine: true,
+  } as Server;
+
+  it("warns for a Server on Cloudgate's own machine", async () => {
+    mount(onTheBox);
+
+    expect(await screen.findByText(WARNING)).toBeDefined();
+  });
+
+  it("does not warn for a Server on another machine", async () => {
+    mount();
+    await screen.findByText("fleet");
+
+    expect(screen.queryByText(WARNING)).toBeNull();
+  });
+
+  it("never warns on the Hosted instance", async () => {
+    instanceMode = "hosted";
+    mount(onTheBox);
+    await screen.findByText("fleet");
+    // The mode has been answered, so nothing is held back for want of it.
+    await waitFor(() =>
+      expect(
+        fetchStub.mock.calls.some(([input]) =>
+          String(input instanceof Request ? input.url : input).endsWith(
+            "/settings/about",
+          ),
+        ),
+      ).toBe(true),
+    );
+    await new Promise((settle) => setTimeout(settle, 0));
+
+    expect(screen.queryByText(WARNING)).toBeNull();
   });
 });

@@ -80,6 +80,7 @@ function server(config: MetricsConfig): Server {
     setupMessage: null,
     sshKeyId: null,
     hostKeyFingerprint: null,
+    sameMachine: false,
     maintenanceSince: null,
     maintenanceStartedBy: null,
     metricsConfig: config,

@@ -125,6 +125,13 @@ export interface Server {
    */
   hostKeyFingerprint: string | null;
   /**
+   * Whether `ipAddress` is Cloudgate's own machine: loopback or one of the
+   * box's own addresses, worked out when the address was saved, and never
+   * a private range. A Service there gets the Same-machine warning
+   * (`SameMachineNote`, spec #146). Always false on the Hosted instance.
+   */
+  sameMachine: boolean;
+  /**
    * When this Server's **Maintenance** began (ISO), or null while it is not in
    * maintenance. While it is set nothing new starts containers on it: a deploy,
    * redeploy, rebuild, rollback or Start is refused with a 409 whose code is

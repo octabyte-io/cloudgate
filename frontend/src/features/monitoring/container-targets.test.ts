@@ -62,6 +62,7 @@ function server(serverId: string, name: string, metrics: MetricsConfig): Server 
     setupMessage: null,
     sshKeyId: null,
     hostKeyFingerprint: null,
+    sameMachine: false,
     maintenanceSince: null,
     maintenanceStartedBy: null,
     metricsConfig: metrics,

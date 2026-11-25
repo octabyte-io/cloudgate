@@ -41,6 +41,7 @@ function server(token: string, cronJob: string): Server {
     setupMessage: null,
     sshKeyId: null,
     hostKeyFingerprint: null,
+    sameMachine: false,
     maintenanceSince: null,
     maintenanceStartedBy: null,
     metricsConfig,
