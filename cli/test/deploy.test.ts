@@ -1060,6 +1060,8 @@ describe('cloudgate deploy in a Project folder', () => {
   interface ProjectOptions {
     /** The steps the plan finds in staging; none by default. */
     steps?: Record<string, unknown>[];
+    /** The notes the plan carries; none by default. */
+    notes?: Record<string, unknown>[];
     sources?: Record<string, unknown>[];
     /** `GET /deployments/:id` per Deployment, one per ask; the last repeats. */
     statuses?: Record<string, Record<string, unknown>[]>;
@@ -1089,12 +1091,13 @@ describe('cloudgate deploy in a Project folder', () => {
     let configVersion = options.version ?? 3;
     const socket = neverClosingSocket(['[build] step\n']);
     const steps = options.steps ?? [];
+    const notes = options.notes ?? [];
     const plan = (status: string) => ({
       planId: 'pln_1',
       environmentId: 'env_1',
       status,
       steps,
-      notes: [],
+      notes,
       results:
         status === 'applied'
           ? steps.map((step) => ({ ...step, status: 'applied', message: null }))
@@ -1534,6 +1537,46 @@ describe('cloudgate deploy in a Project folder', () => {
       );
       expect(result.dismissedPlans).toEqual([{ planId: 'pln_1' }]);
       expect(result.applies).toEqual([]);
+    });
+
+    describe('a create on the machine Cloudgate itself runs on', () => {
+      /** The CLI line of spec #146, for a Service named `name`. */
+      const said = (name: string) =>
+        `${name} will run on the machine Cloudgate itself runs on. If it is lost, so are this Service and Cloudgate's records. Add a Server, or use Cloudgate Hosted: https://cloudgate.octabyte.app`;
+      const warning = (name: string) => `⚠ ${said(name)}\n`;
+      const sameMachine = (configName: string) => ({
+        kind: 'same-machine',
+        configName,
+        message: said(configName),
+      });
+      const creates = ['blog-web', 'cache'].map((configName) => ({
+        action: 'create',
+        configName,
+        kind: 'web',
+        placement: { kind: 'platform-host' },
+        fields: [],
+      }));
+      const occurrences = (text: string, line: string) =>
+        text.split(line).length - 1;
+
+      it('prints the Same-machine warning exactly once per such create', async () => {
+        const result = await deployProject(['--yes'], {
+          steps: creates,
+          notes: [sameMachine('blog-web'), sameMachine('cache')],
+        });
+
+        expect(result.code).toBe(0);
+        expect(occurrences(result.stdout, warning('blog-web'))).toBe(1);
+        expect(occurrences(result.stdout, warning('cache'))).toBe(1);
+        expect(result.stdout).not.toContain('note: blog-web will run');
+      });
+
+      it('prints nothing of it for a deploy of Services that already exist', async () => {
+        const result = await deployProject(['--yes'], { steps: [change] });
+
+        expect(result.code).toBe(0);
+        expect(result.stdout).not.toContain('will run on the machine');
+      });
     });
 
     it('refuses a copy the Project config has moved on from, exit 1, and uploads nothing', async () => {

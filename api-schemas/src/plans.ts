@@ -58,7 +58,16 @@ export const planViewSchema = z.object({
   /** `open`, `applied`, `partly-applied`, `unchanged`, … */
   status: z.string(),
   steps: z.array(planStepSchema),
-  notes: z.array(z.object({ message: z.string().optional() })),
+  /**
+   * What changes nothing. `kind` tells a `same-machine` note (spec #146),
+   * whose message the CLI prints as its warning line, from the rest.
+   */
+  notes: z.array(
+    z.object({
+      kind: z.string().optional(),
+      message: z.string().optional(),
+    }),
+  ),
   results: z.array(planStepResultSchema).nullable(),
 });
 

@@ -470,6 +470,40 @@ describe('config plan', () => {
     );
   });
 
+  it('warns once after the steps when a create lands on the machine Cloudgate itself runs on', async () => {
+    const said =
+      "web will run on the machine Cloudgate itself runs on. If it is lost, so are this Service and Cloudgate's records. Add a Server, or use Cloudgate Hosted: https://cloudgate.octabyte.app";
+    const result = await inTerminal(
+      ['config', 'plan'],
+      { confirm: [false] },
+      root,
+      {
+        ...answers,
+        'POST /projects/prj_1/config/plans': {
+          stored: false,
+          plans: [
+            {
+              ...open,
+              steps: [steps[1]],
+              notes: [
+                { kind: 'same-machine', configName: 'web', message: said },
+              ],
+            },
+          ],
+        },
+      },
+    );
+
+    expect(result.stdout).toBe(
+      [
+        'staging: 1 to create, 0 to change, 0 to destroy',
+        '  + web (web) create',
+        `⚠ ${said}`,
+        '',
+      ].join('\n'),
+    );
+  });
+
   it('on no, says the plan is left open when the role cannot dismiss it, and exits 1 as a no does', async () => {
     const result = await inTerminal(
       ['config', 'plan'],
