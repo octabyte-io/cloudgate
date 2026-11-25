@@ -486,6 +486,7 @@ export function planEnvironment(given: PlanInput): PlanOutcome {
         notes.push(cloudNoDomain(name));
       }
       notes.push(...createdRunAppNotes(name, entry, input));
+      if (input.sameMachine === true) notes.push(sameMachineNote(name));
       continue;
     }
 
@@ -1495,6 +1496,19 @@ function cloudNoDomain(configName: string): PlanNote {
     kind: 'cloud-no-domain',
     configName,
     message: `${configName}: no Domain yet, add one in the console once its first deploy is done`,
+  };
+}
+
+/**
+ * A Service created on Cloudgate's own machine (spec #146): the CLI line,
+ * which `cloudgate deploy` and `cloudgate config plan` print after a `⚠`.
+ * The console shows its own sentence (`SameMachineNote`) instead.
+ */
+function sameMachineNote(configName: string): PlanNote {
+  return {
+    kind: 'same-machine',
+    configName,
+    message: `${configName} will run on the machine Cloudgate itself runs on. If it is lost, so are this Service and Cloudgate's records. Add a Server, or use Cloudgate Hosted: https://cloudgate.octabyte.app`,
   };
 }
 

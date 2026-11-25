@@ -23,11 +23,13 @@ import {
   environmentNetwork,
   plan,
   projectConfigLocation,
+  server,
 } from '../db/schema';
 import type { Environment, Plan, PlanSource } from '../db/schema';
 import { DeploymentsService } from '../deployments/deployments.service';
 import { cloudServicesIn } from '../environments/cloud-services-in';
 import type { DrizzleTx } from '../environments/config-name';
+import { InstanceMode } from '../instance-mode/instance-mode.service';
 import type { PermissionCtx } from '../rbac/permission.service';
 import { stackVmFinalSnapshotName } from '../cloud-accounts/definitions/stack-vm-final-snapshot';
 import {
@@ -40,6 +42,7 @@ import { stoppedInCloud, withStoppedBlocked } from './stopped-databases';
 import { imageHealthChecksOf } from './applier/live-image';
 import { PlanApplier, refusedPlan } from './applier/plan-applier';
 import { CloudPlanReads } from './cloud-plan-reads.service';
+import { onCloudgateMachine } from './same-machine-target';
 import { outlineOf, outlineOfText } from './planner/config-outline';
 import { planEnvironment } from './planner/plan-environment';
 import type {
@@ -206,6 +209,7 @@ export class PlanStore {
     private readonly cloudReads: CloudPlanReads,
     private readonly bucketDeletes: BucketDeletes,
     private readonly databaseDeletes: CloudDatabaseDeletes,
+    private readonly instanceMode: InstanceMode,
   ) {}
 
   /**
@@ -327,6 +331,8 @@ export class PlanStore {
       setupRecords: await setupRecordsOf(this.db, env.projectId),
       // A pasted file's part renamed from its setup's is noted (#1378).
       ...(location ? { configKept: location.kind } : {}),
+      // Each create there carries the Same-machine warning (spec #146).
+      sameMachine: await this.onCloudgateMachine(deployTarget),
       // A cloud Service's live image whose HEALTHCHECK its cloud may not run.
       imageHealthChecks: await imageHealthChecksOf(
         this.db,
@@ -389,6 +395,19 @@ export class PlanStore {
       .from(cloudAccount)
       .where(eq(cloudAccount.cloudAccountId, target.cloudAccountId));
     return found ?? null;
+  }
+
+  /** Whether `target` is Cloudgate's own machine (`onCloudgateMachine`). */
+  private async onCloudgateMachine(target: DeployTarget): Promise<boolean> {
+    const hosted = this.instanceMode.isHosted;
+    if (hosted || target.kind !== 'server') {
+      return onCloudgateMachine(target, { hosted });
+    }
+    const [found] = await this.db
+      .select({ sameMachine: server.sameMachine })
+      .from(server)
+      .where(eq(server.serverId, target.serverId));
+    return onCloudgateMachine(target, { hosted, server: found });
   }
 
   /**

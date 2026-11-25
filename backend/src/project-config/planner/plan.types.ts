@@ -615,6 +615,14 @@ export interface PlanInput {
    * Cloudgate-kept.
    */
   readonly configKept?: 'cloudgate' | 'repository';
+  /**
+   * Whether the Deploy target is Cloudgate's own machine (`CONTEXT.md`,
+   * **Same-machine warning**): the platform host, or a Server whose
+   * `sameMachine` is true. Each create then carries a `same-machine` note.
+   * The plan store answers it, and never on the Hosted instance. Absent,
+   * it is not.
+   */
+  readonly sameMachine?: boolean;
 }
 
 /** One Setup record, as a plan reads it. */
@@ -1879,6 +1887,17 @@ export type PlanNote =
       readonly kind: 'bucket-checksums';
       readonly configName: string;
       readonly variable: string;
+      readonly message: string;
+    }
+  | {
+      /**
+       * A Service created on Cloudgate's own machine (spec #146, the
+       * **Same-machine warning**): losing that machine loses it and
+       * Cloudgate's records together. Once per create; a Service the
+       * Environment already has is never noted.
+       */
+      readonly kind: 'same-machine';
+      readonly configName: string;
       readonly message: string;
     }
   | {
