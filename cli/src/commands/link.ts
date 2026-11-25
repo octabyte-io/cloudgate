@@ -70,8 +70,8 @@ FLAGS
   --env <name|id>        Environment             (CLOUDGATE_ENV)
   --service <name|id>    Service, by Config name (CLOUDGATE_SERVICE)
   --whole-project        Link the whole Project, with no Service
-  --yes                  Replace an existing link, and ${WORKING_COPY_FILE},
-                         without asking
+  --yes                  Replace an existing link, and ${WORKING_COPY_FILE} or
+                         ${WORKING_COPY_YML}, without asking
   --instance <url>       The Instance to link to (CLOUDGATE_INSTANCE)
 `,
   options: {

@@ -12,6 +12,10 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { configPlan } from '../src/commands/config-plan.js';
+import { configPull } from '../src/commands/config-pull.js';
+import { deploy } from '../src/commands/deploy.js';
+import { link } from '../src/commands/link.js';
 import { writeLink } from '../src/folder-link.js';
 import type { FolderLink } from '../src/folder-link.js';
 import { run } from '../src/run.js';
@@ -806,6 +810,33 @@ describe('config plan, with the copy spelt cloudgate.yml', () => {
     expect(result.code).toBe(2);
     expect(result.stderr).toContain(
       'Error: this Project folder has no cloudgate.yaml',
+    );
+  });
+});
+
+/**
+ * ADR-0089: a Project folder's copy may be spelt cloudgate.yml, so each
+ * command that reads or writes it says so where it names cloudgate.yaml.
+ */
+describe('help, for a copy spelt cloudgate.yml', () => {
+  it('names cloudgate.yml in config plan, config pull, link --yes and deploy', () => {
+    expect(configPlan.summary).toBe(
+      "Send this Project folder's cloudgate.yaml or .yml as a plan, and apply it",
+    );
+    expect(configPull.summary).toBe(
+      "Replace this Project folder's cloudgate.yaml or .yml with Cloudgate's",
+    );
+    expect(configPlan.help.split('\n')[0]).toBe(
+      "Send this Project folder's cloudgate.yaml or .yml to Cloudgate as a plan, and apply it.",
+    );
+    expect(configPull.help.split('\n')[0]).toBe(
+      "Replace this Project folder's cloudgate.yaml or .yml with the Project config.",
+    );
+    expect(link.help).toContain(
+      '  --yes                  Replace an existing link, and cloudgate.yaml or\n                         cloudgate.yml, without asking\n',
+    );
+    expect(deploy.help).toContain(
+      '  In a Project folder (cloudgate link --whole-project), it first sends\n  cloudgate.yaml, or the cloudgate.yml there, as a plan and applies it,\n',
     );
   });
 });

@@ -90,12 +90,13 @@ USAGE
   starter cloudgate.yaml. Add your apps there and run deploy again.
 
   In a Project folder (cloudgate link --whole-project), it first sends
-  cloudgate.yaml as a plan and applies it, as cloudgate config plan does.
-  Then it uploads the whole folder to each app whose config entry names a
-  subfolder of it as its source (source: { folder: apps/web }), builds
-  each from that subfolder, follows each build to its end, and prints one
-  line per app. Apps from a repository or an image, console-managed
-  entries and databases are skipped. --service deploys one app only.
+  cloudgate.yaml, or the cloudgate.yml there, as a plan and applies it,
+  as cloudgate config plan does. Then it uploads the whole folder to each
+  app whose config entry names a subfolder of it as its source (source:
+  { folder: apps/web }), builds each from that subfolder, follows each
+  build to its end, and prints one line per app. Apps from a repository
+  or an image, console-managed entries and databases are skipped.
+  --service deploys one app only.
 
 FLAGS
   --org <name|id>        Organization            (CLOUDGATE_ORG)

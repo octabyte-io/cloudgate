@@ -14,8 +14,8 @@ import { findProjectFolder } from '../working-copy.js';
 export const configPlan: Command = {
   name: 'config plan',
   group: 'THIS FOLDER',
-  summary: "Send this Project folder's cloudgate.yaml as a plan, and apply it",
-  help: `Send this Project folder's ${WORKING_COPY_FILE} to Cloudgate as a plan, and apply it.
+  summary: `Send this Project folder's ${WORKING_COPY_FILE} or .yml as a plan, and apply it`,
+  help: `Send this Project folder's ${WORKING_COPY_FILE} or .yml to Cloudgate as a plan, and apply it.
 
 USAGE
   cloudgate config plan [--yes]

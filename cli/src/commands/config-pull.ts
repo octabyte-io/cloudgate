@@ -21,8 +21,8 @@ import {
 export const configPull: Command = {
   name: 'config pull',
   group: 'THIS FOLDER',
-  summary: "Replace this Project folder's cloudgate.yaml with Cloudgate's",
-  help: `Replace this Project folder's ${WORKING_COPY_FILE} with the Project config.
+  summary: `Replace this Project folder's ${WORKING_COPY_FILE} or .yml with Cloudgate's`,
+  help: `Replace this Project folder's ${WORKING_COPY_FILE} or .yml with the Project config.
 
 USAGE
   cloudgate config pull [--yes]
