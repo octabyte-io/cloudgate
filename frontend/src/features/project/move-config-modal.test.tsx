@@ -62,6 +62,12 @@ vi.mock("@/lib/api/use-git-source", () => ({
   useRepositories: () => ({ data: [], isPending: false }),
 }));
 
+// The plan notes ask whether this is the Hosted instance; nothing here
+// depends on it.
+vi.mock("@/lib/api/use-instance-mode", () => ({
+  useInstanceMode: () => ({ data: undefined }),
+}));
+
 const { configRepository, MoveConfigModal, MOVE_PROVIDERS, repositoryTarget } =
   await import("./move-config-modal");
 
