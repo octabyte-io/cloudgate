@@ -22,7 +22,10 @@ import {
 import { byCloud, cloudOrLegacy } from '../cloud-accounts/cloud-provider';
 import { SERVICE_SOURCES } from '../environments/environment-services';
 import { storedDockerSettings } from '../native/docker-native';
-import { isExpressibleServiceType } from './format/config-schema';
+import {
+  DEFAULT_COMPOSE_FILE,
+  isExpressibleServiceType,
+} from './format/config-schema';
 import type { ExpressibleServiceType } from './format/config-schema';
 import type { ConfigLinks } from './project-config.types';
 import type {
@@ -927,6 +930,7 @@ async function readComposeStacks(
       region,
       stackVm,
       cloudKind,
+      composePath,
       ...settings
     }): SavedService => ({
       serviceType: 'compose',
@@ -936,7 +940,13 @@ async function readComposeStacks(
       // A stack links nothing and is linked by nothing; its Server is
       // where it runs, which its plan never moves.
       ...placeAndLinks(serverId, {}),
-      settings,
+      // A Service that names no file (ADR-0091) reads, for a plan, as the
+      // default an entry with no `file` maps to today; #157 maps both to
+      // `null`.
+      settings: {
+        ...settings,
+        composePath: composePath ?? `./${DEFAULT_COMPOSE_FILE}`,
+      },
       // The config names none of a stack's variables.
       variables: { env: [] },
       // Its own Stack VM in a Cloud account (ADR-0070), which holds the

@@ -170,6 +170,12 @@ describe('getComposeFilePath', () => {
       );
     }
   });
+
+  it('takes a null composePath at the DTO, which names no file (ADR-0091)', () => {
+    const parsed = updateComposeSchema.safeParse({ composePath: null });
+    expect(parsed.success).toBe(true);
+    expect(parsed.data?.composePath).toBeNull();
+  });
 });
 
 describe('createComposeCommand', () => {

@@ -32,6 +32,12 @@ import type { BuildProgram } from '../builders/build-strategy';
 import { ComposeService } from '../compose/compose.service';
 import type { DeployableCompose } from '../compose/compose.types';
 import {
+  composeFileLookupLogLine,
+  composeFileNotFoundMessage,
+  resolveComposeFile,
+} from '../compose/compose-file-lookup';
+import type { WithComposeFile } from '../compose/compose-file-lookup';
+import {
   getBuildComposeProgram,
   getComposeFilePath,
   writeDomainsToCompose,
@@ -1017,10 +1023,27 @@ export class DeploymentEngineService {
         }
       }
 
+      // The file this deploy runs. A Service that names none finds it now,
+      // in the clone just made and patched (ADR-0091): the log says which,
+      // and a clone holding none of the four is refused here, after the
+      // clone, for the reason H-83's check below gives.
+      const file = await resolveComposeFile(target, compose);
+      if (file.kind === 'missing') {
+        throw new Error(composeFileNotFoundMessage());
+      }
+      if (file.kind === 'found') {
+        await target.execToLog(
+          `echo ${quote([composeFileLookupLogLine(file.found)])}`,
+          deployment.logPath,
+          { signal: deployment.cancelled },
+        );
+      }
+      const deployable = file.compose;
+
       // The *un*-converted content: `getBuildComposeCommand` injects, and
       // injecting twice would append every router label a second time.
       const content = publishStackVmPorts(
-        await this.readComposeContent(compose, target),
+        await this.readComposeContent(deployable, target),
         stackVmRoutes,
       );
       // H-83, and **this is the only seam that can see it for a git-sourced
@@ -1060,7 +1083,7 @@ export class DeploymentEngineService {
             deployment.logPath,
           );
       const build = getBuildComposeProgram(
-        compose,
+        deployable,
         content,
         domains,
         traces && composeTraceWiringOf(traces),
@@ -1133,7 +1156,7 @@ export class DeploymentEngineService {
    * injection — the stored definition for raw sources (the clone wrote the
    * converted form of exactly this). */
   private async readComposeContent(
-    compose: DeployableCompose,
+    compose: WithComposeFile<DeployableCompose>,
     target: RunTarget,
   ): Promise<string> {
     if (compose.sourceType === 'raw') return compose.composeFile;

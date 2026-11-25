@@ -1,0 +1,1 @@
+ALTER TABLE "compose" ALTER COLUMN "compose_path" DROP NOT NULL;

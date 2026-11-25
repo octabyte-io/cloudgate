@@ -162,7 +162,8 @@ export const updateComposeSchema = z
     description: z.string().nullable(),
     env: z.string().nullable(),
     composeFile: composeFileSchema,
-    composePath: composePathSchema,
+    // `null` names no file: each deploy finds it in its clone (ADR-0091).
+    composePath: composePathSchema.nullable(),
     composeType: z.enum(['docker-compose', 'stack']),
     command: z.string(),
     isolatedDeployment: z.boolean(),

@@ -118,6 +118,7 @@ import {
   removeComposeContainersCommand,
   writeDomainsToCompose,
 } from './compose.utils';
+import { composeFileForRead } from './compose-file-lookup';
 import type { ComposeRefusalEcho, SettleClock } from './compose.utils';
 import { sourceTypeOnCreate } from './compose-source-type';
 import { publishStackVmPorts } from './stack-vm-ports';
@@ -1263,13 +1264,16 @@ export class ComposeService {
       return this.startOnStackVm(row);
     }
 
+    // The file the last deploy ran: a Service that names none reads it
+    // under the name that deploy found in its clone (ADR-0091).
+    const withFile = await composeFileForRead(this.runTarget(row), row);
     const onDisk = await this.readClaimableOnDiskCompose(
       ctx.session.activeOrganizationId,
-      row,
+      withFile,
     );
 
     try {
-      await this.runTarget(row).exec(composeStartCommand(row, onDisk));
+      await this.runTarget(row).exec(composeStartCommand(withFile, onDisk));
       return await this.updateStatus(row.composeId, 'done');
     } catch (error) {
       const refusal = await this.notDeployedRefusal(
@@ -1662,9 +1666,12 @@ export class ComposeService {
   ): Promise<string> {
     if (row.sourceType === 'raw') return row.composeFile;
 
-    const { stdout } = await this.runTarget(row, remoteExec).exec([
+    // A Service that names no file reads it under the name the last deploy
+    // found in its clone (ADR-0091).
+    const target = this.runTarget(row, remoteExec);
+    const { stdout } = await target.exec([
       'cat',
-      getComposeFilePath(row),
+      getComposeFilePath(await composeFileForRead(target, row)),
     ]);
     return stdout;
   }
@@ -2031,12 +2038,11 @@ export class ComposeService {
       Compose,
       | 'appName'
       | 'sourceType'
-      | 'composePath'
       | 'serverId'
       | 'composeType'
       | 'composeId'
       | 'cloudAccountId'
-    >,
+    > & { composePath: string },
   ): Promise<string> {
     const { stdout } = await this.runTarget(row).exec(
       `cat ${quote([getComposeFilePath(row)])} 2>/dev/null || true`,
