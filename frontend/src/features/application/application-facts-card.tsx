@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Card } from "@/components/console/card";
 import { CopyButton } from "@/components/console/copy-button";
 import { KVList, KVRow } from "@/components/console/kv-list";
+import { SameMachineNote } from "@/components/console/same-machine";
 import { StatusPill } from "@/components/console/status-pill";
 import { cloudDeleteMark } from "./lifecycle/cloud-delete-card";
 import type { ApplicationDetail } from "@/lib/api/endpoints/applications";
@@ -171,7 +172,8 @@ export function ApplicationFactsCard({
  * file lives — which is the thing that makes `/listen-deployment` work or not.
  *
  * Both being empty means the platform's own host, which is the common case on a
- * single-machine install and is said in words rather than left as a dash.
+ * single-machine install and is said in words rather than left as a dash, with
+ * the Same-machine warning under it on a Self-hosted instance.
  *
  * **No deploy webhook row**. It used to read `Deploy webhook · Set ·
  * Rotate`, over a secret (`application.refreshToken`) that no route checks:
@@ -277,6 +279,10 @@ export function DeployTargetCard({
             }
           />
         </KVList>
+        {/* No Server and no Cloud account: it runs on This Cloudgate
+            host, so the Same-machine warning (#148) stands here for as
+            long as it does. */}
+        {server ? null : <SameMachineNote className="mt-3" />}
         <p className="mt-3 text-meta text-tx-2">
           Traefik on the Server above routes this Application&rsquo;s domains to
           it over the overlay network.

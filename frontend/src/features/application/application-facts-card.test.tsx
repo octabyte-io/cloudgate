@@ -1,5 +1,5 @@
 import { cleanup, render } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   ApplicationDetail,
@@ -10,6 +10,15 @@ import {
   ApplicationFactsCard,
   DeployTargetCard,
 } from "./application-facts-card";
+
+const mode = vi.hoisted(() => ({
+  data: "self-hosted" as "hosted" | "self-hosted",
+}));
+vi.mock("@/lib/api/use-instance-mode", () => ({ useInstanceMode: () => mode }));
+
+beforeEach(() => {
+  mode.data = "self-hosted";
+});
 
 afterEach(cleanup);
 
@@ -156,5 +165,75 @@ describe("DeployTargetCard, a cloud Service", () => {
     expect(text).toContain("eu-central-1");
     expect(text).toContain("Cloudgate's own host");
     expect(text).not.toContain("Traefik");
+  });
+});
+
+/** Whether a card shows the Same-machine warning (spec #146). */
+function warns(container: HTMLElement): boolean {
+  return /Cloudgate itself runs on this machine/.test(
+    container.textContent ?? "",
+  );
+}
+
+/**
+ * The Same-machine warning (#148): an Application already on This
+ * Cloudgate host says so where it names the machine it runs on, so a
+ * setup from before the warning sees it too.
+ */
+describe("DeployTargetCard's Same-machine warning", () => {
+  it("warns for an Application on This Cloudgate host", () => {
+    const { container } = render(
+      <DeployTargetCard application={row("done")} />,
+    );
+
+    expect(warns(container)).toBe(true);
+  });
+
+  it("does not warn for an Application on a Server", () => {
+    const { container } = render(
+      <DeployTargetCard
+        application={
+          {
+            ...row("done"),
+            serverId: "srv-1",
+            server: {
+              serverId: "srv-1",
+              name: "worker-1",
+              ipAddress: "203.0.113.7",
+              serverStatus: "active",
+            },
+          } as unknown as ApplicationDetail
+        }
+      />,
+    );
+
+    expect(container.textContent).toContain("worker-1");
+    expect(warns(container)).toBe(false);
+  });
+
+  it("does not warn for an Application in a Cloud account", () => {
+    const { container } = render(
+      <DeployTargetCard
+        application={{
+          ...row("done"),
+          cloudPlace: {
+            cloudAccountId: "ca-1",
+            cloudAccountName: "Production AWS",
+            region: "eu-central-1",
+          },
+        }}
+      />,
+    );
+
+    expect(warns(container)).toBe(false);
+  });
+
+  it("never warns on the Hosted instance", () => {
+    mode.data = "hosted";
+    const { container } = render(
+      <DeployTargetCard application={row("done")} />,
+    );
+
+    expect(warns(container)).toBe(false);
   });
 });
