@@ -1,4 +1,5 @@
 import { quote } from 'shell-quote';
+
 import type { RunTarget } from '../remote/run-target';
 import type { Compose } from './compose.schema';
 import { composeCodeDirectory } from './compose.utils';
@@ -28,9 +29,13 @@ export interface FoundComposeFile {
  * file directly inside `directory`, and exits 0 whatever it finds, a missing
  * directory included: `RemoteExecService` rejects on a non-zero exit, so
  * "nothing there" is said on stdout. {@link findComposeFile} reads the answer.
+ *
+ * Every word spliced into the program is `quote()`d (§2.9), the four names
+ * too: they are constants today, and quoting them keeps a fifth from
+ * becoming a shell word by accident.
  */
 export function composeFileLookupCommand(directory: string): string {
-  return `cd ${quote([directory])} 2>/dev/null && for f in ${COMPOSE_FILE_NAMES.join(' ')}; do if [ -f "$f" ]; then echo "$f"; fi; done; true`;
+  return `cd ${quote([directory])} 2>/dev/null && for f in ${quote([...COMPOSE_FILE_NAMES])}; do if [ -f "$f" ]; then echo "$f"; fi; done; true`;
 }
 
 /**
