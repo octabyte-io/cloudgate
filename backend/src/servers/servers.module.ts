@@ -7,6 +7,7 @@ import { BoughtServersModule } from '../bought-servers/bought-servers.module';
 import { SshKeysModule } from '../ssh-keys/ssh-keys.module';
 import { ServerAddressGuard } from './server-address-guard';
 import { SameMachine } from './same-machine';
+import { SameMachineRecheck } from './same-machine-recheck';
 import { ServerConnectionProvider } from './server-connection.provider';
 import { ServerSetupRuns } from './server-setup-runs';
 import { ServersController } from './servers.controller';
@@ -46,6 +47,7 @@ import { ServersService } from './servers.service';
     ServerSetupRuns,
     ServerAddressGuard,
     SameMachine,
+    SameMachineRecheck,
     addressResolverProvider,
     ServerConnectionProvider,
     {

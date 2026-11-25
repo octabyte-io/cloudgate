@@ -183,8 +183,10 @@ export const server = pgTable('server', {
   // Same-machine warning for it (spec #146). Worked out when the address is
   // saved, on create and on every update that names one, and stored so a
   // Server read never resolves a name. Always false on the Hosted instance.
-  // False on every Server saved before it existed, until its address is
-  // saved again: the box's own addresses are not knowable from SQL.
+  // The migration writes false on every existing Server (the box's own
+  // addresses are not knowable from SQL); `SameMachineRecheck` works every
+  // Server out again at each Self-hosted start, which fills those and catches
+  // a box whose own addresses have changed since.
   sameMachine: boolean('same_machine').notNull().default(false),
   // When this Server's Maintenance began, as an ISO instant; null while it is
   // not in maintenance. While it is set nothing new starts containers on the
