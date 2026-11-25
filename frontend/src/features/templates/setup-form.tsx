@@ -12,27 +12,20 @@ import {
 } from "@/components/console/card";
 import { Field, FormError } from "@/components/console/field";
 import { LinkButton } from "@/components/console/link-button";
-import { SameMachineNote } from "@/components/console/same-machine";
 import { SubmitButton } from "@/components/console/submit-button";
 import { useApiForm } from "@/components/console/use-api-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Server } from "@/lib/api/endpoints/servers";
 import type { SetupForm } from "@/lib/api/endpoints/templates";
-import {
-  deployTargetOnSameMachine,
-  isSameMachineServer,
-} from "@/lib/forms/create-server-picker";
 import { GET_STARTED_PATH } from "@/lib/auth/routes";
 import { cn } from "@/lib/utils";
 
-import {
-  CLOUDS,
-  PLATFORM_HOST_VALUE,
-} from "../environment/deploy-target";
+import { CLOUDS, PLATFORM_HOST_VALUE } from "../environment/deploy-target";
 import type { NewProjectTarget } from "./new-project-targets";
 import { AskedField, DomainHostFields } from "./setup-fields";
 import { SetupKernelNote } from "./setup-kernel-note";
+import { firstTargetOf, SetupSameMachineNote } from "./setup-same-machine";
 import {
   SETUP_LABELS,
   setupChoice,
@@ -71,10 +64,7 @@ export const EMPTY_PROJECT_NOTE =
  * In a Cloud Environment (#1379) each host is typed, with the DNS record it
  * needs shown under it.
  *
- * A new Project opens on the first Ready deploy Server that can take the
- * template (#147), and while the setup goes to Cloudgate's own machine
- * (This Cloudgate host, or a Server that is the box, #149), a new Project's
- * target or an Environment there, the Same-machine warning shows.
+ * The first Ready Server and the Same-machine warning: `setup-same-machine`.
  *
  * A `useApiForm` form: a refusal whose issue names a field is shown beside
  * it, any other above the button. Presentational: the screen fetches the
@@ -139,14 +129,9 @@ export function SetupFormView({
   // A Project with no Environment has nowhere to set the template up, so the
   // rest of the form waits for one rather than asking questions it cannot use.
   const nowhere = !newProject && setup.environments.length === 0;
-  // Where the setup goes is Cloudgate's own machine: the Same-machine warning.
-  const machine = setup.environments.find(
-    (env) => env.environmentId === environmentId,
-  )?.machine;
-  const sameMachine = newProject
-    ? deployTargetOnSameMachine(target, servers)
-    : machine?.serverId === null ||
-      isSameMachineServer(servers, machine?.serverId);
+  const sameMachine = (
+    <SetupSameMachineNote setup={setup} servers={servers} creating={creating} />
+  );
 
   return (
     // Arrives in place of the skeleton the screen held for it.
@@ -215,7 +200,7 @@ export function SetupFormView({
                     />
                   ))}
                   <ChoiceError message={errors.newProject?.target?.message} />
-                  {sameMachine ? <SameMachineNote /> : null}
+                  {sameMachine}
                 </fieldset>
                 {targetCloud ? (
                   <Field
@@ -284,7 +269,7 @@ export function SetupFormView({
                 {setup.environments.length > 0 ? (
                   <ChoiceError message={errors.environmentId?.message} />
                 ) : null}
-                {sameMachine ? <SameMachineNote /> : null}
+                {sameMachine}
               </fieldset>
             )}
 
@@ -350,20 +335,6 @@ export function SetupFormView({
       </FormProvider>
     </Card>
   );
-}
-
-/**
- * The Deploy target a new Project opens on: the first Ready deploy Server
- * that can take the template (#147), so it does not land on Cloudgate's own
- * machine by default, else the first target that can.
- */
-function firstTargetOf(targets: readonly NewProjectTarget[]): string {
-  const takes = targets.filter((one) => one.reason === null);
-  const server = takes.find(
-    (one) =>
-      one.cloud === null && one.value !== PLATFORM_HOST_VALUE && !one.disabled,
-  );
-  return (server ?? takes[0])?.value ?? "";
 }
 
 /** A radio group's refusal, under its last choice. */
