@@ -1,5 +1,7 @@
 import { CopyButton } from "@/components/console/copy-button";
+import { SameMachineNote } from "@/components/console/same-machine";
 import type { Plan } from "@/lib/api/endpoints/project-config";
+import { useInstanceMode } from "@/lib/api/use-instance-mode";
 import { Icon } from "@/lib/design/icons";
 
 import { noStateLines } from "./plan-aws";
@@ -9,19 +11,43 @@ import { PlanSection } from "./plan-section";
  * A Plan's Notes: what changes nothing — the planner's notes, a line to
  * copy where one has it, and what a tag search found that no state wants
  * which Cloudgate never removes.
+ *
+ * A create on Cloudgate's own machine is the Same-machine warning, in the
+ * console's own words (`SameMachineNote`) rather than the note's, which is
+ * the CLI's line. Self-hosted only, failing closed as the note itself does,
+ * so on the Hosted instance it takes no room here either.
  */
 export function NotesSection({ plan }: { plan: Plan }) {
+  const selfHosted = useInstanceMode().data === "self-hosted";
   const strays = noStateLines(plan);
-  if (plan.notes.length === 0 && strays.length === 0) return null;
+  const sameMachine = selfHosted
+    ? plan.notes.filter((note) => note.kind === "same-machine")
+    : [];
+  const others = plan.notes.filter((note) => note.kind !== "same-machine");
+  if (others.length === 0 && sameMachine.length === 0 && strays.length === 0) {
+    return null;
+  }
   // Every Template set up in another Environment is held back here for the
   // same reason, so they share one note rather than repeating it per setup.
-  const held = plan.notes.filter((note) => note.kind === "setup-held-back");
+  const held = others.filter((note) => note.kind === "setup-held-back");
   const notes =
     held.length > 1
-      ? plan.notes.filter((note) => note.kind !== "setup-held-back")
-      : plan.notes;
+      ? others.filter((note) => note.kind !== "setup-held-back")
+      : others;
   return (
     <PlanSection title="Notes">
+      {sameMachine.map((note) => (
+        <div
+          key={`same-machine-${note.configName}`}
+          aria-label={`${note.configName} runs on Cloudgate's own machine`}
+          className="grid gap-1.5"
+        >
+          <p className="font-mono text-meta wrap-anywhere text-tx">
+            {note.configName}
+          </p>
+          <SameMachineNote />
+        </div>
+      ))}
       {held.length > 1 ? <HeldBackNote held={held} /> : null}
       {strays.map((line) => (
         <p

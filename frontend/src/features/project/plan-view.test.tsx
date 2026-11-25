@@ -5,7 +5,7 @@ import {
   screen,
   within,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Plan } from "@/lib/api/endpoints/project-config";
 
@@ -24,6 +24,16 @@ vi.mock("@/components/console/build-now-button", () => ({
       <button>Build now with saved settings</button>
     ) : null,
 }));
+
+// The Same-machine warning is the Self-hosted instance's alone.
+const mode = vi.hoisted(() => ({
+  data: "self-hosted" as "hosted" | "self-hosted" | undefined,
+}));
+vi.mock("@/lib/api/use-instance-mode", () => ({ useInstanceMode: () => mode }));
+
+beforeEach(() => {
+  mode.data = "self-hosted";
+});
 
 afterEach(cleanup);
 
@@ -1067,5 +1077,59 @@ describe("an applied Template setup", () => {
     expect(note.textContent).toMatch(/gitea-app from the gitea template/);
     expect(note.textContent).toMatch(/umami-app from the umami template/);
     expect(screen.queryByText("gitea-app is held back here")).toBeNull();
+  });
+});
+
+describe("a plan's creates on Cloudgate's own machine", () => {
+  const sameMachine = (configName: string) => ({
+    kind: "same-machine" as const,
+    configName,
+    message: `${configName} will run on the machine Cloudgate itself runs on. If it is lost, so are this Service and Cloudgate's records. Add a Server, or use Cloudgate Hosted: https://cloudgate.octabyte.app`,
+  });
+  const plan: Plan = {
+    ...base,
+    steps: [
+      {
+        action: "create",
+        configName: "blog-web",
+        kind: "web",
+        placement: { kind: "platform-host" },
+        fields: [],
+      },
+      {
+        action: "create",
+        configName: "cache",
+        kind: "redis",
+        placement: { kind: "platform-host" },
+        fields: [],
+      },
+    ],
+    notes: [sameMachine("blog-web"), sameMachine("cache")],
+  };
+
+  it("shows the Same-machine warning among the notes once per create, naming it", () => {
+    render(<PlanView plan={plan} />);
+
+    const notes = screen.getByRole("region", { name: "Notes" });
+    for (const name of ["blog-web", "cache"]) {
+      const one = within(notes).getByLabelText(
+        `${name} runs on Cloudgate's own machine`,
+      );
+      expect(one.textContent).toContain(name);
+      expect(within(one).getByRole("note").textContent).toMatch(
+        /^Cloudgate itself runs on this machine\./,
+      );
+    }
+    expect(within(notes).getAllByRole("note")).toHaveLength(2);
+    // The console says it in its own words, never the CLI's line.
+    expect(within(notes).queryByText(/will run on the machine/)).toBeNull();
+  });
+
+  it("shows nothing of it on the Hosted instance", () => {
+    mode.data = "hosted";
+    render(<PlanView plan={plan} />);
+
+    expect(screen.queryByRole("region", { name: "Notes" })).toBeNull();
+    expect(screen.queryByText(/blog-web runs on/)).toBeNull();
   });
 });

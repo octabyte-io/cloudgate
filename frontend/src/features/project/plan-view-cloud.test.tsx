@@ -31,6 +31,11 @@ vi.mock("@/components/console/use-existing-bucket-button", () => ({
   ),
 }));
 
+// The Notes read the instance mode for the Same-machine warning.
+vi.mock("@/lib/api/use-instance-mode", () => ({
+  useInstanceMode: () => ({ data: "self-hosted" }),
+}));
+
 afterEach(cleanup);
 
 const place = {

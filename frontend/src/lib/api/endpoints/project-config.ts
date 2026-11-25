@@ -782,6 +782,17 @@ export type PlanNote =
       message: string;
     }
   | {
+      /**
+       * A Service created on Cloudgate's own machine (spec #146): the
+       * platform host, or a same-machine Server. Once per create, and never on
+       * the Hosted instance. `message` is the CLI's line; the console shows
+       * `SameMachineNote` instead.
+       */
+      kind: "same-machine";
+      configName: string;
+      message: string;
+    }
+  | {
       /** A `web` created in a Cloud account, which gets no generated Domain. */
       kind: "cloud-no-domain";
       configName: string;
