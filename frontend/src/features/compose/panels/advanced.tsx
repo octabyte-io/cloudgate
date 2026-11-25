@@ -15,6 +15,7 @@ import { Icon } from "@/lib/design/icons";
 import type { PanelProps } from "@/lib/shell/tab-registry";
 
 import { ComposeFactsCard } from "../compose-facts-card";
+import { COMPOSE_FILE_FOUND, COMPOSE_FILE_HINT } from "../source/compose-source";
 import { ComposePanel } from "../compose-panel";
 import { DeleteComposeModal } from "../lifecycle/delete-compose-modal";
 import { IsolationCard } from "../advanced/isolation-card";
@@ -68,7 +69,8 @@ const deploySchema = z.object({
 type DeployValues = z.infer<typeof deploySchema>;
 
 const sourceSchema = z.object({
-  composePath: z.string().trim().min(1, "Name the file to deploy."),
+  // Empty names no file: each deploy finds it (ADR-0091).
+  composePath: z.string(),
   enableSubmodules: z.boolean(),
   watchPaths: z.string(),
 });
@@ -118,8 +120,9 @@ function Body({ compose }: { compose: ComposeDetail }) {
       name: "composePath",
       label: "Compose file",
       mono: true,
-      placeholder: "./docker-compose.yml",
-      hint: "Where the file sits in the repository, from its root.",
+      optional: true,
+      placeholder: COMPOSE_FILE_FOUND,
+      hint: COMPOSE_FILE_HINT,
     },
     {
       kind: "switch",
@@ -184,13 +187,13 @@ function Body({ compose }: { compose: ComposeDetail }) {
           fields={sourceFields}
           savedMessage="Repository settings saved."
           defaultValues={{
-            composePath: compose.composePath,
+            composePath: compose.composePath ?? "",
             enableSubmodules: compose.enableSubmodules,
             watchPaths: (compose.watchPaths ?? []).join("\n"),
           }}
           submit={(values) =>
             update.mutateAsync({
-              composePath: values.composePath.trim(),
+              composePath: values.composePath.trim() || null,
               enableSubmodules: values.enableSubmodules,
               // F10's rule, on the clearing side: the column is nullable and an
               // empty list has to be expressible, so an empty box is `null` rather

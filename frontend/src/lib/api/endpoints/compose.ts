@@ -94,8 +94,12 @@ export interface Compose {
   /** The `compose_status` column, on the same enum an Application uses. */
   composeStatus: ApplicationStatus;
   composeType: ComposeType;
-  /** Where the file sits in the repository. Ignored for a `raw` source. */
-  composePath: string;
+  /**
+   * Where the file sits in the repository. Ignored for a `raw` source. `null`
+   * names no file: each deploy finds it in its clone, by Docker's order
+   * (ADR-0091).
+   */
+  composePath: string | null;
   /** Replaces the generated `docker compose up` / `stack deploy` entirely. */
   command: string;
   enableSubmodules: boolean;

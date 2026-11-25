@@ -55,8 +55,8 @@ export type PathSpec = {
   label: string;
   hint: string;
   placeholder: string;
-  /** What an empty column means, sent instead of `""`. */
-  fallback: string;
+  /** What an empty box is saved as, sent instead of `""`. */
+  fallback: string | null;
 };
 
 /** An Application's: a directory inside the repository, per provider. */

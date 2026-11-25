@@ -131,6 +131,42 @@ describe("Compose Advanced — the two cards", () => {
   });
 });
 
+/**
+ * ADR-0091: a stack may name no file, and each deploy then finds it. An empty
+ * box is how the operator says so, and it is sent as `null`, never `""`.
+ */
+describe("Compose Advanced — the compose file", () => {
+  it("clears the file to null when the box is emptied", async () => {
+    const { repository } = mount();
+
+    fireEvent.change(screen.getByLabelText(/^Compose file/), {
+      target: { value: "  " },
+    });
+    fireEvent.submit(repository.closest("form") as HTMLFormElement);
+
+    await waitFor(() =>
+      expect(mutateAsync).toHaveBeenCalledWith({
+        composePath: null,
+        enableSubmodules: false,
+        watchPaths: null,
+      }),
+    );
+  });
+
+  it("shows a stack that names no file as an empty box found at each deploy", () => {
+    const named = row.composePath;
+    row.composePath = null;
+    try {
+      mount();
+      const box = screen.getByLabelText(/^Compose file/) as HTMLInputElement;
+      expect(box.value).toBe("");
+      expect(box.placeholder).toBe("Found at each deploy");
+    } finally {
+      row.composePath = named;
+    }
+  });
+});
+
 describe("Compose Advanced — Delete", () => {
   it("is off with the reason for a role without service:delete, and opens nothing", () => {
     const { remove } = mount(["service:delete"]);

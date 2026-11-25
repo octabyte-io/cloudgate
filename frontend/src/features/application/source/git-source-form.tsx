@@ -118,7 +118,7 @@ export function GitSourceForm({
       connection: fieldText(row, spec.connectionKey),
       repository: repositoryKeyOf(row, spec),
       branch: fieldText(row, spec.branchKey),
-      buildPath: fieldText(row, path.column(spec)) || path.fallback,
+      buildPath: fieldText(row, path.column(spec)) || (path.fallback ?? ""),
       triggerType: row.triggerType ?? "push",
       autoDeploy: row.autoDeploy ?? true,
     },

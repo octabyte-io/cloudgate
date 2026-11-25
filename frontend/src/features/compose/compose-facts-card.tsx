@@ -13,7 +13,7 @@ import {
 } from "@/lib/api/endpoints/compose";
 import { timeExact } from "@/lib/format/time";
 
-import { composeSourceSummary } from "./source/compose-source";
+import { composeFileLabel, composeSourceSummary } from "./source/compose-source";
 import { StackVmRunState } from "./stack-vm-status";
 
 /**
@@ -111,9 +111,9 @@ export function ComposeFactsCard({
           {compose.sourceType === "raw" ? null : (
             <KVRow
               label="File"
-              value={compose.composePath}
-              title={compose.composePath}
-              mono
+              value={composeFileLabel(compose.composePath)}
+              title={composeFileLabel(compose.composePath)}
+              mono={compose.composePath !== null}
             />
           )}
           {/**

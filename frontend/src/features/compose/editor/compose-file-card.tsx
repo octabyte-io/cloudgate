@@ -25,6 +25,7 @@ import { yamlProblem } from "@/lib/format/yaml-problem";
 import { unsetInterpolations } from "./interpolation-check";
 import { DeclaredServices } from "./declared-services";
 import { COMPOSE_UPDATE_REFUSAL } from "../use-compose";
+import { COMPOSE_FILE_FOUND } from "../source/compose-source";
 
 /**
  * The compose file, edited. **This is the screen for this service kind** — the one
@@ -247,15 +248,26 @@ function RawEditor({
 function ClonedFile({ compose }: { compose: ComposeDetail }) {
   return (
     <>
-      <Header sub={`Read from the repository at ${compose.composePath} when the stack deploys.`} />
+      <Header
+        sub={
+          compose.composePath === null
+            ? `${COMPOSE_FILE_FOUND}: the first of compose.yaml, compose.yml, docker-compose.yaml and docker-compose.yml in the repository's root.`
+            : `Read from the repository at ${compose.composePath} when the stack deploys.`
+        }
+      />
       <Card.Body className="flex flex-col gap-3">
         <div className="rounded-lg border border-info-line bg-info-tint px-3.5 py-3">
           <p className="text-body text-tx">
             <strong className="font-medium">
               This stack&rsquo;s file is in its repository
             </strong>{" "}
-            — <span className="font-mono text-meta">{compose.composePath}</span>,
-            on the branch the Source card names. Cloudgate clones it as part of a
+            —{" "}
+            {compose.composePath === null ? (
+              "no file is named, so each deploy finds it"
+            ) : (
+              <span className="font-mono text-meta">{compose.composePath}</span>
+            )}
+            , on the branch the Source card names. Cloudgate clones it as part of a
             Deployment and reads it from there.
           </p>
           <p className="mt-2 text-meta text-tx-2">

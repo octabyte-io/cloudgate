@@ -152,3 +152,32 @@ describe("ComposeSourceCard — Change source", () => {
     expect(screen.getByRole("button", { name: "Save source" })).toBeTruthy();
   });
 });
+
+/** ADR-0091: a stack that names no file finds it at each deploy, and says so. */
+describe("ComposeSourceCard — no file named", () => {
+  const cloned = {
+    ...fromRepository,
+    sourceType: "git",
+    customGitUrl: "https://git.example.com/acme/orders.git",
+    customGitBranch: "main",
+  } as ComposeDetail;
+
+  it("says the file is found at each deploy", () => {
+    render(
+      <ComposeSourceCard
+        compose={{ ...cloned, composePath: null }}
+        save={async () => undefined}
+      />,
+    );
+
+    expect(document.body.textContent).toContain("Found at each deploy");
+    expect(document.body.textContent).not.toContain("./docker-compose.yml");
+  });
+
+  it("names a file the stack names", () => {
+    render(<ComposeSourceCard compose={cloned} save={async () => undefined} />);
+
+    expect(document.body.textContent).toContain("./docker-compose.yml");
+    expect(document.body.textContent).not.toContain("Found at each deploy");
+  });
+});

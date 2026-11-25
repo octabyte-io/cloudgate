@@ -21,6 +21,16 @@ import {
  */
 
 /**
+ * ADR-0091's words for a stack that names no compose file, on every card that
+ * shows the file and as the empty box's placeholder.
+ */
+export const COMPOSE_FILE_FOUND = "Found at each deploy";
+
+/** The file box's hint, on the source form and the Advanced panel alike. */
+export const COMPOSE_FILE_HINT =
+  "Where the file sits in the repository, from its root. Leave it empty and each deploy uses the first of compose.yaml, compose.yml, docker-compose.yaml and docker-compose.yml it finds.";
+
+/**
  * The path field, for a stack.
  *
  * An Application's build path is a *directory inside* the repository; a stack's
@@ -28,18 +38,23 @@ import {
  * one per provider. That difference is the whole of `PathSpec`
  * (`features/application/source/providers.ts`).
  *
- * `updateComposeSchema` types it `z.string().min(1)`, so an empty box is refused
- * by the backend — the fallback is what gets sent instead, and it is the same
- * value the column defaults to.
+ * An empty box names no file (ADR-0091) and is sent as `null`, never `""`,
+ * which `updateComposeSchema` refuses: each deploy then finds the file in its
+ * clone, by Docker's order.
  */
 export const COMPOSE_PATH: PathSpec = {
   column: () => "composePath",
   customGitColumn: "composePath",
   label: "Compose file",
-  hint: "Where the file sits in the repository, from its root. The deploy runs against this file.",
-  placeholder: "./docker-compose.yml",
-  fallback: "./docker-compose.yml",
+  hint: COMPOSE_FILE_HINT,
+  placeholder: COMPOSE_FILE_FOUND,
+  fallback: null,
 };
+
+/** The stack's compose file as a card shows it. */
+export function composeFileLabel(composePath: string | null): string {
+  return composePath ?? COMPOSE_FILE_FOUND;
+}
 
 export const COMPOSE_SOURCES: readonly ComposeSourceType[] = [
   "raw",

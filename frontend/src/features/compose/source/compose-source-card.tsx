@@ -26,6 +26,7 @@ import {
   COMPOSE_PATH,
   COMPOSE_SOURCE_META,
   COMPOSE_SOURCES,
+  composeFileLabel,
   composeSourceSummary,
   isGitProviderKind,
 } from "./compose-source";
@@ -190,9 +191,9 @@ export function ComposeSourceCard({
               <>
                 <KVRow
                   label="Compose file"
-                  value={compose.composePath}
-                  title={compose.composePath}
-                  mono
+                  value={composeFileLabel(compose.composePath)}
+                  title={composeFileLabel(compose.composePath)}
+                  mono={compose.composePath !== null}
                 />
                 {/* Never true for a stack today — no route deploys one
                     on a push — but asked of the rule the Application card and

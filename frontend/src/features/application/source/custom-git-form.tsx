@@ -76,7 +76,7 @@ export function CustomGitForm({
       // and the save refused it as empty.
       customGitBranch: row.customGitBranch || DEFAULT_GIT_BRANCH,
       customGitBuildPath:
-        fieldText(row, path.customGitColumn) || path.fallback,
+        fieldText(row, path.customGitColumn) || (path.fallback ?? ""),
       customGitSSHKeyId: row.customGitSSHKeyId ?? "",
       enableSubmodules: row.enableSubmodules,
     },

@@ -172,3 +172,19 @@ describe("ComposeFileCard — Expand", () => {
     expect(cardEditor().value).toBe(EDITED);
   });
 });
+
+/** ADR-0091: a repository stack that names no file says it is found at each deploy. */
+describe("ComposeFileCard — a repository stack with no file named", () => {
+  it("says the file is found at each deploy", () => {
+    usePermission.mockReturnValue({ allowed: true, pending: false, role: "member" });
+    render(
+      <ComposeFileCard
+        compose={{ ...compose, sourceType: "github", composePath: null }}
+        save={vi.fn(async () => undefined)}
+      />,
+    );
+
+    expect(document.body.textContent).toContain("Found at each deploy");
+    expect(document.body.textContent).not.toContain("null");
+  });
+});
