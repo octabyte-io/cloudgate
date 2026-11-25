@@ -107,6 +107,7 @@ import type { ComposeSourceType } from '../../compose/dto/compose.dto';
 import type { SourceType } from '../../git-providers/git-provider.schema';
 import type { Size } from '../format/config-size';
 import type {
+  ComposeEntry,
   ComposeSource,
   CronEntry,
   MysqlEntry,
@@ -610,7 +611,11 @@ export function planEnvironment(given: PlanInput): PlanOutcome {
         ? stepNativeAws(entry)
         : null;
     const fields = [
-      ...diffFields(entryView(entry), savedView(found), statedFields(entry)),
+      ...diffFields(
+        entryView(entry, found),
+        savedView(found),
+        statedFields(entry),
+      ),
       ...variableChanges(entry, found.variables),
       ...linkChanges(entry, found.links, found.variables.env),
       // Its Swarm settings, on a Service Swarm runs, a bucket's
@@ -1329,6 +1334,36 @@ export function composeFileValue(composePath: string | null): string | null;
 export function composeFileValue(composePath: string | null): string | null {
   if (composePath === null) return null;
   return posix.normalize(composePath).replace(/^(\.\/)+/, '');
+}
+
+/**
+ * The file every Compose Service made before ADR-0091 saved when nobody
+ * named one, as the config writes it.
+ */
+const SAVED_DEFAULT_COMPOSE_FILE = 'docker-compose.yml';
+
+/**
+ * The compose file a `compose` entry asks for, as the config writes it,
+ * against the path its stack has saved (`null` for a stack the plan makes).
+ *
+ * A named `file` is that file. An entry with no `file` names none, which
+ * each deploy finds (ADR-0091), except on a stack that saved
+ * `./docker-compose.yml`: that is the path every stack made before ADR-0091
+ * saved when nobody named one, and nothing tells it from a typed one, so the
+ * stack keeps it and its plan shows no file change. A deploy never changes
+ * which file it runs without someone changing the Service.
+ */
+export function composeEntryFile(
+  entry: Pick<ComposeEntry, 'composePath'>,
+  savedComposePath: string | null,
+): string | null {
+  if (entry.composePath !== undefined) {
+    return composeFileValue(entry.composePath);
+  }
+  return savedComposePath !== null &&
+    composeFileValue(savedComposePath) === SAVED_DEFAULT_COMPOSE_FILE
+    ? SAVED_DEFAULT_COMPOSE_FILE
+    : null;
 }
 
 /**
@@ -2675,8 +2710,14 @@ function withoutPort(view: View): View {
   );
 }
 
-/** A config entry as a view; a field it leaves out takes its create default. */
-function entryView(entry: Described): View & { kind: ConfigKind } {
+/**
+ * A config entry as a view; a field it leaves out takes its create default,
+ * or, for a compose file, what {@link composeEntryFile} keeps of `found`'s.
+ */
+function entryView(
+  entry: Described,
+  found?: SavedService,
+): View & { kind: ConfigKind } {
   const defaults = CREATE_DEFAULTS[entry.kind];
   const shared = {
     description: emptyToNull(entry.description),
@@ -2714,9 +2755,12 @@ function entryView(entry: Described): View & { kind: ConfigKind } {
       return {
         ...defaults,
         source: composeSourceValue(entry.source),
-        ...(entry.composePath === undefined
-          ? {}
-          : { file: composeFileValue(entry.composePath) }),
+        file: composeEntryFile(
+          entry,
+          found?.serviceType === 'compose' && 'settings' in found
+            ? found.settings.composePath
+            : null,
+        ),
         ...(entry.composeType === undefined ? {} : { type: entry.composeType }),
         kind: 'compose',
       };

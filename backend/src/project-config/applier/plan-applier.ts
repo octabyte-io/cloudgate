@@ -1548,14 +1548,19 @@ export class PlanApplier {
       written: { serviceType: ServiceType | null; serviceId: string | null };
     },
   ): Promise<{ domain: null; deploy: PlanStepDeploy }> {
-    const settings = composeSettings(entry, {
-      connection: onConfigBranch(
-        connections.get(step.configName) ?? null,
-        entry.source,
-        input.configRepository,
-      ),
-      isNewRepository: true,
-    });
+    const settings = composeSettings(
+      entry,
+      {
+        connection: onConfigBranch(
+          connections.get(step.configName) ?? null,
+          entry.source,
+          input.configRepository,
+        ),
+        isNewRepository: true,
+      },
+      // A stack the plan makes has saved no file: an entry with none names none.
+      null,
+    );
     const created = await this.compose.create(
       ctx,
       {
@@ -1603,14 +1608,19 @@ export class PlanApplier {
       throw new Error(`${step.configName} was not read from its cloud`);
     }
     const { stackVm } = step;
-    const settings = composeSettings(entry, {
-      connection: onConfigBranch(
-        connections.get(step.configName) ?? null,
-        entry.source,
-        input.configRepository,
-      ),
-      isNewRepository: true,
-    });
+    const settings = composeSettings(
+      entry,
+      {
+        connection: onConfigBranch(
+          connections.get(step.configName) ?? null,
+          entry.source,
+          input.configRepository,
+        ),
+        isNewRepository: true,
+      },
+      // A stack the plan makes has saved no file: an entry with none names none.
+      null,
+    );
     const created = await this.compose.create(
       ctx,
       {
@@ -1756,6 +1766,7 @@ export class PlanApplier {
             ),
           }
         : null,
+      savedComposePath(savedOf(input.saved, id)),
     );
     await this.compose.update(ctx, id, settings);
     written.serviceType = 'compose';
@@ -1805,6 +1816,7 @@ export class PlanApplier {
                 ),
               }
             : null,
+          savedComposePath(savedOf(input.saved, id)),
         ),
       );
     }
@@ -3533,6 +3545,16 @@ export function emptyResult(
 
 function savedOf(saved: readonly SavedService[], serviceId: string) {
   return saved.find((found) => found.serviceId === serviceId);
+}
+
+/**
+ * A saved stack's stored compose file, which an entry with no `file` keeps
+ * when it is `./docker-compose.yml` (`composeEntryFile`, ADR-0091).
+ */
+function savedComposePath(found: SavedService | undefined): string | null {
+  return found?.serviceType === 'compose' && 'settings' in found
+    ? found.settings.composePath
+    : null;
 }
 
 /**

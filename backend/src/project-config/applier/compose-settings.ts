@@ -1,6 +1,6 @@
 import type { UpdateComposeDto } from '../../compose/dto/compose.dto';
 import type { ResolvedConnection } from '../git-connections';
-import { composeFileValue } from '../planner/plan-environment';
+import { composeEntryFile } from '../planner/plan-environment';
 import type { ComposeEntry } from '../project-config.types';
 import { repositorySettings } from './service-settings';
 
@@ -17,6 +17,9 @@ import { repositorySettings } from './service-settings';
  *
  * `source` is `null` when the plan does not change it, so a stack whose
  * file moved within its repository keeps its connection and branch.
+ * `savedComposePath` is the stack's stored path, `null` for a stack the
+ * plan makes: an entry with no `file` keeps a saved `./docker-compose.yml`
+ * and otherwise names none (`composeEntryFile`, ADR-0091).
  */
 export function composeSettings(
   entry: ComposeEntry,
@@ -24,14 +27,13 @@ export function composeSettings(
     readonly connection: ResolvedConnection | null;
     readonly isNewRepository: boolean;
   } | null,
+  savedComposePath: string | null,
 ): UpdateComposeDto {
+  const file = composeEntryFile(entry, savedComposePath);
   return {
-    // Stored as a console create stores one, from the code directory; an
-    // entry with no `file` names none, which each deploy finds (ADR-0091).
-    composePath:
-      entry.composePath === undefined
-        ? null
-        : `./${composeFileValue(entry.composePath)}`,
+    // Stored as a console create stores one, from the code directory; no
+    // file named is `null`, which each deploy finds (ADR-0091).
+    composePath: file === null ? null : `./${file}`,
     composeType: entry.composeType ?? 'docker-compose',
     ...(source === null
       ? {}

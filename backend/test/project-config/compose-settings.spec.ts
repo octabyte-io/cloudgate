@@ -50,15 +50,26 @@ function stack(owner: string, repository: string): SavedService {
  */
 describe('composeSettings', () => {
   it('writes no file for an entry that names none, which each deploy finds (ADR-0091), and the type at its default', () => {
-    expect(composeSettings(entry(), null)).toEqual({
+    expect(composeSettings(entry(), null, null)).toEqual({
       composePath: null,
+      composeType: 'docker-compose',
+    });
+    expect(composeSettings(entry(), null, './deploy/compose.yml')).toEqual({
+      composePath: null,
+      composeType: 'docker-compose',
+    });
+  });
+
+  it('keeps a saved ./docker-compose.yml for an entry that names no file (ADR-0091)', () => {
+    expect(composeSettings(entry(), null, './docker-compose.yml')).toEqual({
+      composePath: './docker-compose.yml',
       composeType: 'docker-compose',
     });
   });
 
   it('writes a named file from the code directory, as named', () => {
     expect(
-      composeSettings(entry({ composePath: 'docker-compose.yml' }), null),
+      composeSettings(entry({ composePath: 'docker-compose.yml' }), null, null),
     ).toEqual({
       composePath: './docker-compose.yml',
       composeType: 'docker-compose',
@@ -67,13 +78,18 @@ describe('composeSettings', () => {
       composeSettings(
         entry({ composePath: 'deploy/compose.yml', composeType: 'stack' }),
         null,
+        './docker-compose.yml',
       ),
     ).toEqual({ composePath: './deploy/compose.yml', composeType: 'stack' });
   });
 
   it('writes a new repository with its connection and default branch', () => {
     expect(
-      composeSettings(entry(), { connection: github, isNewRepository: true }),
+      composeSettings(
+        entry(),
+        { connection: github, isNewRepository: true },
+        null,
+      ),
     ).toEqual({
       composePath: null,
       composeType: 'docker-compose',
@@ -93,14 +109,14 @@ describe('composeSettings', () => {
       },
     });
     expect(
-      composeSettings(git, { connection: null, isNewRepository: true }),
+      composeSettings(git, { connection: null, isNewRepository: true }, null),
     ).toMatchObject({
       sourceType: 'git',
       customGitUrl: 'https://git.example.com/a.git',
       customGitBranch: 'main',
     });
     expect(
-      composeSettings(git, { connection: null, isNewRepository: false }),
+      composeSettings(git, { connection: null, isNewRepository: false }, null),
     ).not.toHaveProperty('customGitBranch');
   });
 });

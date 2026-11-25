@@ -243,11 +243,11 @@ describe('planEnvironment', () => {
     });
 
     it('changes nothing for a stack as the entry names it, a stored ./ path included', () => {
-      expect(
-        planned(`${DESCRIBED}    file: docker-compose.yml\n`, [
-          stack('analytics'),
-        ]),
-      ).toEqual({ ok: true, steps: [], notes: [] });
+      expect(planned(DESCRIBED, [stack('analytics')])).toEqual({
+        ok: true,
+        steps: [],
+        notes: [],
+      });
     });
 
     it('creates a stack that names no file from an entry with no file (ADR-0091)', () => {
@@ -271,7 +271,31 @@ describe('planEnvironment', () => {
       ).toEqual({ ok: true, steps: [], notes: [] });
     });
 
-    it('clears a saved file when the entry names none, and names one a cleared stack takes', () => {
+    it('keeps a saved docker-compose.yml when the entry names no file, whatever else changes (ADR-0091)', () => {
+      const { steps } = planned(
+        analytics('kind: compose', 'source:', '  github: acme/other'),
+        [stack('analytics')],
+      );
+      expect(steps).toEqual([
+        {
+          action: 'change',
+          configName: 'analytics',
+          kind: 'compose',
+          serviceType: 'compose',
+          serviceId: 'compose-analytics',
+          name: 'analytics',
+          fields: [
+            {
+              field: 'source',
+              from: { github: 'acme/analytics' },
+              to: { github: 'acme/other' },
+            },
+          ],
+        },
+      ]);
+    });
+
+    it('clears any other saved file when the entry names none, and names one a cleared stack takes', () => {
       const change = (from: string | null, to: string | null) => [
         {
           action: 'change',
@@ -283,9 +307,11 @@ describe('planEnvironment', () => {
           fields: [{ field: 'file', from, to }],
         },
       ];
-      expect(planned(DESCRIBED, [stack('analytics')]).steps).toEqual(
-        change('docker-compose.yml', null),
-      );
+      expect(
+        planned(DESCRIBED, [
+          stack('analytics', { composePath: './deploy/compose.yml' }),
+        ]).steps,
+      ).toEqual(change('deploy/compose.yml', null));
       expect(
         planned(`${DESCRIBED}    file: compose.yaml\n`, [
           stack('analytics', { composePath: null }),
@@ -339,7 +365,6 @@ describe('planEnvironment', () => {
               gitlabOwner: 'acme',
               gitlabRepository: 'a',
               gitlabPathNamespace: 'acme/platform/a',
-              composePath: null,
             }),
           ],
         ).steps,
