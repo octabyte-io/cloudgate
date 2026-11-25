@@ -1,10 +1,19 @@
 import { cleanup, render } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ApplicationStatus } from "@/lib/api/endpoints/applications";
 import type { Database } from "@/lib/api/endpoints/databases";
 
 import { DatabaseFactsCard } from "./database-facts-card";
+
+const mode = vi.hoisted(() => ({
+  data: "self-hosted" as "hosted" | "self-hosted",
+}));
+vi.mock("@/lib/api/use-instance-mode", () => ({ useInstanceMode: () => mode }));
+
+beforeEach(() => {
+  mode.data = "self-hosted";
+});
 
 afterEach(cleanup);
 
@@ -144,5 +153,48 @@ describe("DatabaseFactsCard", () => {
     );
     expect(container.textContent).toContain("On Google CloudStopped");
     expect(container.textContent).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+  });
+});
+
+/** Whether the card shows the Same-machine warning (spec #146). */
+function warns(database: Database): boolean {
+  const { container } = render(
+    <DatabaseFactsCard database={database} kind="postgres" />,
+  );
+  return /Cloudgate itself runs on this machine/.test(
+    container.textContent ?? "",
+  );
+}
+
+/**
+ * The Same-machine warning (#148): a database already on This Cloudgate
+ * host says so on its facts card, so a setup from before the warning
+ * sees it too.
+ */
+describe("DatabaseFactsCard's Same-machine warning", () => {
+  it("warns for a database on This Cloudgate host", () => {
+    expect(warns(row("done"))).toBe(true);
+  });
+
+  it("does not warn for a database on a Server", () => {
+    expect(
+      warns({
+        ...row("done"),
+        serverId: "srv-1",
+        server: { serverId: "srv-1", name: "worker-1" },
+      } as unknown as Database),
+    ).toBe(false);
+  });
+
+  it("does not warn for a database in a Cloud account", () => {
+    expect(
+      warns({ ...row("done"), cloudAccountId: "cloud-1" } as Database),
+    ).toBe(false);
+  });
+
+  it("never warns on the Hosted instance", () => {
+    mode.data = "hosted";
+
+    expect(warns(row("done"))).toBe(false);
   });
 });

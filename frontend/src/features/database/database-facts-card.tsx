@@ -4,6 +4,7 @@ import { Card } from "@/components/console/card";
 import { Chip } from "@/components/console/chip";
 import { Dash } from "@/components/console/dash";
 import { KVList, KVRow } from "@/components/console/kv-list";
+import { SameMachineNote } from "@/components/console/same-machine";
 import { StatusPill } from "@/components/console/status-pill";
 import type { Database, DatabaseKind } from "@/lib/api/endpoints/databases";
 import { timeExact } from "@/lib/format/time";
@@ -186,6 +187,12 @@ export function DatabaseFactsCard({
             value={timeExact(database.createdAt) ?? <Dash word="Unknown" />}
           />
         </KVList>
+        {/* No Server and no Cloud account: it runs on This Cloudgate
+            host, so the Same-machine warning (#148) stands here for as
+            long as it does. */}
+        {database.server || database.cloudAccountId ? null : (
+          <SameMachineNote className="mt-3" />
+        )}
       </Card.Body>
     </Card>
   );
