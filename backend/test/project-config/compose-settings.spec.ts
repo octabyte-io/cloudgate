@@ -49,8 +49,17 @@ function stack(owner: string, repository: string): SavedService {
  * connection and branch only when the repository is new to the stack.
  */
 describe('composeSettings', () => {
-  it('writes the file from the code directory and the type, at their defaults when left out', () => {
+  it('writes no file for an entry that names none, which each deploy finds (ADR-0091), and the type at its default', () => {
     expect(composeSettings(entry(), null)).toEqual({
+      composePath: null,
+      composeType: 'docker-compose',
+    });
+  });
+
+  it('writes a named file from the code directory, as named', () => {
+    expect(
+      composeSettings(entry({ composePath: 'docker-compose.yml' }), null),
+    ).toEqual({
       composePath: './docker-compose.yml',
       composeType: 'docker-compose',
     });
@@ -66,7 +75,7 @@ describe('composeSettings', () => {
     expect(
       composeSettings(entry(), { connection: github, isNewRepository: true }),
     ).toEqual({
-      composePath: './docker-compose.yml',
+      composePath: null,
       composeType: 'docker-compose',
       sourceType: 'github',
       githubId: 'gh-1',

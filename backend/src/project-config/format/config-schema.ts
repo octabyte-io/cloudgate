@@ -434,9 +434,6 @@ const bucketEntry = z.strictObject({
 /** What a `compose` entry's `type` is when it names none. */
 export const DEFAULT_COMPOSE_TYPE = 'docker-compose';
 
-/** What a `compose` entry's `file` is when it names none. */
-export const DEFAULT_COMPOSE_FILE = 'docker-compose.yml';
-
 /**
  * A `compose` entry's repository: one provider key or a git URL, and no
  * `path`, since `file` is the path, from the repository's root.
@@ -450,7 +447,8 @@ const composeSource = z.union([
 
 /**
  * The compose file a `compose` entry names, from the repository's root,
- * never one that leaves it; `/code` stands in for the stack's checked-out
+ * never one that leaves it; left out, it names none and each deploy finds
+ * one (ADR-0091); `/code` stands in for the stack's checked-out
  * code directory, as it does in `compose.dto.ts`.
  */
 const composeFile = insideDirectorySchema(

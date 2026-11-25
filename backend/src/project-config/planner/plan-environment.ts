@@ -9,10 +9,7 @@ import {
 } from '../../cron-services/cron-fields';
 import { posix } from 'node:path';
 
-import {
-  DEFAULT_COMPOSE_FILE,
-  DEFAULT_COMPOSE_TYPE,
-} from '../format/config-schema';
+import { DEFAULT_COMPOSE_TYPE } from '../format/config-schema';
 import { SIZES } from '../format/config-size';
 import { cloudRdsChange, cloudRdsCreate, savedSize } from './cloud-postgres';
 import {
@@ -1324,9 +1321,13 @@ export function composeFromRepository(
 
 /**
  * A compose file's path as the config writes it: from the repository's
- * root, with no leading `./`, which a stored `composePath` has.
+ * root, with no leading `./`, which a stored `composePath` has. `null`
+ * names no file (ADR-0091).
  */
-export function composeFileValue(composePath: string): string {
+export function composeFileValue(composePath: string): string;
+export function composeFileValue(composePath: string | null): string | null;
+export function composeFileValue(composePath: string | null): string | null {
+  if (composePath === null) return null;
   return posix.normalize(composePath).replace(/^(\.\/)+/, '');
 }
 
@@ -2662,7 +2663,8 @@ const CREATE_DEFAULTS: Record<ConfigKind, View> = {
   // `source` is required, so a create always shows it.
   compose: {
     source: null,
-    file: DEFAULT_COMPOSE_FILE,
+    // An entry with no `file` names none: each deploy finds it (ADR-0091).
+    file: null,
     type: DEFAULT_COMPOSE_TYPE,
   },
 };

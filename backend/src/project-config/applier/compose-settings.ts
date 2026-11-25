@@ -1,5 +1,4 @@
 import type { UpdateComposeDto } from '../../compose/dto/compose.dto';
-import { DEFAULT_COMPOSE_FILE } from '../format/config-schema';
 import type { ResolvedConnection } from '../git-connections';
 import { composeFileValue } from '../planner/plan-environment';
 import type { ComposeEntry } from '../project-config.types';
@@ -27,8 +26,12 @@ export function composeSettings(
   } | null,
 ): UpdateComposeDto {
   return {
-    // Stored as a console create stores one, from the code directory.
-    composePath: `./${composeFileValue(entry.composePath ?? DEFAULT_COMPOSE_FILE)}`,
+    // Stored as a console create stores one, from the code directory; an
+    // entry with no `file` names none, which each deploy finds (ADR-0091).
+    composePath:
+      entry.composePath === undefined
+        ? null
+        : `./${composeFileValue(entry.composePath)}`,
     composeType: entry.composeType ?? 'docker-compose',
     ...(source === null
       ? {}

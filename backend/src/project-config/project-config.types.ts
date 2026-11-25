@@ -252,7 +252,10 @@ export interface ComposeEntry {
   readonly kind: 'compose';
   readonly managed: false;
   readonly source: ComposeSource;
-  /** From the repository's root; `docker-compose.yml` when left out. */
+  /**
+   * From the repository's root. Left out, it names no file: each deploy
+   * finds one in its clone (ADR-0091).
+   */
   readonly composePath?: string;
   /** `docker-compose` when left out. */
   readonly composeType?: 'docker-compose' | 'stack';

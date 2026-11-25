@@ -69,7 +69,8 @@ function onStackVm(
       bitbucketOwner: null,
       bitbucketRepository: null,
       customGitUrl: null,
-      composePath: './docker-compose.yml',
+      // Its entry names no file, so neither does it (ADR-0091).
+      composePath: null,
       composeType: 'docker-compose',
     },
     variables: { env: [] },

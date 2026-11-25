@@ -243,11 +243,54 @@ describe('planEnvironment', () => {
     });
 
     it('changes nothing for a stack as the entry names it, a stored ./ path included', () => {
-      expect(planned(DESCRIBED, [stack('analytics')])).toEqual({
-        ok: true,
-        steps: [],
-        notes: [],
-      });
+      expect(
+        planned(`${DESCRIBED}    file: docker-compose.yml\n`, [
+          stack('analytics'),
+        ]),
+      ).toEqual({ ok: true, steps: [], notes: [] });
+    });
+
+    it('creates a stack that names no file from an entry with no file (ADR-0091)', () => {
+      const { steps } = planned(DESCRIBED);
+      expect(steps).toEqual([
+        {
+          action: 'create',
+          configName: 'analytics',
+          kind: 'compose',
+          placement: SERVER,
+          fields: [
+            { field: 'source', from: null, to: { github: 'acme/analytics' } },
+          ],
+        },
+      ]);
+    });
+
+    it('changes nothing for a stack that names no file, from an entry with no file', () => {
+      expect(
+        planned(DESCRIBED, [stack('analytics', { composePath: null })]),
+      ).toEqual({ ok: true, steps: [], notes: [] });
+    });
+
+    it('clears a saved file when the entry names none, and names one a cleared stack takes', () => {
+      const change = (from: string | null, to: string | null) => [
+        {
+          action: 'change',
+          configName: 'analytics',
+          kind: 'compose',
+          serviceType: 'compose',
+          serviceId: 'compose-analytics',
+          name: 'analytics',
+          fields: [{ field: 'file', from, to }],
+        },
+      ];
+      expect(planned(DESCRIBED, [stack('analytics')]).steps).toEqual(
+        change('docker-compose.yml', null),
+      );
+      expect(
+        planned(`${DESCRIBED}    file: compose.yaml\n`, [
+          stack('analytics', { composePath: null }),
+        ]).steps,
+      ).toEqual(change(null, 'compose.yaml'));
     });
 
     it('changes the source and the file, never comparing what the file holds', () => {
@@ -296,6 +339,7 @@ describe('planEnvironment', () => {
               gitlabOwner: 'acme',
               gitlabRepository: 'a',
               gitlabPathNamespace: 'acme/platform/a',
+              composePath: null,
             }),
           ],
         ).steps,
@@ -493,6 +537,49 @@ describe('generateProjectConfig', () => {
         '    type: stack',
       ].join('\n'),
     );
+    expect(
+      planEnvironment({
+        config: parsed(text),
+        saved,
+        deployTarget: SERVER,
+        context: { previous: parsed(text) },
+      }),
+    ).toEqual({ ok: true, steps: [], notes: [] });
+  });
+
+  it('writes no file for a described stack that names none, which then plans nothing', () => {
+    const saved = [stack('analytics', { composePath: null })];
+    const text = generateProjectConfig({
+      environments: environments(...saved),
+      schemaUrl: null,
+      described: new Set(['analytics']),
+    });
+    expect(parsed(text).services.analytics).toEqual({
+      kind: 'compose',
+      managed: false,
+      source: { sourceType: 'github', repository: 'acme/analytics' },
+      env: [],
+    });
+    expect(
+      planEnvironment({
+        config: parsed(text),
+        saved,
+        deployTarget: SERVER,
+        context: { previous: parsed(text) },
+      }),
+    ).toEqual({ ok: true, steps: [], notes: [] });
+  });
+
+  it('writes the saved docker-compose.yml of a described stack, which then plans nothing', () => {
+    const saved = [stack('analytics')];
+    const text = generateProjectConfig({
+      environments: environments(...saved),
+      schemaUrl: null,
+      described: new Set(['analytics']),
+    });
+    expect(parsed(text).services.analytics).toMatchObject({
+      composePath: 'docker-compose.yml',
+    });
     expect(
       planEnvironment({
         config: parsed(text),

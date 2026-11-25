@@ -156,8 +156,11 @@ export interface SavedComposeSettings {
   readonly bitbucketOwner: string | null;
   readonly bitbucketRepository: string | null;
   readonly customGitUrl: string | null;
-  /** As stored, `./docker-compose.yml` by default. */
-  readonly composePath: string;
+  /**
+   * As stored, from the code directory; `null` when it names no file,
+   * which each deploy finds in its clone (ADR-0091).
+   */
+  readonly composePath: string | null;
   readonly composeType: 'docker-compose' | 'stack';
 }
 
