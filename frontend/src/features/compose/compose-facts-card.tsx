@@ -4,6 +4,7 @@ import { Card } from "@/components/console/card";
 import { Chip } from "@/components/console/chip";
 import { Dash } from "@/components/console/dash";
 import { KVList, KVRow } from "@/components/console/kv-list";
+import { SameMachineNote } from "@/components/console/same-machine";
 import { StatusPill } from "@/components/console/status-pill";
 import {
   COMPOSE_TYPE_LABEL,
@@ -216,6 +217,12 @@ export function ComposeFactsCard({
             value={timeExact(compose.createdAt) ?? <Dash word="Unknown" />}
           />
         </KVList>
+        {/* No Server and no Stack VM: it runs on This Cloudgate host, so
+            the Same-machine warning (#148) stands here for as long as it
+            does. */}
+        {compose.server || runsOnStackVm(compose) ? null : (
+          <SameMachineNote className="mt-3" />
+        )}
       </Card.Body>
     </Card>
   );
