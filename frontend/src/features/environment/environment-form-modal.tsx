@@ -18,7 +18,10 @@ import { useCloudAccounts } from "@/lib/api/use-cloud-accounts";
 import { useInstanceMode } from "@/lib/api/use-instance-mode";
 import { useServers } from "@/lib/api/use-servers";
 import { usePermission } from "@/lib/auth/use-permission";
-import { firstReadyDeployServer } from "@/lib/forms/create-server-picker";
+import {
+  deployTargetOnSameMachine,
+  firstReadyDeployServer,
+} from "@/lib/forms/create-server-picker";
 
 import {
   CLOUDS,
@@ -27,7 +30,6 @@ import {
   deployServers,
   deployTargetOptions,
   fromPickerValue,
-  onSameMachine,
   regionOptions,
 } from "./deploy-target";
 import { useCreateEnvironment, useUpdateEnvironment } from "./use-environments";
@@ -180,7 +182,7 @@ export function EnvironmentFormModal({
     !editing &&
     selfHosted &&
     !servers.isPending &&
-    (askTarget ? onSameMachine(target, servers.data) : true);
+    (askTarget ? deployTargetOnSameMachine(target, servers.data) : true);
   const onCloud = cloudAccountOf(target) !== null;
   const cloud = cloudOf(target, cloudAccounts.data, region);
 

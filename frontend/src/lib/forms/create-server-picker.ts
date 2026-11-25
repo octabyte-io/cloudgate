@@ -145,6 +145,28 @@ export function useCreateServerPicker(deployTarget: DeployTarget | undefined) {
 }
 
 /**
+ * The platform host as a Deploy target `Picker` value
+ * (`features/environment/deploy-target.ts`). A value of its own rather than
+ * the Picker's `""`, because on a new Environment `""` already means "not
+ * chosen yet" — and `CONTEXT.md` is plain that the platform host is a choice
+ * made, never an unset one. A Server id is a nanoid, which never spells this.
+ */
+export const PLATFORM_HOST_VALUE = "platform-host";
+
+/**
+ * Whether a Deploy target Picker value is Cloudgate's own machine, where the
+ * Same-machine warning shows: This Cloudgate host, or a Server whose address
+ * is the box (`sameMachine`, #149). The Deploy target's counterpart of a
+ * create picker's own `onSameMachine`, whose values spell the host as `""`.
+ */
+export function deployTargetOnSameMachine(
+  value: string,
+  servers: readonly Server[] | undefined,
+): boolean {
+  return value === PLATFORM_HOST_VALUE || isSameMachineServer(servers, value);
+}
+
+/**
  * Whether `serverId` names a Server whose address is Cloudgate's own machine
  * (`sameMachine`, #149), so choosing it gets the Same-machine warning as
  * this Cloudgate host does. Shared with the Deploy target pickers.

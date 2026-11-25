@@ -15,13 +15,13 @@ import { roleRefusal, usePermission } from "@/lib/auth/use-permission";
 
 import { useCloudAccounts } from "@/lib/api/use-cloud-accounts";
 import { useInstanceMode } from "@/lib/api/use-instance-mode";
+import { deployTargetOnSameMachine } from "@/lib/forms/create-server-picker";
 import {
   CLOUDS,
   cloudAccountOf,
   cloudOf,
   deployTargetOptions,
   fromPickerValue,
-  onSameMachine,
   regionOptions,
   toPickerValue,
 } from "./deploy-target";
@@ -192,7 +192,7 @@ export function EnvironmentDeployTargetCard({
                 }}
               />
             </Field>
-            {!hosted && onSameMachine(target, servers.data) ? (
+            {!hosted && deployTargetOnSameMachine(target, servers.data) ? (
               <SameMachineNote />
             ) : null}
             {onCloud ? (

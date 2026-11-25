@@ -19,14 +19,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Server } from "@/lib/api/endpoints/servers";
 import type { SetupForm } from "@/lib/api/endpoints/templates";
-import { isSameMachineServer } from "@/lib/forms/create-server-picker";
+import {
+  deployTargetOnSameMachine,
+  isSameMachineServer,
+} from "@/lib/forms/create-server-picker";
 import { GET_STARTED_PATH } from "@/lib/auth/routes";
 import { cn } from "@/lib/utils";
 
 import {
   CLOUDS,
   PLATFORM_HOST_VALUE,
-  onSameMachine,
 } from "../environment/deploy-target";
 import type { NewProjectTarget } from "./new-project-targets";
 import { AskedField, DomainHostFields } from "./setup-fields";
@@ -142,7 +144,7 @@ export function SetupFormView({
     (env) => env.environmentId === environmentId,
   )?.machine;
   const sameMachine = newProject
-    ? onSameMachine(target, servers)
+    ? deployTargetOnSameMachine(target, servers)
     : machine?.serverId === null ||
       isSameMachineServer(servers, machine?.serverId);
 

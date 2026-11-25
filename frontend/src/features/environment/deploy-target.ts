@@ -4,29 +4,14 @@ import type { Cloud, CloudAccount } from "@/lib/api/endpoints/cloud-accounts";
 import type { DeployTarget } from "@/lib/api/endpoints/environments";
 import { notReadyYet } from "@/lib/api/endpoints/servers";
 import type { Server } from "@/lib/api/endpoints/servers";
-import { isSameMachineServer } from "@/lib/forms/create-server-picker";
+import { PLATFORM_HOST_VALUE } from "@/lib/forms/create-server-picker";
 
 /**
- * The Deploy target as a `Picker` value, and back.
- *
- * The platform host is a value of its own rather than the Picker's `""`,
- * because on a new Environment `""` already means "not chosen yet" — and
- * `CONTEXT.md` is plain that the platform host is a choice made, never an
- * unset one. A Server id is a nanoid, which never spells this.
+ * The Deploy target as a `Picker` value, and back. The platform host's value,
+ * `PLATFORM_HOST_VALUE`, lives in `lib/forms` beside
+ * `deployTargetOnSameMachine`, which Template setup reads too (§1.4).
  */
-export const PLATFORM_HOST_VALUE = "platform-host";
-
-/**
- * Whether a Deploy target Picker value is Cloudgate's own machine, where the
- * Same-machine warning shows: This Cloudgate host, or a Server whose address
- * is the box (`sameMachine`, #149).
- */
-export function onSameMachine(
-  value: string,
-  servers: readonly Server[] | undefined,
-): boolean {
-  return value === PLATFORM_HOST_VALUE || isSameMachineServer(servers, value);
-}
+export { PLATFORM_HOST_VALUE };
 
 /**
  * A Cloud account's Picker value: its id behind a prefix, so it never reads as
