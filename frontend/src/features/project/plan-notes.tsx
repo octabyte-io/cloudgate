@@ -39,6 +39,7 @@ export function NotesSection({ plan }: { plan: Plan }) {
       {sameMachine.map((note) => (
         <div
           key={`same-machine-${note.configName}`}
+          role="group"
           aria-label={`${note.configName} runs on Cloudgate's own machine`}
           className="grid gap-1.5"
         >

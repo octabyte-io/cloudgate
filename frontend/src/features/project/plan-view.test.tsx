@@ -1112,9 +1112,9 @@ describe("a plan's creates on Cloudgate's own machine", () => {
 
     const notes = screen.getByRole("region", { name: "Notes" });
     for (const name of ["blog-web", "cache"]) {
-      const one = within(notes).getByLabelText(
-        `${name} runs on Cloudgate's own machine`,
-      );
+      const one = within(notes).getByRole("group", {
+        name: `${name} runs on Cloudgate's own machine`,
+      });
       expect(one.textContent).toContain(name);
       expect(within(one).getByRole("note").textContent).toMatch(
         /^Cloudgate itself runs on this machine\./,
