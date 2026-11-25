@@ -33,7 +33,7 @@ import { example } from "@/components/console/form-spec";
 
 /** The Server picker's hint, wherever the host is or is not a choice. */
 const HOST_HINT =
-  "Which host it runs on, with its GPUs and how many are free right now.";
+  "Which Server it runs on, with its GPUs and how many are free right now.";
 
 /**
  * Add an **AI model** to an Environment: an Application with the model

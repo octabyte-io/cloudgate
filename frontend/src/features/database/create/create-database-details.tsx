@@ -164,7 +164,7 @@ export function Details({
               manual
               optional={picker.optional}
               hint={picker.hint(
-                "Which host it runs on. A database on a different Server than the things using it is a network hop on every query.",
+                "Which Server it runs on. A database on a different Server than the things using it is a network hop on every query.",
                 "Which of your Servers it runs on. A database on a different Server than the things using it is a network hop on every query.",
               )}
             >

@@ -243,7 +243,7 @@ function Details({
                 manual
                 optional={picker.optional}
                 hint={picker.hint(
-                  "Which host it runs on: best beside the Environment's other services.",
+                  "Which Server it runs on: best beside the Environment's other services.",
                   "Which of your Servers it runs on.",
                 )}
               >
