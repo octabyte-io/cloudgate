@@ -82,9 +82,40 @@ describe('findDefaultPath', () => {
     });
   });
 
-  it('refuses a Config branch holding both names, naming the repository and branch', async () => {
+  it('takes cloudgate.yaml from a Config branch holding both names, reporting cloudgate.yml as found and not read there', async () => {
     reader.commit('acme/shop', TEXT);
     reader.commit('acme/shop', TEXT, { branch: 'staging' });
+    const stagingSha = reader.commit(
+      'acme/shop',
+      'version: 1\nservices:\n  stray: {}\n',
+      {
+        path: 'cloudgate.yml',
+        branch: 'staging',
+      },
+    );
+
+    const found = await findDefaultPath([production, staging], at, read);
+
+    expect(found.path).toBe('cloudgate.yaml');
+    expect(found.copies.get('env-staging')).toMatchObject({
+      commitSha: stagingSha,
+      branch: 'staging',
+      text: TEXT,
+    });
+    expect(found.unread).toEqual(new Map([['env-staging', 'cloudgate.yml']]));
+  });
+
+  it('reports nothing unread when no Config branch holds both names', async () => {
+    reader.commit('acme/shop', TEXT);
+
+    const found = await findDefaultPath([production], at, read);
+
+    expect(found.unread.size).toBe(0);
+  });
+
+  it('refuses a branch holding both names beside a branch holding only cloudgate.yml', async () => {
+    reader.commit('acme/shop', TEXT);
+    reader.commit('acme/shop', TEXT, { path: 'cloudgate.yml' });
     reader.commit('acme/shop', TEXT, {
       path: 'cloudgate.yml',
       branch: 'staging',
@@ -94,11 +125,13 @@ describe('findDefaultPath', () => {
       findDefaultPath([production, staging], at, read),
     );
 
-    expect(refused).toEqual({
-      code: 'CONFIG_PATH_AMBIGUOUS',
-      message:
-        'Both cloudgate.yaml and cloudgate.yml are in acme/shop on branch staging; set Path to the one to use',
-    });
+    expect(refused.code).toBe('CONFIG_PATH_AMBIGUOUS');
+    expect(refused.message).toContain(
+      "the production Environment's branch main has both, so cloudgate.yaml is read",
+    );
+    expect(refused.message).toContain(
+      "the staging Environment's branch staging has only cloudgate.yml",
+    );
   });
 
   it('refuses Environments whose Config branches hold different names, naming each branch and file', async () => {

@@ -85,7 +85,7 @@ export class ConfigMoves {
     projectId: string,
     to: ConfigLocationTarget,
   ): Promise<MovePreview> {
-    const { target, moved } = await this.planMove(ctx, projectId, to);
+    const { target, moved, unread } = await this.planMove(ctx, projectId, to);
     return {
       to: target,
       reads: moved.map(({ env, stamp }) => ({
@@ -96,6 +96,7 @@ export class ConfigMoves {
         environmentId: env.environmentId,
         name: env.name,
         ...at,
+        unreadPath: unread.get(env.environmentId) ?? null,
         steps: planned.steps,
         notes: planned.notes,
       })),
@@ -217,7 +218,8 @@ export class ConfigMoves {
    *   each Environment's copy there, from its Config branch. The target's
    *   connection must be the caller's organization's (404 otherwise). With
    *   no path, the path is {@link findDefaultPath}'s, and the target
-   *   answers it.
+   *   answers it; `unread` names each Environment whose branch also holds
+   *   the other name (ADR-0089).
    * - Out of a repository: the one chosen copy (`fromEnvironmentId`'s Config
    *   branch, else the default branch), planned in every Environment.
    *
@@ -311,7 +313,7 @@ export class ConfigMoves {
           text: read.text,
         },
       };
-      return { target, moved, from };
+      return { target, moved, from, unread: new Map<string, string>() };
     }
 
     const [connection] = await this.db
@@ -389,6 +391,11 @@ export class ConfigMoves {
         stored: repositoryRead(read),
       });
     }
-    return { target, moved, from };
+    return {
+      target,
+      moved,
+      from,
+      unread: found?.unread ?? new Map<string, string>(),
+    };
   }
 }

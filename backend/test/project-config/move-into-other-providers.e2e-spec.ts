@@ -52,6 +52,7 @@ interface Preview {
     environmentId: string;
     branch: string | null;
     commitSha: string | null;
+    unreadPath: string | null;
   }>;
 }
 
@@ -495,7 +496,7 @@ services:
     });
   });
 
-  it('refuses a GitLab Config branch holding both names when no path is named, and stores nothing', async () => {
+  it('takes cloudgate.yaml from a GitLab Config branch holding both names when no path is named, naming cloudgate.yml as not read', async () => {
     const [gitlab] = PROVIDERS;
     const { gitProviderId } = await gitlab.connect(ctx, as, 'Team');
     const text = 'version: 1\nservices:\n  cache:\n    kind: redis\n';
@@ -508,16 +509,17 @@ services:
       repository: gitlab.repository,
     });
 
-    expect(previewed.status).toBe(409);
-    expect(previewed.body).toMatchObject({
-      code: 'CONFIG_PATH_AMBIGUOUS',
-      message: `Both cloudgate.yaml and cloudgate.yml are in ${gitlab.repository} on branch main; set Path to the one to use`,
+    expect(previewed.status).toBe(200);
+    const body = previewed.body as Preview;
+    expect(body.to).toMatchObject({
+      kind: 'repository',
+      providerType: 'gitlab',
+      path: 'cloudgate.yaml',
     });
-    const [location] = await ctx.db
-      .select()
-      .from(projectConfigLocation)
-      .where(eq(projectConfigLocation.projectId, projectId));
-    expect(location?.kind ?? 'cloudgate').toBe('cloudgate');
+    expect(body.environments.map(({ unreadPath }) => unreadPath)).toEqual([
+      'cloudgate.yml',
+      'cloudgate.yml',
+    ]);
   });
 
   it('does not take a custom git URL as a config location', async () => {

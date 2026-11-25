@@ -63,6 +63,7 @@ interface Preview {
     branch: string | null;
     commitSha: string | null;
     fileUrl: string | null;
+    unreadPath: string | null;
     steps: Array<Record<string, unknown>>;
     notes: Array<Record<string, unknown>>;
   }>;
@@ -626,7 +627,7 @@ describe('Moving a Project config into a repository (e2e)', () => {
       expect((await location()).path).toBe('cloudgate.yaml');
     });
 
-    it('refuses a Config branch holding both names, naming the repository and branch, and stores nothing', async () => {
+    it('takes cloudgate.yaml from a Config branch holding both names, previews cloudgate.yml as found and not read there, and stores cloudgate.yaml', async () => {
       ctx.configReader.commit('acme/shop', DATA);
       ctx.configReader.commit('acme/shop', DATA, { branch: 'staging' });
       ctx.configReader.commit('acme/shop', DATA, {
@@ -636,17 +637,27 @@ describe('Moving a Project config into a repository (e2e)', () => {
       await setConfigBranch(stagingId, 'staging');
 
       const previewed = await preview();
-      const confirmed = await confirm({ to: target(), reads: [] });
 
-      for (const refused of [previewed, confirmed]) {
-        expect(refused.status).toBe(409);
-        expect(refused.body).toMatchObject({
-          code: 'CONFIG_PATH_AMBIGUOUS',
-          message:
-            'Both cloudgate.yaml and cloudgate.yml are in acme/shop on branch staging; set Path to the one to use',
-        });
-      }
-      await nothingStored();
+      expect(previewed.status).toBe(200);
+      const body = previewed.body as Preview;
+      expect(body.to).toMatchObject({ path: 'cloudgate.yaml' });
+      expect(
+        body.environments.map(({ name, unreadPath }) => [name, unreadPath]),
+      ).toEqual(
+        expect.arrayContaining([
+          ['production', null],
+          ['staging', 'cloudgate.yml'],
+        ]),
+      );
+
+      const confirmed = await confirm({ to: target(), reads: body.reads });
+
+      expect(confirmed.status).toBe(200);
+      expect(await location()).toMatchObject({
+        kind: 'repository',
+        repository: 'acme/shop',
+        path: 'cloudgate.yaml',
+      });
     });
 
     it("refuses Environments whose Config branches hold different names, naming each Environment's branch and file, and stores nothing", async () => {
