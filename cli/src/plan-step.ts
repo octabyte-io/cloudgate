@@ -224,12 +224,11 @@ function printPlan(out: Output, environment: string, plan: PlanView): void {
   for (const note of plan.notes) {
     if (!note.message) continue;
     // The Same-machine warning (spec #146): one per create on Cloudgate's
-    // own machine, which the server never sends from the Hosted instance.
-    out.data(
-      note.kind === 'same-machine'
-        ? `⚠ ${note.message}\n`
-        : `  note: ${note.message}\n`,
-    );
+    // own machine, which the server never sends from the Hosted instance. A
+    // warning, so it goes to stderr with the others (`output.ts`), and stdout
+    // stays the plan alone.
+    if (note.kind === 'same-machine') out.note(`⚠ ${note.message}`);
+    else out.data(`  note: ${note.message}\n`);
   }
 }
 

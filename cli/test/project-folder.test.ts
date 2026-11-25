@@ -498,10 +498,11 @@ describe('config plan', () => {
       [
         'staging: 1 to create, 0 to change, 0 to destroy',
         '  + web (web) create',
-        `⚠ ${said}`,
         '',
       ].join('\n'),
     );
+    // A warning, so on stderr: stdout stays the plan alone.
+    expect(result.stderr).toContain(`⚠ ${said}\n`);
   });
 
   it('on no, says the plan is left open when the role cannot dismiss it, and exits 1 as a no does', async () => {

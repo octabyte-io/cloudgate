@@ -1566,9 +1566,10 @@ describe('cloudgate deploy in a Project folder', () => {
         });
 
         expect(result.code).toBe(0);
-        expect(occurrences(result.stdout, warning('blog-web'))).toBe(1);
-        expect(occurrences(result.stdout, warning('cache'))).toBe(1);
-        expect(result.stdout).not.toContain('note: blog-web will run');
+        // A warning, so on stderr: stdout stays the plan alone.
+        expect(occurrences(result.stderr, warning('blog-web'))).toBe(1);
+        expect(occurrences(result.stderr, warning('cache'))).toBe(1);
+        expect(result.stdout).not.toContain('will run on the machine');
       });
 
       it('prints nothing of it for a deploy of Services that already exist', async () => {
@@ -1576,6 +1577,7 @@ describe('cloudgate deploy in a Project folder', () => {
 
         expect(result.code).toBe(0);
         expect(result.stdout).not.toContain('will run on the machine');
+        expect(result.stderr).not.toContain('will run on the machine');
       });
     });
 
