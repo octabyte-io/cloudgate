@@ -42,7 +42,19 @@ export function MovePreviewList({
               ) : null
             }
           />
-          <Card.Body>
+          <Card.Body className="grid gap-3">
+            {environment.unreadPath && environment.branch ? (
+              // ADR-0089: the move reads cloudgate.yaml on a branch holding
+              // both names, so nobody should edit the copy it ignores.
+              <p
+                role="note"
+                className="rounded-md border border-warn-line bg-warn-tint px-2.5 py-1.5 text-meta text-warn"
+              >
+                Branch {environment.branch} also has{" "}
+                <code className="font-mono">{environment.unreadPath}</code>,
+                which is not read.
+              </p>
+            ) : null}
             <PlanView
               plan={previewPlan(environment)}
               serverNames={serverNames}

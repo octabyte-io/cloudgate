@@ -181,6 +181,11 @@ export interface MovePreview {
     branch: string | null;
     commitSha: string | null;
     fileUrl: string | null;
+    /**
+     * `cloudgate.yml` when a move with no path found it beside the
+     * `cloudgate.yaml` it reads on this branch (ADR-0089); else `null`.
+     */
+    unreadPath: string | null;
     steps: PlanStep[];
     notes: PlanNote[];
   }>;
