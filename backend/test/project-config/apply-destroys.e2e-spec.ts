@@ -551,6 +551,8 @@ describe('Applying a Plan: destroys (e2e)', () => {
       );
       expect(open.steps.map((step) => step.action)).toEqual(['create']);
       expect(open.notes).toEqual([
+        // `db` lands on the Self-hosted test instance's platform host.
+        expect.objectContaining({ kind: 'same-machine', configName: 'db' }),
         expect.objectContaining({
           kind: 'console-managed-dropped',
           configName: 'docs',

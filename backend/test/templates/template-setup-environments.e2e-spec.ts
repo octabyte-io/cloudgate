@@ -312,7 +312,15 @@ describe('Template setup across Environments (e2e)', () => {
         ['create', 'ghost-db', 'ghost'],
       ]),
     );
-    expect(second.plan.notes).toEqual([]);
+    // Both land on the Self-hosted test instance's platform host, so each
+    // carries the Same-machine warning (spec #146) and nothing else.
+    expect(second.plan.notes).toEqual([
+      expect.objectContaining({
+        kind: 'same-machine',
+        configName: 'ghost-app',
+      }),
+      expect.objectContaining({ kind: 'same-machine', configName: 'ghost-db' }),
+    ]);
     // Production is not planned again.
     expect(
       await ctx.db

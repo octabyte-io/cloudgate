@@ -272,6 +272,9 @@ describe('Server address refusal on the Hosted instance (e2e)', () => {
       const created = await createServer('lan-box.internal');
       expect(created.status).toBe(201);
       const serverId = (created.body as { serverId: string }).serverId;
+      // Saving resolves the name once, for the Same-machine warning (spec
+      // #146); dialing must not resolve it again.
+      resolve.mockClear();
 
       const connection = await connectionFor(serverId);
 

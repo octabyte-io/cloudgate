@@ -232,6 +232,9 @@ services:
           configName: 'shop',
           variable: 'DATABASE_URL',
         }),
+        // The test instance is Self-hosted and `cache` lands on its platform
+        // host: the Same-machine warning (spec #146).
+        expect.objectContaining({ kind: 'same-machine', configName: 'cache' }),
       ]);
 
       expect((await readPlan()).body).toEqual({ plan: body });
