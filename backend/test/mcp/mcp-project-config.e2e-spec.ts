@@ -388,6 +388,8 @@ describe('MCP Project config tools (e2e)', () => {
             fields: [{ field: 'port', from: 3000, to: 8080 }],
           },
         ],
+        // No `same-machine` note, though `cache` lands on This Cloudgate
+        // host: the Same-machine warning is not an Agent's (spec #146).
         notes: [
           {
             kind: 'variable-without-value',

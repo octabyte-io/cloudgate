@@ -444,6 +444,20 @@ function planRoots(
   ];
 }
 
+/**
+ * The plan as an Agent reads it: without its `same-machine` notes. The
+ * Same-machine warning is the console's and the CLI's, and spec #146 leaves
+ * MCP tools and Agents untouched, so a note that points a person to adding a
+ * Server or to the Hosted instance is not an Agent's to relay. Every other
+ * note goes through.
+ */
+function forAgent(plan: PlanView): PlanView {
+  return {
+    ...plan,
+    notes: plan.notes.filter((note) => note.kind !== 'same-machine'),
+  };
+}
+
 const planInput = z.object({
   environmentId: z
     .string()
@@ -461,8 +475,10 @@ export const getPlan = defineTool({
   permissions: { environment: ['read'] },
   twin: { controller: PlansController, handler: 'findOne' },
   target: { service: ProjectConfigService, method: 'findPlan' },
-  call: (service, ctx, args): Promise<{ plan: PlanView | null }> =>
-    service.findPlan(ctx, args.environmentId),
+  call: async (service, ctx, args): Promise<{ plan: PlanView | null }> => {
+    const found = await service.findPlan(ctx, args.environmentId);
+    return { ...found, plan: found.plan && forAgent(found.plan) };
+  },
   targetId: 'environmentId',
   audit: { resourceType: 'environment', action: 'read' },
   projection: row<{ plan: PlanView | null }>({
@@ -520,8 +536,8 @@ export const requestPlan = defineTool({
   permissions: { environment: ['read'] },
   twin: { controller: PlansController, handler: 'create' },
   target: { service: ProjectConfigService, method: 'requestPlan' },
-  call: (service, ctx, args): Promise<PlanView> =>
-    service.requestPlan(ctx, args.environmentId),
+  call: async (service, ctx, args): Promise<PlanView> =>
+    forAgent(await service.requestPlan(ctx, args.environmentId)),
   targetId: 'environmentId',
   audit: { resourceType: 'environment', action: 'create' },
   projection: PLAN,
