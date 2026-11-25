@@ -31,7 +31,9 @@ const clouds = vi.hoisted(() => ({ data: [] as unknown[] }));
 vi.mock("@/lib/api/use-cloud-accounts", () => ({
   useCloudAccounts: () => ({ data: clouds.data, isPending: false }),
 }));
-const mode = vi.hoisted(() => ({ data: "self-hosted" as "hosted" | "self-hosted" }));
+const mode = vi.hoisted(() => ({
+  data: "self-hosted" as "hosted" | "self-hosted" | undefined,
+}));
 vi.mock("@/lib/api/use-instance-mode", () => ({ useInstanceMode: () => mode }));
 vi.mock("@/lib/auth/use-permission", async (original) => ({
   ...(await original<typeof import("@/lib/auth/use-permission")>()),
@@ -250,6 +252,25 @@ describe("EnvironmentFormModal's Deploy target", () => {
         }),
       ),
     );
+  });
+
+  it("picks no Server, and warns of nothing, while the instance mode is loading", async () => {
+    mode.data = undefined;
+    servers.data = [worker];
+    open(null);
+
+    // Fails closed: the default is decided only once the mode is self-hosted.
+    expect(screen.getByRole("combobox").textContent).not.toContain("worker-1");
+    expect(warns()).toBe(false);
+    fireEvent.change(screen.getByLabelText(/Name/), { target: { value: "staging" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create Environment" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("Choose where this Environment's new Services will run."),
+      ).toBeTruthy(),
+    );
+    expect(create).not.toHaveBeenCalled();
   });
 
   it("warns once this Cloudgate host is picked", async () => {

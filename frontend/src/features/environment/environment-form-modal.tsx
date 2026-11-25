@@ -93,7 +93,11 @@ export function EnvironmentFormModal({
   const update = useUpdateEnvironment(environment?.environmentId ?? "", projectId);
   const editing = environment !== null;
   const servers = useServers();
-  const hosted = useInstanceMode().data === "hosted";
+  const mode = useInstanceMode().data;
+  const hosted = mode === "hosted";
+  // Fails closed, as `useCreateServerPicker` does: the default Server and
+  // the Same-machine warning wait until the mode has loaded as self-hosted.
+  const selfHosted = mode === "self-hosted";
   const canReadClouds = usePermission({ cloudAccount: ["read"] });
   const readsClouds = hosted && canReadClouds.allowed;
   const cloudAccounts = useCloudAccounts({
@@ -111,9 +115,9 @@ export function EnvironmentFormModal({
   // The Hosted instance with no Server and no Cloud account: an Environment
   // there would have nowhere to point, so the API refuses one.
   const nowhere = askTarget && hosted && !pending && options.length === 0;
-  const opensOn = hosted
-    ? ""
-    : (firstReadyDeployServer(servers.data)?.serverId ?? "");
+  const opensOn = selfHosted
+    ? (firstReadyDeployServer(servers.data)?.serverId ?? "")
+    : "";
 
   const form = useApiForm<Values>({
     schema,
@@ -174,7 +178,7 @@ export function EnvironmentFormModal({
   // of a deploy Server, or a Server that is the box (#149).
   const sameMachine =
     !editing &&
-    !hosted &&
+    selfHosted &&
     !servers.isPending &&
     (askTarget ? onSameMachine(target, servers.data) : true);
   const onCloud = cloudAccountOf(target) !== null;
