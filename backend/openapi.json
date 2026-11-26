@@ -6455,6 +6455,62 @@
         ]
       }
     },
+    "/volume-backups/{id}/moments": {
+      "get": {
+        "operationId": "VolumeBackupsController_listMoments",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "VolumeBackups"
+        ]
+      }
+    },
+    "/volume-backups/{id}/restore-moment": {
+      "post": {
+        "operationId": "VolumeBackupsController_restoreMoment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreMomentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "VolumeBackups"
+        ]
+      }
+    },
     "/registries": {
       "post": {
         "operationId": "RegistriesController_create",
@@ -22698,6 +22754,18 @@
           "volumeName",
           "backupFileName",
           "destinationId"
+        ]
+      },
+      "RestoreMomentDto": {
+        "type": "object",
+        "properties": {
+          "moment": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}-\\d{3}Z$"
+          }
+        },
+        "required": [
+          "moment"
         ]
       },
       "UpdateVolumeBackupDto": {

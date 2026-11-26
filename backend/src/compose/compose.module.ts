@@ -8,6 +8,7 @@ import { StackVmDeletesModule } from './stack-vm-deletes.module';
 import { ComposeController } from './compose.controller';
 import { ComposeService } from './compose.service';
 import { COMPOSE_SETTLE_CLOCK, systemSettleClock } from './compose.utils';
+import { STACK_LIFECYCLE } from '../volume-backups/stack-lifecycle.port';
 
 /**
  * Feature module copied from the Phase 07 projects template. DomainsModule
@@ -44,6 +45,8 @@ import { COMPOSE_SETTLE_CLOCK, systemSettleClock } from './compose.utils';
   providers: [
     ComposeService,
     { provide: COMPOSE_SETTLE_CLOCK, useValue: systemSettleClock },
+    // A Stack backup's moment restore (ADR-0092).
+    { provide: STACK_LIFECYCLE, useExisting: ComposeService },
   ],
   exports: [ComposeService],
 })

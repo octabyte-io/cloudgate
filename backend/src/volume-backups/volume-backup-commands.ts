@@ -484,6 +484,37 @@ export const buildVolumeBackupScript = ({
   `);
 };
 
+/**
+ * Each service of a swarm stack at the replica count it runs, into
+ * `$STACK_REPLICAS` as `name=count` words, read before anything is stopped;
+ * a count that does not read as a number stops nothing
+ * (`requireReplicaCount`'s reason, for every service at once). Shared by the
+ * Stack backup and the moment restore, which stop a swarm stack the same way.
+ */
+const readStackReplicas = (
+  appName: string,
+  action: 'Stack backup' | 'Moment restore',
+): string => `
+		STACK_SERVICES=$(docker service ls --filter ${quote([`label=com.docker.stack.namespace=${appName}`])} --format '{{.Name}}')
+		STACK_REPLICAS=""
+		for STACK_SERVICE in $STACK_SERVICES; do
+			STACK_COUNT=$(docker service inspect "$STACK_SERVICE" --format "{{.Spec.Mode.Replicated.Replicas}}")
+			case "$STACK_COUNT" in
+				''|*[!0-9]*)
+					echo "❌ ${action} aborted - a replica count could not be read, so nothing was stopped"
+					echo "   'docker service inspect' did not answer a replica count for $STACK_SERVICE: '$STACK_COUNT'"
+					exit 1
+					;;
+			esac
+			STACK_REPLICAS="$STACK_REPLICAS $STACK_SERVICE=$STACK_COUNT"
+		done`;
+
+/** Every service {@link readStackReplicas} read, scaled to 0. */
+const SCALE_STACK_TO_ZERO = `echo "Stopping the stack to 0 replicas"
+			for STACK_ENTRY in $STACK_REPLICAS; do
+				docker service update --replicas=0 "\${STACK_ENTRY%=*}"
+			done`;
+
 export interface StackBackupScriptOptions {
   /** The machine the stack runs on, which roots the volume locks. */
   serverId: string | null;
@@ -583,23 +614,7 @@ export const buildStackBackupScript = ({
   let preStop: string;
   let stop: string;
   if (composeType === 'stack') {
-    // Each service at the replica count it runs, read before anything is
-    // stopped; a count that does not read as a number stops nothing
-    // (`requireReplicaCount`'s reason, for every service at once).
-    preStop = `
-		STACK_SERVICES=$(docker service ls --filter ${quote([`label=com.docker.stack.namespace=${appName}`])} --format '{{.Name}}')
-		STACK_REPLICAS=""
-		for STACK_SERVICE in $STACK_SERVICES; do
-			STACK_COUNT=$(docker service inspect "$STACK_SERVICE" --format "{{.Spec.Mode.Replicated.Replicas}}")
-			case "$STACK_COUNT" in
-				''|*[!0-9]*)
-					echo "❌ Stack backup aborted - a replica count could not be read, so nothing was stopped"
-					echo "   'docker service inspect' did not answer a replica count for $STACK_SERVICE: '$STACK_COUNT'"
-					exit 1
-					;;
-			esac
-			STACK_REPLICAS="$STACK_REPLICAS $STACK_SERVICE=$STACK_COUNT"
-		done
+    preStop = `${readStackReplicas(appName, 'Stack backup')}
 		restore_stack() {
 			RESTORE_FAILED=0
 			for STACK_ENTRY in $STACK_REPLICAS; do
@@ -614,10 +629,7 @@ export const buildStackBackupScript = ({
 			echo "   The replica counts it was running before this backup:$STACK_REPLICAS"
 			exit 1
 		}`;
-    stop = `echo "Stopping the stack to 0 replicas"
-			for STACK_ENTRY in $STACK_REPLICAS; do
-				docker service update --replicas=0 "\${STACK_ENTRY%=*}"
-			done`;
+    stop = SCALE_STACK_TO_ZERO;
   } else {
     // The containers that are running are the ones this run stops, and the
     // only ones it starts again: a stack an operator had stopped stays
@@ -771,117 +783,23 @@ export interface VolumeRestoreScriptOptions {
   target: VolumeRestoreTarget;
 }
 
-/** Downloads the tarball from S3 and untars it into the (re-created) volume —
- * refusing to touch a volume any container still uses, with the offending
- * containers listed in the log.
- *
- * What each change did, in the order they landed. The first two restore a
- * symmetry the backup path already has, the third is the refusal learning to
- * name a control that exists, and the last three are all one theme: replacing a
- * volume is destructive, so nothing may be replaced until the replacement is in
- * hand:
- *
- * - The downloaded tarball is removed once it has been untarred, the way
- *   `buildVolumeBackupScript`'s upload ends `rm "…/${backupFileName}"`. It used
- *   to be left, so every restore permanently cost the volume's own size on the
- *   platform host — and on the *local* path even when the restore ran on a
- *   Server. `backupFileName` is the full S3 key, so the download nests the
- *   key's directories under the volume name and the emptied ones go with it.
- * - The volume is re-created *explicitly*, carrying back the labels it
- *   had. The restore used to remove it and let
- *   `docker run -v <name>:/volume_data` create it again implicitly, which
- *   creates it unlabelled — so a restored compose volume stopped answering to
- *   `com.docker.compose.project`, and anything that finds volumes by label
- *   (`docker compose down --volumes`, a label-filtered prune, Cloudgate's own
- *   cleanup routes) stopped finding it.
- * - The in-use refusal names the control that frees the volume for the
- *   target it is refusing, rather than one sentence for all of them. See
- *   `volumeOwnerOf`.
- * - The whole script — the in-use guard included, since the guard's
- *   answer goes stale the moment it is read — runs while holding the volume's
- *   lock. The restore used to take no lock at all, so a restore could
- *   `docker volume rm` and re-create the volume under a backup mid-`tar` and
- *   the tarball that reached the bucket was a backup of a half-replaced volume
- *   with nothing marking it suspect. Always fail-fast: a restore is one
- *   synchronous HTTP request, and the alternative is holding it open for as
- *   long as somebody else's tar takes.
- * - The tarball is downloaded and *proved* before anything touches the
- *   volume, so the download is emitted once, ahead of the removal, instead of
- *   once inside each branch behind it. See `downloadCommand`, whose comment
- *   carries the `rclone copyto` quirk this turns on.
- * - That download is bounded, like every other rclone call made in front
- *   of a waiting HTTP caller — and bounded on the wall clock as well as on idle
- *   time, because the idle bound turned out not to bound the request at all.
- *   See `boundedRcloneFlags` and `downloadCommand`.
- * - H-120: that wall clock is the **process**, not `--max-duration`, which is
- *   accepted and inert on the rclone `deploy/install.sh` installs — so until
- *   this the request bound existed only in the comment. See
- *   `bulkDownloadCommand`, and `downloadStep` for the refusal 124 gets.
- * - The `wc -l` that answers "does this volume exist" has its padding
- *   stripped at the capture. The raw output used to be compared against the
- *   string `"0"`, which is only ever true on a GNU `wc` — a BSD one answers
- *   `"       0"`, so on such a host a restore of a volume that does not exist
- *   yet took the "exists" branch and died at `docker volume inspect`, one line
- *   under a log line claiming the volume was there. Normalized once at the
- *   capture rather than at each comparison, so the two string comparisons stay
- *   string comparisons and a third added later inherits the fix. `tr` over a
- *   numeric `test -eq`, because these scripts run under POSIX `sh`, which
- *   promises nothing about `-eq` on a padded operand — and because the echo
- *   beside the capture prints the value at an operator.
- * - The removal of the tarball is a `trap … EXIT` in a subshell rather
- *   than a statement after the untar, so the failure that leaves the most
- *   behind is covered rather than the only one that is not. See `downloadStep`,
- *   which carries the reasoning, and `checkThenRestoreCommand` for the
- *   subshell.
- * - The downloaded file's headers are read before the volume is touched,
- *   because "there are bytes" and "these bytes are a tar" are different
- *   questions and only the first was being asked. See `downloadStep`.
- * - The one failure that happens *after* the volume is gone says so.
- *   See `replaceVolumeCommand`.
- * - H-119, and H-121 with it: that header read asks the question the *removal*
- *   depends on — not "is this a readable tar" but "can the extraction's `.`
- *   selector match a member of it" — and it picks its message from a captured
- *   status rather than from an `if !` condition, where `set -e` is suspended and
- *   a docker that cannot run at all reported the archive as corrupt. See
- *   `downloadStep`.
- * - H-116: that sentence describes the partial extraction the volume actually
- *   holds instead of claiming it is empty. See `replaceVolumeCommand`.
- * - H-19, then H-32: **every word carrying a value goes through `quote()`**,
- *   the prose `echo`s included. H-19 quoted `downloadStep`'s `mkdir -p` because
- *   that was the one reproduced live — `volumeName` was `z.string().min(1)` on
- *   `restoreVolumeBackupSchema`, so `{"volumeName":"x;touch …"}` on
- *   `POST /volume-backups/restore` ran as the account that drives Docker. This
- *   is the rest of the same function: `docker volume rm`, `docker volume
- *   create`, both `-v` mounts, both `tar`s inside their `bash -c`, the three
- *   `--filter` words, `rclone copyto`, the `-s` test, the `trap` and every
- *   `echo` that names the volume, the key or the bucket.
- *
- *   The `echo`s are not decoration in this: they are the largest group of
- *   sinks here, and `"…"` never stopped a `$(…)` or a backtick, so quoting
- *   only the "command" words would have left the injection reachable through
- *   the line that reports it. `builders/build-strategy.ts` states the rule and
- *   its "an `echo` quotes its whole message" clause is what this follows.
- *
- *   The DTO charsets added with H-19 stand *behind* this, not in place of it —
- *   the third rediscovery of that ordering is what `build-strategy.ts`'s
- *   paragraph now opens with. One sink is deliberately still outside:
- *   `reachabilityProbeCommand` (`destinations/rclone-exec.ts`) double-quotes
- *   the object path it is given, and belongs to another module.
- * - The refusal stops counting what Swarm leaves after Stop. The exited
- *   task containers of the target's own service, once it runs no replica, are
- *   removed by the restore in front of `docker volume rm` rather than listed as
- *   a blocker the console had no control for. Nothing else is ever removed: a
- *   container of another service, a `docker-compose` project's or one
- *   Cloudgate does not own still refuses, and the refusal says whose it is. See
- *   `volumeOwnerOf` and `taskHistoryCheck`.
+/**
+ * A volume restore's two halves without its lock: the destination probe, run
+ * before any lock is taken, and the check-then-restore body that must run
+ * inside one. {@link buildVolumeRestoreScript} wraps them for one volume; a
+ * Stack backup's moment restore (`buildMomentRestoreScript`) runs one body per
+ * volume inside the locks of them all.
  */
-export const buildVolumeRestoreScript = ({
+const volumeRestoreSteps = ({
   serverId,
   volumeName,
   backupFileName,
   bucket,
   target,
-}: VolumeRestoreScriptOptions): string => {
+}: VolumeRestoreScriptOptions): {
+  reachabilityPreflight: string;
+  checkThenRestoreCommand: string;
+} => {
   const volumeBackupPath = path.join(
     volumeBackupsDirectoryOn(serverId),
     volumeName,
@@ -1537,6 +1455,120 @@ export const buildVolumeRestoreScript = ({
 		fi
 		`;
 
+  return { reachabilityPreflight, checkThenRestoreCommand };
+};
+
+/** Downloads the tarball from S3 and untars it into the (re-created) volume —
+ * refusing to touch a volume any container still uses, with the offending
+ * containers listed in the log.
+ *
+ * What each change did, in the order they landed. The first two restore a
+ * symmetry the backup path already has, the third is the refusal learning to
+ * name a control that exists, and the last three are all one theme: replacing a
+ * volume is destructive, so nothing may be replaced until the replacement is in
+ * hand:
+ *
+ * - The downloaded tarball is removed once it has been untarred, the way
+ *   `buildVolumeBackupScript`'s upload ends `rm "…/${backupFileName}"`. It used
+ *   to be left, so every restore permanently cost the volume's own size on the
+ *   platform host — and on the *local* path even when the restore ran on a
+ *   Server. `backupFileName` is the full S3 key, so the download nests the
+ *   key's directories under the volume name and the emptied ones go with it.
+ * - The volume is re-created *explicitly*, carrying back the labels it
+ *   had. The restore used to remove it and let
+ *   `docker run -v <name>:/volume_data` create it again implicitly, which
+ *   creates it unlabelled — so a restored compose volume stopped answering to
+ *   `com.docker.compose.project`, and anything that finds volumes by label
+ *   (`docker compose down --volumes`, a label-filtered prune, Cloudgate's own
+ *   cleanup routes) stopped finding it.
+ * - The in-use refusal names the control that frees the volume for the
+ *   target it is refusing, rather than one sentence for all of them. See
+ *   `volumeOwnerOf`.
+ * - The whole script — the in-use guard included, since the guard's
+ *   answer goes stale the moment it is read — runs while holding the volume's
+ *   lock. The restore used to take no lock at all, so a restore could
+ *   `docker volume rm` and re-create the volume under a backup mid-`tar` and
+ *   the tarball that reached the bucket was a backup of a half-replaced volume
+ *   with nothing marking it suspect. Always fail-fast: a restore is one
+ *   synchronous HTTP request, and the alternative is holding it open for as
+ *   long as somebody else's tar takes.
+ * - The tarball is downloaded and *proved* before anything touches the
+ *   volume, so the download is emitted once, ahead of the removal, instead of
+ *   once inside each branch behind it. See `downloadCommand`, whose comment
+ *   carries the `rclone copyto` quirk this turns on.
+ * - That download is bounded, like every other rclone call made in front
+ *   of a waiting HTTP caller — and bounded on the wall clock as well as on idle
+ *   time, because the idle bound turned out not to bound the request at all.
+ *   See `boundedRcloneFlags` and `downloadCommand`.
+ * - H-120: that wall clock is the **process**, not `--max-duration`, which is
+ *   accepted and inert on the rclone `deploy/install.sh` installs — so until
+ *   this the request bound existed only in the comment. See
+ *   `bulkDownloadCommand`, and `downloadStep` for the refusal 124 gets.
+ * - The `wc -l` that answers "does this volume exist" has its padding
+ *   stripped at the capture. The raw output used to be compared against the
+ *   string `"0"`, which is only ever true on a GNU `wc` — a BSD one answers
+ *   `"       0"`, so on such a host a restore of a volume that does not exist
+ *   yet took the "exists" branch and died at `docker volume inspect`, one line
+ *   under a log line claiming the volume was there. Normalized once at the
+ *   capture rather than at each comparison, so the two string comparisons stay
+ *   string comparisons and a third added later inherits the fix. `tr` over a
+ *   numeric `test -eq`, because these scripts run under POSIX `sh`, which
+ *   promises nothing about `-eq` on a padded operand — and because the echo
+ *   beside the capture prints the value at an operator.
+ * - The removal of the tarball is a `trap … EXIT` in a subshell rather
+ *   than a statement after the untar, so the failure that leaves the most
+ *   behind is covered rather than the only one that is not. See `downloadStep`,
+ *   which carries the reasoning, and `checkThenRestoreCommand` for the
+ *   subshell.
+ * - The downloaded file's headers are read before the volume is touched,
+ *   because "there are bytes" and "these bytes are a tar" are different
+ *   questions and only the first was being asked. See `downloadStep`.
+ * - The one failure that happens *after* the volume is gone says so.
+ *   See `replaceVolumeCommand`.
+ * - H-119, and H-121 with it: that header read asks the question the *removal*
+ *   depends on — not "is this a readable tar" but "can the extraction's `.`
+ *   selector match a member of it" — and it picks its message from a captured
+ *   status rather than from an `if !` condition, where `set -e` is suspended and
+ *   a docker that cannot run at all reported the archive as corrupt. See
+ *   `downloadStep`.
+ * - H-116: that sentence describes the partial extraction the volume actually
+ *   holds instead of claiming it is empty. See `replaceVolumeCommand`.
+ * - H-19, then H-32: **every word carrying a value goes through `quote()`**,
+ *   the prose `echo`s included. H-19 quoted `downloadStep`'s `mkdir -p` because
+ *   that was the one reproduced live — `volumeName` was `z.string().min(1)` on
+ *   `restoreVolumeBackupSchema`, so `{"volumeName":"x;touch …"}` on
+ *   `POST /volume-backups/restore` ran as the account that drives Docker. This
+ *   is the rest of the same function: `docker volume rm`, `docker volume
+ *   create`, both `-v` mounts, both `tar`s inside their `bash -c`, the three
+ *   `--filter` words, `rclone copyto`, the `-s` test, the `trap` and every
+ *   `echo` that names the volume, the key or the bucket.
+ *
+ *   The `echo`s are not decoration in this: they are the largest group of
+ *   sinks here, and `"…"` never stopped a `$(…)` or a backtick, so quoting
+ *   only the "command" words would have left the injection reachable through
+ *   the line that reports it. `builders/build-strategy.ts` states the rule and
+ *   its "an `echo` quotes its whole message" clause is what this follows.
+ *
+ *   The DTO charsets added with H-19 stand *behind* this, not in place of it —
+ *   the third rediscovery of that ordering is what `build-strategy.ts`'s
+ *   paragraph now opens with. One sink is deliberately still outside:
+ *   `reachabilityProbeCommand` (`destinations/rclone-exec.ts`) double-quotes
+ *   the object path it is given, and belongs to another module.
+ * - The refusal stops counting what Swarm leaves after Stop. The exited
+ *   task containers of the target's own service, once it runs no replica, are
+ *   removed by the restore in front of `docker volume rm` rather than listed as
+ *   a blocker the console had no control for. Nothing else is ever removed: a
+ *   container of another service, a `docker-compose` project's or one
+ *   Cloudgate does not own still refuses, and the refusal says whose it is. See
+ *   `volumeOwnerOf` and `taskHistoryCheck`.
+ */
+export const buildVolumeRestoreScript = (
+  options: VolumeRestoreScriptOptions,
+): string => {
+  const { serverId, volumeName, target } = options;
+  const { reachabilityPreflight, checkThenRestoreCommand } =
+    volumeRestoreSteps(options);
+
   /** The probe, then the lock round everything else — and that order is the
    * point, so the two are composed here rather than at each `return`. */
   const probeThenLock = (body: string) =>
@@ -1605,4 +1637,183 @@ export const buildVolumeRestoreScript = ({
 		echo ${quote([`Compose Type: ${target.composeType}`])}
 		${checkThenRestoreCommand}
 		`);
+};
+
+/**
+ * How a moment restore takes a stack's containers away and brings it back
+ * (ADR-0092): a `docker-compose` project's Remove containers and Start,
+ * whose commands `ComposeService` builds, or a swarm stack's Stop — every
+ * service scaled to 0, the way the Stack backup stops one — and each service
+ * started again at the replica count it had.
+ */
+export type MomentRestoreLifecycle =
+  | {
+      composeType: 'docker-compose';
+      /** Remove containers' command, without its lock: this script holds
+       * every lock already. */
+      remove: string;
+      /** Start's command. */
+      start: string;
+    }
+  | { composeType: 'stack' };
+
+/**
+ * The status a moment restore exits with once a step has started and failed:
+ * the stack's containers may already be gone, so the caller records the
+ * stack stopped. Every failure before the first step — a destination that
+ * does not answer, a held lock (75), a replica count that does not read —
+ * exits otherwise and has touched nothing. Only `report_moment` exits with it.
+ */
+export const MOMENT_RESTORE_HALTED_EXIT_CODE = 3;
+
+export interface MomentRestoreScriptOptions {
+  /** The machine the stack runs on, which roots the locks and the staging. */
+  serverId: string | null;
+  /** The stack's `appName`. */
+  appName: string;
+  bucket: string;
+  /** The moment folder's key, with its trailing `/`:
+   * `{appName}/{prefix}/{moment}/`. */
+  momentKey: string;
+  /** The volumes the moment holds, one `{volume}.tar` each. */
+  volumeNames: string[];
+  /** Every volume whose lock the restore holds: the stack's recorded
+   * volumes, since removing its containers touches them all. The moment's
+   * own are held whether listed here or not. */
+  heldVolumeNames: string[];
+  lifecycle: MomentRestoreLifecycle;
+}
+
+/**
+ * Restores one **backup moment** of a Stack backup as one run (ADR-0092):
+ * Remove containers (Stop on a swarm stack), every volume of the moment
+ * restored with the one-volume restore's own check-then-restore body, then
+ * Start.
+ *
+ * - **Every lock first, in name order**, around everything after the
+ *   destination probes: `withVolumeLock` sorts, so this cannot deadlock
+ *   against a Stack backup naming the same set, and nothing is removed until
+ *   all of them are held. Fail-fast, as every restore is.
+ * - **Each step announces itself**, `Step started: …` and `Step done: …`,
+ *   which is what the console's moment dialog reads off the run's log.
+ * - **A failed step stops the restore there and starts nothing.** The steps
+ *   run in a subshell whose `trap report_moment EXIT` prints, on a failure,
+ *   which step stopped it, which volumes were restored and which were not —
+ *   in a subshell for the lock fallback's own trap (`trap` sets, it does not
+ *   append). The stack is left stopped on purpose: starting an app over half
+ *   a moment is the mismatch this restore exists to prevent.
+ */
+export const buildMomentRestoreScript = ({
+  serverId,
+  appName,
+  bucket,
+  momentKey,
+  volumeNames,
+  heldVolumeNames,
+  lifecycle,
+}: MomentRestoreScriptOptions): string => {
+  const volumes = [...new Set(volumeNames)].sort();
+  const target: VolumeRestoreTarget = {
+    serviceType: 'compose',
+    appName,
+    composeType: lifecycle.composeType,
+  };
+  const steps = volumes.map((volumeName) => ({
+    volumeName,
+    ...volumeRestoreSteps({
+      serverId,
+      volumeName,
+      backupFileName: `${momentKey}${volumeName}.tar`,
+      bucket,
+      target,
+    }),
+  }));
+  const listed = (names: string[]) =>
+    names.length > 0 ? names.join(', ') : 'none';
+
+  const takeDownStep =
+    lifecycle.composeType === 'stack' ? 'Stop' : 'Remove containers';
+  // `|| exit $?` after each of `ComposeService`'s two commands: both are a
+  // `cd … && …` list, and `set -e` passes over a failure anywhere in an
+  // AND-OR list but its last command, so a missing project directory would
+  // otherwise read as a step done.
+  const takeDown =
+    lifecycle.composeType === 'stack'
+      ? SCALE_STACK_TO_ZERO
+      : `${lifecycle.remove} || exit $?`;
+  const bringUp =
+    lifecycle.composeType === 'stack'
+      ? `for STACK_ENTRY in $STACK_REPLICAS; do
+				echo "Starting \${STACK_ENTRY%=*} to \${STACK_ENTRY#*=} replicas"
+				docker service update --replicas="\${STACK_ENTRY#*=}" --with-registry-auth "\${STACK_ENTRY%=*}"
+			done`
+      : `${lifecycle.start} || exit $?`;
+
+  const step = (name: string, body: string, after = '') => `
+			MOMENT_STEP=${quote([name])}
+			echo ${quote([`Step started: ${name}`])}
+			${body}
+			${after}
+			echo ${quote([`Step done: ${name}`])}`;
+
+  const restores = steps
+    .map(({ volumeName, checkThenRestoreCommand }, index) =>
+      step(
+        `Restore ${volumeName}`,
+        `(
+			${checkThenRestoreCommand}
+			)`,
+        `MOMENT_RESTORED=${quote([listed(volumes.slice(0, index + 1))])}
+			MOMENT_LEFT=${quote([listed(volumes.slice(index + 1))])}`,
+      ),
+    )
+    .join('');
+
+  const body = `
+		set -e
+		echo ${quote([`Stack: ${appName}`])}
+		echo ${quote([`Moment: ${momentKey}`])}
+		echo ${quote([`Volumes: ${volumes.join(', ')}`])}
+		${lifecycle.composeType === 'stack' ? readStackReplicas(appName, 'Moment restore') : ''}
+		(
+			MOMENT_STEP=""
+			MOMENT_RESTORED=none
+			MOMENT_LEFT=${quote([listed(volumes)])}
+			report_moment() {
+				MOMENT_STATUS=$?
+				if [ "$MOMENT_STATUS" = 0 ]; then
+					return 0
+				fi
+				if [ -z "$MOMENT_STEP" ]; then
+					return 0
+				fi
+				echo "❌ Moment restore stopped at $MOMENT_STEP"
+				echo "   Restored: $MOMENT_RESTORED"
+				echo "   Not restored: $MOMENT_LEFT"
+				if [ "$MOMENT_STEP" = Start ]; then
+					echo ${quote([`   Every volume of the moment was restored, and the stack did not start. Read the error above, then start '${appName}' from Cloudgate.`])}
+				else
+					echo "   The stack is left stopped, so it does not run over half a moment. Read the error above, then restore the moment again."
+				fi
+				exit ${MOMENT_RESTORE_HALTED_EXIT_CODE}
+			}
+			trap report_moment EXIT
+			${step(takeDownStep, takeDown)}
+			${restores}
+			${step('Start', bringUp)}
+		)
+		echo "Moment restore completed ✅"
+	`;
+
+  const preflights = steps
+    .map(({ reachabilityPreflight }) => reachabilityPreflight)
+    .join('');
+  return `${preflights}${withVolumeLock(
+    {
+      serverId,
+      volumeNames: [...heldVolumeNames, ...volumes],
+      mode: 'fail-fast',
+    },
+    body,
+  )}`;
 };

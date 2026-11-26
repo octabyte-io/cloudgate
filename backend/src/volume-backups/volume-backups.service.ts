@@ -9,6 +9,7 @@ import {
   OnApplicationBootstrap,
 } from '@nestjs/common';
 import { desc, eq } from 'drizzle-orm';
+import { ModuleRef } from '@nestjs/core';
 import { nanoid } from 'nanoid';
 import { quote } from 'shell-quote';
 import { refuseWeightsVolumeBackup } from '../ai-models/weights-volume';
@@ -51,25 +52,34 @@ import {
 } from '../deployment-engine/volume-lock';
 import type { VolumeLockMode } from '../deployment-engine/volume-lock';
 import { DestinationsService } from '../destinations/destinations.service';
-import { execRclone, rcloneFailureMessage } from '../destinations/rclone-exec';
+import {
+  boundedRcloneFlags,
+  execRclone,
+  rcloneFailureMessage,
+} from '../destinations/rclone-exec';
 import { NotificationDispatcherService } from '../notifications/dispatcher.service';
 import type { PermissionCtx } from '../rbac/permission.service';
 import { PermissionService } from '../rbac/permission.service';
 import { RemoteExecService } from '../remote/remote-exec.service';
 import { SchedulingService } from '../scheduling/scheduling.service';
+import { STACK_LIFECYCLE } from './stack-lifecycle.port';
+import type { StackLifecycle } from './stack-lifecycle.port';
 import { volumeBackup, volumeBackupServiceFk } from './volume-backup.schema';
 import type { VolumeBackup } from './volume-backup.schema';
 import {
   buildMomentPruneCommand,
+  buildMomentRestoreScript,
   buildStackBackupScript,
   buildVolumeBackupScript,
   buildVolumeRestoreScript,
 } from './volume-backup-commands';
+import { MOMENT_RESTORE_HALTED_EXIT_CODE } from './volume-backup-commands';
 import type {
   VolumeBackupStopTarget,
   VolumeRestoreTarget,
 } from './volume-backup-commands';
 import {
+  BACKUP_MOMENT_REGEX,
   STACK_SCOPE_NAMES_NO_VOLUME_MESSAGE,
   storedVolumeBackupShellSchema,
   VOLUME_NAME_MESSAGE,
@@ -78,6 +88,7 @@ import {
 import type {
   CreateVolumeBackupDto,
   ListVolumeBackupsDto,
+  RestoreMomentDto,
   RestoreVolumeBackupDto,
   UpdateVolumeBackupDto,
 } from './dto/volume-backup.dto';
@@ -150,6 +161,30 @@ function oneVolumeOf(row: VolumeBackup): string {
   return row.volumeName;
 }
 
+/**
+ * One **backup moment** a Stack backup's destination holds (ADR-0092): the
+ * folder one run wrote, when that run started, and the volumes it holds a
+ * tarball of.
+ */
+export interface BackupMoment {
+  /** The folder name, `getBackupTimestamp`'s form. */
+  moment: string;
+  /** The same instant as RFC 3339. */
+  takenAt: string;
+  /** Every `{volume}.tar` in the folder, by volume, in name order. */
+  volumes: string[];
+}
+
+/** Why the moment routes refuse a backup of one volume. */
+export const ONLY_STACK_BACKUPS_HAVE_MOMENTS =
+  'Only a Stack backup has moments; a backup of one volume is restored one tarball at a time with POST /volume-backups/restore';
+
+/** `rclone lsjson`'s entry, the fields a moment listing reads. */
+interface RcloneEntry {
+  Path: string;
+  IsDir: boolean;
+}
+
 /** Why a Stack backup's run is refused when the stack's last deploy recorded
  * services that mount no named volume. */
 export const STACK_HAS_NO_VOLUMES_REASON =
@@ -170,6 +205,7 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
     private readonly frozen: FrozenOrganizations,
     // `execRclone`'s platform-host rule (ADR-0053).
     private readonly instanceMode: InstanceMode,
+    private readonly moduleRef: ModuleRef,
   ) {}
 
   /** Runs at server boot: re-registers the cron job of every enabled volume
@@ -794,6 +830,224 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
       // still written out, and execRclone has already masked it.
       this.logger.error('Volume backup prune failed', error);
     }
+  }
+
+  /**
+   * The moments a Stack backup's destination really holds, newest first —
+   * what the console's moment restore offers. Listed from the bucket rather
+   * than from the run history, because **Keep newest N** prunes moments and
+   * nothing outside the bucket knows which survived.
+   *
+   * One recursive `rclone lsjson` of `{appName}/{prefix}/`, run on the
+   * stack's Server as the restore will be; an object that is not
+   * `{moment}/{volume}.tar` is not part of any moment and is left out.
+   */
+  async listMoments(
+    ctx: PermissionCtx,
+    volumeBackupId: string,
+  ): Promise<BackupMoment[]> {
+    const row = await this.findRow(volumeBackupId);
+    const parent = await this.findParentService(
+      ctx.session.activeOrganizationId,
+      serviceIdOf(row),
+      row.serviceType,
+    );
+    await this.permissions.checkPermission(ctx, { volumeBackup: ['read'] });
+    await this.permissions.checkServiceAccess(ctx, serviceIdOf(row));
+    refuseCloudServiceHostWork(parent, 'volumeBackups');
+    if (row.scope !== 'stack') {
+      throw new BadRequestException(ONLY_STACK_BACKUPS_HAVE_MOMENTS);
+    }
+    this.assertStoredValuesShellSafe(row);
+    const destination = await this.destinations.findOneWithCredentials(
+      ctx,
+      row.destinationId,
+    );
+    return this.momentsIn(row, parent, destination);
+  }
+
+  /**
+   * Restores one moment of a Stack backup, every volume of it together, as
+   * one Run record (ADR-0092): Remove containers (Stop on a swarm stack),
+   * each volume with the one-volume restore's own script body, then Start —
+   * `buildMomentRestoreScript` carries the script, and the run's log carries
+   * each step for the console to follow.
+   *
+   * **The gate is {@link restore}'s**: `volumeBackup: ['restore']` and
+   * `'update'` on the stack, argued there, and not Remove containers' or
+   * Start's `deployment: ['create']` — a role granted the restore finishes it
+   * without being granted the lifecycle verbs it runs (ADR-0011's reason).
+   *
+   * **What is restored is what the destination holds.** The moment is looked
+   * up in the bucket's own listing, so a moment that was pruned is a 404, and
+   * its volumes are its tarballs, never the request's. Each of them has to be
+   * a volume the stack's last deploy recorded: the keys sit under this stack's
+   * own `appName`, but a tarball dropped there by hand must not reach a volume
+   * of some other Service on the same Server.
+   *
+   * **Every recorded volume's lock, in name order, fail-fast**: removing the
+   * stack's containers touches all of them, so a run of a Stack backup or a
+   * one-volume backup of any of them answers this with a 409.
+   *
+   * Synchronous like {@link runManual}: a held lock is a 409, a failure a 400
+   * pointing at the run's log, because the log is where the script writes
+   * which step stopped it and which volumes were restored. A failure after the
+   * first step leaves the stack stopped, and the row says so; one before it
+   * has touched nothing and leaves the row alone.
+   */
+  async restoreMoment(
+    ctx: PermissionCtx,
+    volumeBackupId: string,
+    { moment }: RestoreMomentDto,
+  ): Promise<void> {
+    const row = await this.findRow(volumeBackupId);
+    const parent = await this.findParentService(
+      ctx.session.activeOrganizationId,
+      serviceIdOf(row),
+      row.serviceType,
+    );
+    await this.permissions.checkPermission(ctx, { volumeBackup: ['restore'] });
+    await this.permissions.checkServiceAccess(ctx, serviceIdOf(row), 'update');
+    refuseCloudServiceHostWork(parent, 'volumeBackups');
+    if (row.scope !== 'stack') {
+      throw new BadRequestException(ONLY_STACK_BACKUPS_HAVE_MOMENTS);
+    }
+    this.assertStoredValuesShellSafe(row);
+    const composeId = serviceIdOf(row);
+    const destination = await this.destinations.findOneWithCredentials(
+      ctx,
+      row.destinationId,
+    );
+    const found = (await this.momentsIn(row, parent, destination)).find(
+      (held) => held.moment === moment,
+    );
+    if (!found) {
+      throw new NotFoundException(
+        `The destination holds no moment ${moment} of this Stack backup: it may have been pruned by Keep newest N`,
+      );
+    }
+    const recorded = await this.recordedStackVolumes(composeId);
+    const unmounted = found.volumes.filter(
+      (volumeName) => !recorded.includes(volumeName),
+    );
+    if (unmounted.length > 0) {
+      throw new BadRequestException(
+        `Moment ${moment} holds ${unmounted.join(', ')}, which this stack’s last deploy does not mount, so nothing of it is restored`,
+      );
+    }
+    const lifecycle = await this.composes().momentRestoreLifecycle(
+      parent.organizationId,
+      composeId,
+    );
+
+    const run = await this.runRecorder.start({
+      appName: row.appName,
+      serverId: parent.serverId,
+      title: 'Stack Restore',
+      description: `Restore of moment ${moment}`,
+      initMessage: 'Initializing stack restore',
+      parent: { kind: 'volumeBackup', volumeBackupId: row.volumeBackupId },
+    });
+    const script = buildMomentRestoreScript({
+      serverId: parent.serverId,
+      appName: parent.appName,
+      bucket: destination.bucket,
+      momentKey: `${parent.appName}/${normalizeS3Path(row.prefix)}${moment}/`,
+      volumeNames: found.volumes,
+      heldVolumeNames: recorded,
+      lifecycle,
+    });
+
+    try {
+      await execRclone(
+        this.remoteExec,
+        `(${script}) >> ${quote([run.logPath])} 2>&1`,
+        {
+          destination,
+          serverId: parent.serverId,
+          platformHost: this.instanceMode,
+        },
+      );
+    } catch (error) {
+      await this.runRecorder.finish(run.deploymentId, 'error');
+      if (isVolumeLockBusyError(error)) {
+        throw new ConflictException(
+          volumeLockBusyMessage(recorded.join("' or '")),
+        );
+      }
+      const halted =
+        (error as { exitCode?: number } | null)?.exitCode ===
+        MOMENT_RESTORE_HALTED_EXIT_CODE;
+      if (halted) await this.composes().updateStatus(composeId, 'stopped');
+      throw new BadRequestException(
+        halted
+          ? `The restore of moment ${moment} stopped at a step and left the stack stopped; its run’s log names the step, what was restored and what was not`
+          : `The restore of moment ${moment} stopped before its first step and touched nothing; its run’s log says why`,
+      );
+    }
+    await this.runRecorder.finish(run.deploymentId, 'done');
+    await this.composes().updateStatus(composeId, 'done');
+  }
+
+  /** The stack's lifecycle for a moment restore, resolved at call time
+   * (`stack-lifecycle.port.ts` says why it cannot be injected). */
+  private composes(): StackLifecycle {
+    return this.moduleRef.get<StackLifecycle>(STACK_LIFECYCLE, {
+      strict: false,
+    });
+  }
+
+  /** Every moment under a Stack backup's `{appName}/{prefix}/`, newest first
+   * — the moment folders' names sort as their instants do. */
+  private async momentsIn(
+    row: VolumeBackup,
+    parent: ServiceParent,
+    destination: Destination,
+  ): Promise<BackupMoment[]> {
+    const momentsPath = `:s3:${destination.bucket}/${parent.appName}/${normalizeS3Path(row.prefix)}`;
+    let stdout: string;
+    try {
+      ({ stdout } = await execRclone(
+        this.remoteExec,
+        `rclone lsjson ${boundedRcloneFlags({ idle: '30s' })} --recursive --files-only --no-mimetype ${quote([momentsPath])}`,
+        {
+          destination,
+          serverId: parent.serverId,
+          platformHost: this.instanceMode,
+        },
+      ));
+    } catch (error) {
+      throw new BadRequestException(
+        rcloneFailureMessage(error, 'Error listing the moments'),
+      );
+    }
+    let entries: RcloneEntry[];
+    try {
+      entries = JSON.parse(stdout || '[]') as RcloneEntry[];
+    } catch {
+      throw new BadRequestException('Failed to parse the destination listing');
+    }
+
+    const moments = new Map<string, string[]>();
+    for (const entry of entries) {
+      if (entry.IsDir) continue;
+      const [moment, file, ...deeper] = entry.Path.split('/');
+      if (deeper.length > 0 || !file?.endsWith('.tar')) continue;
+      const volumeName = file.slice(0, -'.tar'.length);
+      if (!BACKUP_MOMENT_REGEX.test(moment)) continue;
+      if (!VOLUME_NAME_REGEX.test(volumeName)) continue;
+      moments.set(moment, [...(moments.get(moment) ?? []), volumeName]);
+    }
+    return [...moments.entries()]
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([moment, volumes]) => ({
+        moment,
+        takenAt: moment.replace(
+          /T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/,
+          'T$1:$2:$3.$4Z',
+        ),
+        volumes: volumes.sort(),
+      }));
   }
 
   /** One volume backup, access-scoped through the owning service. */

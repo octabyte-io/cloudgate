@@ -117,8 +117,11 @@ import {
   readComposeDirectoryPresence,
   readComposeWorkloadPresence,
   removeComposeContainersCommand,
+  composeContainersRemoval,
   writeDomainsToCompose,
 } from './compose.utils';
+import type { MomentRestoreLifecycle } from '../volume-backups/volume-backup-commands';
+import type { StackLifecycle } from '../volume-backups/stack-lifecycle.port';
 import { composeFileForRead } from './compose-file-lookup';
 import { NOT_DEPLOYED_VOLUMES_REASON } from './compose-file';
 import type {
@@ -163,7 +166,7 @@ export type { ComposeCloudPlace } from './compose-stack-vms';
 export { NOT_DEPLOYED_VOLUMES_REASON } from './compose-file';
 
 @Injectable()
-export class ComposeService {
+export class ComposeService implements StackLifecycle {
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly permissions: PermissionService,
@@ -1840,6 +1843,42 @@ export class ComposeService {
       .limit(1);
     if (!row) throw new NotFoundException('Compose not found');
     return row;
+  }
+
+  /**
+   * What a Stack backup's moment restore runs to take this stack down and
+   * bring it back (ADR-0092): Remove containers' command and Start's on a
+   * `docker-compose` stack, built as Start builds its own — the file the last
+   * deploy ran, read back off disk and held to the same ownership check, with
+   * the platform defaults re-applied — or nothing on a swarm stack, whose Stop
+   * and Start the restore script does itself.
+   *
+   * Refused before anything is built where Start is refused, on a Server in
+   * maintenance or a Bought Server powered off: the restore ends with a
+   * Start, so it would otherwise take the stack down and leave it there.
+   *
+   * No permission check of its own: its caller has made the restore's,
+   * `volumeBackup: ['restore']` and `service: ['update']`, the gate a restore
+   * keeps (ADR-0011).
+   */
+  async momentRestoreLifecycle(
+    organizationId: string,
+    composeId: string,
+  ): Promise<MomentRestoreLifecycle> {
+    const row = await this.findRow(composeId);
+    await refuseWhilePoweredOff(this.db, [row.serverId], 'restore the stack');
+    await refuseWhileInMaintenance(this.db, [row.serverId]);
+    if (row.composeType === 'stack') return { composeType: 'stack' };
+    const withFile = await composeFileForRead(this.runTarget(row), row);
+    const onDisk = await this.readClaimableOnDiskCompose(
+      organizationId,
+      withFile,
+    );
+    return {
+      composeType: 'docker-compose',
+      remove: composeContainersRemoval(row.serverId, row.appName),
+      start: composeStartCommand(withFile, onDisk),
+    };
   }
 
   /**

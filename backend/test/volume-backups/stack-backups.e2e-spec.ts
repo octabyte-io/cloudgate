@@ -3,11 +3,20 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 
 import { ComposeService } from '../../src/compose/compose.service';
-import { cloudAccount, compose as composeTable } from '../../src/db/schema';
+import {
+  cloudAccount,
+  compose as composeTable,
+  environment,
+  licenseKey,
+  member,
+  organizationRole,
+} from '../../src/db/schema';
 import { DeploymentEngineService } from '../../src/deployment-engine/deployment-engine.service';
 import { VOLUME_LOCK_BUSY_EXIT_CODE } from '../../src/deployment-engine/volume-lock';
+import { MOMENT_RESTORE_HALTED_EXIT_CODE } from '../../src/volume-backups/volume-backup-commands';
 import { DEPLOYMENT_QUEUE } from '../../src/deployment-queue/queue.port';
 import { DestinationsService } from '../../src/destinations/destinations.service';
+import { PermissionService } from '../../src/rbac/permission.service';
 import { RemoteExecService } from '../../src/remote/remote-exec.service';
 import { withArgvExec } from '../utils/exec-double';
 import { createTestApp, TestAppContext } from '../utils/test-app';
@@ -450,6 +459,397 @@ describe('Stack backups (e2e)', () => {
         sql`SELECT status FROM deployment WHERE volume_backup_id = ${volumeBackupId}`,
       );
       expect(runs.rows).toEqual([{ status: 'error' }]);
+    });
+  });
+
+  describe('restoring a moment', () => {
+    const NEWER = '2026-11-26T03-00-00-000Z';
+    const OLDER = '2026-11-25T03-00-00-000Z';
+
+    /** What `rclone lsjson --recursive` answers for the backup's prefix:
+     * two moments, written oldest first, and one object no Stack backup
+     * wrote. */
+    const LISTING = JSON.stringify([
+      { Path: OLDER, Name: OLDER, Size: -1, IsDir: true },
+      {
+        Path: `${OLDER}/zeta-db.tar`,
+        Name: 'zeta-db.tar',
+        Size: 10,
+        IsDir: false,
+      },
+      {
+        Path: `${OLDER}/alpha-files.tar`,
+        Name: 'alpha-files.tar',
+        Size: 10,
+        IsDir: false,
+      },
+      { Path: NEWER, Name: NEWER, Size: -1, IsDir: true },
+      {
+        Path: `${NEWER}/alpha-files.tar`,
+        Name: 'alpha-files.tar',
+        Size: 10,
+        IsDir: false,
+      },
+      {
+        Path: `${NEWER}/zeta-db.tar`,
+        Name: 'zeta-db.tar',
+        Size: 10,
+        IsDir: false,
+      },
+      { Path: 'notes.txt', Name: 'notes.txt', Size: 3, IsDir: false },
+    ]);
+
+    /** The machine: the listing answers `LISTING`, the restore script is
+     * answered by `restore`, and everything else succeeds. */
+    function machine(restore: () => Promise<unknown> = ok): void {
+      execMock.execAsync.mockImplementation((command: string) => {
+        if (command.startsWith('rclone lsjson')) {
+          return Promise.resolve({ stdout: LISTING, stderr: '', exitCode: 0 });
+        }
+        if (
+          command.includes('Step started: Remove containers') ||
+          command.includes("'Step started: Stop'")
+        ) {
+          return restore();
+        }
+        return ok();
+      });
+    }
+
+    const restoreScript = () => {
+      const found = scripts().find((script) =>
+        script.includes('Step started:'),
+      );
+      if (!found) throw new Error('no moment restore script was dispatched');
+      return found;
+    };
+
+    const restoreMoment = (volumeBackupId: string, moment = NEWER) =>
+      request(http)
+        .post(`/volume-backups/${volumeBackupId}/restore-moment`)
+        .set('Cookie', cookie)
+        .send({ moment });
+
+    const runsOf = async (volumeBackupId: string) =>
+      (
+        await ctx.db.execute(
+          sql`SELECT title, status FROM deployment WHERE volume_backup_id = ${volumeBackupId} ORDER BY created_at`,
+        )
+      ).rows;
+
+    const statusOf = async (composeId: string) =>
+      (
+        await ctx.db
+          .select({ composeStatus: composeTable.composeStatus })
+          .from(composeTable)
+          .where(eq(composeTable.composeId, composeId))
+      )[0].composeStatus;
+
+    it('lists the moments the destination holds, newest first, with their volumes', async () => {
+      const { appName, volumeBackupId } = await stackBackupOf();
+      machine();
+
+      const listed = await request(http)
+        .get(`/volume-backups/${volumeBackupId}/moments`)
+        .set('Cookie', cookie);
+
+      expect(listed.status).toBe(200);
+      expect(listed.body).toEqual([
+        {
+          moment: NEWER,
+          takenAt: '2026-11-26T03:00:00.000Z',
+          volumes: ['alpha-files', 'zeta-db'],
+        },
+        {
+          moment: OLDER,
+          takenAt: '2026-11-25T03:00:00.000Z',
+          volumes: ['alpha-files', 'zeta-db'],
+        },
+      ]);
+      const listing = scripts().find((script) =>
+        script.startsWith('rclone lsjson'),
+      );
+      expect(listing).toContain(
+        ` --recursive --files-only --no-mimetype \\:s3\\:cloudgate-backups/${appName}/nightly/`,
+      );
+    });
+
+    it('removes the containers, restores every volume and starts the stack, as one run', async () => {
+      const { composeId, appName, volumeBackupId } = await stackBackupOf();
+      machine();
+
+      const restored = await restoreMoment(volumeBackupId);
+
+      expect(restored.status).toBe(204);
+      const script = restoreScript();
+      const remove = script.indexOf('rm --stop --force');
+      const alpha = script.indexOf('docker volume rm alpha-files --force');
+      const zeta = script.indexOf('docker volume rm zeta-db --force');
+      const start = script.indexOf(' up -d');
+      expect(remove).toBeGreaterThan(-1);
+      expect(alpha).toBeGreaterThan(remove);
+      expect(zeta).toBeGreaterThan(alpha);
+      expect(start).toBeGreaterThan(zeta);
+      expect(script).toContain(
+        `\\:s3\\:cloudgate-backups/${appName}/nightly/${NEWER}/zeta-db.tar`,
+      );
+      expect(await runsOf(volumeBackupId)).toEqual([
+        { title: 'Stack Restore', status: 'done' },
+      ]);
+      expect(await statusOf(composeId)).toBe('done');
+    });
+
+    it('stops a swarm stack rather than removing containers', async () => {
+      const { volumeBackupId } = await stackBackupOf({}, 'stack');
+      machine();
+
+      const restored = await restoreMoment(volumeBackupId);
+
+      expect(restored.status).toBe(204);
+      const script = restoreScript();
+      expect(script).toContain("'Step started: Stop'");
+      expect(script).toContain('docker service update --replicas=0');
+      expect(script).not.toContain('rm --stop --force');
+    });
+
+    it('takes every volume lock in name order', async () => {
+      const { volumeBackupId } = await stackBackupOf();
+      machine();
+
+      await restoreMoment(volumeBackupId);
+
+      const script = restoreScript();
+      const alpha = script.indexOf('Volume lock acquired: alpha-files');
+      const zeta = script.indexOf('Volume lock acquired: zeta-db');
+      expect(alpha).toBeGreaterThan(-1);
+      expect(zeta).toBeGreaterThan(alpha);
+      expect(script.indexOf('Step started: Remove containers')).toBeGreaterThan(
+        zeta,
+      );
+    });
+
+    it('answers 409 naming the volume when one lock is held, leaving the stack as it was', async () => {
+      const { composeId, volumeBackupId } = await stackBackupOf();
+      const before = await statusOf(composeId);
+      machine(() =>
+        Promise.reject(
+          Object.assign(new Error('Command failed with exit code 75'), {
+            exitCode: VOLUME_LOCK_BUSY_EXIT_CODE,
+            stdout: '',
+            stderr: '',
+          }),
+        ),
+      );
+
+      const refused = await restoreMoment(volumeBackupId);
+
+      expect(refused.status).toBe(409);
+      expect((refused.body as { message: string }).message).toContain(
+        'alpha-files',
+      );
+      expect(await statusOf(composeId)).toBe(before);
+    });
+
+    it('records a restore that failed at a step as an error run and the stack as stopped', async () => {
+      const { composeId, volumeBackupId } = await stackBackupOf();
+      machine(() =>
+        Promise.reject(
+          Object.assign(new Error('Command failed with exit code 3'), {
+            exitCode: MOMENT_RESTORE_HALTED_EXIT_CODE,
+            stdout: '',
+            stderr: '',
+          }),
+        ),
+      );
+
+      const failed = await restoreMoment(volumeBackupId);
+
+      expect(failed.status).toBe(400);
+      expect((failed.body as { message: string }).message).toContain(
+        'run’s log',
+      );
+      expect(await runsOf(volumeBackupId)).toEqual([
+        { title: 'Stack Restore', status: 'error' },
+      ]);
+      expect(await statusOf(composeId)).toBe('stopped');
+    });
+
+    it('leaves the stack as it was when the restore failed before its first step', async () => {
+      const { composeId, volumeBackupId } = await stackBackupOf();
+      const before = await statusOf(composeId);
+      machine(() =>
+        Promise.reject(
+          Object.assign(new Error('Command failed with exit code 1'), {
+            exitCode: 1,
+            stdout: '',
+            stderr: '',
+          }),
+        ),
+      );
+
+      const failed = await restoreMoment(volumeBackupId);
+
+      expect(failed.status).toBe(400);
+      expect(await runsOf(volumeBackupId)).toEqual([
+        { title: 'Stack Restore', status: 'error' },
+      ]);
+      expect(await statusOf(composeId)).toBe(before);
+    });
+
+    it('refuses a moment the destination does not hold, running nothing', async () => {
+      const { volumeBackupId } = await stackBackupOf();
+      machine();
+
+      const refused = await restoreMoment(
+        volumeBackupId,
+        '2026-01-01T03-00-00-000Z',
+      );
+
+      expect(refused.status).toBe(404);
+      expect(scripts().some((script) => script.includes('Step started:'))).toBe(
+        false,
+      );
+      expect(await runsOf(volumeBackupId)).toEqual([]);
+    });
+
+    it('refuses a value that is not a moment', async () => {
+      const { volumeBackupId } = await stackBackupOf();
+
+      const refused = await restoreMoment(volumeBackupId, '../other-app');
+
+      expect(refused.status).toBe(400);
+    });
+
+    it('refuses a backup of one volume, which has no moments', async () => {
+      const { composeId } = await createStack();
+      const created = await createBackup({
+        volumeName: 'zeta-db',
+        serviceType: 'compose',
+        serviceId: composeId,
+      });
+
+      const refused = await request(http)
+        .get(
+          `/volume-backups/${(created.body as { volumeBackupId: string }).volumeBackupId}/moments`,
+        )
+        .set('Cookie', cookie);
+
+      expect(refused.status).toBe(400);
+      expect((refused.body as { message: string }).message).toContain(
+        'Only a Stack backup has moments',
+      );
+    });
+
+    describe('authorization', () => {
+      /** Moves an invitee entitled to the stack onto a licensed custom role. */
+      async function memberWith(
+        composeId: string,
+        permission: Record<string, string[]>,
+      ): Promise<string> {
+        const invite = await request(http)
+          .post('/organizations/invitations')
+          .set('Cookie', cookie)
+          .send({ email: 'ida@example.com', role: 'member' });
+        const inviteId = (invite.body as { id: string }).id;
+        const signedUp = await request(http)
+          .post('/api/auth/sign-up/email')
+          .set('x-cloudgate-token', inviteId)
+          .send({
+            name: 'Ida Rhodes',
+            email: 'ida@example.com',
+            password: 'super-secret-password',
+          });
+        const inviteeCookie = (
+          signedUp.headers['set-cookie'] as unknown as string[]
+        )
+          .map((entry) => entry.split(';')[0])
+          .join('; ');
+        const inviteeId = (signedUp.body as { user: { id: string } }).user.id;
+        const accepted = await request(http)
+          .post(`/organizations/invitations/${inviteId}/accept`)
+          .set('Cookie', inviteeCookie);
+        expect(accepted.status).toBe(201);
+
+        const [memberRow] = await ctx.db
+          .select()
+          .from(member)
+          .where(eq(member.userId, inviteeId));
+        const [stack] = await ctx.db
+          .select({ environmentId: composeTable.environmentId })
+          .from(composeTable)
+          .where(eq(composeTable.composeId, composeId));
+        const [env] = await ctx.db
+          .select({ projectId: environment.projectId })
+          .from(environment)
+          .where(eq(environment.environmentId, stack.environmentId));
+        await ctx.app
+          .get(PermissionService)
+          .setMemberEntitlements(organizationId, memberRow.id, {
+            accessedProjects: [env.projectId],
+            accessedEnvironments: [stack.environmentId],
+            accessedServices: [composeId],
+          });
+        await ctx.db.insert(licenseKey).values({
+          organizationId,
+          key: 'test-license-key',
+          status: 'active',
+          enableEnterpriseFeatures: true,
+        });
+        await ctx.db.insert(organizationRole).values({
+          organizationId,
+          role: 'stack-restorer',
+          permission: { ac: ['read'], ...permission },
+        });
+        await ctx.db
+          .update(member)
+          .set({ role: 'stack-restorer' })
+          .where(eq(member.userId, inviteeId));
+        return inviteeCookie;
+      }
+
+      it.each([
+        [
+          'volumeBackup restore',
+          { service: ['read', 'update'], volumeBackup: ['read'] },
+        ],
+        [
+          'service update',
+          { service: ['read'], volumeBackup: ['read', 'restore'] },
+        ],
+      ])(
+        'refuses a role without %s, running nothing',
+        async (_, permission) => {
+          const { composeId, volumeBackupId } = await stackBackupOf();
+          machine();
+          const inviteeCookie = await memberWith(composeId, permission);
+
+          const refused = await request(http)
+            .post(`/volume-backups/${volumeBackupId}/restore-moment`)
+            .set('Cookie', inviteeCookie)
+            .send({ moment: NEWER });
+
+          expect(refused.status).toBe(403);
+          expect(
+            scripts().some((script) => script.includes('Step started:')),
+          ).toBe(false);
+        },
+      );
+
+      it('lets a role holding both restore the moment', async () => {
+        const { composeId, volumeBackupId } = await stackBackupOf();
+        machine();
+        const inviteeCookie = await memberWith(composeId, {
+          service: ['read', 'update'],
+          volumeBackup: ['read', 'restore'],
+        });
+
+        const restored = await request(http)
+          .post(`/volume-backups/${volumeBackupId}/restore-moment`)
+          .set('Cookie', inviteeCookie)
+          .send({ moment: NEWER });
+
+        expect(restored.status).toBe(204);
+      });
     });
   });
 

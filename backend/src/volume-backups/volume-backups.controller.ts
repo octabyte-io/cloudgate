@@ -22,6 +22,7 @@ import { VolumeBackupsService } from './volume-backups.service';
 import {
   CreateVolumeBackupDto,
   ListVolumeBackupsDto,
+  RestoreMomentDto,
   RestoreVolumeBackupDto,
   UpdateVolumeBackupDto,
 } from './dto/volume-backup.dto';
@@ -56,7 +57,7 @@ export class VolumeBackupsController {
   }
 
   /**
-   * **`204`, and both of this controller's `204`s are void by design**.
+   * **`204`, and this controller's `204`s are void by design**.
    * `restore` answers nothing because its whole diagnosis is the rclone script's
    * stdout, which reaches the caller as a 400/409 message — success
    * has nothing left to say. `POST /volume-backups` above stays `201`.
@@ -101,6 +102,38 @@ export class VolumeBackupsController {
     @Param('id') id: string,
   ) {
     return this.volumeBackupsService.runManual(toCtx(user, session), id);
+  }
+
+  /** A Stack backup's moments, as its destination holds them, newest first. */
+  @Get(':id/moments')
+  @RequirePermission('volumeBackup', 'read')
+  listMoments(
+    @CurrentUser() user: AuthSession['user'],
+    @CurrentSession() session: Session,
+    @Param('id') id: string,
+  ) {
+    return this.volumeBackupsService.listMoments(toCtx(user, session), id);
+  }
+
+  /**
+   * Restores every volume of one moment of a Stack backup, as one run
+   * (ADR-0092). `204` as `restore`'s: what happened step by step is the
+   * run's log, and a failure answers 400 or 409.
+   */
+  @Post(':id/restore-moment')
+  @HttpCode(204)
+  @RequirePermission('volumeBackup', 'restore')
+  restoreMoment(
+    @CurrentUser() user: AuthSession['user'],
+    @CurrentSession() session: Session,
+    @Param('id') id: string,
+    @Body() body: RestoreMomentDto,
+  ) {
+    return this.volumeBackupsService.restoreMoment(
+      toCtx(user, session),
+      id,
+      body,
+    );
   }
 
   @Patch(':id')

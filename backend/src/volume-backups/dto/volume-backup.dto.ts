@@ -373,3 +373,26 @@ export const storedVolumeBackupShellSchema = createVolumeBackupFields
       .or(z.literal(''))
       .nullish(),
   });
+
+/**
+ * A Stack backup's **backup moment** (ADR-0092): the folder name one run
+ * writes its tarballs under, `getBackupTimestamp`'s ISO instant with `:` and
+ * `.` as `-`. Held to exactly that shape, because it becomes a segment of
+ * every key the restore downloads and of the staging path on the Server.
+ */
+export const BACKUP_MOMENT_REGEX =
+  /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/;
+
+// The moment restore's input: which moment of this Stack backup to restore.
+// Its volumes come from the destination's own listing of that moment, never
+// from the request.
+export const restoreMomentSchema = z.object({
+  moment: z
+    .string()
+    .regex(
+      BACKUP_MOMENT_REGEX,
+      'A moment is the folder name a Stack backup run writes, such as 2026-11-26T03-00-00-000Z',
+    ),
+});
+
+export class RestoreMomentDto extends createZodDto(restoreMomentSchema) {}

@@ -98,6 +98,18 @@ const CENSUS: Readonly<Record<string, Verdict>> = {
     verdict: REFUSES,
     why: '`docker volume rm/create` and the untar, refused after the gates.',
   },
+  'volume-backups/volume-backups.service.ts#restoreMoment': {
+    verdict: REFUSES,
+    why: "A Stack backup moment's Remove containers, untars and Start, refused after the gates.",
+  },
+  'volume-backups/volume-backups.service.ts#momentsIn': {
+    verdict: REFUSES,
+    guards: [
+      'volume-backups/volume-backups.service.ts#listMoments',
+      'volume-backups/volume-backups.service.ts#restoreMoment',
+    ],
+    why: 'The moment listing off the customer’s endpoint; reached only from `listMoments` and `restoreMoment`, after their refusals.',
+  },
   'volume-backups/volume-backups.service.ts#exec': {
     verdict: REFUSES,
     guards: ['volume-backups/volume-backups.service.ts#run'],

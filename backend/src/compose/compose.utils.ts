@@ -1212,8 +1212,21 @@ export function removeComposeContainersCommand(
 ): string {
   return withVolumeLock(
     { serverId, volumeNames, mode: 'fail-fast' },
-    `cd ${quote([composeProjectDirectory(serverId, appName)])} && env -i PATH="$PATH" docker compose -p ${quote([appName])} rm --stop --force`,
+    composeContainersRemoval(serverId, appName),
   );
+}
+
+/**
+ * {@link removeComposeContainersCommand} without its lock, for a caller whose
+ * script holds the locks already: a Stack backup's moment restore takes
+ * every volume's lock once, in name order, before its Remove containers step
+ * (ADR-0092).
+ */
+export function composeContainersRemoval(
+  serverId: string | null,
+  appName: string,
+): string {
+  return `cd ${quote([composeProjectDirectory(serverId, appName)])} && env -i PATH="$PATH" docker compose -p ${quote([appName])} rm --stop --force`;
 }
 
 /**
