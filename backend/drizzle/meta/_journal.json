@@ -1625,6 +1625,13 @@
       "when": 1795632627266,
       "tag": "0231_compose-path-no-default",
       "breakpoints": true
+    },
+    {
+      "idx": 232,
+      "version": "7",
+      "when": 1795676307677,
+      "tag": "0232_compose-deployed-service-volumes",
+      "breakpoints": true
     }
   ]
 }

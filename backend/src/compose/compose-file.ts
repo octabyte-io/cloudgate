@@ -72,6 +72,15 @@ export interface ComposePublishedPort {
   service: string;
 }
 
+/** One service of a stack, with the named volumes it mounts (#162). */
+export interface ComposeServiceVolumes {
+  serviceName: string;
+  /** Its `image:`, or `null` for a service the file builds. */
+  image: string | null;
+  /** Docker's names for the named volumes it mounts, in file order. */
+  volumes: string[];
+}
+
 /** A range longer than this is not expanded into choices (`1-65535`). */
 const PUBLISHED_RANGE_LIMIT = 100;
 

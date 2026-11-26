@@ -33,7 +33,10 @@ import type { StackVmSettings } from '../cloud-accounts/definitions/stack-vm';
 import type { StackVmCloudDeleteRecord } from './stack-vm-delete-record';
 import { server } from '../servers/server.schema';
 import { sshKey } from '../ssh-keys/ssh-key.schema';
-import type { ComposePublishedPort } from './compose-file';
+import type {
+  ComposePublishedPort,
+  ComposeServiceVolumes,
+} from './compose-file';
 
 // Phase 29 scope: no randomize/suffix columns (isolatedDeployment is what keeps
 // stacks collision-free), and no mounts/backups/schedules/patch relations
@@ -211,6 +214,18 @@ export const compose = pgTable(
      * them; empty for a `stack`, whose Delete removes none.
      */
     deployedVolumes: jsonb('deployed_volumes').$type<string[]>(),
+    /**
+     * Each service of the file of its **last successful deploy**, with its
+     * image and the named volumes it mounts as Docker names them
+     * (`listComposeServiceVolumes`), written beside `deployedVolumes` from
+     * the same admitted bytes (ADR-0069). The Volume backups tab picks a
+     * one-volume backup from it (`GET /compose/:id/volumes`). **null** until
+     * such a deploy has recorded it; for both stack types, since a swarm
+     * stack's volumes are named the same way.
+     */
+    deployedServiceVolumes: jsonb('deployed_service_volumes').$type<
+      ComposeServiceVolumes[]
+    >(),
     createdAt: isoTimestamp('created_at'),
     environmentId: text('environment_id')
       .notNull()

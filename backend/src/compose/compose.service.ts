@@ -107,6 +107,7 @@ import {
   composeTeardownCommand,
   getComposeFilePath,
   listComposePublishedPorts,
+  listComposeServiceVolumes,
   listComposeVolumes,
   listComposeServices,
   mapFormLabelsRefusal,
@@ -119,7 +120,11 @@ import {
   writeDomainsToCompose,
 } from './compose.utils';
 import { composeFileForRead } from './compose-file-lookup';
-import type { ComposeRefusalEcho, SettleClock } from './compose.utils';
+import type {
+  ComposeRefusalEcho,
+  ComposeServiceVolumes,
+  SettleClock,
+} from './compose.utils';
 import { sourceTypeOnCreate } from './compose-source-type';
 import { publishStackVmPorts } from './stack-vm-ports';
 import { ComposeStackVms } from './compose-stack-vms';
@@ -153,6 +158,10 @@ export {
   STACK_VM_TAKES_NO_SERVER,
 } from './compose-stack-vms';
 export type { ComposeCloudPlace } from './compose-stack-vms';
+
+/** Why `GET /compose/:id/volumes` lists no service: no deploy recorded any. */
+export const NOT_DEPLOYED_VOLUMES_REASON =
+  'This stack hasn’t deployed successfully yet. Its volumes are read from its first deploy.';
 
 @Injectable()
 export class ComposeService {
@@ -1598,6 +1607,35 @@ export class ComposeService {
   }
 
   /**
+   * Each service of the stack with its image and the named volumes it
+   * mounts, as Docker names them — what the Volume backups tab picks a
+   * one-volume backup from (#162). Answered from the record of the last
+   * successful deploy (`compose.deployedServiceVolumes`, ADR-0069), never
+   * from the file, so it names what really runs and costs no read of a
+   * clone; a stack no deploy has recorded says so in `unavailableReason`.
+   * Read-scoped like {@link loadServices}.
+   */
+  async loadVolumes(
+    ctx: PermissionCtx,
+    composeId: string,
+  ): Promise<{
+    services: ComposeServiceVolumes[];
+    unavailableReason: string | null;
+  }> {
+    await this.permissions.checkServiceAccess(ctx, composeId, 'read');
+    const current = await this.findOwned(ctx, composeId);
+    const [row] = await this.db
+      .select({ services: compose.deployedServiceVolumes })
+      .from(compose)
+      .where(eq(compose.composeId, current.composeId))
+      .limit(1);
+    if (!row?.services) {
+      return { services: [], unavailableReason: NOT_DEPLOYED_VOLUMES_REASON };
+    }
+    return { services: row.services, unavailableReason: null };
+  }
+
+  /**
    * The compose file as the deploy actually applies it — the same rewrite
    * `getBuildComposeCommand` pipes onto the build server
    * (`writeDomainsToCompose`), fed the same domains the deployment engine
@@ -1719,7 +1757,8 @@ export class ComposeService {
    * can be aimed at one (`publishedPortsOf` reads them back), and the
    * volumes its Delete removes (`compose.deployedVolumes`, ADR-0069),
    * recorded for every source since a plan's destroy line reads them, from
-   * the stack's name and type. Internal — called by
+   * the stack's name and type, and each service's named volumes, which the
+   * Volume backups tab picks from (`compose.deployedServiceVolumes`). Internal — called by
    * `DeploymentEngineService.deployCompose` once the build has succeeded,
    * never on a failure, which leaves the previous record as it was.
    *
@@ -1748,6 +1787,10 @@ export class ComposeService {
           content,
           stack.appName,
           stack.composeType,
+        ),
+        deployedServiceVolumes: listComposeServiceVolumes(
+          content,
+          stack.appName,
         ),
       })
       .where(eq(compose.composeId, stack.composeId));

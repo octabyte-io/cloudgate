@@ -906,6 +906,15 @@ const JSON_COLUMNS: Readonly<Record<string, JsonColumnEntry>> = {
       '(ADR-0069): Docker volume names, shown by `docker volume ls` to ' +
       'anyone on the Server. No other value from the file is kept.',
   },
+  'compose.deployedServiceVolumes': {
+    encrypted: false,
+    reason:
+      'each compose service of a successful deploy’s file with its ' +
+      '`image:` and the Docker names of the named volumes it mounts, ' +
+      'which the Volume backups tab picks from: what `docker ps` and ' +
+      '`docker volume ls` show anyone on the Server. No variable, ' +
+      'command or other value from the file is kept.',
+  },
   'environment.deployTarget': {
     encrypted: false,
     reason:
