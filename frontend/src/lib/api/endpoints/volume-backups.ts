@@ -110,6 +110,16 @@ export interface RestoreVolumeBackupInput {
   destinationId: string;
 }
 
+/** One moment a Stack backup's destination holds (ADR-0092). */
+export interface BackupMoment {
+  /** The moment folder's name, `2026-11-26T03-00-00-000Z`. */
+  moment: string;
+  /** The same instant, RFC 3339. */
+  takenAt: string;
+  /** The volumes the moment holds a tarball of, in name order. */
+  volumes: string[];
+}
+
 export const volumeBackupsApi = {
   listByService: (
     serviceId: string,
@@ -147,6 +157,20 @@ export const volumeBackupsApi = {
   /** **Destructive.** Unpacks a tarball over a volume's current contents. */
   restore: (input: RestoreVolumeBackupInput) =>
     api.post<unknown>("/volume-backups/restore", input),
+
+  /** A Stack backup's moments, as its destination holds them, newest first. */
+  moments: (volumeBackupId: string) =>
+    api.get<BackupMoment[]>(`/volume-backups/${volumeBackupId}/moments`),
+
+  /**
+   * **Destructive.** Restores every volume of one moment of a Stack backup,
+   * as one run: Remove containers (Stop on a swarm stack), each volume, then
+   * Start. Answers once the run has ended; the steps are in its log.
+   */
+  restoreMoment: (volumeBackupId: string, moment: string) =>
+    api.post<unknown>(`/volume-backups/${volumeBackupId}/restore-moment`, {
+      moment,
+    }),
 
   remove: (volumeBackupId: string) =>
     api.delete<VolumeBackup & Pick<TeardownReport, "unreclaimedArtifacts">>(

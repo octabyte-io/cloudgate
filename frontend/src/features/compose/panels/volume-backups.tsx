@@ -28,6 +28,7 @@ import {
 } from "../../application/advanced/use-advanced";
 import { volumeBackupsSpec } from "../../application/advanced/volume-backups-spec";
 import { useCompose, useComposeVolumes } from "../use-compose";
+import { MomentRestoreModal } from "../volume-backups/moment-restore-modal";
 import { StackBackupsNote } from "../volume-backups/stack-backups-note";
 
 /**
@@ -55,6 +56,9 @@ export default function Panel({ id, label, icon }: PanelProps) {
   const [seed, setSeed] = useState<VolumeBackup | null>(null);
   const [opening, setOpening] = useState(0);
   const [historyOf, setHistoryOf] = useState<string | null>(null);
+  // A Stack backup's Restore puts back a whole moment (ADR-0092), so its
+  // row opens the moment dialog rather than the one-volume restore.
+  const [momentOf, setMomentOf] = useState<VolumeBackup | null>(null);
   const runs = useVolumeBackupRuns(historyOf);
 
   const row = compose.data;
@@ -127,7 +131,16 @@ export default function Panel({ id, label, icon }: PanelProps) {
                 size="xs"
                 disabled={!canRestore.allowed}
                 title={canRestore.allowed ? undefined : RESTORE_REFUSAL}
-                onClick={() => openRestore(item)}
+                onClick={() => {
+                  if (!canRestore.allowed) return;
+                  if (item.scope === "stack") {
+                    setOpening((n) => n + 1);
+                    setMomentOf(item);
+                    setHistoryOf(item.volumeBackupId);
+                  } else {
+                    openRestore(item);
+                  }
+                }}
               >
                 Restore
               </Button>
@@ -183,6 +196,19 @@ export default function Panel({ id, label, icon }: PanelProps) {
           </p>
         </Card.Body>
       </Card>
+
+      {momentOf ? (
+        <MomentRestoreModal
+          key={`moment-${opening}`}
+          backup={momentOf}
+          stackName={row.name}
+          composeType={row.composeType}
+          open
+          onOpenChange={(next) => {
+            if (!next) setMomentOf(null);
+          }}
+        />
+      ) : null}
 
       <RestoreModal
         key={`restore-${opening}`}

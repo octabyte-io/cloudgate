@@ -857,6 +857,14 @@ export const keys = {
         "by-service",
         serviceId,
       ] as const,
+    /** A Stack backup's moments, read off its destination (ADR-0092). */
+    moments: (organizationId: OrganizationScope, volumeBackupId: string) =>
+      [
+        ...org(organizationId),
+        "volume-backups",
+        volumeBackupId,
+        "moments",
+      ] as const,
   },
 
   /**
