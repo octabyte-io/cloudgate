@@ -437,6 +437,7 @@ describe('Stack backups (e2e)', () => {
 
       expect(scripts()).toContain(
         `rclone lsf --dirs-only \\:s3\\:cloudgate-backups/${appName}/nightly/ | ` +
+          'grep -E \\^\\[0-9\\]\\{4\\}-\\[0-9\\]\\{2\\}-\\[0-9\\]\\{2\\}T\\[0-9\\]\\{2\\}-\\[0-9\\]\\{2\\}-\\[0-9\\]\\{2\\}-\\[0-9\\]\\{3\\}Z/\\$ | ' +
           'sort -r | tail -n +$((3+1)) | xargs -I{} ' +
           `rclone purge \\:s3\\:cloudgate-backups/${appName}/nightly/\\{\\}`,
       );

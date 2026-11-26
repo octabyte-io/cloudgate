@@ -4,6 +4,7 @@ import type { ComposeType } from '../compose/compose.schema';
 import { volumeBackupsDirectoryOn } from '../deployment-engine/deployment-engine.paths';
 import { withVolumeLock } from '../deployment-engine/volume-lock';
 import type { VolumeLockMode } from '../deployment-engine/volume-lock';
+import { BACKUP_MOMENT_REGEX } from './dto/volume-backup.dto';
 import {
   bulkDownloadCommand,
   reachabilityProbeCommand,
@@ -670,10 +671,24 @@ export const buildStackBackupScript = ({
 };
 
 /**
+ * {@link BACKUP_MOMENT_REGEX} as the `grep -E` pattern for one line of
+ * `rclone lsf --dirs-only`, which ends a folder's name with `/`. Derived
+ * rather than written again, so the prune and the moment listing
+ * (`momentsIn`) cannot come to disagree on what a moment is.
+ */
+const MOMENT_FOLDER_PATTERN = BACKUP_MOMENT_REGEX.source
+  .replace(/\\d/g, '[0-9]')
+  .replace(/\$$/, '/$');
+
+/**
  * Keep newest N for a Stack backup: the moment folders under
  * `{appName}/{prefix}/`, newest first by their timestamp names, and every
  * one past the Nth purged whole — so pruning never leaves half a moment
  * (ADR-0092). Every word `quote()`d, as `buildPruneCommand`'s are.
+ *
+ * Only a folder named as a moment is counted or purged: anything else under
+ * the prefix (a copy put there by hand, another tool's folder) is not this
+ * backup's to delete, and counting it would purge one moment too many.
  */
 export const buildMomentPruneCommand = ({
   momentsPath,
@@ -683,7 +698,7 @@ export const buildMomentPruneCommand = ({
   momentsPath: string;
   keepLatestCount: number;
 }): string =>
-  `rclone lsf --dirs-only ${quote([momentsPath])} | sort -r | tail -n +$((${keepLatestCount}+1)) | xargs -I{} rclone purge ${quote([`${momentsPath}{}`])}`;
+  `rclone lsf --dirs-only ${quote([momentsPath])} | grep -E ${quote([MOMENT_FOLDER_PATTERN])} | sort -r | tail -n +$((${keepLatestCount}+1)) | xargs -I{} rclone purge ${quote([`${momentsPath}{}`])}`;
 
 /** The service a restore's log header names — the volume itself is looked up
  * by name, so the target styles the log banner — and, for a bucket, the

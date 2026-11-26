@@ -272,7 +272,7 @@ describe('buildMomentPruneCommand, executed under /bin/sh', () => {
     const binDir = path.join(root, 'bin');
     const logFile = path.join(root, 'stub-calls.log');
     fs.mkdirSync(binDir);
-    linkTools(binDir, ['sort', 'tail', 'xargs', 'printf']);
+    linkTools(binDir, ['sort', 'tail', 'xargs', 'printf', 'grep']);
     fs.writeFileSync(path.join(binDir, 'rclone'), RCLONE_STUB, { mode: 0o755 });
 
     const moments = [
@@ -297,6 +297,60 @@ describe('buildMomentPruneCommand, executed under /bin/sh', () => {
           PATH: binDir,
           STUB_LOG: logFile,
           STUB_MOMENTS: `${moments.join('\n')}\n`,
+        },
+      },
+    );
+
+    expect(result.status).toBe(0);
+    const purged = fs
+      .readFileSync(logFile, 'utf8')
+      .trimEnd()
+      .split('\n')
+      .filter((call) => call.startsWith('rclone purge'))
+      .sort();
+    expect(purged).toEqual([
+      'rclone purge :s3:cloudgate-backups/wiki/nightly/2026-11-22T03-00-00-000Z/',
+      'rclone purge :s3:cloudgate-backups/wiki/nightly/2026-11-23T03-00-00-000Z/',
+    ]);
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it('counts and purges only folders named as moments, never another folder under the prefix', () => {
+    const root = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'cloudgate-moment-prune-')),
+    );
+    const binDir = path.join(root, 'bin');
+    const logFile = path.join(root, 'stub-calls.log');
+    fs.mkdirSync(binDir);
+    linkTools(binDir, ['sort', 'tail', 'xargs', 'printf', 'grep']);
+    fs.writeFileSync(path.join(binDir, 'rclone'), RCLONE_STUB, { mode: 0o755 });
+
+    // `zz-manual-copy/` sorts above every moment, so a count that took it in
+    // would keep it as one of the newest three and purge a third moment.
+    const folders = [
+      '2026-11-22T03-00-00-000Z/',
+      'zz-manual-copy/',
+      '2026-11-25T03-00-00-000Z/',
+      '2026-11-23T03-00-00-000Z/',
+      'archive/',
+      '2026-11-26T03-00-00-000Z/',
+      '2026-11-24T03-00-00-000Z/',
+    ];
+    const result = spawnSync(
+      '/bin/sh',
+      [
+        '-c',
+        buildMomentPruneCommand({
+          momentsPath: ':s3:cloudgate-backups/wiki/nightly/',
+          keepLatestCount: 3,
+        }),
+      ],
+      {
+        encoding: 'utf8',
+        env: {
+          PATH: binDir,
+          STUB_LOG: logFile,
+          STUB_MOMENTS: `${folders.join('\n')}\n`,
         },
       },
     );
