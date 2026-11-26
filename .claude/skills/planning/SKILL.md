@@ -120,6 +120,6 @@ When a decision states a rule ("anything that starts containers"), find every co
 
 ## 6. Publish
 
-Only after approval. Create the spec, then the tickets in blocker-first order as its sub-issues, then the blocking links, as [`GITHUB.md`](GITHUB.md) describes. Commit any `CONTEXT.md` and ADR changes on `main` with a message naming the spec.
+Only after approval. Create the spec, then the tickets in blocker-first order as its sub-issues, then the blocking links, as [`GITHUB.md`](GITHUB.md) describes. Land any `CONTEXT.md` and ADR changes through a pull request into `main` (a commit naming the spec, on the session's named branch or `planning/spec-<n>`), and merge it once `ci.yml` is green. Never push them to `main` directly, and never close that pull request in favour of a direct push.
 
 End with the spec's title and link, each ticket's title, link and label, and the next step: `/build <spec number>`.

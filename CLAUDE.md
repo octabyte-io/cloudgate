@@ -41,8 +41,11 @@ Details, lanes and commands: `docs/testing.md`.
 Four skills in `.claude/skills/`:
 
 - **`/planning`**: a rough idea → an approved `spec` issue and its tickets, asking you every decision.
-- **`/build`**: a spec's tickets → tested commits on `main`, then the issues closed.
-- **`/fix`**: a bug → a failing test, the fix, and the issue closed.
+- **`/build`**: a spec's tickets → a tested pull request, merged into `main`, then the issues closed.
+- **`/fix`**: a bug → a failing test, the fix in a merged pull request, and the issue closed.
 - **`/ask`**: a question about the code, answered plainly; it only reads.
 
 The labels they use are listed in `CONTRIBUTING.md`.
+
+Work reaches `main` only by merging its pull request. Never push to `main` directly, and never close
+a pull request as superseded by pushing its commits to `main`.

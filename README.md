@@ -266,7 +266,7 @@ pnpm --filter backend exec jest --config ./test/jest-e2e.json --maxWorkers=2
 - **Type-check and lint**: `pnpm -r run typecheck`, `pnpm -r run lint` and `bash -n deploy/install.sh`.
 - **Unit lanes**: `pnpm --filter backend test` and `pnpm --filter frontend test`. The backend lane carries every census gate in `backend/test/coding-standards/` and the assertion that `backend/openapi.json` still matches what the DTOs generate. The frontend lane carries the console's tests and the custom eslint rules' own.
 
-**It does not run the e2e suite or `test:db`; `.github/workflows/e2e-shards.yml` does.** On every push to `main`, every `build/**` branch and every pull request, it splits the e2e suite across eight runners and runs `test:db` beside them, and its `E2E` check is green only when all of them are. A red suite is re-run alone first, so only a suite red alone too (or a wedged run) fails it. `/build` waits for that check on a `build/<spec>` branch before it moves `main`.
+**It does not run the e2e suite or `test:db`; `.github/workflows/e2e-shards.yml` does.** On every push to `main`, every `build/**` branch and every pull request, it splits the e2e suite across eight runners and runs `test:db` beside them, and its `E2E` check is green only when all of them are. A red suite is re-run alone first, so only a suite red alone too (or a wedged run) fails it. `/build` and `/fix` wait for that check on their pull request, then merge it.
 
 ### Repo layout
 
