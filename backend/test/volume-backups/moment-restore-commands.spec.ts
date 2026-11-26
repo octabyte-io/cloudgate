@@ -25,7 +25,7 @@ import {
  * - `docker run … tar xvf` fails for the volume named in `$STUB_UNTAR_FAILS`.
  * - `docker service ls` answers two services of the swarm stack, each at
  *   `$STUB_REPLICAS` replicas, or none with `$STUB_NO_SERVICES` set, as a
- *   swarm stack that Stop took down answers.
+ *   swarm stack whose Stop removed every service answers.
  * - `rclone copyto` writes a non-empty file at its last argument, as a
  *   download does.
  */

@@ -50,7 +50,7 @@ interface StackVolumes {
  * deploy wrote (ADR-0069) — what the Volume backups tab picks a one-volume
  * backup from (#163).
  *
- * Only the machine is replaced: `RemoteExecService`, so the real
+ * Only the Server is replaced: `RemoteExecService`, so the real
  * `DeploymentEngineService.deployCompose` runs and records the file.
  */
 describe('A Compose stack’s volumes (e2e)', () => {

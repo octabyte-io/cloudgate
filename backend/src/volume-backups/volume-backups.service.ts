@@ -906,7 +906,7 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
    * which step stopped it and which volumes were restored. A failure after the
    * first step leaves the stack stopped, and the row says so; one before it
    * has touched nothing and leaves the row alone. A swarm stack that had no
-   * service running before the restore (Stop took it down) is restored and
+   * service running before the restore (its Stop removed every service) is restored and
    * left stopped, and the row says that too, never `done`.
    */
   async restoreMoment(

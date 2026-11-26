@@ -517,7 +517,8 @@ const SCALE_STACK_TO_ZERO = `echo "Stopping the stack to 0 replicas"
 			done`;
 
 export interface StackBackupScriptOptions {
-  /** The machine the stack runs on, which roots the volume locks. */
+  /** The Server the stack runs on (null: the platform host), which roots
+   * the volume locks. */
   serverId: string | null;
   /** The stack's `appName`: its compose project, or its swarm stack. */
   appName: string;
@@ -1694,7 +1695,8 @@ export const MOMENT_RESTORE_HALTED_EXIT_CODE = 3;
 export const MOMENT_RESTORE_LEFT_STOPPED_EXIT_CODE = 4;
 
 export interface MomentRestoreScriptOptions {
-  /** The machine the stack runs on, which roots the locks and the staging. */
+  /** The Server the stack runs on (null: the platform host), which roots
+   * the locks and the staging. */
   serverId: string | null;
   /** The stack's `appName`. */
   appName: string;
@@ -1758,18 +1760,18 @@ export const buildMomentRestoreScript = ({
   const listed = (names: string[]) =>
     names.length > 0 ? names.join(', ') : 'none';
 
-  const takeDownStep =
+  const removeOrStopStep =
     lifecycle.composeType === 'stack' ? 'Stop' : 'Remove containers';
   // `|| exit $?` after each of `ComposeService`'s two commands: both are a
   // `cd … && …` list, and `set -e` passes over a failure anywhere in an
   // AND-OR list but its last command, so a missing project directory would
   // otherwise read as a step done.
-  const takeDown =
+  const removeOrStop =
     lifecycle.composeType === 'stack'
       ? SCALE_STACK_TO_ZERO
       : `${lifecycle.remove} || exit $?`;
-  // A swarm stack with no service running before the restore (Stop took it
-  // down) has nothing to scale back, and is left stopped: starting it is
+  // A swarm stack with no service running before the restore (its Stop
+  // removed every service) has nothing to scale back, and is left stopped: starting it is
   // Start's or Deploy's, which recreate its services from the file.
   const bringUp =
     lifecycle.composeType === 'stack'
@@ -1831,7 +1833,7 @@ export const buildMomentRestoreScript = ({
 				exit ${quote([String(MOMENT_RESTORE_HALTED_EXIT_CODE)])}
 			}
 			trap report_moment EXIT
-			${step(takeDownStep, takeDown)}
+			${step(removeOrStopStep, removeOrStop)}
 			${restores}
 			${step('Start', bringUp)}
 		)

@@ -62,7 +62,7 @@ const MOMENT = '\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}-\\d{3}Z';
  * Compose stack, which stops the stack once, tars every volume its last
  * successful deploy recorded under one moment folder, and starts it again.
  *
- * Through the HTTP seam, with only the machine replaced
+ * Through the HTTP seam, with only the Server replaced
  * (`RemoteExecService`), so the real deploy records the stack's volumes.
  */
 describe('Stack backups (e2e)', () => {
@@ -561,9 +561,9 @@ describe('Stack backups (e2e)', () => {
       { Path: 'notes.txt', Name: 'notes.txt', Size: 3, IsDir: false },
     ]);
 
-    /** The machine: the listing answers `LISTING`, the restore script is
+    /** The Server's answers: the listing answers `LISTING`, the restore script is
      * answered by `restore`, and everything else succeeds. */
-    function machine(restore: () => Promise<unknown> = ok): void {
+    function serverAnswers(restore: () => Promise<unknown> = ok): void {
       execMock.execAsync.mockImplementation((command: string) => {
         if (command.startsWith('rclone lsjson')) {
           return Promise.resolve({ stdout: LISTING, stderr: '', exitCode: 0 });
@@ -609,7 +609,7 @@ describe('Stack backups (e2e)', () => {
 
     it('lists the moments the destination holds, newest first, with their volumes', async () => {
       const { appName, volumeBackupId } = await stackBackupOf();
-      machine();
+      serverAnswers();
 
       const listed = await request(http)
         .get(`/volume-backups/${volumeBackupId}/moments`)
@@ -638,7 +638,7 @@ describe('Stack backups (e2e)', () => {
 
     it('removes the containers, restores every volume and starts the stack, as one run', async () => {
       const { composeId, appName, volumeBackupId } = await stackBackupOf();
-      machine();
+      serverAnswers();
 
       const restored = await restoreMoment(volumeBackupId);
 
@@ -663,7 +663,7 @@ describe('Stack backups (e2e)', () => {
 
     it('stops a swarm stack rather than removing containers', async () => {
       const { volumeBackupId } = await stackBackupOf({}, 'stack');
-      machine();
+      serverAnswers();
 
       const restored = await restoreMoment(volumeBackupId);
 
@@ -676,7 +676,7 @@ describe('Stack backups (e2e)', () => {
 
     it('records a swarm stack that was not running before the restore as stopped after it', async () => {
       const { composeId, volumeBackupId } = await stackBackupOf({}, 'stack');
-      machine(() =>
+      serverAnswers(() =>
         Promise.reject(
           Object.assign(new Error('Command failed with exit code 4'), {
             exitCode: MOMENT_RESTORE_LEFT_STOPPED_EXIT_CODE,
@@ -697,7 +697,7 @@ describe('Stack backups (e2e)', () => {
 
     it('takes every volume lock in name order', async () => {
       const { volumeBackupId } = await stackBackupOf();
-      machine();
+      serverAnswers();
 
       await restoreMoment(volumeBackupId);
 
@@ -714,7 +714,7 @@ describe('Stack backups (e2e)', () => {
     it('answers 409 naming the volume when one lock is held, leaving the stack as it was', async () => {
       const { composeId, volumeBackupId } = await stackBackupOf();
       const before = await statusOf(composeId);
-      machine(() =>
+      serverAnswers(() =>
         Promise.reject(
           Object.assign(new Error('Command failed with exit code 75'), {
             exitCode: VOLUME_LOCK_BUSY_EXIT_CODE,
@@ -735,7 +735,7 @@ describe('Stack backups (e2e)', () => {
 
     it('answers 409 naming the one busy volume its run log names', async () => {
       const { volumeBackupId } = await stackBackupOf();
-      machine(() =>
+      serverAnswers(() =>
         Promise.reject(
           Object.assign(new Error('Command failed with exit code 75'), {
             exitCode: VOLUME_LOCK_BUSY_EXIT_CODE,
@@ -765,7 +765,7 @@ describe('Stack backups (e2e)', () => {
 
     it('records a restore that failed at a step as an error run and the stack as stopped', async () => {
       const { composeId, volumeBackupId } = await stackBackupOf();
-      machine(() =>
+      serverAnswers(() =>
         Promise.reject(
           Object.assign(new Error('Command failed with exit code 3'), {
             exitCode: MOMENT_RESTORE_HALTED_EXIT_CODE,
@@ -790,7 +790,7 @@ describe('Stack backups (e2e)', () => {
     it('leaves the stack as it was when the restore failed before its first step', async () => {
       const { composeId, volumeBackupId } = await stackBackupOf();
       const before = await statusOf(composeId);
-      machine(() =>
+      serverAnswers(() =>
         Promise.reject(
           Object.assign(new Error('Command failed with exit code 1'), {
             exitCode: 1,
@@ -811,7 +811,7 @@ describe('Stack backups (e2e)', () => {
 
     it('refuses a moment the destination does not hold, running nothing', async () => {
       const { volumeBackupId } = await stackBackupOf();
-      machine();
+      serverAnswers();
 
       const refused = await restoreMoment(
         volumeBackupId,
@@ -933,7 +933,7 @@ describe('Stack backups (e2e)', () => {
         'refuses a role without %s, running nothing',
         async (_, permission) => {
           const { composeId, volumeBackupId } = await stackBackupOf();
-          machine();
+          serverAnswers();
           const inviteeCookie = await memberWith(composeId, permission);
 
           const refused = await request(http)
@@ -950,7 +950,7 @@ describe('Stack backups (e2e)', () => {
 
       it('lets a role holding both restore the moment', async () => {
         const { composeId, volumeBackupId } = await stackBackupOf();
-        machine();
+        serverAnswers();
         const inviteeCookie = await memberWith(composeId, {
           service: ['read', 'update'],
           volumeBackup: ['read', 'restore'],

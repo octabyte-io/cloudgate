@@ -1846,8 +1846,8 @@ export class ComposeService implements StackLifecycle {
   }
 
   /**
-   * What a Stack backup's moment restore runs to take this stack down and
-   * bring it back (ADR-0092): Remove containers' command and Start's on a
+   * What a Stack backup's moment restore runs to remove this stack's
+   * containers and Start it again (ADR-0092): Remove containers' command and Start's on a
    * `docker-compose` stack, built as Start builds its own — the file the last
    * deploy ran, read back off disk and held to the same ownership check, with
    * the platform defaults re-applied — or nothing on a swarm stack, whose Stop
@@ -1855,7 +1855,8 @@ export class ComposeService implements StackLifecycle {
    *
    * Refused before anything is built where Start is refused, on a Server in
    * maintenance or a Bought Server powered off: the restore ends with a
-   * Start, so it would otherwise take the stack down and leave it there.
+   * Start, so it would otherwise remove the stack's containers and leave it
+   * stopped.
    *
    * No permission check of its own: its caller has made the restore's,
    * `volumeBackup: ['restore']` and `service: ['update']`, the gate a restore
