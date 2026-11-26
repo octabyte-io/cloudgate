@@ -1,10 +1,10 @@
 ---
 name: build
-description: Build an approved spec's tickets onto `main`, one background agent per ready ticket, test first; then the local suites, live acceptance, a review, CI's sharded e2e run on a build branch, push, and close the tickets and the spec. Give it a spec or ticket number, or nothing to build every ticketed spec in turn.
+description: Build an approved spec's tickets onto `main`, one background agent per ready ticket, test first; then the local suites, live acceptance, a review, a pull request that CI's sharded e2e run gates, merging that pull request, and closing the tickets and the spec. Give it a spec or ticket number, or nothing to build every ticketed spec in turn.
 disable-model-invocation: true
 ---
 
-`/build` turns the tickets `/planning` published into commits on `main`. You orchestrate: implementer agents write the code, you land it, check it and close the issues. History stays linear, and work lands on `main` directly, with no feature branch and no pull request.
+`/build` turns the tickets `/planning` published into commits on `main`. You orchestrate: implementer agents write the code, you land it, check it and close the issues. Tickets land on a local `main` linearly while you build, but the work reaches `origin/main` only by merging one pull request per spec (or per single ticket). Never push to `origin/main` directly, and never close that pull request as superseded: it is merged.
 
 GitHub reads and writes go through the GitHub MCP tools where the session has them, otherwise `gh`.
 
@@ -55,7 +55,7 @@ From `main`, run every lane the spec's changes reach, as `docs/testing.md` descr
 
 A single red suite is usually the known flake: re-run it alone with `--runTestsByPath` before believing it. A worker that `ran out of memory` is a resource problem, and exit code **124** is a stalled run; re-run either alone. A suite red alone is real, unless it is red on the commit noted in step 2 as well: then it is not this spec's, so record it in the end report as a `/fix` candidate and move on. Fix the rest with one implementer agent and re-run the red lanes until green.
 
-If Docker is not available and the spec changed the backend, the local e2e specs cannot run here. CI's run in step 7 still gates `main`, so carry on and say so in the end report.
+If Docker is not available and the spec changed the backend, the local e2e specs cannot run here. CI's run on the pull request in step 7 still gates the merge, so carry on and say so in the end report.
 
 **Live acceptance.** If the spec or a ticket has a `## Live acceptance` section, run it now by [`LIVE-ACCEPTANCE.md`](LIVE-ACCEPTANCE.md). It is done when every live criterion is recorded as passed, failed, or not runnable here, with the reason.
 
@@ -68,19 +68,20 @@ Review everything since the commit noted in step 2, along two axes, in two agent
 
 Show both reports side by side, unmerged. Fix every finding in one implementer agent (or say why a finding is wrong), land it as in step 4, and re-run the tests it touched.
 
-## 7. Push and close
+## 7. Open the pull request, merge it and close
 
-`git pull --rebase origin main` (re-run the touched tests if anything came in). Then let CI run the full backend suites before `main` moves:
+`git pull --rebase origin main` (re-run the touched tests if anything came in). Then let CI run the full backend suites on a pull request, and land the work by merging it:
 
-1. `git push origin HEAD:refs/heads/build/spec-<n>` (`build/ticket-<n>` for a single ticket). That push starts `.github/workflows/e2e-shards.yml`: the whole e2e lane on eight runners and the `test:db` lane, about ten minutes, beside `ci.yml`'s type-check, lint and unit lanes.
-2. While it runs, do step 6's review if you have not, and write the closing comments. Do not start another spec's agents on this machine meanwhile, so that a red CI suite can be re-run here alone.
-3. Wait for the `E2E` check on that commit (the GitHub MCP `actions_list`/`actions_get` tools, otherwise `gh run watch`). A shard re-runs each red suite alone and fails only when one is red alone too, or the run wedged. On a failure, read the shard's summary, re-run the named suite here with `--runTestsByPath`, fix it with one implementer agent as in step 5, and push the branch again. A suite red on the commit noted in step 2 as well is not this spec's: record it as a `/fix` candidate and move on.
-4. Once `E2E` and `ci.yml` are green, `git push origin HEAD:main` (it is the same commit, so it fast-forwards; if `main` moved, rebase and go back to 1), then delete the branch: `git push origin --delete build/spec-<n>`.
+1. Push to a branch: the branch the session was told to work on if it has one, otherwise `build/spec-<n>` (`build/ticket-<n>` for a single ticket): `git push -u origin HEAD:refs/heads/<branch>`.
+2. Open a pull request from that branch into `main`, following `.github/pull_request_template.md`. Its body lists the tickets it closes (`Closes #<ticket>` for each one whose criteria all passed) and the spec. The pull request starts `.github/workflows/e2e-shards.yml` (the whole e2e lane on eight runners and the `test:db` lane, about ten minutes) beside `ci.yml`'s type-check, lint and unit lanes.
+3. While it runs, do step 6's review if you have not, and write the closing comments. Do not start another spec's agents on this machine meanwhile, so that a red CI suite can be re-run here alone.
+4. Wait for the `E2E` and `ci.yml` checks on the pull request's head commit (the GitHub MCP `pull_request_read`/`actions_list` tools, otherwise `gh pr checks --watch`). A shard re-runs each red suite alone and fails only when one is red alone too, or the run wedged. On a failure, read the shard's summary, re-run the named suite here with `--runTestsByPath`, fix it with one implementer agent as in step 5, and push the same branch again; the pull request picks it up. A suite red on the commit noted in step 2 as well is not this spec's: record it as a `/fix` candidate and move on.
+5. Once `E2E` and `ci.yml` are green, **merge the pull request** (the GitHub MCP `merge_pull_request`, otherwise `gh pr merge --merge`). If `main` moved and the pull request is behind or conflicts, rebase the branch onto `origin/main`, push it again (`--force-with-lease` on this build's own branch only) and go back to 4. Never `git push origin HEAD:main`, and never close the pull request and push its commits to `main` instead. Then delete the branch if it was a `build/` branch.
 
-Close each ticket as completed with a comment naming its commits and what now shows it works (the test, or the live evidence). A ticket with a live criterion that failed or was not runnable stays open, with a comment naming each such criterion and why. Close the spec with its last ticket, with a comment listing the tickets and commits. Leave the spec open while any ticket is held or open, and say which.
+Close each ticket as completed (if the merge did not already) with a comment naming the merged pull request, its commits and what now shows it works (the test, or the live evidence). A ticket with a live criterion that failed or was not runnable stays open, with a comment naming each such criterion and why. Close the spec with its last ticket, with a comment linking the merged pull request and listing the tickets and commits. Leave the spec open while any ticket is held or open, and say which.
 
 ## 8. Clean up and report
 
 Remove every implementer worktree and its branch.
 
-End with one report for the whole run: each spec and ticket closed (title, link, commits), each one held, blocked or still open and why, each live criterion not passed, any conflict where one side's intent was kept over the other's, and, for a queue, the specs left out as not yet ticketed.
+End with one report for the whole run: each merged pull request (link), each spec and ticket closed (title, link, commits), each one held, blocked or still open and why, each live criterion not passed, any conflict where one side's intent was kept over the other's, and, for a queue, the specs left out as not yet ticketed.

@@ -1,9 +1,9 @@
 ---
 name: fix
-description: "Cloudgate's bug workflow: reproduce with a failing test, fix, land on `main`, close the issue. Load this skill BEFORE you investigate, read code or answer, whenever the user describes Cloudgate misbehaving, even casually or as a \"why does…\" question. That covers a 500 or stack trace, a crash, a wrong or `undefined` value, a setting that won't save, a false status or diff, a check that says something is down when it isn't, a regression (\"worked last week\", \"broke after the release\"), or a page or command that got slow. It also covers any `bug` issue number. Don't diagnose it inline; this skill does the diagnosis. Don't use it for new features, polish or taste requests, or questions about behaviour that was chosen on purpose. Those go to `/planning`. Explanations of how something works get answered directly. Security holes go to `SECURITY.md`, never a public issue."
+description: "Cloudgate's bug workflow: reproduce with a failing test, fix, land on `main` by merging a pull request, close the issue. Load this skill BEFORE you investigate, read code or answer, whenever the user describes Cloudgate misbehaving, even casually or as a \"why does…\" question. That covers a 500 or stack trace, a crash, a wrong or `undefined` value, a setting that won't save, a false status or diff, a check that says something is down when it isn't, a regression (\"worked last week\", \"broke after the release\"), or a page or command that got slow. It also covers any `bug` issue number. Don't diagnose it inline; this skill does the diagnosis. Don't use it for new features, polish or taste requests, or questions about behaviour that was chosen on purpose. Those go to `/planning`. Explanations of how something works get answered directly. Security holes go to `SECURITY.md`, never a public issue."
 ---
 
-`/fix` turns a bug into a commit on `main` and a closed issue. The order is fixed: **red first** (a test that fails because of the bug), then the fix, then green. A fix without a test that was red is a guess.
+`/fix` turns a bug into a merged pull request on `main` and a closed issue. The order is fixed: **red first** (a test that fails because of the bug), then the fix, then green. A fix without a test that was red is a guess.
 
 ## 1. Read the report
 
@@ -59,8 +59,13 @@ Commit on top of the latest `main` (`git pull --rebase origin main`), one commit
 Fixes #<n>
 ```
 
-Push to `main`. If the session is told to work on a named branch, push there instead and say the fix still needs landing.
+Land it through a pull request, never by pushing to `main`:
 
-Close the issue as completed with a comment naming the commit, the cause in a sentence, and the test that now guards it. End with the same three lines for the user.
+1. Push the commit to a branch: the branch the session was told to work on if it has one, otherwise `fix/<n>`.
+2. Open a pull request into `main` following `.github/pull_request_template.md`, with `Fixes #<n>` in its body.
+3. Wait for `ci.yml` and the `E2E` check on its head commit. A red suite is re-run here alone first, as in step 4; fix a real failure on the same branch and push again.
+4. Once both are green, **merge the pull request** (the GitHub MCP `merge_pull_request`, otherwise `gh pr merge --merge`). If `main` moved and the branch is behind or conflicts, rebase it onto `origin/main`, push it again and wait for the checks once more. Never close the pull request and push its commit to `main` instead.
 
-If the fix turned out to change behaviour beyond the bug, or contradicts an ADR, stop before pushing: show the user what changes and why, and wait.
+Close the issue as completed (if the merge did not already) with a comment naming the merged pull request, the commit, the cause in a sentence, and the test that now guards it. End with the same three lines for the user.
+
+If the fix turned out to change behaviour beyond the bug, or contradicts an ADR, stop before opening the pull request: show the user what changes and why, and wait.
