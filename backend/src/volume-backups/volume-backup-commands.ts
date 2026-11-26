@@ -502,7 +502,7 @@ const readStackReplicas = (
 			STACK_COUNT=$(docker service inspect "$STACK_SERVICE" --format "{{.Spec.Mode.Replicated.Replicas}}")
 			case "$STACK_COUNT" in
 				''|*[!0-9]*)
-					echo "❌ ${action} aborted - a replica count could not be read, so nothing was stopped"
+					echo ${quote([`❌ ${action} aborted - a replica count could not be read, so nothing was stopped`])}
 					echo "   'docker service inspect' did not answer a replica count for $STACK_SERVICE: '$STACK_COUNT'"
 					exit 1
 					;;
@@ -698,7 +698,7 @@ export const buildMomentPruneCommand = ({
   momentsPath: string;
   keepLatestCount: number;
 }): string =>
-  `rclone lsf --dirs-only ${quote([momentsPath])} | grep -E ${quote([MOMENT_FOLDER_PATTERN])} | sort -r | tail -n +$((${keepLatestCount}+1)) | xargs -I{} rclone purge ${quote([`${momentsPath}{}`])}`;
+  `rclone lsf --dirs-only ${quote([momentsPath])} | grep -E ${quote([MOMENT_FOLDER_PATTERN])} | sort -r | tail -n +$((${quote([String(keepLatestCount)])}+1)) | xargs -I{} rclone purge ${quote([`${momentsPath}{}`])}`;
 
 /** The service a restore's log header names — the volume itself is looked up
  * by name, so the target styles the log banner — and, for a bucket, the
@@ -1828,7 +1828,7 @@ export const buildMomentRestoreScript = ({
 				else
 					echo "   The stack is left stopped, so it does not run over half a moment. Read the error above, then restore the moment again."
 				fi
-				exit ${MOMENT_RESTORE_HALTED_EXIT_CODE}
+				exit ${quote([String(MOMENT_RESTORE_HALTED_EXIT_CODE)])}
 			}
 			trap report_moment EXIT
 			${step(takeDownStep, takeDown)}
