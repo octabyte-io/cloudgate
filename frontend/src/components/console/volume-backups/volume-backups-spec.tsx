@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Chip } from "@/components/console/chip";
 import { Dash } from "@/components/console/dash";
 import { Dot } from "@/components/console/dot";
+import { example } from "@/components/console/form-spec";
 import type { ResourceSpec } from "@/components/console/resource-spec";
 import type { ServiceType } from "@/lib/api/endpoints/applications";
 import type { Destination } from "@/lib/api/endpoints/destinations";
@@ -17,7 +18,6 @@ import {
   stackVolumeFields,
   type StackVolumesChoice,
 } from "./stack-volume-picker";
-import { example } from "@/components/console/form-spec";
 
 /**
  * A named Docker volume, tarred to an S3 destination on a cron.

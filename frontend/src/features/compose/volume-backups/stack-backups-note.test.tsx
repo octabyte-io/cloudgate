@@ -25,20 +25,13 @@ describe("StackBackupsNote", () => {
   });
 
   it("says nothing of other nodes on a docker-compose stack", () => {
-    render(
-      <StackBackupsNote swarm={false} unavailableReason={null} />,
-    );
+    render(<StackBackupsNote swarm={false} unavailableReason={null} />);
 
     expect(screen.queryByText(/only the copy of a volume/)).toBeNull();
   });
 
   it("says a stack not deployed yet has its volumes read from its first deploy", () => {
-    render(
-      <StackBackupsNote
-        swarm={false}
-        unavailableReason={NOT_DEPLOYED}
-      />,
-    );
+    render(<StackBackupsNote swarm={false} unavailableReason={NOT_DEPLOYED} />);
 
     expect(screen.getByText(NOT_DEPLOYED)).toBeDefined();
   });
