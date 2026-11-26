@@ -110,6 +110,10 @@ const CENSUS: Readonly<Record<string, Verdict>> = {
     ],
     why: 'The moment listing off the customer’s endpoint; reached only from `listMoments` and `restoreMoment`, after their refusals.',
   },
+  'volume-backups/volume-backups.service.ts#busyVolumeOf': {
+    verdict: RECORDS,
+    why: "Reads the tail of the run's own log, where it ran, for the busy volume's marker line; reached from `runStack` and `restoreMoment` after their refusals.",
+  },
   'volume-backups/volume-backups.service.ts#exec': {
     verdict: REFUSES,
     guards: ['volume-backups/volume-backups.service.ts#run'],

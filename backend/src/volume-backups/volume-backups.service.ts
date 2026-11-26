@@ -47,6 +47,7 @@ import type { DrizzleDB } from '../db/drizzle.module';
 import type { Destination } from '../db/schema';
 import { volumeBackupsDirectoryOn } from '../deployment-engine/deployment-engine.paths';
 import {
+  busyVolumeNameFrom,
   isVolumeLockBusyError,
   volumeLockBusyMessage,
 } from '../deployment-engine/volume-lock';
@@ -60,6 +61,7 @@ import {
 import { NotificationDispatcherService } from '../notifications/dispatcher.service';
 import type { PermissionCtx } from '../rbac/permission.service';
 import { PermissionService } from '../rbac/permission.service';
+import { execOnServer } from '../remote/exec-dispatch';
 import { RemoteExecService } from '../remote/remote-exec.service';
 import { SchedulingService } from '../scheduling/scheduling.service';
 import { STACK_LIFECYCLE } from './stack-lifecycle.port';
@@ -677,7 +679,14 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
       );
       if (isVolumeLockBusyError(error)) {
         throw new ConflictException(
-          volumeLockBusyMessage(volumeNames.join("' or '")),
+          volumeLockBusyMessage(
+            await this.busyVolumeOf(
+              error,
+              parent.serverId,
+              run.logPath,
+              volumeNames,
+            ),
+          ),
         );
       }
       throw error;
@@ -985,7 +994,14 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
       await this.runRecorder.finish(run.deploymentId, 'error');
       if (isVolumeLockBusyError(error)) {
         throw new ConflictException(
-          volumeLockBusyMessage(recorded.join("' or '")),
+          volumeLockBusyMessage(
+            await this.busyVolumeOf(
+              error,
+              parent.serverId,
+              run.logPath,
+              recorded,
+            ),
+          ),
         );
       }
       const halted =
@@ -1000,6 +1016,39 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
     }
     await this.runRecorder.finish(run.deploymentId, 'done');
     await this.composes().updateStatus(composeId, 'done');
+  }
+
+  /**
+   * The one volume whose held lock refused a run that takes several, as the
+   * Volume lock's 409 names it. The script's output went to the run's log
+   * (`… >> {logPath} 2>&1`), so the lock's marker line is read back from the
+   * log's tail when the error carries none; the candidates, joined, only when
+   * neither has it — honest about the set the contention is inside.
+   */
+  private async busyVolumeOf(
+    error: unknown,
+    serverId: string | null,
+    logPath: string,
+    candidates: string[],
+  ): Promise<string> {
+    const fromError = busyVolumeNameFrom(error);
+    if (fromError) return fromError;
+    try {
+      const { stdout } = await execOnServer(this.remoteExec, serverId, [
+        'tail',
+        '-n',
+        '50',
+        logPath,
+      ]);
+      const fromLog = busyVolumeNameFrom({ stdout });
+      if (fromLog) return fromLog;
+    } catch (readError) {
+      this.logger.error(
+        'Reading the busy volume from the run log failed',
+        readError,
+      );
+    }
+    return candidates.join("' or '");
   }
 
   /** The stack's lifecycle for a moment restore, resolved at call time

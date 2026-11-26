@@ -443,6 +443,39 @@ describe('Stack backups (e2e)', () => {
       );
     });
 
+    it('answers 409 naming the one busy volume its run log names', async () => {
+      const { volumeBackupId } = await stackBackupOf();
+      execMock.execAsync.mockImplementation((command: string) => {
+        if (command.includes('rclone copyto')) {
+          return Promise.reject(
+            Object.assign(new Error('Command failed with exit code 75'), {
+              exitCode: VOLUME_LOCK_BUSY_EXIT_CODE,
+              stdout: '',
+              stderr: '',
+            }),
+          );
+        }
+        // The script's output went to the run's log, so the marker is read
+        // back from there.
+        if (command.startsWith('tail ')) {
+          return Promise.resolve({
+            stdout:
+              'Volume lock acquired: alpha-files\nVolume lock busy: zeta-db\n',
+            stderr: '',
+            exitCode: 0,
+          });
+        }
+        return ok();
+      });
+
+      const refused = await runNow(volumeBackupId);
+
+      expect(refused.status).toBe(409);
+      const { message } = refused.body as { message: string };
+      expect(message).toContain('zeta-db');
+      expect(message).not.toContain('alpha-files');
+    });
+
     it('fails a stack with no recorded volumes, recording the run with the reason', async () => {
       const { composeId } = await createStack();
       const created = await createBackup({
@@ -673,6 +706,36 @@ describe('Stack backups (e2e)', () => {
         'alpha-files',
       );
       expect(await statusOf(composeId)).toBe(before);
+    });
+
+    it('answers 409 naming the one busy volume its run log names', async () => {
+      const { volumeBackupId } = await stackBackupOf();
+      machine(() =>
+        Promise.reject(
+          Object.assign(new Error('Command failed with exit code 75'), {
+            exitCode: VOLUME_LOCK_BUSY_EXIT_CODE,
+            stdout: '',
+            stderr: '',
+          }),
+        ),
+      );
+      const listingAndRestore = execMock.execAsync.getMockImplementation()!;
+      execMock.execAsync.mockImplementation((command: string) =>
+        command.startsWith('tail ')
+          ? Promise.resolve({
+              stdout: 'Volume lock busy: zeta-db\n',
+              stderr: '',
+              exitCode: 0,
+            })
+          : listingAndRestore(command),
+      );
+
+      const refused = await restoreMoment(volumeBackupId);
+
+      expect(refused.status).toBe(409);
+      const { message } = refused.body as { message: string };
+      expect(message).toContain('zeta-db');
+      expect(message).not.toContain('alpha-files');
     });
 
     it('records a restore that failed at a step as an error run and the stack as stopped', async () => {
