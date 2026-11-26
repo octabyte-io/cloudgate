@@ -98,7 +98,11 @@ export function ResourceField<Values extends FieldValues>({
           control={form.control}
           render={({ field }) => (
             <Picker
-              options={spec.options}
+              options={
+                typeof spec.options === "function"
+                  ? spec.options(values)
+                  : spec.options
+              }
               pending={spec.pending}
               disabled={spec.locked !== undefined}
               placeholder={spec.placeholder ?? "Choose one"}

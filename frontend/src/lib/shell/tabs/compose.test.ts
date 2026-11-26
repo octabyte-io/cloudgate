@@ -36,3 +36,27 @@ describe("the Config files tab", () => {
     },
   );
 });
+
+/**
+ * A Compose stack's **Volume backups** tab (#163): there on a stack on a
+ * Server or this host, and absent, with its reason, on a stack in a Cloud
+ * account, which has no Server to tar its volumes on.
+ */
+describe("the Volume backups tab", () => {
+  it("is there on a stack on a Server", () => {
+    expect(
+      visibleTabEntries("compose", { stackVm: false }).map((e) => e.slug),
+    ).toContain("volume-backups");
+  });
+
+  it("is absent on a stack in a Cloud account, and says why", () => {
+    expect(
+      visibleTabEntries("compose", { stackVm: true }).map((e) => e.slug),
+    ).not.toContain("volume-backups");
+    const entry = tabEntry("compose", "volume-backups");
+    expect(entry).not.toBeNull();
+    expect(absentReason(entry!, { stackVm: true })).toBe(
+      "Only a stack on a Server or on this host has Volume backups. This Compose stack runs in a Cloud account, so there is no Server to copy its volumes on.",
+    );
+  });
+});

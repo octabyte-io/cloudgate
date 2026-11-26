@@ -93,9 +93,9 @@ export function RestoreModal({
   restore,
 }: {
   serviceId: string;
-  /** An Application's volume, or a Server bucket's, whose Garage the restore
+  /** An Application's volume, a Compose stack's, or a Server bucket's, whose Garage the restore
    * stops and starts again itself. */
-  serviceType?: "application" | "bucket";
+  serviceType?: "application" | "compose" | "bucket";
   serviceName: string;
   destinations: Destination[];
   destinationsPending: boolean;

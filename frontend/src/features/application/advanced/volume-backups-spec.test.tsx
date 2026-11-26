@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { OTHER_VOLUME } from "./stack-volume-picker";
 import { volumeBackupsSpec, weightsVolumeOf } from "./volume-backups-spec";
 
 const noop = async () => undefined;
@@ -55,6 +56,134 @@ describe("volumeBackupsSpec", () => {
         values("llm-weights"),
       ).success,
     ).toBe(true);
+  });
+});
+
+/**
+ * A Compose stack's one-volume backup is picked as a service, then one of
+ * the named volumes it mounts, by its Docker name; **Other volume** takes a
+ * typed name (#163).
+ */
+describe("volumeBackupsSpec on a Compose stack", () => {
+  const services = [
+    { serviceName: "db", image: "postgres:17", volumes: ["n8n-x1_db-data"] },
+    {
+      serviceName: "n8n",
+      image: "n8nio/n8n:1.80",
+      volumes: ["n8n-files", "shared"],
+    },
+  ];
+  const stackSpec = (
+    stack: { services: typeof services; unavailableReason: string | null },
+    created: Record<string, unknown>[] = [],
+  ) =>
+    volumeBackupsSpec({
+      serviceId: "cmp-1",
+      serviceType: "compose",
+      stack: { ...stack, pending: false },
+      destinations: [],
+      destinationsPending: false,
+      create: async (input) => {
+        created.push(input);
+      },
+      update: noop,
+      remove: noop,
+    });
+  const field = (spec: ReturnType<typeof stackSpec>, name: string) => {
+    const found = spec.fields.find((item) => item.name === name);
+    if (!found) throw new Error(`no ${name} field`);
+    return found;
+  };
+  const optionsOf = (
+    spec: ReturnType<typeof stackSpec>,
+    name: string,
+    picked: Record<string, unknown>,
+  ) => {
+    const found = field(spec, name);
+    if (found.kind !== "select") throw new Error(`${name} is no select`);
+    const options =
+      typeof found.options === "function"
+        ? found.options({ ...stackValues(), ...picked })
+        : found.options;
+    return options.map((option) => [option.value, option.label, option.detail]);
+  };
+  const stackValues = (picked: Record<string, string> = {}) => ({
+    ...values(""),
+    serviceName: "",
+    otherVolume: "",
+    ...picked,
+  });
+
+  it("offers each service with its image, then the volumes the chosen one mounts and Other volume", () => {
+    const spec = stackSpec({ services, unavailableReason: null });
+
+    expect(optionsOf(spec, "serviceName", {})).toEqual([
+      ["db", "db", "postgres:17"],
+      ["n8n", "n8n", "n8nio/n8n:1.80"],
+    ]);
+    expect(optionsOf(spec, "volumeName", { serviceName: "n8n" })).toEqual([
+      ["n8n-files", "n8n-files", undefined],
+      ["shared", "shared", undefined],
+      [OTHER_VOLUME, "Other volume", undefined],
+    ]);
+  });
+
+  it("writes a backup picked from the list with its Docker volume name and its service", async () => {
+    const created: Record<string, unknown>[] = [];
+    const spec = stackSpec({ services, unavailableReason: null }, created);
+    const picked = stackValues({
+      serviceName: "db",
+      volumeName: "n8n-x1_db-data",
+    });
+
+    expect(spec.schema.safeParse(picked).success).toBe(true);
+    await spec.create(picked);
+    expect(created).toEqual([
+      expect.objectContaining({
+        serviceType: "compose",
+        serviceId: "cmp-1",
+        serviceName: "db",
+        volumeName: "n8n-x1_db-data",
+      }),
+    ]);
+  });
+
+  it("takes a typed name under Other volume, and refuses one outside the volume name rules", async () => {
+    const created: Record<string, unknown>[] = [];
+    const spec = stackSpec({ services, unavailableReason: null }, created);
+    const typed = (otherVolume: string) =>
+      stackValues({ serviceName: "n8n", volumeName: OTHER_VOLUME, otherVolume });
+
+    expect(spec.schema.safeParse(typed("adopted.by-hand_1")).success).toBe(
+      true,
+    );
+    await spec.create(typed("adopted.by-hand_1"));
+    expect(created[0]).toMatchObject({
+      serviceName: "n8n",
+      volumeName: "adopted.by-hand_1",
+    });
+
+    const refused = spec.schema.safeParse(typed("x$(id)"));
+    expect(refused.success).toBe(false);
+    expect(refused.error?.issues).toEqual([
+      expect.objectContaining({
+        path: ["otherVolume"],
+        message:
+          "A volume name can only hold letters, numbers, dots, underscores and hyphens, and starts with a letter or a number.",
+      }),
+    ]);
+  });
+
+  it("says its volumes are read from its first deploy on a stack not deployed yet", () => {
+    const reason =
+      "This stack hasn’t deployed successfully yet. Its volumes are read from its first deploy.";
+    const spec = stackSpec({ services: [], unavailableReason: reason });
+
+    expect(field(spec, "volumeName").hint).toBe(reason);
+    expect(field(spec, "serviceName").when?.(stackValues())).toBe(false);
+    expect(optionsOf(spec, "volumeName", {})).toEqual([
+      [OTHER_VOLUME, "Other volume", undefined],
+    ]);
   });
 });
 

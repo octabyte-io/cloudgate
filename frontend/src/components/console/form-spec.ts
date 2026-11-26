@@ -53,7 +53,17 @@ export type FieldSpec<Values extends FieldValues> = {
   | { kind: "text"; mono?: boolean }
   | { kind: "number"; min?: number; max?: number }
   | { kind: "textarea"; rows?: number; mono?: boolean }
-  | { kind: "select"; options: readonly PickerOption[]; pending?: boolean }
+  | {
+      kind: "select";
+      /**
+       * Or the options for the form's current values, for a choice that
+       * depends on another: a stack's volumes are the chosen service's.
+       */
+      options:
+        | readonly PickerOption[]
+        | ((values: Values) => readonly PickerOption[]);
+      pending?: boolean;
+    }
   /**
    * A `Switch` — a button, so it takes a `Controller` and a `manual` Field.
    * `disabled` is the native attribute, for a switch another field's value

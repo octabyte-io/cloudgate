@@ -9,6 +9,13 @@ import type { VolumeBackup } from "@/lib/api/endpoints/volume-backups";
 import { describeCron } from "@/lib/format/cron";
 
 import type { ResourceSpec } from "./resource-spec";
+import {
+  checkStackVolume,
+  pickedVolumeName,
+  stackVolumeDefaults,
+  stackVolumeFields,
+  type StackVolumesChoice,
+} from "./stack-volume-picker";
 import { example } from "@/components/console/form-spec";
 
 /**
@@ -53,6 +60,9 @@ const schema = z.object({
     }),
   turnOff: z.boolean(),
   enabled: z.boolean(),
+  /** A Compose stack's only: the service, and a typed Other volume. */
+  serviceName: z.string().optional(),
+  otherVolume: z.string().optional(),
 });
 
 export type VolumeBackupValues = z.infer<typeof schema>;
@@ -69,7 +79,15 @@ export function weightsVolumeOf(application: {
   return application.aiModel ? `${application.appName}-weights` : null;
 }
 
-function schemaFor(weightsVolume: string | null) {
+function schemaFor(
+  weightsVolume: string | null,
+  stack: StackVolumesChoice | null,
+) {
+  if (stack) {
+    return schema.superRefine((values, ctx) =>
+      checkStackVolume(stack, values, ctx),
+    );
+  }
   if (!weightsVolume) return schema;
   return schema.refine((values) => values.volumeName !== weightsVolume, {
     message: `${weightsVolume} holds this AI model's weights, which are downloaded again rather than backed up.`,
@@ -84,6 +102,7 @@ export function volumeBackupsSpec({
   destinations,
   destinationsPending,
   weightsVolume = null,
+  stack = null,
   create,
   update,
   remove,
@@ -100,6 +119,11 @@ export function volumeBackupsSpec({
   destinationsPending: boolean;
   /** An AI model's weights volume, never offered as a backup. */
   weightsVolume?: string | null;
+  /**
+   * A Compose stack's services and their volumes: the volume is then picked
+   * as a service and one of its volumes, or typed as Other volume.
+   */
+  stack?: StackVolumesChoice | null;
   create: (input: Record<string, unknown>) => Promise<unknown>;
   update: (
     volumeBackupId: string,
@@ -191,7 +215,7 @@ export function volumeBackupsSpec({
       },
     ],
 
-    schema: schemaFor(weightsVolume),
+    schema: schemaFor(weightsVolume, stack),
     fields: [
       {
         kind: "text",
@@ -199,18 +223,22 @@ export function volumeBackupsSpec({
         label: "Name",
         placeholder: example("Nightly uploads"),
       },
-      {
-        kind: "text",
-        name: "volumeName",
-        label: "Volume",
-        mono: true,
-        placeholder: example("storefront-uploads"),
-        hint: ownVolume
-          ? `The named Docker volume to tar. This bucket's files are all on ${ownVolume}.`
-          : weightsVolume
-            ? `The named Docker volume to tar, from the Advanced tab's mounts table. Not ${weightsVolume}: the model's weights are downloaded again rather than backed up.`
-            : "The named Docker volume to tar. The Advanced tab's mounts table lists the ones this Application mounts, though an image can declare volumes of its own that are not there.",
-      },
+      ...(stack
+        ? stackVolumeFields(stack)
+        : [
+            {
+              kind: "text" as const,
+              name: "volumeName" as const,
+              label: "Volume",
+              mono: true,
+              placeholder: example("storefront-uploads"),
+              hint: ownVolume
+                ? `The named Docker volume to tar. This bucket's files are all on ${ownVolume}.`
+                : weightsVolume
+                  ? `The named Docker volume to tar, from the Advanced tab's mounts table. Not ${weightsVolume}: the model's weights are downloaded again rather than backed up.`
+                  : "The named Docker volume to tar. The Advanced tab's mounts table lists the ones this Application mounts, though an image can declare volumes of its own that are not there.",
+            },
+          ]),
       {
         kind: "select",
         name: "destinationId",
@@ -281,6 +309,7 @@ export function volumeBackupsSpec({
           : String(row.keepLatestCount),
       turnOff: row?.turnOff ?? false,
       enabled: row?.enabled ?? true,
+      ...(stack ? stackVolumeDefaults(stack, row ?? null) : {}),
     }),
 
     // What `/volume-backups` asks of each write — `ResourceList` turns the
@@ -292,11 +321,19 @@ export function volumeBackupsSpec({
     },
     create: (values) =>
       create({
-        ...body(values),
+        ...body(values, stack),
+        // Omitted rather than empty: the create schema refuses "".
+        ...(stack && values.serviceName
+          ? { serviceName: values.serviceName }
+          : {}),
         serviceType,
         serviceId,
       }),
-    update: (row, values) => update(row.volumeBackupId, body(values)),
+    update: (row, values) =>
+      update(row.volumeBackupId, {
+        ...body(values, stack),
+        ...(stack ? { serviceName: values.serviceName || null } : {}),
+      }),
     remove: (row) => remove(row.volumeBackupId),
 
     deleteNote: (row) => (
@@ -312,10 +349,13 @@ export function volumeBackupsSpec({
   };
 }
 
-function body(values: VolumeBackupValues): Record<string, unknown> {
+function body(
+  values: VolumeBackupValues,
+  stack: StackVolumesChoice | null,
+): Record<string, unknown> {
   return {
     name: values.name,
-    volumeName: values.volumeName,
+    volumeName: stack ? pickedVolumeName(values) : values.volumeName,
     prefix: values.prefix,
     schedule: values.schedule,
     destinationId: values.destinationId,
