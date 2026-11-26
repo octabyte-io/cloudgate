@@ -1,5 +1,4 @@
 import { MetaStrip } from "@/components/console/meta-strip";
-import type { ComposeType } from "@/lib/api/endpoints/compose";
 
 /**
  * The Volume backups list's note on a Compose stack (#163): one sentence
@@ -13,10 +12,11 @@ import type { ComposeType } from "@/lib/api/endpoints/compose";
  *   offers only Other volume; the backend's sentence says why.
  */
 export function StackBackupsNote({
-  composeType,
+  swarm,
   unavailableReason,
 }: {
-  composeType: ComposeType;
+  /** A swarm `stack`, rather than `docker-compose`. */
+  swarm: boolean;
   unavailableReason: string | null;
 }) {
   return (
@@ -25,7 +25,7 @@ export function StackBackupsNote({
         A Deployment leaves a volume where it is, so{" "}
         <strong>nothing else here copies one off its Server</strong>.
       </p>
-      {composeType === "stack" ? (
+      {swarm ? (
         <p>
           On a swarm stack, only the copy of a volume on this stack’s Server is
           backed up.

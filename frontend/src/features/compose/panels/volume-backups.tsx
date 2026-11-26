@@ -150,7 +150,7 @@ export default function Panel({ id, label, icon }: PanelProps) {
         query={backups}
         note={
           <StackBackupsNote
-            composeType={row.composeType}
+            swarm={row.composeType === "stack"}
             unavailableReason={unavailableReason}
           />
         }
@@ -202,7 +202,7 @@ export default function Panel({ id, label, icon }: PanelProps) {
           key={`moment-${opening}`}
           backup={momentOf}
           stackName={row.name}
-          composeType={row.composeType}
+          swarm={row.composeType === "stack"}
           open
           onOpenChange={(next) => {
             if (!next) setMomentOf(null);

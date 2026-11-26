@@ -48,13 +48,14 @@ type Outcome = "running" | "done" | "failed";
 export function MomentRestoreModal({
   backup,
   stackName,
-  composeType,
+  swarm,
   open,
   onOpenChange,
 }: {
   backup: VolumeBackup;
   stackName: string;
-  composeType: "docker-compose" | "stack";
+  /** A swarm `stack`, whose first step is Stop rather than Remove containers. */
+  swarm: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -125,7 +126,7 @@ export function MomentRestoreModal({
             chosen={chosen}
             onChoose={setChosen}
             stackName={stackName}
-            composeType={composeType}
+            swarm={swarm}
             typed={typed}
             onTypedChange={setTyped}
           />
@@ -133,7 +134,7 @@ export function MomentRestoreModal({
           <>
             <ol aria-label="Steps" className="grid gap-1.5">
               {momentRestoreSteps({
-                composeType,
+                composeType: swarm ? "stack" : "docker-compose",
                 volumes: chosen.volumes,
                 lines: stream.lines,
                 outcome,
@@ -187,7 +188,7 @@ function ChooseMoment({
   chosen,
   onChoose,
   stackName,
-  composeType,
+  swarm,
   typed,
   onTypedChange,
 }: {
@@ -195,7 +196,7 @@ function ChooseMoment({
   chosen: BackupMoment | null;
   onChoose: (moment: BackupMoment) => void;
   stackName: string;
-  composeType: "docker-compose" | "stack";
+  swarm: boolean;
   typed: string;
   onTypedChange: (value: string) => void;
 }) {
@@ -242,7 +243,7 @@ function ChooseMoment({
       {chosen ? (
         <>
           <p className="rounded-lg border border-bad-line bg-bad-tint px-3 py-2.5 text-body text-bad">
-            {composeType === "stack"
+            {swarm
               ? "The stack is stopped"
               : "The stack's containers are removed"}
             , then everything in{" "}

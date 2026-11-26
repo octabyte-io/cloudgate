@@ -53,7 +53,7 @@ beforeEach(() => {
   vi.spyOn(volumeBackupsApi, "runHistory").mockResolvedValue([]);
 });
 
-function show(composeType: "docker-compose" | "stack" = "docker-compose") {
+function show(swarm = false) {
   render(
     <QueryClientProvider
       client={
@@ -63,7 +63,7 @@ function show(composeType: "docker-compose" | "stack" = "docker-compose") {
       <MomentRestoreModal
         backup={backup}
         stackName="outline"
-        composeType={composeType}
+        swarm={swarm}
         open
         onOpenChange={() => {}}
       />
@@ -142,7 +142,7 @@ describe("MomentRestoreModal", () => {
         "The restore stopped at a step and left the stack stopped",
       ),
     );
-    show("stack");
+    show(true);
     await chooseNewest();
     fireEvent.change(screen.getByLabelText("Type outline to confirm"), {
       target: { value: "outline" },

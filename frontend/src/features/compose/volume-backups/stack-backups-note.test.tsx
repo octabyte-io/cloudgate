@@ -15,7 +15,7 @@ const NOT_DEPLOYED =
  */
 describe("StackBackupsNote", () => {
   it("says on a swarm stack that only the copy on its Server is backed up", () => {
-    render(<StackBackupsNote composeType="stack" unavailableReason={null} />);
+    render(<StackBackupsNote swarm unavailableReason={null} />);
 
     expect(
       screen.getByText(
@@ -26,7 +26,7 @@ describe("StackBackupsNote", () => {
 
   it("says nothing of other nodes on a docker-compose stack", () => {
     render(
-      <StackBackupsNote composeType="docker-compose" unavailableReason={null} />,
+      <StackBackupsNote swarm={false} unavailableReason={null} />,
     );
 
     expect(screen.queryByText(/only the copy of a volume/)).toBeNull();
@@ -35,7 +35,7 @@ describe("StackBackupsNote", () => {
   it("says a stack not deployed yet has its volumes read from its first deploy", () => {
     render(
       <StackBackupsNote
-        composeType="docker-compose"
+        swarm={false}
         unavailableReason={NOT_DEPLOYED}
       />,
     );
