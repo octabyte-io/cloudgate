@@ -5,13 +5,13 @@ import { toast } from "@/components/console/toast";
 import type { Destination } from "@/lib/api/endpoints/destinations";
 import type { RestoreVolumeBackupInput } from "@/lib/api/endpoints/volume-backups";
 import { errorMessage } from "@/lib/api/error-message";
+import { useVolumeRestoreFlow } from "@/lib/api/use-volume-restore";
 
 import {
   ChooseTarballStep,
   ConfirmVolumeStep,
   ReplaceContentsStep,
 } from "./restore-steps";
-import { useVolumeRestoreFlow } from "./use-volume-restore";
 import { VolumeRestoreFooter } from "./volume-restore-footer";
 
 /**
@@ -93,9 +93,9 @@ export function RestoreModal({
   restore,
 }: {
   serviceId: string;
-  /** An Application's volume, or a Server bucket's, whose Garage the restore
+  /** An Application's volume, a Compose stack's, or a Server bucket's, whose Garage the restore
    * stops and starts again itself. */
-  serviceType?: "application" | "bucket";
+  serviceType?: "application" | "compose" | "bucket";
   serviceName: string;
   destinations: Destination[];
   destinationsPending: boolean;

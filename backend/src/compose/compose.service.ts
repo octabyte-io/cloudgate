@@ -107,6 +107,7 @@ import {
   composeTeardownCommand,
   getComposeFilePath,
   listComposePublishedPorts,
+  listComposeServiceVolumes,
   listComposeVolumes,
   listComposeServices,
   mapFormLabelsRefusal,
@@ -116,10 +117,18 @@ import {
   readComposeDirectoryPresence,
   readComposeWorkloadPresence,
   removeComposeContainersCommand,
+  composeContainersRemoval,
   writeDomainsToCompose,
 } from './compose.utils';
+import type { MomentRestoreLifecycle } from '../volume-backups/volume-backup-commands';
+import type { StackLifecycle } from '../volume-backups/stack-lifecycle.port';
 import { composeFileForRead } from './compose-file-lookup';
-import type { ComposeRefusalEcho, SettleClock } from './compose.utils';
+import { NOT_DEPLOYED_VOLUMES_REASON } from './compose-file';
+import type {
+  ComposeRefusalEcho,
+  ComposeServiceVolumes,
+  SettleClock,
+} from './compose.utils';
 import { sourceTypeOnCreate } from './compose-source-type';
 import { publishStackVmPorts } from './stack-vm-ports';
 import { ComposeStackVms } from './compose-stack-vms';
@@ -154,8 +163,10 @@ export {
 } from './compose-stack-vms';
 export type { ComposeCloudPlace } from './compose-stack-vms';
 
+export { NOT_DEPLOYED_VOLUMES_REASON } from './compose-file';
+
 @Injectable()
-export class ComposeService {
+export class ComposeService implements StackLifecycle {
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly permissions: PermissionService,
@@ -1598,6 +1609,35 @@ export class ComposeService {
   }
 
   /**
+   * Each service of the stack with its image and the named volumes it
+   * mounts, as Docker names them — what the Volume backups tab picks a
+   * one-volume backup from (#162). Answered from the record of the last
+   * successful deploy (`compose.deployedServiceVolumes`, ADR-0069), never
+   * from the file, so it names what really runs and costs no read of a
+   * clone; a stack no deploy has recorded says so in `unavailableReason`.
+   * Read-scoped like {@link loadServices}.
+   */
+  async loadVolumes(
+    ctx: PermissionCtx,
+    composeId: string,
+  ): Promise<{
+    services: ComposeServiceVolumes[];
+    unavailableReason: string | null;
+  }> {
+    await this.permissions.checkServiceAccess(ctx, composeId, 'read');
+    const current = await this.findOwned(ctx, composeId);
+    const [row] = await this.db
+      .select({ services: compose.deployedServiceVolumes })
+      .from(compose)
+      .where(eq(compose.composeId, current.composeId))
+      .limit(1);
+    if (!row?.services) {
+      return { services: [], unavailableReason: NOT_DEPLOYED_VOLUMES_REASON };
+    }
+    return { services: row.services, unavailableReason: null };
+  }
+
+  /**
    * The compose file as the deploy actually applies it — the same rewrite
    * `getBuildComposeCommand` pipes onto the build server
    * (`writeDomainsToCompose`), fed the same domains the deployment engine
@@ -1719,7 +1759,8 @@ export class ComposeService {
    * can be aimed at one (`publishedPortsOf` reads them back), and the
    * volumes its Delete removes (`compose.deployedVolumes`, ADR-0069),
    * recorded for every source since a plan's destroy line reads them, from
-   * the stack's name and type. Internal — called by
+   * the stack's name and type, and each service's named volumes, which the
+   * Volume backups tab picks from (`compose.deployedServiceVolumes`). Internal — called by
    * `DeploymentEngineService.deployCompose` once the build has succeeded,
    * never on a failure, which leaves the previous record as it was.
    *
@@ -1748,6 +1789,10 @@ export class ComposeService {
           content,
           stack.appName,
           stack.composeType,
+        ),
+        deployedServiceVolumes: listComposeServiceVolumes(
+          content,
+          stack.appName,
         ),
       })
       .where(eq(compose.composeId, stack.composeId));
@@ -1801,6 +1846,43 @@ export class ComposeService {
   }
 
   /**
+   * What a Stack backup's moment restore runs to remove this stack's
+   * containers and Start it again (ADR-0092): Remove containers' command and Start's on a
+   * `docker-compose` stack, built as Start builds its own — the file the last
+   * deploy ran, read back off disk and held to the same ownership check, with
+   * the platform defaults re-applied — or nothing on a swarm stack, whose Stop
+   * and Start the restore script does itself.
+   *
+   * Refused before anything is built where Start is refused, on a Server in
+   * maintenance or a Bought Server powered off: the restore ends with a
+   * Start, so it would otherwise remove the stack's containers and leave it
+   * stopped.
+   *
+   * No permission check of its own: its caller has made the restore's,
+   * `volumeBackup: ['restore']` and `service: ['update']`, the gate a restore
+   * keeps (ADR-0011).
+   */
+  async momentRestoreLifecycle(
+    organizationId: string,
+    composeId: string,
+  ): Promise<MomentRestoreLifecycle> {
+    const row = await this.findRow(composeId);
+    await refuseWhilePoweredOff(this.db, [row.serverId], 'restore the stack');
+    await refuseWhileInMaintenance(this.db, [row.serverId]);
+    if (row.composeType === 'stack') return { composeType: 'stack' };
+    const withFile = await composeFileForRead(this.runTarget(row), row);
+    const onDisk = await this.readClaimableOnDiskCompose(
+      organizationId,
+      withFile,
+    );
+    return {
+      composeType: 'docker-compose',
+      remove: composeContainersRemoval(row.serverId, row.appName),
+      start: composeStartCommand(withFile, onDisk),
+    };
+  }
+
+  /**
    * The volumes Remove containers has to hold for the duration of its `rm`
    * every distinct `volumeName` of a turn-off volume backup of this
    * stack. Those are the only volumes this action can contend for — a turn-off
@@ -1812,10 +1894,17 @@ export class ComposeService {
    * its volume is every bit as contendable as an enabled row's — and filtering
    * it out would drop the lock in the case where a run is most likely to have
    * been started by hand.
+   *
+   * A turn-off **Stack backup** names no volume of its own: it stops the
+   * whole stack and tars every volume the last successful deploy recorded
+   * (`deployedServiceVolumes`, ADR-0092), so each of those is held too.
    */
   private async lockedVolumeNames(composeId: string): Promise<string[]> {
     const rows = await this.db
-      .select({ volumeName: volumeBackup.volumeName })
+      .select({
+        volumeName: volumeBackup.volumeName,
+        scope: volumeBackup.scope,
+      })
       .from(volumeBackup)
       .where(
         and(
@@ -1823,7 +1912,19 @@ export class ComposeService {
           eq(volumeBackup.turnOff, true),
         ),
       );
-    return [...new Set(rows.map(({ volumeName }) => volumeName))];
+    const names = rows.flatMap(({ volumeName }) =>
+      volumeName === null ? [] : [volumeName],
+    );
+    if (rows.some(({ scope }) => scope === 'stack')) {
+      const [stack] = await this.db
+        .select({ services: compose.deployedServiceVolumes })
+        .from(compose)
+        .where(eq(compose.composeId, composeId))
+        .limit(1);
+      for (const service of stack?.services ?? [])
+        names.push(...service.volumes);
+    }
+    return [...new Set(names)];
   }
 
   /**

@@ -164,6 +164,22 @@ export function runsOnStackVm(
   return compose.cloudAccountId != null;
 }
 
+/** One service of a stack, with the named volumes it mounts. */
+export interface ComposeServiceVolumes {
+  serviceName: string;
+  /** Its `image:`, or `null` for a service the file builds. */
+  image: string | null;
+  /** Docker's names for them: `<appName>_<key>`, a `name:`, an external one's own. */
+  volumes: string[];
+}
+
+/** `GET /compose/:id/volumes`. */
+export interface ComposeStackVolumes {
+  services: ComposeServiceVolumes[];
+  /** Set, with no services, until a deploy has recorded them. */
+  unavailableReason: string | null;
+}
+
 /**
  * `GET /compose/:id/stack-vm` — whether the stack's Stack VM runs, read from
  * its cloud when asked (`StackVmPower.state`). `not-made`: no Apply has made
@@ -399,6 +415,14 @@ export const composeApi = {
   /** The service names the **file** declares. See the note at the top. */
   loadServices: (composeId: string) =>
     api.get<string[]>(`/compose/${composeId}/services`),
+
+  /**
+   * Each service with its image and the named volumes it mounts, by their
+   * Docker names, from the record of the stack's last successful deploy —
+   * not the file, so it is empty, with `unavailableReason`, until one.
+   */
+  loadVolumes: (composeId: string) =>
+    api.get<ComposeStackVolumes>(`/compose/${composeId}/volumes`),
 
   /**
    * The compose file as the deploy applies it. **`text/plain`**, so

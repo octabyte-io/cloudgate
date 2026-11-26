@@ -40,6 +40,7 @@ import {
   ComposeLabelRefusal,
   readComposeHostClaimsFromSpec,
 } from './compose-labels';
+import type { ComposeServiceVolumes } from './compose-file';
 import type { ComposeHostClaim } from './compose-labels';
 import type {
   ComposeDomain,
@@ -59,7 +60,10 @@ export {
   listComposePublishedPorts,
   parseComposeFile,
 } from './compose-file';
-export type { ComposePublishedPort } from './compose-file';
+export type {
+  ComposePublishedPort,
+  ComposeServiceVolumes,
+} from './compose-file';
 
 /**
  * How much of the YAML library's own words a parse refusal repeats.
@@ -458,18 +462,96 @@ export function listComposeVolumes(
   if (!volumes || typeof volumes !== 'object') return [];
   const names: string[] = [];
   for (const [key, definition] of Object.entries(volumes)) {
-    const declared =
-      definition && typeof definition === 'object'
-        ? (definition as Record<string, unknown>)
-        : {};
-    if (declared.external) continue;
-    names.push(
-      typeof declared.name === 'string' && declared.name !== ''
-        ? declared.name
-        : `${appName}_${key}`,
-    );
+    if (asRecord(definition).external) continue;
+    names.push(dockerVolumeName(key, definition, appName));
   }
   return names;
+}
+
+/**
+ * Each service a stack's file declares, with the named volumes it mounts as
+ * Docker names them — `<appName>_<key>`, the `name:` the top-level entry
+ * gives, or an `external` one's own name — so a one-volume backup is picked
+ * as a service and then one of its volumes. The same for both stack types:
+ * `docker stack deploy -c … <appName>` prefixes a volume as
+ * `docker compose -p <appName>` does.
+ *
+ * Only a mount whose source is a key of the top-level `volumes:` is a named
+ * volume, which is also the rule Compose holds a file to; a bind mount (a
+ * path source, or `type: bind`), a tmpfs and an anonymous volume never are.
+ * A file that does not parse declares no service.
+ *
+ * Recorded from the bytes a deploy admitted (`compose.deployedServiceVolumes`)
+ * beside {@link listComposeVolumes}, so the console reads it without the
+ * file being read again (ADR-0069).
+ */
+export function listComposeServiceVolumes(
+  content: string,
+  appName: string,
+): ComposeServiceVolumes[] {
+  let spec: ComposeSpecification | null;
+  try {
+    spec = parseComposeFile(content);
+  } catch {
+    return [];
+  }
+  const declared = asRecord(spec?.volumes);
+  return Object.entries(spec?.services ?? {}).map(([serviceName, raw]) => {
+    const service = asRecord(raw);
+    const mounts = Array.isArray(service.volumes) ? service.volumes : [];
+    const volumes: string[] = [];
+    for (const mount of mounts) {
+      const key = namedVolumeKey(mount);
+      if (key === null || !Object.hasOwn(declared, key)) continue;
+      const name = dockerVolumeName(key, declared[key], appName);
+      if (!volumes.includes(name)) volumes.push(name);
+    }
+    return {
+      serviceName,
+      image:
+        typeof service.image === 'string' && service.image !== ''
+          ? service.image
+          : null,
+      volumes,
+    };
+  });
+}
+
+/** The top-level key a service mount names as its source, or `null` for
+ * a mount that is no named volume (a bind, a tmpfs, an anonymous one). */
+function namedVolumeKey(mount: unknown): string | null {
+  if (typeof mount === 'string') {
+    const parts = mount.split(':');
+    return parts.length >= 2 ? parts[0] : null;
+  }
+  const long = asRecord(mount);
+  if (long.type !== undefined && long.type !== 'volume') return null;
+  return typeof long.source === 'string' ? long.source : null;
+}
+
+/** What Docker calls the volume a top-level `volumes:` entry declares. */
+function dockerVolumeName(
+  key: string,
+  definition: unknown,
+  appName: string,
+): string {
+  const declared = asRecord(definition);
+  const external = asRecord(declared.external);
+  if (typeof declared.name === 'string' && declared.name !== '') {
+    return declared.name;
+  }
+  if (declared.external) {
+    return typeof external.name === 'string' && external.name !== ''
+      ? external.name
+      : key;
+  }
+  return `${appName}_${key}`;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 // The compose-label variant of Traefik routing (the traefik module's
@@ -1130,8 +1212,21 @@ export function removeComposeContainersCommand(
 ): string {
   return withVolumeLock(
     { serverId, volumeNames, mode: 'fail-fast' },
-    `cd ${quote([composeProjectDirectory(serverId, appName)])} && env -i PATH="$PATH" docker compose -p ${quote([appName])} rm --stop --force`,
+    composeContainersRemoval(serverId, appName),
   );
+}
+
+/**
+ * {@link removeComposeContainersCommand} without its lock, for a caller whose
+ * script holds the locks already: a Stack backup's moment restore takes
+ * every volume's lock once, in name order, before its Remove containers step
+ * (ADR-0092).
+ */
+export function composeContainersRemoval(
+  serverId: string | null,
+  appName: string,
+): string {
+  return `cd ${quote([composeProjectDirectory(serverId, appName)])} && env -i PATH="$PATH" docker compose -p ${quote([appName])} rm --stop --force`;
 }
 
 /**

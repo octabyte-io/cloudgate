@@ -1,4 +1,4 @@
-import { COMPOSE_TYPE_LABEL } from "@/lib/api/endpoints/compose";
+import { COMPOSE_TYPE_LABEL, runsOnStackVm } from "@/lib/api/endpoints/compose";
 import { DATABASE_LABEL } from "@/lib/api/endpoints/databases";
 import { serverMark } from "@/lib/design/server-mark";
 import { isApiError } from "@/lib/api/api-error";
@@ -223,7 +223,9 @@ function resolveFound(
         : mounts.error
           ? false
           : undefined;
-    const subject = { ...caller, configFiles };
+    // Volume backups: absent on a stack in a Cloud account (#163).
+    const stackVm = row ? runsOnStackVm(row) : undefined;
+    const subject = { ...caller, configFiles, stackVm };
     return {
       ...base,
       nav: scopeNav(scope, subject),

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Bucket } from "@/lib/api/endpoints/buckets";
 import { destinationsApi } from "@/lib/api/endpoints/destinations";
 import { volumeBackupsApi } from "@/lib/api/endpoints/volume-backups";
+import { RESTORE_REFUSAL } from "@/lib/auth/volume-backup-refusals";
 
 /**
  * A Server bucket's volume backups: the list, Run now and the run
@@ -31,8 +32,7 @@ vi.mock("@/components/console/toast", () => ({
   toast: { done: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
 
-const { BucketVolumeBackups, RESTORE_REFUSAL } =
-  await import("./bucket-volume-backups");
+const { BucketVolumeBackups } = await import("./bucket-volume-backups");
 
 const uploads: Bucket = {
   bucketId: "bkt-1",

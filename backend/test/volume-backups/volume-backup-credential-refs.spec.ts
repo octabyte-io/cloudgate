@@ -116,6 +116,7 @@ function makeService(destinations: Destinations = makeDestinations()) {
     null as never,
     null as never,
     SELF_HOSTED,
+    null as never,
   );
   jest
     .spyOn(service as never, 'findParentService')

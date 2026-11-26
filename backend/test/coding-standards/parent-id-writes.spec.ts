@@ -528,7 +528,12 @@ const PARENT_CONSTRAINTS: Readonly<Record<string, readonly string[]>> = {
     'uptime_check_parent_matches_service_type',
     'uptime_check_tcp_has_port',
   ],
-  volume_backup: ['volume_backup_parent_matches_service_type'],
+  // The second: a Stack backup is a Compose stack's and names no volume,
+  // and a backup of one volume names it (ADR-0092).
+  volume_backup: [
+    'volume_backup_parent_matches_service_type',
+    'volume_backup_scope_matches_service',
+  ],
 };
 
 /**

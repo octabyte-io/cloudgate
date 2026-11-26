@@ -220,6 +220,7 @@ exit 0
         dispatcher,
         null as never,
         SELF_HOSTED,
+        null as never,
       );
 
       const error = await service['run'](

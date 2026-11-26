@@ -194,6 +194,7 @@ describe('VolumeBackupsService, for a Service in a Cloud account', () => {
       { dispatch: () => Promise.resolve() } as never,
       { isFrozenAt: () => Promise.resolve(false) } as never,
       SELF_HOSTED,
+      null as never,
     );
     jest
       .spyOn(service as never, 'findParentService')

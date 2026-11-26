@@ -230,6 +230,12 @@ export const GATED_CONTROLS: GatedControl[] = [
   { file: "features/compose/config-files/config-files-card.tsx", label: "Restart to apply", requires: { deployment: ["create"] }, route: "POST /compose/:id/restart" },
   { file: "features/compose/advanced/isolation-card.tsx", label: "Save", requires: { service: ["update"] }, route: "PATCH /compose/:id", checkedIn: "ComposeService.findOwnedForUpdate" },
   { file: "features/compose/panels/advanced.tsx", label: "Delete", requires: { service: ["delete"] }, route: "DELETE /compose/:id" },
+  // A stack's Volume backups tab (#163). A Stack backup's Restore opens the
+  // moment dialog, whose route asks the same statement (and `'update'`
+  // access on the stack, which the service checks).
+  { file: "features/compose/panels/volume-backups.tsx", label: "Run now", requires: { volumeBackup: ["create"] }, route: "POST /volume-backups/:id/run" },
+  { file: "features/compose/panels/volume-backups.tsx", label: "Restore", requires: { volumeBackup: ["restore"] }, route: "POST /volume-backups/:id/restore-moment" },
+  { file: "features/compose/panels/volume-backups.tsx", label: "Restore a volume", requires: { volumeBackup: ["restore"] }, route: "POST /volume-backups/restore" },
 
   // ── a database (the same routes on all six engines) ────────────
   // The route's decorator. Its service also runs `findOwnedForUpdate`
@@ -405,7 +411,7 @@ export const GATED_SPECS: GatedSpec[] = [
   { file: "features/integrations/ai/ai-spec.tsx", routes: "same-as-list" },
   { file: "features/application/advanced/mounts-spec.tsx", routes: { create: "POST /mounts", update: "PATCH /mounts/:id", remove: "DELETE /mounts/:id" } },
   { file: "features/application/advanced/schedules-spec.tsx", routes: { create: "POST /schedules", update: "PATCH /schedules/:id", remove: "DELETE /schedules/:id" } },
-  { file: "features/application/advanced/volume-backups-spec.tsx", routes: { create: "POST /volume-backups", update: "PATCH /volume-backups/:id", remove: "DELETE /volume-backups/:id" } },
+  { file: "components/console/volume-backups/volume-backups-spec.tsx", routes: { create: "POST /volume-backups", update: "PATCH /volume-backups/:id", remove: "DELETE /volume-backups/:id" } },
   { file: "features/application/advanced/patches-spec.tsx", routes: { create: "POST /patches", update: "PATCH /patches/:id", remove: "DELETE /patches/:id" } },
   { file: "features/database/backups/backup-schedule-spec.tsx", routes: { create: "POST /backups", update: "PATCH /backups/:id", remove: "DELETE /backups/:id" } },
   // A Service's Health tab. Turn off / Turn on is the same PATCH, read

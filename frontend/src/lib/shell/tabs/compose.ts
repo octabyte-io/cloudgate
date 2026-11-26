@@ -119,6 +119,15 @@ export const COMPOSE_TABS: readonly TabEntry[] = [
     icon: "hash",
     panel: panel(() => import("@/features/compose/panels/variables")),
   },
+  // The stack's named volumes copied off its Server (#163). Absent in a
+  // Cloud account, where there is no Server to tar on (ADR-0092).
+  {
+    slug: "volume-backups",
+    label: "Volume backups",
+    icon: "db",
+    absentBecause: noVolumeBackups,
+    panel: panel(() => import("@/features/compose/panels/volume-backups")),
+  },
   {
     slug: "advanced",
     label: "Advanced",
@@ -127,6 +136,12 @@ export const COMPOSE_TABS: readonly TabEntry[] = [
     panel: panel(() => import("@/features/compose/panels/advanced")),
   },
 ];
+
+/** Why a Compose stack has no Volume backups tab: it runs in a Cloud account. */
+function noVolumeBackups(subject: TabSubject): string | null {
+  if (subject.stackVm !== true) return null;
+  return "Only a stack on a Server or on this host has Volume backups. This Compose stack runs in a Cloud account, so there is no Server to copy its volumes on.";
+}
 
 /**
  * Why a Compose stack has no Config files tab (#135). Its config files are

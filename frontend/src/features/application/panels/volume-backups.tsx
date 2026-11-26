@@ -8,24 +8,24 @@ import { Page } from "@/components/console/page";
 import { PageHeader } from "@/components/console/page-header";
 import { TabPending } from "@/components/console/tab-pending";
 import { toast } from "@/components/console/toast";
+import { RestoreModal } from "@/components/console/volume-backups/restore-modal";
+import {
+  volumeBackupsSpec,
+  weightsVolumeOf,
+} from "@/components/console/volume-backups/volume-backups-spec";
 import { Button } from "@/components/ui/button";
 import type { VolumeBackup } from "@/lib/api/endpoints/volume-backups";
+import { useDestinations } from "@/lib/api/use-destinations";
+import {
+  useVolumeBackupMutations,
+  useVolumeBackupRuns,
+  useVolumeBackups,
+} from "@/lib/api/use-volume-backups";
 import { Icon } from "@/lib/design/icons";
 import type { PanelProps } from "@/lib/shell/tab-registry";
 
 import { ResourceList } from "@/components/console/resource-list";
-import { RestoreModal } from "../advanced/restore-modal";
 import { RunHistoryCard } from "../advanced/run-history-card";
-import {
-  useDestinations,
-  useVolumeBackupMutations,
-  useVolumeBackupRuns,
-  useVolumeBackups,
-} from "../advanced/use-advanced";
-import {
-  volumeBackupsSpec,
-  weightsVolumeOf,
-} from "../advanced/volume-backups-spec";
 import { useApplication } from "../use-application";
 
 /**
@@ -129,8 +129,9 @@ export default function Panel({ id, label, icon }: PanelProps) {
         query={backups}
         note={
           <MetaStrip>
-            A Deployment replaces the container and leaves the volume where it is,
-            so <strong>nothing else here copies a volume off its Server</strong>.
+            A Deployment replaces the container and leaves the volume where it
+            is, so{" "}
+            <strong>nothing else here copies a volume off its Server</strong>.
             Losing the host loses the volume unless one of these has run.
           </MetaStrip>
         }
@@ -141,7 +142,7 @@ export default function Panel({ id, label, icon }: PanelProps) {
         entries={(backups.data ?? []).map((item) => ({
           id: item.volumeBackupId,
           label: item.name,
-          detail: item.volumeName,
+          detail: item.volumeName ?? undefined,
         }))}
         selectedId={historyOf}
         onSelect={setHistoryOf}
@@ -163,8 +164,8 @@ export default function Panel({ id, label, icon }: PanelProps) {
         <Card.Body>
           <p className="max-w-lede text-body text-tx-2">
             A restore is not the inverse of a backup row — any tarball in a
-            destination can be unpacked into any volume, so the flow asks for the
-            object, the volume and the destination separately. It{" "}
+            destination can be unpacked into any volume, so the flow asks for
+            the object, the volume and the destination separately. It{" "}
             <strong className="font-medium text-tx">
               replaces the volume&rsquo;s current contents
             </strong>

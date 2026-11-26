@@ -1,5 +1,12 @@
 import { relations, sql } from 'drizzle-orm';
-import { boolean, check, integer, pgTable, text } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  check,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+} from 'drizzle-orm/pg-core';
 import {
   application,
   serviceTypeEnum,
@@ -57,13 +64,46 @@ export const volumeBackupParentMatchesServiceType = check(
          END) IS NOT NULL`,
 );
 
+/**
+ * What one volume backup tars: one named volume, or every volume a Compose
+ * stack's services mount, as a **Stack backup** (ADR-0092). `volume` is the
+ * default, so every row written before a stack could be backed up whole keeps
+ * meaning what it meant.
+ */
+export const volumeBackupScopeEnum = pgEnum('volume_backup_scope', [
+  'volume',
+  'stack',
+]);
+
+export type VolumeBackupScope =
+  (typeof volumeBackupScopeEnum.enumValues)[number];
+
+/**
+ * A row's scope agrees with what it names, as a database fact: a backup of
+ * one volume names that volume, and a Stack backup belongs to a Compose stack
+ * and names no volume and no service, since it tars every volume the stack's
+ * last successful deploy recorded (`compose.deployedServiceVolumes`). The
+ * DTO says the same with a reason; this is what a writer that skips it meets.
+ *
+ * Compared as text, for the reason {@link volumeBackupParentMatchesServiceType}
+ * gives.
+ */
+export const volumeBackupScopeMatchesService = check(
+  'volume_backup_scope_matches_service',
+  sql`("scope"::text = 'volume' AND "volume_name" IS NOT NULL)
+    OR ("scope"::text = 'stack' AND "service_type"::text = 'compose' AND "volume_name" IS NULL AND "service_name" IS NULL)`,
+);
+
 export const volumeBackup = pgTable(
   'volume_backup',
   {
     volumeBackupId: nanoidPk('volume_backup_id'),
     name: text('name').notNull(),
-    /** The Docker volume that gets tarred. */
-    volumeName: text('volume_name').notNull(),
+    /** One volume or the whole stack (ADR-0092); `volume` unless said. */
+    scope: volumeBackupScopeEnum('scope').notNull().default('volume'),
+    /** The Docker volume that gets tarred; null on a Stack backup, which
+     * tars every volume its stack's services mount. */
+    volumeName: text('volume_name'),
     /** S3 path fragment between the service's appName and the tarball. */
     prefix: text('prefix').notNull(),
     // Every kind, a Bucket's own volume included.
@@ -81,7 +121,8 @@ export const volumeBackup = pgTable(
     turnOff: boolean('turn_off').notNull().default(false),
     /** Cron expression — scheduling wiring lands with Phase 37. */
     schedule: text('schedule').notNull(),
-    /** Prune target: keep the newest N tarballs after each run (null = all). */
+    /** Prune target: keep the newest N tarballs after each run, or the
+     * newest N moments of a Stack backup (null = all). */
     keepLatestCount: integer('keep_latest_count'),
     enabled: boolean('enabled'),
     applicationId: text('application_id').references(
@@ -117,7 +158,7 @@ export const volumeBackup = pgTable(
       .references(() => destination.destinationId, { onDelete: 'cascade' }),
     createdAt: isoTimestamp('created_at'),
   },
-  () => [volumeBackupParentMatchesServiceType],
+  () => [volumeBackupParentMatchesServiceType, volumeBackupScopeMatchesService],
 );
 
 export const volumeBackupRelations = relations(volumeBackup, ({ one }) => ({

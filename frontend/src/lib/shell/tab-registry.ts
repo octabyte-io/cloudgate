@@ -88,6 +88,11 @@ export type TabSubject = {
    * cannot read volumes. Absent until the mounts read answers.
    */
   configFiles?: boolean | "refused";
+  /**
+   * Whether a Compose stack runs on its own Stack VM in a Cloud account
+   * (`runsOnStackVm`): it has no Server to tar its volumes on (#163).
+   */
+  stackVm?: boolean;
 };
 
 export type TabEntry = {

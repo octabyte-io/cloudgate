@@ -197,6 +197,19 @@ export class ComposeController {
   }
 
   /**
+   * Each service with its image and the named volumes it mounts, from the
+   * last successful deploy's record. Read-scoped like `:id/services`.
+   */
+  @Get(':id/volumes')
+  loadVolumes(
+    @CurrentUser() user: AuthSession['user'],
+    @CurrentSession() session: Session,
+    @Param('id') id: string,
+  ) {
+    return this.composeService.loadVolumes(toCtx(user, session), id);
+  }
+
+  /**
    * The compose file as the deploy applies it. Answers the rewritten file as
    * YAML text (a bare string from a Nest handler), like the platform's other
    * file reads — `GET /patches/repo/file`, `GET /settings/traefik/file`.

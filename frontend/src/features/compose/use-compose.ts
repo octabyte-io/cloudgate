@@ -117,6 +117,16 @@ export function useComposeServices(composeId: string, enabled = true) {
   });
 }
 
+/** Each service's named volumes, as the last successful deploy recorded them. */
+export function useComposeVolumes(composeId: string) {
+  const { organizationId } = useActiveOrganizationId();
+  return useQuery({
+    queryKey: keys.compose.volumes(organizationId, composeId),
+    queryFn: () => composeApi.loadVolumes(composeId),
+    enabled: organizationId !== null && composeId !== "",
+  });
+}
+
 /** How often a Stack VM between running and stopped is read again. */
 const STACK_VM_MOVING_POLL_MS = 5_000;
 

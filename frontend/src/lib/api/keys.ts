@@ -433,6 +433,13 @@ export const keys = {
     services: (organizationId: OrganizationScope, composeId: string) =>
       [...org(organizationId), "compose", composeId, "services"] as const,
     /**
+     * `GET /compose/:id/volumes`: each service's named volumes, from the
+     * last successful deploy's record. Under the stack's detail, so a
+     * Deploy's refresh reads it again.
+     */
+    volumes: (organizationId: OrganizationScope, composeId: string) =>
+      [...org(organizationId), "compose", composeId, "volumes"] as const,
+    /**
      * `GET /compose/:id/stack-vm`: whether its Stack VM runs, read from the
      * cloud. Under the stack's detail, so Stop and Start re-read it.
      */
@@ -849,6 +856,14 @@ export const keys = {
         "volume-backups",
         "by-service",
         serviceId,
+      ] as const,
+    /** A Stack backup's moments, read off its destination (ADR-0092). */
+    moments: (organizationId: OrganizationScope, volumeBackupId: string) =>
+      [
+        ...org(organizationId),
+        "volume-backups",
+        volumeBackupId,
+        "moments",
       ] as const,
   },
 

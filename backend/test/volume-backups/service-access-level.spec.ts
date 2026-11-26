@@ -225,6 +225,7 @@ describe('VolumeBackupsService, the level its writes claim and the prefix its re
       null as never,
       null as never,
       SELF_HOSTED,
+      null as never,
     );
 
     // All three are Postgres reads that run before the decision under test.

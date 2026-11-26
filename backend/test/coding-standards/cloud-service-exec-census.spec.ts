@@ -84,6 +84,11 @@ const CENSUS: Readonly<Record<string, Verdict>> = {
     verdict: REFUSES,
     why: 'The tar and the rclone copy to the customer’s endpoint; refused before the run is recorded, for a manual and a scheduled run alike.',
   },
+  'volume-backups/volume-backups.service.ts#runStack': {
+    verdict: REFUSES,
+    guards: ['volume-backups/volume-backups.service.ts#run'],
+    why: "A Stack backup's tars, uploads and moment prune; reached only from `run`, after its refusal.",
+  },
   'volume-backups/volume-backups.service.ts#pruneOldBackups': {
     verdict: REFUSES,
     guards: ['volume-backups/volume-backups.service.ts#run'],
@@ -93,10 +98,31 @@ const CENSUS: Readonly<Record<string, Verdict>> = {
     verdict: REFUSES,
     why: '`docker volume rm/create` and the untar, refused after the gates.',
   },
+  'volume-backups/volume-backups.service.ts#restoreMoment': {
+    verdict: REFUSES,
+    why: "A Stack backup moment's Remove containers, untars and Start, refused after the gates.",
+  },
+  'volume-backups/volume-backups.service.ts#momentsIn': {
+    verdict: REFUSES,
+    guards: [
+      'volume-backups/volume-backups.service.ts#listMoments',
+      'volume-backups/volume-backups.service.ts#restoreMoment',
+    ],
+    why: 'The moment listing off the customer’s endpoint; reached only from `listMoments` and `restoreMoment`, after their refusals.',
+  },
+  'volume-backups/volume-backups.service.ts#busyVolumeOf': {
+    verdict: RECORDS,
+    why: "Reads the tail of the run's own log, where it ran, for the busy volume's marker line; reached from `runStack` and `restoreMoment` after their refusals.",
+  },
   'volume-backups/volume-backups.service.ts#exec': {
     verdict: REFUSES,
     guards: ['volume-backups/volume-backups.service.ts#run'],
     why: "The private dispatch, reached from `removeStagedTarball`, which only `run`'s failure path calls.",
+  },
+  'volume-backups/volume-backups.service.ts#removeStagedMoment': {
+    verdict: REFUSES,
+    guards: ['volume-backups/volume-backups.service.ts#run'],
+    why: "A failed Stack backup's staged moment; only `runStack`'s failure path calls it, which `run` reaches after its refusal.",
   },
   'mounts/mounts.service.ts#writeFileMount': {
     verdict: REFUSES,
