@@ -236,7 +236,7 @@ describe("volumeBackupsSpec on a Compose stack", () => {
 
   it("says its volumes are read from its first deploy on a stack not deployed yet", () => {
     const reason =
-      "This stack hasn’t deployed successfully yet. Its volumes are read from its first deploy.";
+      "This stack hasn’t deployed successfully yet, and its volumes are read from its first deploy";
     const spec = stackSpec({ services: [], unavailableReason: reason });
 
     expect(field(spec, "volumeName").hint).toBe(reason);

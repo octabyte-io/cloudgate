@@ -6,7 +6,7 @@ import { StackBackupsNote } from "./stack-backups-note";
 afterEach(cleanup);
 
 const NOT_DEPLOYED =
-  "This stack hasn’t deployed successfully yet. Its volumes are read from its first deploy.";
+  "This stack hasn’t deployed successfully yet, and its volumes are read from its first deploy";
 
 /**
  * What the Volume backups tab says about the stack it is on (#163): that a

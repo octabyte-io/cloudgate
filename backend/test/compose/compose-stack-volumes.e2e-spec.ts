@@ -152,7 +152,9 @@ describe('A Compose stack’s volumes (e2e)', () => {
     const answered = await volumesOf(composeId);
 
     expect(answered.services).toEqual([]);
-    expect(answered.unavailableReason).toContain('first deploy');
+    expect(answered.unavailableReason).toBe(
+      'This stack hasn’t deployed successfully yet, and its volumes are read from its first deploy',
+    );
   });
 
   it('lists each service’s named volumes by their Docker names, name: and external ones included, and no bind mount', async () => {

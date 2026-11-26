@@ -77,7 +77,7 @@ export interface ComposePublishedPort {
  * rather than in `compose.service.ts`, so the volume-backups module can say
  * it without importing that service. */
 export const NOT_DEPLOYED_VOLUMES_REASON =
-  'This stack hasn’t deployed successfully yet. Its volumes are read from its first deploy.';
+  'This stack hasn’t deployed successfully yet, and its volumes are read from its first deploy';
 
 /** One service of a stack, with the named volumes it mounts (#162). */
 export interface ComposeServiceVolumes {

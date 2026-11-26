@@ -514,8 +514,8 @@ describe('Stack backups (e2e)', () => {
       const ran = await runNow(volumeBackupId);
 
       expect(ran.status).toBe(400);
-      expect((ran.body as { message: string }).message).toContain(
-        'hasn’t deployed successfully yet',
+      expect((ran.body as { message: string }).message).toBe(
+        'This stack hasn’t deployed successfully yet, and its volumes are read from its first deploy',
       );
       const runs = await ctx.db.execute(
         sql`SELECT status FROM deployment WHERE volume_backup_id = ${volumeBackupId}`,

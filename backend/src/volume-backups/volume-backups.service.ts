@@ -193,7 +193,7 @@ interface RcloneEntry {
 /** Why a Stack backup's run is refused when the stack's last deploy recorded
  * services that mount no named volume. */
 export const STACK_HAS_NO_VOLUMES_REASON =
-  'This stack’s services mount no named volume, so a Stack backup has nothing to tar.';
+  'This stack’s services mount no named volume, so a Stack backup has nothing to tar';
 
 @Injectable()
 export class VolumeBackupsService implements OnApplicationBootstrap {
