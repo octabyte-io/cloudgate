@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+## 0.3.13 (2026-11-26)
+
+### A Compose stack on a Server has a Volume backups tab
+
+A stack on a Server gets a **Volume backups** tab (#161, #162). **Add a backup** offers **The whole stack**, the default, or **One volume**. The whole stack is a **Stack backup** (ADR-0092): one schedule and one run that stops the stack, tars every named volume under one moment folder, and starts it again, even when a tar failed. **Stop the stack while it runs** starts on when a service runs a `postgres`, `mysql`, `mariadb` or `mongo` image. One volume is picked by its service, then one of the named volumes it mounts, or typed as **Other volume**. **Restore** on a Stack backup lists the moments its destination holds and restores one whole, as one run: Remove containers (Stop on a swarm stack), each volume, then Start, with each step shown. **Remove containers** answers 409 while a Stack backup holds a stack's volumes. On a swarm stack the tab says only the copy on the stack's Server is backed up; a stack in a Cloud account has no tab.
+
+**What to do on upgrade**: redeploy a stack once before backing it up. A deploy records each service's named volumes, and the tab says a stack last deployed on an older version hasn’t deployed successfully yet until then.
+
+### The Same-machine warning
+
+A Server, a Service or a Deploy target on Cloudgate's own machine says so wherever it is shown or picked, and a plan's create there carries the warning in its Notes (#146–#150). A Service on that machine goes with Cloudgate's records. Create forms and a new Environment open on the first Ready Server instead.
+
+**What to do on upgrade**: nothing.
+
+### `cloudgate.yml` and `.yml` template files are read
+
+A repository's config may be `cloudgate.yml`; one holding both names uses `cloudgate.yaml` and says the other is not read (#152–#155). A template folder may spell its YAML files `.yaml` or `.yml`.
+
+**What to do on upgrade**: nothing.
+
+### A Compose Service may leave its file unnamed
+
+A Compose Service with no file named finds `compose.yaml`, `compose.yml`, `docker-compose.yaml` or `docker-compose.yml` at each deploy (#156, #157).
+
+**What to do on upgrade**: nothing.
+
 ## 0.3.12 (2026-11-21)
 
 ### The console has a Help & support page
