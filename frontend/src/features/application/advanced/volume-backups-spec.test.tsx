@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { OTHER_VOLUME } from "./stack-volume-picker";
+import { OTHER_VOLUME, type StackVolumesChoice } from "./stack-volume-picker";
 import { volumeBackupsSpec, weightsVolumeOf } from "./volume-backups-spec";
 
 const noop = async () => undefined;
@@ -74,7 +74,10 @@ describe("volumeBackupsSpec on a Compose stack", () => {
     },
   ];
   const stackSpec = (
-    stack: { services: typeof services; unavailableReason: string | null },
+    stack: {
+      services: StackVolumesChoice["services"];
+      unavailableReason: string | null;
+    },
     created: Record<string, unknown>[] = [],
   ) =>
     volumeBackupsSpec({
@@ -152,7 +155,11 @@ describe("volumeBackupsSpec on a Compose stack", () => {
     const created: Record<string, unknown>[] = [];
     const spec = stackSpec({ services, unavailableReason: null }, created);
     const typed = (otherVolume: string) =>
-      stackValues({ serviceName: "n8n", volumeName: OTHER_VOLUME, otherVolume });
+      stackValues({
+        serviceName: "n8n",
+        volumeName: OTHER_VOLUME,
+        otherVolume,
+      });
 
     expect(spec.schema.safeParse(typed("adopted.by-hand_1")).success).toBe(
       true,
@@ -172,6 +179,59 @@ describe("volumeBackupsSpec on a Compose stack", () => {
           "A volume name can only hold letters, numbers, dots, underscores and hyphens, and starts with a letter or a number.",
       }),
     ]);
+  });
+
+  it("offers the whole stack or one volume, the whole stack first and by default", () => {
+    const spec = stackSpec({ services, unavailableReason: null });
+
+    expect(optionsOf(spec, "scope", {})).toEqual([
+      ["stack", "The whole stack", undefined],
+      ["volume", "One volume", undefined],
+    ]);
+    expect(spec.toDefaults(null).scope).toBe("stack");
+    // The service and volume pickers are one volume's only.
+    const picked = { ...stackValues(), scope: "stack" as const };
+    expect(field(spec, "serviceName").when?.(picked)).toBe(false);
+    expect(field(spec, "volumeName").when?.(picked)).toBe(false);
+    expect(field(spec, "stopStack").when?.(picked)).toBe(true);
+    expect(field(spec, "turnOff").when?.(picked)).toBe(false);
+  });
+
+  it("writes a Stack backup with no volume and no service, stopping the stack as the switch says", async () => {
+    const created: Record<string, unknown>[] = [];
+    const spec = stackSpec({ services, unavailableReason: null }, created);
+    const whole = {
+      ...stackValues(),
+      scope: "stack" as const,
+      stopStack: true,
+      turnOff: false,
+    };
+
+    expect(spec.schema.safeParse(whole).success).toBe(true);
+    await spec.create(whole);
+    expect(created).toHaveLength(1);
+    expect(created[0]).toMatchObject({
+      scope: "stack" as const,
+      serviceType: "compose",
+      serviceId: "cmp-1",
+      turnOff: true,
+    });
+    expect(created[0]).not.toHaveProperty("volumeName");
+    expect(created[0]).not.toHaveProperty("serviceName");
+  });
+
+  it("starts Stop the stack while it runs on for a stack with a postgres image, and off for one without", () => {
+    const withDatabase = stackSpec({ services, unavailableReason: null });
+    const withoutDatabase = stackSpec({
+      services: [
+        { serviceName: "web", image: "nginx:1.27", volumes: ["site"] },
+        { serviceName: "worker", image: null, volumes: [] },
+      ],
+      unavailableReason: null,
+    });
+
+    expect(withDatabase.toDefaults(null).stopStack).toBe(true);
+    expect(withoutDatabase.toDefaults(null).stopStack).toBe(false);
   });
 
   it("says its volumes are read from its first deploy on a stack not deployed yet", () => {

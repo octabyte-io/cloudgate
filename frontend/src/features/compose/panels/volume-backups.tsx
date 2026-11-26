@@ -109,8 +109,12 @@ export default function Panel({ id, label, icon }: PanelProps) {
                     setHistoryOf(item.volumeBackupId);
                     toast.done(`Running ${item.name} now.`, {
                       description: item.turnOff
-                        ? "The service is stopped for the tar and started again afterwards. The outcome lands in the run history below."
-                        : "The volume is tarred while the stack keeps running. The outcome lands in the run history below.",
+                        ? item.scope === "stack"
+                          ? "The stack is stopped once for every volume's tar and started again afterwards. The outcome lands in the run history below."
+                          : "The service is stopped for the tar and started again afterwards. The outcome lands in the run history below."
+                        : item.scope === "stack"
+                          ? "Every volume is tarred while the stack keeps running. The outcome lands in the run history below."
+                          : "The volume is tarred while the stack keeps running. The outcome lands in the run history below.",
                     });
                   } catch (error) {
                     toast.error(error);
@@ -144,7 +148,7 @@ export default function Panel({ id, label, icon }: PanelProps) {
         entries={(backups.data ?? []).map((item) => ({
           id: item.volumeBackupId,
           label: item.name,
-          detail: item.volumeName,
+          detail: item.volumeName ?? "The whole stack",
         }))}
         selectedId={historyOf}
         onSelect={setHistoryOf}
@@ -170,8 +174,8 @@ export default function Panel({ id, label, icon }: PanelProps) {
         />
         <Card.Body>
           <p className="max-w-lede text-body text-tx-2">
-            A volume cannot be restored while a container still holds it, so
-            use Remove containers on the stack first, and Start afterwards. It{" "}
+            A volume cannot be restored while a container still holds it, so use
+            Remove containers on the stack first, and Start afterwards. It{" "}
             <strong className="font-medium text-tx">
               replaces the volume&rsquo;s current contents
             </strong>

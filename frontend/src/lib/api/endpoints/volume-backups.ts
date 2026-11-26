@@ -42,8 +42,11 @@ import type { TeardownReport } from "./teardown";
 export interface VolumeBackup {
   volumeBackupId: string;
   name: string;
-  /** The Docker volume that gets tarred. */
-  volumeName: string;
+  /** One volume, or the whole Compose stack (a Stack backup, ADR-0092). */
+  scope: "volume" | "stack";
+  /** The Docker volume that gets tarred; null on a Stack backup, which tars
+   * every volume its stack's services mount. */
+  volumeName: string | null;
   /** S3 path fragment between the service's appName and the tarball. */
   prefix: string;
   serviceType: ServiceType;
@@ -67,7 +70,10 @@ export interface VolumeBackup {
 
 export interface CreateVolumeBackupInput {
   name: string;
-  volumeName: string;
+  /** `volume` when absent. A `stack` backup is a Compose stack's only. */
+  scope?: "volume" | "stack";
+  /** Required on a backup of one volume; absent on a Stack backup. */
+  volumeName?: string;
   prefix: string;
   schedule: string;
   serviceType?: ServiceType;
@@ -105,7 +111,10 @@ export interface RestoreVolumeBackupInput {
 }
 
 export const volumeBackupsApi = {
-  listByService: (serviceId: string, serviceType: ServiceType = "application") =>
+  listByService: (
+    serviceId: string,
+    serviceType: ServiceType = "application",
+  ) =>
     api.get<VolumeBackup[]>("/volume-backups", {
       query: { serviceId, serviceType },
     }),

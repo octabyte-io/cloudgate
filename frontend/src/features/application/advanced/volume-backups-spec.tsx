@@ -12,6 +12,7 @@ import type { ResourceSpec } from "./resource-spec";
 import {
   checkStackVolume,
   pickedVolumeName,
+  stackScopeField,
   stackVolumeDefaults,
   stackVolumeFields,
   type StackVolumesChoice,
@@ -49,7 +50,8 @@ const schema = z.object({
     .trim()
     .min(1, "A backup needs a cron expression.")
     .refine((value) => value.trim().split(/\s+/).length === 5, {
-      message: "A cron expression has five fields — minute, hour, day, month, weekday.",
+      message:
+        "A cron expression has five fields — minute, hour, day, month, weekday.",
     }),
   destinationId: z.string().min(1, "Choose where the tarball is written."),
   keepLatestCount: z
@@ -63,6 +65,12 @@ const schema = z.object({
   /** A Compose stack's only: the service, and a typed Other volume. */
   serviceName: z.string().optional(),
   otherVolume: z.string().optional(),
+  /** A Compose stack's only: the whole stack (a Stack backup) or one
+   * volume, fixed once the backup exists. */
+  scope: z.enum(["stack", "volume"]).optional(),
+  scopeFixed: z.boolean().optional(),
+  /** A Stack backup's switch, which is `turnOff` on the wire. */
+  stopStack: z.boolean().optional(),
 });
 
 export type VolumeBackupValues = z.infer<typeof schema>;
@@ -84,9 +92,10 @@ function schemaFor(
   stack: StackVolumesChoice | null,
 ) {
   if (stack) {
-    return schema.superRefine((values, ctx) =>
-      checkStackVolume(stack, values, ctx),
-    );
+    // A Stack backup names no volume, so the picks are checked by scope.
+    return schema
+      .extend({ volumeName: z.string() })
+      .superRefine((values, ctx) => checkStackVolume(stack, values, ctx));
   }
   if (!weightsVolume) return schema;
   return schema.refine((values) => values.volumeName !== weightsVolume, {
@@ -163,8 +172,14 @@ export function volumeBackupsSpec({
       {
         id: "volumeName",
         head: "Volume",
-        cell: (row) => <Chip variant="mono">{row.volumeName}</Chip>,
-        compare: (a, b) => a.volumeName.localeCompare(b.volumeName),
+        cell: (row) =>
+          row.scope === "stack" ? (
+            <Chip>The whole stack</Chip>
+          ) : (
+            <Chip variant="mono">{row.volumeName}</Chip>
+          ),
+        compare: (a, b) =>
+          (a.volumeName ?? "").localeCompare(b.volumeName ?? ""),
       },
       {
         id: "schedule",
@@ -175,7 +190,11 @@ export function volumeBackupsSpec({
             <Chip variant="mono">{row.schedule}</Chip>
             <span className="text-meta text-tx-3">
               {describeCron(row.schedule)}
-              {row.turnOff ? " · stops the service first" : ""}
+              {row.turnOff
+                ? row.scope === "stack"
+                  ? " · stops the stack first"
+                  : " · stops the service first"
+                : ""}
             </span>
           </span>
         ),
@@ -224,7 +243,7 @@ export function volumeBackupsSpec({
         placeholder: example("Nightly uploads"),
       },
       ...(stack
-        ? stackVolumeFields(stack)
+        ? [stackScopeField(), ...stackVolumeFields(stack)]
         : [
             {
               kind: "text" as const,
@@ -281,12 +300,26 @@ export function volumeBackupsSpec({
         label: "Keep the newest",
         optional: true,
         placeholder: example("7"),
-        hint: "Older tarballs under this prefix are deleted after each successful run. Empty keeps every one — safe, and the reason buckets grow without anyone noticing.",
+        hint: stack
+          ? "Older backups under this prefix are deleted after each successful run, a whole stack's moment at a time. Empty keeps every one — safe, and the reason buckets grow without anyone noticing."
+          : "Older tarballs under this prefix are deleted after each successful run. Empty keeps every one — safe, and the reason buckets grow without anyone noticing.",
       },
+      ...(stack
+        ? [
+            {
+              kind: "switch" as const,
+              name: "stopStack" as const,
+              label: "Stop the stack while it runs",
+              when: (values: VolumeBackupValues) => values.scope === "stack",
+              hint: "Every service is stopped once for the copy and started again afterwards, even when a tar fails. It starts on for a stack that runs a database, whose files may not restore from a copy taken while it writes.",
+            },
+          ]
+        : []),
       {
         kind: "switch",
         name: "turnOff",
         label: "Stop the service while the backup runs",
+        when: (values) => values.scope !== "stack",
         hint: "A volume tarred while it is being written to can produce a tarball that will not restore. Stopping first costs downtime and is the only way to be certain.",
       },
       {
@@ -320,26 +353,37 @@ export function volumeBackupsSpec({
       remove: { volumeBackup: ["delete"] },
     },
     create: (values) =>
-      create({
-        ...body(values, stack),
-        // Omitted rather than empty: the create schema refuses "".
-        ...(stack && values.serviceName
-          ? { serviceName: values.serviceName }
-          : {}),
-        serviceType,
-        serviceId,
-      }),
+      create(
+        stack && values.scope === "stack"
+          ? { ...stackBody(values), scope: "stack", serviceType, serviceId }
+          : {
+              ...body(values, stack),
+              // Omitted rather than empty: the create schema refuses "".
+              ...(stack && values.serviceName
+                ? { serviceName: values.serviceName }
+                : {}),
+              serviceType,
+              serviceId,
+            },
+      ),
+    // By the row's scope, not the form's: a backup cannot change what it
+    // backs up, and a Stack backup names no volume.
     update: (row, values) =>
-      update(row.volumeBackupId, {
-        ...body(values, stack),
-        ...(stack ? { serviceName: values.serviceName || null } : {}),
-      }),
+      update(
+        row.volumeBackupId,
+        row.scope === "stack"
+          ? stackBody(values)
+          : {
+              ...body(values, stack),
+              ...(stack ? { serviceName: values.serviceName || null } : {}),
+            },
+      ),
     remove: (row) => remove(row.volumeBackupId),
 
     deleteNote: (row) => (
       <>
-        <strong className="font-medium text-tx">{row.name}</strong> stops running
-        and its row is deleted.{" "}
+        <strong className="font-medium text-tx">{row.name}</strong> stops
+        running and its row is deleted.{" "}
         <strong className="font-medium text-tx">
           The tarballs already in the destination are not touched
         </strong>{" "}
@@ -347,6 +391,13 @@ export function volumeBackupsSpec({
       </>
     ),
   };
+}
+
+/** A Stack backup's columns: no volume and no service of its own. */
+function stackBody(values: VolumeBackupValues): Record<string, unknown> {
+  const columns = body(values, null);
+  delete columns.volumeName;
+  return { ...columns, turnOff: values.stopStack ?? false };
 }
 
 function body(

@@ -129,8 +129,9 @@ export default function Panel({ id, label, icon }: PanelProps) {
         query={backups}
         note={
           <MetaStrip>
-            A Deployment replaces the container and leaves the volume where it is,
-            so <strong>nothing else here copies a volume off its Server</strong>.
+            A Deployment replaces the container and leaves the volume where it
+            is, so{" "}
+            <strong>nothing else here copies a volume off its Server</strong>.
             Losing the host loses the volume unless one of these has run.
           </MetaStrip>
         }
@@ -141,7 +142,7 @@ export default function Panel({ id, label, icon }: PanelProps) {
         entries={(backups.data ?? []).map((item) => ({
           id: item.volumeBackupId,
           label: item.name,
-          detail: item.volumeName,
+          detail: item.volumeName ?? undefined,
         }))}
         selectedId={historyOf}
         onSelect={setHistoryOf}
@@ -163,8 +164,8 @@ export default function Panel({ id, label, icon }: PanelProps) {
         <Card.Body>
           <p className="max-w-lede text-body text-tx-2">
             A restore is not the inverse of a backup row — any tarball in a
-            destination can be unpacked into any volume, so the flow asks for the
-            object, the volume and the destination separately. It{" "}
+            destination can be unpacked into any volume, so the flow asks for
+            the object, the volume and the destination separately. It{" "}
             <strong className="font-medium text-tx">
               replaces the volume&rsquo;s current contents
             </strong>

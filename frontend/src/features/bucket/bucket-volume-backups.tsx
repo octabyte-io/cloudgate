@@ -113,7 +113,7 @@ export function BucketVolumeBackups({
         entries={(backups.data ?? []).map((item) => ({
           id: item.volumeBackupId,
           label: item.name,
-          detail: item.volumeName,
+          detail: item.volumeName ?? undefined,
         }))}
         selectedId={historyOf}
         onSelect={setHistoryOf}
@@ -148,8 +148,8 @@ export function BucketVolumeBackups({
             <strong className="font-medium text-tx">
               replaces the volume&rsquo;s current contents
             </strong>
-            , objects and Garage&rsquo;s own records alike, with no copy of
-            what was there.
+            , objects and Garage&rsquo;s own records alike, with no copy of what
+            was there.
           </p>
         </Card.Body>
       </Card>

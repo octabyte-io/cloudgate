@@ -39,6 +39,43 @@ const VOLUME_NAME_RULE = /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/;
 export const VOLUME_NAME_RULE_MESSAGE =
   "A volume name can only hold letters, numbers, dots, underscores and hyphens, and starts with a letter or a number.";
 
+/** A Stack backup's scope, or one volume (ADR-0092). Absent is one volume,
+ * as it is to the API. */
+const isWholeStack = (values: VolumeBackupValues) => values.scope === "stack";
+
+/** The images whose volume may not restore from a tar taken while it writes. */
+const DATABASE_IMAGE = /^(postgres|mysql|mariadb|mongo)/;
+
+/**
+ * Whether **Stop the stack while it runs** starts on: when any service runs
+ * a `postgres`, `mysql`, `mariadb` or `mongo` image, by the last part of its
+ * repository (`bitnami/postgresql:16` is one). A default only; the switch
+ * is never forced.
+ */
+export function stopsStackByDefault(stack: StackVolumesChoice): boolean {
+  return stack.services.some((service) => {
+    const repository = (service.image ?? "").split(/[:@]/)[0];
+    const name = repository.split("/").pop() ?? "";
+    return DATABASE_IMAGE.test(name);
+  });
+}
+
+/** The choice between a Stack backup and a backup of one volume. Shown on
+ * a new backup only: a backup cannot change what it backs up. */
+export function stackScopeField(): FieldSpec<VolumeBackupValues> {
+  return {
+    kind: "select",
+    name: "scope",
+    label: "Back up",
+    when: (values) => !values.scopeFixed,
+    options: [
+      { value: "stack", label: "The whole stack" },
+      { value: "volume", label: "One volume" },
+    ],
+    hint: "The whole stack copies every named volume in one run, so its database and its files come from the same moment. One volume runs on its own schedule.",
+  };
+}
+
 function volumesOf(stack: StackVolumesChoice, serviceName: string | undefined) {
   return (
     stack.services.find((service) => service.serviceName === serviceName)
@@ -57,7 +94,7 @@ export function stackVolumeFields(
       label: "Service",
       pending: stack.pending,
       placeholder: "Choose a service",
-      when: () => stack.services.length > 0,
+      when: (values) => !isWholeStack(values) && stack.services.length > 0,
       options: stack.services.map((service) => ({
         value: service.serviceName,
         label: service.serviceName,
@@ -71,6 +108,7 @@ export function stackVolumeFields(
       label: "Volume",
       pending: stack.pending,
       placeholder: "Choose a volume",
+      when: (values) => !isWholeStack(values),
       options: (values) => [
         ...volumesOf(stack, values.serviceName).map((volume) => ({
           value: volume,
@@ -87,7 +125,8 @@ export function stackVolumeFields(
       name: "otherVolume",
       label: "Volume name",
       mono: true,
-      when: (values) => values.volumeName === OTHER_VOLUME,
+      when: (values) =>
+        !isWholeStack(values) && values.volumeName === OTHER_VOLUME,
       hint: "The Docker volume to tar, by its full name.",
     },
   ];
@@ -99,6 +138,15 @@ export function checkStackVolume(
   values: VolumeBackupValues,
   ctx: RefinementCtx,
 ): void {
+  if (isWholeStack(values)) return;
+  if (values.volumeName.trim() === "") {
+    ctx.addIssue({
+      code: "custom",
+      path: ["volumeName"],
+      message: "A backup needs the volume to tar.",
+    });
+    return;
+  }
   if (values.volumeName === OTHER_VOLUME) {
     const typed = values.otherVolume?.trim() ?? "";
     if (typed === "") {
@@ -131,7 +179,8 @@ export function checkStackVolume(
     ctx.addIssue({
       code: "custom",
       path: ["volumeName"],
-      message: "Choose one of the volumes this service mounts, or Other volume.",
+      message:
+        "Choose one of the volumes this service mounts, or Other volume.",
     });
   }
 }
@@ -140,15 +189,37 @@ export function checkStackVolume(
 export function stackVolumeDefaults(
   stack: StackVolumesChoice,
   row: VolumeBackup | null,
-): Pick<VolumeBackupValues, "serviceName" | "volumeName" | "otherVolume"> {
-  if (!row) return { serviceName: "", volumeName: "", otherVolume: "" };
-  const listed = volumesOf(stack, row.serviceName ?? undefined).includes(
-    row.volumeName,
-  );
+): Pick<
+  VolumeBackupValues,
+  | "scope"
+  | "scopeFixed"
+  | "stopStack"
+  | "serviceName"
+  | "volumeName"
+  | "otherVolume"
+> {
+  if (!row) {
+    return {
+      scope: "stack",
+      scopeFixed: false,
+      stopStack: stopsStackByDefault(stack),
+      serviceName: "",
+      volumeName: "",
+      otherVolume: "",
+    };
+  }
+  const scope = row.scope ?? "volume";
+  const volumeName = row.volumeName ?? "";
+  const listed =
+    scope === "stack" ||
+    volumesOf(stack, row.serviceName ?? undefined).includes(volumeName);
   return {
+    scope,
+    scopeFixed: true,
+    stopStack: row.turnOff,
     serviceName: row.serviceName ?? "",
-    volumeName: listed ? row.volumeName : OTHER_VOLUME,
-    otherVolume: listed ? "" : row.volumeName,
+    volumeName: listed ? volumeName : OTHER_VOLUME,
+    otherVolume: listed ? "" : volumeName,
   };
 }
 
