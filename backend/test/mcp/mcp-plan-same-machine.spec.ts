@@ -10,7 +10,7 @@ import type { PermissionCtx } from '../../src/rbac/permission.service';
  * The real round trip over `POST /mcp` is `mcp-project-config.e2e-spec.ts`'s,
  * whose plan creates on This Cloudgate host and answers no such note.
  */
-describe('get_plan and request_plan on a plan with a Same-machine note', () => {
+describe('getPlan and requestPlan, a plan with a Same-machine note', () => {
   const variableNote = {
     kind: 'variable-without-value',
     configName: 'shop',
