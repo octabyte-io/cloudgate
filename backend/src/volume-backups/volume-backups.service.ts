@@ -853,6 +853,9 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
    * One recursive `rclone lsjson` of `{appName}/{prefix}/`, run on the
    * stack's Server as the restore will be; an object that is not
    * `{moment}/{volume}.tar` is not part of any moment and is left out.
+   *
+   * A caller holding `volumeBackup: ['read']` with access to the stack
+   * (`checkServiceAccess`) may call this.
    */
   async listMoments(
     ctx: PermissionCtx,
