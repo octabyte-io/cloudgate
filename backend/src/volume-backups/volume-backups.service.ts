@@ -40,7 +40,7 @@ import {
 } from '../common/teardown-steps';
 import type { UnreclaimedArtifact } from '../common/teardown-steps';
 import { refuseExistingDatabaseBackup } from '../databases/postgres/existing-postgres';
-import { NOT_DEPLOYED_VOLUMES_REASON } from '../compose/compose-file';
+import { unrecordedVolumesReason } from '../compose/unrecorded-volumes-reason';
 import { DRIZZLE } from '../db/drizzle.module';
 import type { DrizzleDB } from '../db/drizzle.module';
 import { compose } from '../db/schema';
@@ -723,7 +723,9 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
       .where(eq(compose.composeId, composeId))
       .limit(1);
     if (!row?.services) {
-      throw new BadRequestException(NOT_DEPLOYED_VOLUMES_REASON);
+      throw new BadRequestException(
+        await unrecordedVolumesReason(this.db, composeId),
+      );
     }
     const volumeNames = [
       ...new Set(row.services.flatMap((service) => service.volumes)),

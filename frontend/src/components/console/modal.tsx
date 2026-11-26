@@ -135,7 +135,11 @@ export function Modal({
           containTab(event);
         }}
         className={cn(
-          "top-modal-top max-h-modal-h w-full translate-y-0 gap-0 overflow-auto rounded-xl border border-line bg-panel p-0 shadow-pop ring-0",
+          // `grid-cols-1` is one `minmax(0, 1fr)` column. The popup is a
+          // grid, and its implicit column is otherwise as wide as the widest
+          // unbreakable line inside: a truncating row holding a stack's
+          // tarball path widened the dialog past its edge (#170).
+          "top-modal-top max-h-modal-h w-full grid-cols-1 translate-y-0 gap-0 overflow-auto rounded-xl border border-line bg-panel p-0 shadow-pop ring-0",
           // Only the wide cap is ours. Below 640px base-nova's own
           // `max-w-[calc(100%-2rem)]` is what keeps a 16px gutter down each
           // side of a phone, which is exactly the reference's padding.

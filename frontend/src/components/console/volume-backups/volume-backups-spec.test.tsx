@@ -1,4 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+
+import { ResourceFormModal } from "@/components/console/resource-form-modal";
+import type { ResourceSpec } from "@/components/console/resource-spec";
+import type { VolumeBackup } from "@/lib/api/endpoints/volume-backups";
 
 import { OTHER_VOLUME, type StackVolumesChoice } from "./stack-volume-picker";
 import { volumeBackupsSpec, weightsVolumeOf } from "./volume-backups-spec";
@@ -277,5 +282,91 @@ describe("volumeBackupsSpec on a bucket", () => {
         volumeName: "bucket-q7k2m9-data",
       }),
     ]);
+  });
+});
+
+/**
+ * The stack form found in the #166 walk (#171): the Keep the newest hint
+ * follows the Back up choice, and a stack whose volumes are not recorded
+ * says why on the whole-stack form too.
+ */
+describe("volumeBackupsSpec's stack form, as rendered", () => {
+  afterEach(cleanup);
+
+  const services = [
+    { serviceName: "db", image: "postgres:17", volumes: ["n8n_db-data"] },
+  ];
+  const NOT_RECORDED =
+    "This stack last deployed before Cloudgate recorded a stack’s volumes, so they are recorded at its next deploy. Redeploy it to pick its volumes here";
+
+  function dialog(
+    stack: StackVolumesChoice,
+    row: VolumeBackup | null = null,
+  ) {
+    const spec = volumeBackupsSpec({
+      serviceId: "cmp-1",
+      serviceType: "compose",
+      stack,
+      destinations: [],
+      destinationsPending: false,
+      create: noop,
+      update: noop,
+      remove: noop,
+    }) as unknown as ResourceSpec<unknown, Record<string, unknown>>;
+    return render(
+      <ResourceFormModal spec={spec} row={row} open onOpenChange={() => {}} />,
+    );
+  }
+
+  const oneVolume = {
+    volumeBackupId: "vb-1",
+    name: "Files",
+    scope: "volume",
+    serviceName: "db",
+    volumeName: "n8n_db-data",
+    prefix: "n8n",
+    schedule: "0 2 * * *",
+    destinationId: "dest-1",
+    keepLatestCount: 7,
+    turnOff: false,
+    enabled: true,
+  } as unknown as VolumeBackup;
+
+  it("says a one-volume backup prunes single tarballs, not a stack's moments", () => {
+    dialog({ services, unavailableReason: null, pending: false }, oneVolume);
+
+    expect(screen.queryByText(/a whole stack's moment at a time/)).toBeNull();
+    expect(
+      screen.getByText(/Older tarballs under this prefix are deleted/),
+    ).toBeTruthy();
+  });
+
+  it("says a Stack backup prunes whole moments", () => {
+    dialog({ services, unavailableReason: null, pending: false });
+
+    expect(
+      screen.getByText(/a whole stack's moment at a time/),
+    ).toBeTruthy();
+  });
+
+  it("says on the whole-stack form why the stack's volumes are not known", () => {
+    dialog({ services: [], unavailableReason: NOT_RECORDED, pending: false });
+
+    expect(screen.getByText(new RegExp(NOT_RECORDED))).toBeTruthy();
+  });
+
+  /**
+   * With no record, nothing says whether the stack runs a database, so the
+   * switch starts on the side that always restores (ADR-0092's reason for
+   * the database default).
+   */
+  it("starts Stop the stack while it runs on while the stack's services are not known", () => {
+    dialog({ services: [], unavailableReason: NOT_RECORDED, pending: false });
+
+    expect(
+      screen
+        .getByRole("switch", { name: "Stop the stack while it runs" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
   });
 });

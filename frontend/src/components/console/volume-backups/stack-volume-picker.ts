@@ -53,17 +53,29 @@ const DATABASE_IMAGES = new Set(["postgres", "mysql", "mariadb", "mongo"]);
  * namespace prefix matches (`registry:5000/team/postgres:16`) and an image
  * whose name only starts with one (`mongo-express`, `postgres-exporter`)
  * does not. A default only; the switch is never forced.
+ *
+ * **On while the services are not known** (`unavailableReason`, #171): a
+ * stack with no record may run a database, and nothing here can say it does
+ * not, so the default is the side that always restores.
  */
 export function stopsStackByDefault(stack: StackVolumesChoice): boolean {
+  if (stack.unavailableReason !== null && stack.services.length === 0) {
+    return true;
+  }
   return stack.services.some((service) => {
     const last = (service.image ?? "").split("/").pop() ?? "";
     return DATABASE_IMAGES.has(last.split(/[:@]/)[0]);
   });
 }
 
+const SCOPE_HINT =
+  "The whole stack copies every named volume in one run, and one volume runs on its own schedule.";
+
 /** The choice between a Stack backup and a backup of one volume. Shown on
  * a new backup only: a backup cannot change what it backs up. */
-export function stackScopeField(): FieldSpec<VolumeBackupValues> {
+export function stackScopeField(
+  stack: StackVolumesChoice,
+): FieldSpec<VolumeBackupValues> {
   return {
     kind: "select",
     name: "scope",
@@ -76,7 +88,11 @@ export function stackScopeField(): FieldSpec<VolumeBackupValues> {
     // The whole stack is the default because its one run copies the
     // database and the files from the same moment, which is what restores
     // as a working app (ADR-0092).
-    hint: "The whole stack copies every named volume in one run, and one volume runs on its own schedule.",
+    // The record's reason too, when there is none: the whole stack is the
+    // default and its form has no volume picker to say it on (#171).
+    hint: stack.unavailableReason
+      ? `${SCOPE_HINT} ${stack.unavailableReason}.`
+      : SCOPE_HINT,
   };
 }
 
