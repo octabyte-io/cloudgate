@@ -40,10 +40,10 @@ import {
 } from '../common/teardown-steps';
 import type { UnreclaimedArtifact } from '../common/teardown-steps';
 import { refuseExistingDatabaseBackup } from '../databases/postgres/existing-postgres';
-import { compose } from '../compose/compose.schema';
 import { NOT_DEPLOYED_VOLUMES_REASON } from '../compose/compose-file';
 import { DRIZZLE } from '../db/drizzle.module';
 import type { DrizzleDB } from '../db/drizzle.module';
+import { compose } from '../db/schema';
 import type { Destination } from '../db/schema';
 import { volumeBackupsDirectoryOn } from '../deployment-engine/deployment-engine.paths';
 import {
