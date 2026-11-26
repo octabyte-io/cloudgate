@@ -11,6 +11,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api/api-error";
 import {
+  deploymentsApi,
+  type Deployment,
+} from "@/lib/api/endpoints/deployments";
+import {
   volumeBackupsApi,
   type VolumeBackup,
 } from "@/lib/api/endpoints/volume-backups";
@@ -18,6 +22,12 @@ import {
 vi.mock("@/lib/auth/client", async (original) => ({
   ...(await original<typeof import("@/lib/auth/client")>()),
   useActiveOrganizationId: () => ({ organizationId: "org-1", pending: false }),
+}));
+
+// The log box is `DeploymentLog`'s business and has its own test; what this
+// dialog decides is what its steps say.
+vi.mock("@/features/application/deploy/deployment-log", () => ({
+  DeploymentLog: () => null,
 }));
 
 const { MomentRestoreModal } = await import("./moment-restore-modal");
@@ -74,6 +84,14 @@ function show(swarm = false) {
 async function chooseNewest() {
   const moments = await screen.findByRole("group", { name: "Moments" });
   fireEvent.click(within(moments).getAllByRole("button")[0]);
+}
+
+async function confirmNewest() {
+  await chooseNewest();
+  fireEvent.change(screen.getByLabelText("Type outline to confirm"), {
+    target: { value: "outline" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Restore this moment" }));
 }
 
 describe("MomentRestoreModal", () => {
@@ -156,5 +174,52 @@ describe("MomentRestoreModal", () => {
     expect(within(steps).getAllByRole("listitem")[0].textContent).toBe(
       "Stop⊘not run",
     );
+  });
+
+  it("reads the run's log once a failed restore settles, so each step says what happened", async () => {
+    // The run is recorded only once the POST is under way, so the history
+    // read at the press has none, and the one after it settles has it.
+    const run = {
+      deploymentId: "dep-restore",
+      title: "Stack Restore",
+      status: "error",
+    } as Deployment;
+    vi.spyOn(volumeBackupsApi, "runHistory")
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([run]);
+    const readLogs = vi
+      .spyOn(deploymentsApi, "readLogs")
+      .mockResolvedValue(
+        [
+          "Step started: Remove containers",
+          "Step done: Remove containers",
+          "Step started: Restore alpha-files",
+          "Step done: Restore alpha-files",
+          "Step started: Restore zeta-db",
+          "tar: ./data: Cannot write: No space left on device",
+          "❌ Moment restore stopped at Restore zeta-db",
+          "",
+        ].join("\n"),
+      );
+    vi.spyOn(volumeBackupsApi, "restoreMoment").mockRejectedValue(
+      new ApiError(400, "The restore stopped at a step"),
+    );
+    show();
+    await confirmNewest();
+
+    const steps = await screen.findByRole("list", { name: "Steps" });
+    await waitFor(() =>
+      expect(
+        within(steps)
+          .getAllByRole("listitem")
+          .map((item) => item.textContent),
+      ).toEqual([
+        "Remove containers●done",
+        "Restore alpha-files●done",
+        "Restore zeta-db✕failed",
+        "Start⊘not run",
+      ]),
+    );
+    expect(readLogs).toHaveBeenCalledWith("dep-restore", expect.any(Number));
   });
 });

@@ -9,6 +9,7 @@ import { StatusPill } from "@/components/console/status-pill";
 import { RestoreRefusal } from "@/components/console/volume-backups/restore-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { deploymentsApi } from "@/lib/api/endpoints/deployments";
 import {
   volumeBackupsApi,
   type BackupMoment,
@@ -22,6 +23,8 @@ import { useDeploymentLog } from "@/lib/realtime/gateways";
 import { timeExact } from "@/lib/format/time";
 
 import { DeploymentLog } from "../../application/deploy/deployment-log";
+import { splitLogText } from "../../application/deploy/log-tones";
+import { STORED_LOG_TAIL } from "../../application/deploy/stored-deployment-log";
 import { MOMENT_STEP_MARK, momentRestoreSteps } from "./moment-restore-steps";
 
 /** How often the run history is read while the restore runs, to find its run. */
@@ -44,6 +47,11 @@ type Outcome = "running" | "done" | "failed";
  * ended, so the run is found while it goes by reading the backup's run
  * history for the Stack Restore that was not there at the press. The log
  * socket is the same Live log `DeploymentLog` below follows.
+ *
+ * **Once the POST settles, the steps are read off the stored log**, the
+ * read `DeploymentLog` makes of a finished run (same key, so it is made
+ * once): a run that failed before the polling found it, a lock refusal or a
+ * first volume that would not untar, left every step "not run" otherwise.
  */
 export function MomentRestoreModal({
   backup,
@@ -91,6 +99,19 @@ export function MomentRestoreModal({
     deploymentId: run?.deploymentId,
     enabled: outcome === "running",
   });
+  const settled = useQuery({
+    queryKey: keys.deployments.logs(organizationId, run?.deploymentId ?? ""),
+    queryFn: () =>
+      deploymentsApi.readLogs(run?.deploymentId ?? "", STORED_LOG_TAIL),
+    enabled:
+      outcome !== null &&
+      outcome !== "running" &&
+      run !== null &&
+      organizationId !== null,
+  });
+  const lines = settled.data
+    ? [...stream.lines, ...splitLogText(settled.data)]
+    : stream.lines;
 
   const confirmed = chosen !== null && typed.trim() === stackName;
 
@@ -136,7 +157,7 @@ export function MomentRestoreModal({
               {momentRestoreSteps({
                 composeType: swarm ? "stack" : "docker-compose",
                 volumes: chosen.volumes,
-                lines: stream.lines,
+                lines,
                 outcome,
               }).map((step) => (
                 <li
