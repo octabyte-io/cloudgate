@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import {
   buildMomentRestoreScript,
   MOMENT_RESTORE_HALTED_EXIT_CODE,
+  MOMENT_RESTORE_LEFT_STOPPED_EXIT_CODE,
 } from '../../src/volume-backups/volume-backup-commands';
 import type { MomentRestoreScriptOptions } from '../../src/volume-backups/volume-backup-commands';
 import {
@@ -23,7 +24,8 @@ import {
  *   exists; `docker ps -a` answers no container holding it.
  * - `docker run … tar xvf` fails for the volume named in `$STUB_UNTAR_FAILS`.
  * - `docker service ls` answers two services of the swarm stack, each at
- *   `$STUB_REPLICAS` replicas.
+ *   `$STUB_REPLICAS` replicas, or none with `$STUB_NO_SERVICES` set, as a
+ *   swarm stack that Stop took down answers.
  * - `rclone copyto` writes a non-empty file at its last argument, as a
  *   download does.
  */
@@ -34,7 +36,9 @@ case "$1 $2" in
 		echo "\${5#name=^}" | tr -d '$'
 		;;
 	"service ls")
-		printf '%s\\n' wiki_db wiki_app
+		if [ -z "$STUB_NO_SERVICES" ]; then
+			printf '%s\\n' wiki_db wiki_app
+		fi
 		;;
 	"service inspect")
 		echo "$STUB_REPLICAS"
@@ -134,7 +138,11 @@ describe('buildMomentRestoreScript, executed under /bin/sh', () => {
 
   const run = (
     overrides: Partial<MomentRestoreScriptOptions> = {},
-    stub: { untarFails?: string; probeFails?: boolean } = {},
+    stub: {
+      untarFails?: string;
+      probeFails?: boolean;
+      noServices?: boolean;
+    } = {},
   ) => {
     fs.rmSync(logFile, { force: true });
     for (const volume of ['alpha-files', 'zeta-db']) {
@@ -155,6 +163,7 @@ describe('buildMomentRestoreScript, executed under /bin/sh', () => {
         STUB_REPLICAS: '2',
         STUB_UNTAR_FAILS: stub.untarFails ?? '',
         STUB_PROBE_FAILS: stub.probeFails ? '1' : '',
+        STUB_NO_SERVICES: stub.noServices ? '1' : '',
       },
     });
     return {
@@ -237,6 +246,24 @@ describe('buildMomentRestoreScript, executed under /bin/sh', () => {
     expect(firstStart).toBeGreaterThan(replaceOf(calls, 'zeta-db'));
     expect(calls.some((call) => call.includes('docker compose'))).toBe(false);
     expect(output).toContain('Step done: Stop');
+  });
+
+  it('restores a swarm stack that was not running and leaves it stopped, saying so', () => {
+    const { status, calls, output } = run(
+      { lifecycle: { composeType: 'stack' } },
+      { noServices: true },
+    );
+
+    expect(status).toBe(MOMENT_RESTORE_LEFT_STOPPED_EXIT_CODE);
+    expect(replaceOf(calls, 'alpha-files')).toBeGreaterThan(-1);
+    expect(replaceOf(calls, 'zeta-db')).toBeGreaterThan(-1);
+    // Nothing was scaled, either way.
+    expect(calls.some((call) => call.startsWith('docker service update'))).toBe(
+      false,
+    );
+    expect(output).toContain('Step done: Start');
+    expect(output).toContain('Start or Deploy');
+    expect(output).not.toContain('❌');
   });
 
   it('stops at a failed volume, leaves the stack stopped, and names what was restored and what was not', () => {

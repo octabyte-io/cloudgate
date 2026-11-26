@@ -73,7 +73,10 @@ import {
   buildVolumeBackupScript,
   buildVolumeRestoreScript,
 } from './volume-backup-commands';
-import { MOMENT_RESTORE_HALTED_EXIT_CODE } from './volume-backup-commands';
+import {
+  MOMENT_RESTORE_HALTED_EXIT_CODE,
+  MOMENT_RESTORE_LEFT_STOPPED_EXIT_CODE,
+} from './volume-backup-commands';
 import type {
   VolumeBackupStopTarget,
   VolumeRestoreTarget,
@@ -893,7 +896,9 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
    * pointing at the run's log, because the log is where the script writes
    * which step stopped it and which volumes were restored. A failure after the
    * first step leaves the stack stopped, and the row says so; one before it
-   * has touched nothing and leaves the row alone.
+   * has touched nothing and leaves the row alone. A swarm stack that had no
+   * service running before the restore (Stop took it down) is restored and
+   * left stopped, and the row says that too, never `done`.
    */
   async restoreMoment(
     ctx: PermissionCtx,
@@ -969,6 +974,14 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
         },
       );
     } catch (error) {
+      if (
+        (error as { exitCode?: number } | null)?.exitCode ===
+        MOMENT_RESTORE_LEFT_STOPPED_EXIT_CODE
+      ) {
+        await this.runRecorder.finish(run.deploymentId, 'done');
+        await this.composes().updateStatus(composeId, 'stopped');
+        return;
+      }
       await this.runRecorder.finish(run.deploymentId, 'error');
       if (isVolumeLockBusyError(error)) {
         throw new ConflictException(

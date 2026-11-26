@@ -1666,6 +1666,18 @@ export type MomentRestoreLifecycle =
  */
 export const MOMENT_RESTORE_HALTED_EXIT_CODE = 3;
 
+/**
+ * The status a moment restore of a swarm stack exits with once every step is
+ * done, when the stack had no service running before it: Cloudgate's Stop
+ * on a swarm stack is `docker stack rm`, so there is nothing to scale to 0
+ * and nothing to scale back, and the stack is still stopped afterwards. The
+ * caller records the run done and the stack stopped, rather than reading the
+ * clean exit as a stack that is running again. A status, because the
+ * script's output goes to the run's log and this is the one thing that
+ * reaches the caller.
+ */
+export const MOMENT_RESTORE_LEFT_STOPPED_EXIT_CODE = 4;
+
 export interface MomentRestoreScriptOptions {
   /** The machine the stack runs on, which roots the locks and the staging. */
   serverId: string | null;
@@ -1741,9 +1753,15 @@ export const buildMomentRestoreScript = ({
     lifecycle.composeType === 'stack'
       ? SCALE_STACK_TO_ZERO
       : `${lifecycle.remove} || exit $?`;
+  // A swarm stack with no service running before the restore (Stop took it
+  // down) has nothing to scale back, and is left stopped: starting it is
+  // Start's or Deploy's, which recreate its services from the file.
   const bringUp =
     lifecycle.composeType === 'stack'
-      ? `for STACK_ENTRY in $STACK_REPLICAS; do
+      ? `if [ -z "$STACK_REPLICAS" ]; then
+				echo "The stack was not running before the restore, so it is left stopped; Start or Deploy brings it back"
+			fi
+			for STACK_ENTRY in $STACK_REPLICAS; do
 				echo "Starting \${STACK_ENTRY%=*} to \${STACK_ENTRY#*=} replicas"
 				docker service update --replicas="\${STACK_ENTRY#*=}" --with-registry-auth "\${STACK_ENTRY%=*}"
 			done`
@@ -1803,6 +1821,13 @@ export const buildMomentRestoreScript = ({
 			${step('Start', bringUp)}
 		)
 		echo "Moment restore completed ✅"
+		${
+      lifecycle.composeType === 'stack'
+        ? `if [ -z "$STACK_REPLICAS" ]; then
+			exit ${quote([String(MOMENT_RESTORE_LEFT_STOPPED_EXIT_CODE)])}
+		fi`
+        : ''
+    }
 	`;
 
   const preflights = steps

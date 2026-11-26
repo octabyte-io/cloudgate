@@ -13,7 +13,10 @@ import {
 } from '../../src/db/schema';
 import { DeploymentEngineService } from '../../src/deployment-engine/deployment-engine.service';
 import { VOLUME_LOCK_BUSY_EXIT_CODE } from '../../src/deployment-engine/volume-lock';
-import { MOMENT_RESTORE_HALTED_EXIT_CODE } from '../../src/volume-backups/volume-backup-commands';
+import {
+  MOMENT_RESTORE_HALTED_EXIT_CODE,
+  MOMENT_RESTORE_LEFT_STOPPED_EXIT_CODE,
+} from '../../src/volume-backups/volume-backup-commands';
 import { DEPLOYMENT_QUEUE } from '../../src/deployment-queue/queue.port';
 import { DestinationsService } from '../../src/destinations/destinations.service';
 import { PermissionService } from '../../src/rbac/permission.service';
@@ -610,6 +613,27 @@ describe('Stack backups (e2e)', () => {
       expect(script).toContain("'Step started: Stop'");
       expect(script).toContain('docker service update --replicas=0');
       expect(script).not.toContain('rm --stop --force');
+    });
+
+    it('records a swarm stack that was not running before the restore as stopped after it', async () => {
+      const { composeId, volumeBackupId } = await stackBackupOf({}, 'stack');
+      machine(() =>
+        Promise.reject(
+          Object.assign(new Error('Command failed with exit code 4'), {
+            exitCode: MOMENT_RESTORE_LEFT_STOPPED_EXIT_CODE,
+            stdout: '',
+            stderr: '',
+          }),
+        ),
+      );
+
+      const restored = await restoreMoment(volumeBackupId);
+
+      expect(restored.status).toBe(204);
+      expect(await runsOf(volumeBackupId)).toEqual([
+        { title: 'Stack Restore', status: 'done' },
+      ]);
+      expect(await statusOf(composeId)).toBe('stopped');
     });
 
     it('takes every volume lock in name order', async () => {
