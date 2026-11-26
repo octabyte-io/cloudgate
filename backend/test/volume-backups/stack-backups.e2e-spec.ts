@@ -561,12 +561,19 @@ describe('Stack backups (e2e)', () => {
       { Path: 'notes.txt', Name: 'notes.txt', Size: 3, IsDir: false },
     ]);
 
-    /** The Server's answers: the listing answers `LISTING`, the restore script is
-     * answered by `restore`, and everything else succeeds. */
-    function serverAnswers(restore: () => Promise<unknown> = ok): void {
+    /** The Server's answers: the listing answers `LISTING`, the restore
+     * script is answered by `restore`, a read of the run's log by `logTail`,
+     * and everything else succeeds. */
+    function serverAnswers(
+      restore: () => Promise<unknown> = ok,
+      logTail = '',
+    ): void {
       execMock.execAsync.mockImplementation((command: string) => {
         if (command.startsWith('rclone lsjson')) {
           return Promise.resolve({ stdout: LISTING, stderr: '', exitCode: 0 });
+        }
+        if (command.startsWith('tail ')) {
+          return Promise.resolve({ stdout: logTail, stderr: '', exitCode: 0 });
         }
         if (
           command.includes('Step started: Remove containers') ||
@@ -735,24 +742,16 @@ describe('Stack backups (e2e)', () => {
 
     it('answers 409 naming the one busy volume its run log names', async () => {
       const { volumeBackupId } = await stackBackupOf();
-      serverAnswers(() =>
-        Promise.reject(
-          Object.assign(new Error('Command failed with exit code 75'), {
-            exitCode: VOLUME_LOCK_BUSY_EXIT_CODE,
-            stdout: '',
-            stderr: '',
-          }),
-        ),
-      );
-      const listingAndRestore = execMock.execAsync.getMockImplementation()!;
-      execMock.execAsync.mockImplementation((command: string) =>
-        command.startsWith('tail ')
-          ? Promise.resolve({
-              stdout: 'Volume lock busy: zeta-db\n',
+      serverAnswers(
+        () =>
+          Promise.reject(
+            Object.assign(new Error('Command failed with exit code 75'), {
+              exitCode: VOLUME_LOCK_BUSY_EXIT_CODE,
+              stdout: '',
               stderr: '',
-              exitCode: 0,
-            })
-          : listingAndRestore(command),
+            }),
+          ),
+        'Volume lock busy: zeta-db\n',
       );
 
       const refused = await restoreMoment(volumeBackupId);
