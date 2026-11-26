@@ -44,19 +44,20 @@ export const VOLUME_NAME_RULE_MESSAGE =
 const isWholeStack = (values: VolumeBackupValues) => values.scope === "stack";
 
 /** The images whose volume may not restore from a tar taken while it writes. */
-const DATABASE_IMAGE = /^(postgres|mysql|mariadb|mongo)/;
+const DATABASE_IMAGES = new Set(["postgres", "mysql", "mariadb", "mongo"]);
 
 /**
  * Whether **Stop the stack while it runs** starts on: when any service runs
- * a `postgres`, `mysql`, `mariadb` or `mongo` image, by the last part of its
- * repository (`bitnami/postgresql:16` is one). A default only; the switch
- * is never forced.
+ * a `postgres`, `mysql`, `mariadb` or `mongo` image, by the image's own name
+ * — the last path segment without its tag or digest, so any registry or
+ * namespace prefix matches (`registry:5000/team/postgres:16`) and an image
+ * whose name only starts with one (`mongo-express`, `postgres-exporter`)
+ * does not. A default only; the switch is never forced.
  */
 export function stopsStackByDefault(stack: StackVolumesChoice): boolean {
   return stack.services.some((service) => {
-    const repository = (service.image ?? "").split(/[:@]/)[0];
-    const name = repository.split("/").pop() ?? "";
-    return DATABASE_IMAGE.test(name);
+    const last = (service.image ?? "").split("/").pop() ?? "";
+    return DATABASE_IMAGES.has(last.split(/[:@]/)[0]);
   });
 }
 

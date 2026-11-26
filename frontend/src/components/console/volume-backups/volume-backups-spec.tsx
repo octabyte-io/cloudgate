@@ -18,6 +18,7 @@ import {
   stackVolumeFields,
   type StackVolumesChoice,
 } from "./stack-volume-picker";
+import { StopStackDefault } from "./stop-stack-default";
 
 /**
  * A named Docker volume, tarred to an S3 destination on a cron.
@@ -243,7 +244,12 @@ export function volumeBackupsSpec({
         placeholder: example("Nightly uploads"),
       },
       ...(stack
-        ? [stackScopeField(), ...stackVolumeFields(stack)]
+        ? [
+            // Shown on a new backup only, which is when the switch takes
+            // its default from the services as they arrive.
+            { ...stackScopeField(), after: <StopStackDefault stack={stack} /> },
+            ...stackVolumeFields(stack),
+          ]
         : [
             {
               kind: "text" as const,
