@@ -1524,13 +1524,14 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
 
   /** A failed Stack backup's staged moment, removed by name: the moment is
    * this run's own timestamp, so no other run's tarballs are under it. Best
-   * effort, as {@link removeStagedTarball}. */
+   * effort, as {@link removeStagedTarball}. One command, so argv, which the
+   * caller quotes nothing in (CODING_STANDARDS §2.9). */
   private async removeStagedMoment(
     serverId: string | null,
     momentPath: string,
   ): Promise<void> {
     try {
-      await this.exec(serverId, `rm -rf ${quote([momentPath])}`);
+      await execOnServer(this.remoteExec, serverId, ['rm', '-rf', momentPath]);
     } catch (error) {
       this.logger.error('Stack backup staged moment cleanup failed', error);
     }

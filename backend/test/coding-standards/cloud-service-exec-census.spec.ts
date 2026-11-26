@@ -117,7 +117,12 @@ const CENSUS: Readonly<Record<string, Verdict>> = {
   'volume-backups/volume-backups.service.ts#exec': {
     verdict: REFUSES,
     guards: ['volume-backups/volume-backups.service.ts#run'],
-    why: "The private dispatch, reached from `removeStagedTarball` and `removeStagedMoment`, which only `run`'s and `runStack`'s failure paths call.",
+    why: "The private dispatch, reached from `removeStagedTarball`, which only `run`'s failure path calls.",
+  },
+  'volume-backups/volume-backups.service.ts#removeStagedMoment': {
+    verdict: REFUSES,
+    guards: ['volume-backups/volume-backups.service.ts#run'],
+    why: "A failed Stack backup's staged moment; only `runStack`'s failure path calls it, which `run` reaches after its refusal.",
   },
   'mounts/mounts.service.ts#writeFileMount': {
     verdict: REFUSES,

@@ -476,6 +476,31 @@ describe('Stack backups (e2e)', () => {
       expect(message).not.toContain('alpha-files');
     });
 
+    it('removes a failed run’s staged moment as one argv command', async () => {
+      const { volumeBackupId } = await stackBackupOf();
+      execMock.execAsync.mockImplementation((command: string) =>
+        command.includes('rclone copyto')
+          ? Promise.reject(
+              Object.assign(new Error('Command failed with exit code 1'), {
+                exitCode: 1,
+                stdout: '',
+                stderr: '',
+              }),
+            )
+          : ok(),
+      );
+
+      await runNow(volumeBackupId);
+
+      expect(execMock.execFileAsync).toHaveBeenCalledWith('rm', [
+        '-rf',
+        expect.stringMatching(
+          // The staging root is keyed by the backup row's own `appName`.
+          new RegExp(`/volume-backups/volume-backup-[a-z0-9]+/${MOMENT}$`),
+        ),
+      ]);
+    });
+
     it('fails a stack with no recorded volumes, recording the run with the reason', async () => {
       const { composeId } = await createStack();
       const created = await createBackup({
