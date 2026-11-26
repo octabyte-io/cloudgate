@@ -9552,6 +9552,29 @@
         ]
       }
     },
+    "/compose/{id}/volumes": {
+      "get": {
+        "operationId": "ComposeController_loadVolumes",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Compose"
+        ]
+      }
+    },
     "/compose/{id}/converted": {
       "get": {
         "operationId": "ComposeController_getConverted",
@@ -22568,6 +22591,13 @@
             "type": "string",
             "minLength": 1
           },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "volume",
+              "stack"
+            ]
+          },
           "volumeName": {
             "type": "string",
             "minLength": 1,
@@ -22626,7 +22656,6 @@
         },
         "required": [
           "name",
-          "volumeName",
           "prefix",
           "schedule",
           "serviceId",

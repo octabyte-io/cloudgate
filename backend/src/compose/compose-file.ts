@@ -72,6 +72,13 @@ export interface ComposePublishedPort {
   service: string;
 }
 
+/** Why a stack's volumes are unknown: no deploy recorded any — the answer
+ * of `GET /compose/:id/volumes` and of a Stack backup's run alike. Here
+ * rather than in `compose.service.ts`, so the volume-backups module can say
+ * it without importing that service. */
+export const NOT_DEPLOYED_VOLUMES_REASON =
+  'This stack hasn’t deployed successfully yet. Its volumes are read from its first deploy.';
+
 /** One service of a stack, with the named volumes it mounts (#162). */
 export interface ComposeServiceVolumes {
   serviceName: string;

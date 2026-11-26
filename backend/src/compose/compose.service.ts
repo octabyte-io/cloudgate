@@ -120,6 +120,7 @@ import {
   writeDomainsToCompose,
 } from './compose.utils';
 import { composeFileForRead } from './compose-file-lookup';
+import { NOT_DEPLOYED_VOLUMES_REASON } from './compose-file';
 import type {
   ComposeRefusalEcho,
   ComposeServiceVolumes,
@@ -159,9 +160,7 @@ export {
 } from './compose-stack-vms';
 export type { ComposeCloudPlace } from './compose-stack-vms';
 
-/** Why `GET /compose/:id/volumes` lists no service: no deploy recorded any. */
-export const NOT_DEPLOYED_VOLUMES_REASON =
-  'This stack hasn’t deployed successfully yet. Its volumes are read from its first deploy.';
+export { NOT_DEPLOYED_VOLUMES_REASON } from './compose-file';
 
 @Injectable()
 export class ComposeService {
@@ -1855,10 +1854,17 @@ export class ComposeService {
    * its volume is every bit as contendable as an enabled row's — and filtering
    * it out would drop the lock in the case where a run is most likely to have
    * been started by hand.
+   *
+   * A turn-off **Stack backup** names no volume of its own: it stops the
+   * whole stack and tars every volume the last successful deploy recorded
+   * (`deployedServiceVolumes`, ADR-0092), so each of those is held too.
    */
   private async lockedVolumeNames(composeId: string): Promise<string[]> {
     const rows = await this.db
-      .select({ volumeName: volumeBackup.volumeName })
+      .select({
+        volumeName: volumeBackup.volumeName,
+        scope: volumeBackup.scope,
+      })
       .from(volumeBackup)
       .where(
         and(
@@ -1866,7 +1872,19 @@ export class ComposeService {
           eq(volumeBackup.turnOff, true),
         ),
       );
-    return [...new Set(rows.map(({ volumeName }) => volumeName))];
+    const names = rows.flatMap(({ volumeName }) =>
+      volumeName === null ? [] : [volumeName],
+    );
+    if (rows.some(({ scope }) => scope === 'stack')) {
+      const [stack] = await this.db
+        .select({ services: compose.deployedServiceVolumes })
+        .from(compose)
+        .where(eq(compose.composeId, composeId))
+        .limit(1);
+      for (const service of stack?.services ?? [])
+        names.push(...service.volumes);
+    }
+    return [...new Set(names)];
   }
 
   /**

@@ -84,6 +84,11 @@ const CENSUS: Readonly<Record<string, Verdict>> = {
     verdict: REFUSES,
     why: 'The tar and the rclone copy to the customer’s endpoint; refused before the run is recorded, for a manual and a scheduled run alike.',
   },
+  'volume-backups/volume-backups.service.ts#runStack': {
+    verdict: REFUSES,
+    guards: ['volume-backups/volume-backups.service.ts#run'],
+    why: "A Stack backup's tars, uploads and moment prune; reached only from `run`, after its refusal.",
+  },
   'volume-backups/volume-backups.service.ts#pruneOldBackups': {
     verdict: REFUSES,
     guards: ['volume-backups/volume-backups.service.ts#run'],
@@ -96,7 +101,7 @@ const CENSUS: Readonly<Record<string, Verdict>> = {
   'volume-backups/volume-backups.service.ts#exec': {
     verdict: REFUSES,
     guards: ['volume-backups/volume-backups.service.ts#run'],
-    why: "The private dispatch, reached from `removeStagedTarball`, which only `run`'s failure path calls.",
+    why: "The private dispatch, reached from `removeStagedTarball` and `removeStagedMoment`, which only `run`'s and `runStack`'s failure paths call.",
   },
   'mounts/mounts.service.ts#writeFileMount': {
     verdict: REFUSES,

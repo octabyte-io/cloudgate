@@ -171,9 +171,36 @@ export const COMPOSE_SERVICE_NAME_REGEX = /^[a-zA-Z0-9._-]+$/;
 export const COMPOSE_SERVICE_NAME_MESSAGE =
   'Compose service name can only contain letters, numbers, dots, underscores and hyphens';
 
-export const createVolumeBackupSchema = z.object({
+/**
+ * Why a Stack backup is refused outside a Compose stack: only a stack has
+ * services whose volumes are recorded together (ADR-0092).
+ */
+export const STACK_SCOPE_NEEDS_COMPOSE_MESSAGE =
+  'The whole stack can be backed up only on a Compose stack, whose deploy records every volume its services mount. Back up one volume of this Service instead';
+
+export const VOLUME_SCOPE_NEEDS_VOLUME_MESSAGE =
+  'A backup of one volume needs the volume to tar';
+
+export const STACK_SCOPE_NAMES_NO_VOLUME_MESSAGE =
+  'A Stack backup tars every volume its services mount, so it names no volume and no service';
+
+/**
+ * The create body's fields, before the scope is checked against them. Kept
+ * apart from {@link createVolumeBackupSchema} so the stored-row guard below
+ * can `.pick()` from it, which a refined object refuses.
+ */
+const createVolumeBackupFields = z.object({
   name: z.string().min(1),
-  volumeName: z.string().min(1).regex(VOLUME_NAME_REGEX, VOLUME_NAME_MESSAGE),
+  /** One volume, or the whole Compose stack (ADR-0092). Absent is
+   * `volume`, which the column defaults to, so a body written before a stack
+   * could be backed up whole means what it meant. */
+  scope: z.enum(['volume', 'stack']).optional(),
+  /** Required on a `volume` backup; absent on a Stack backup. */
+  volumeName: z
+    .string()
+    .min(1)
+    .regex(VOLUME_NAME_REGEX, VOLUME_NAME_MESSAGE)
+    .optional(),
   prefix: z.string().min(1).regex(S3_KEY_REGEX, S3_KEY_MESSAGE),
   schedule: cronExpressionSchema,
   serviceType: z.enum(serviceTypeEnum.enumValues).default('application'),
@@ -189,6 +216,41 @@ export const createVolumeBackupSchema = z.object({
   enabled: z.boolean().optional(),
   destinationId: z.string().min(1),
 });
+
+/**
+ * The create body, its scope agreeing with what it names: a backup of one
+ * volume names it, and a Stack backup is a Compose stack's and names no
+ * volume and no service. `volume_backup_scope_matches_service` holds the
+ * stored row to the same rule.
+ */
+export const createVolumeBackupSchema = createVolumeBackupFields.superRefine(
+  (body, ctx) => {
+    if (body.scope !== 'stack') {
+      if (body.volumeName === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['volumeName'],
+          message: VOLUME_SCOPE_NEEDS_VOLUME_MESSAGE,
+        });
+      }
+      return;
+    }
+    if (body.serviceType !== 'compose') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['scope'],
+        message: STACK_SCOPE_NEEDS_COMPOSE_MESSAGE,
+      });
+    }
+    if (body.volumeName !== undefined || body.serviceName !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [body.volumeName !== undefined ? 'volumeName' : 'serviceName'],
+        message: STACK_SCOPE_NAMES_NO_VOLUME_MESSAGE,
+      });
+    }
+  },
+);
 
 export class CreateVolumeBackupDto extends createZodDto(
   createVolumeBackupSchema,
@@ -284,12 +346,14 @@ export class RestoreVolumeBackupDto extends createZodDto(
  * this is applied at, and for why a poisoned row fails its run loudly rather
  * than being skipped.
  */
-export const storedVolumeBackupShellSchema = createVolumeBackupSchema
+export const storedVolumeBackupShellSchema = createVolumeBackupFields
   .pick({
-    volumeName: true,
     prefix: true,
   })
   .extend({
+    /** Null on a Stack backup, which names no volume of its own; each
+     * volume it tars is checked where its script is built. */
+    volumeName: createVolumeBackupFields.shape.volumeName.unwrap().nullable(),
     /**
      * Widened rather than restated: the charset is
      * {@link createVolumeBackupSchema}'s own field, unwrapped and then made
@@ -304,7 +368,7 @@ export const storedVolumeBackupShellSchema = createVolumeBackupSchema
      * stack service — the H-21 failure mode inverted, a guard that stops the
      * backups it was added to protect.
      */
-    serviceName: createVolumeBackupSchema.shape.serviceName
+    serviceName: createVolumeBackupFields.shape.serviceName
       .unwrap()
       .or(z.literal(''))
       .nullish(),

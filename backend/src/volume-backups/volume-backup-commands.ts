@@ -107,6 +107,22 @@ export interface VolumeBackupScriptOptions {
   lockMode: VolumeLockMode;
 }
 
+/**
+ * The throwaway container that tars one volume, from inside it, into
+ * `{stagingDir}/{fileName}` — every value `quote()`d (H-21). One step for the
+ * one-volume backup and the Stack backup alike, so both write archives the
+ * restore's `tar -tf … .` gate accepts.
+ */
+const tarVolumeCommand = (
+  volumeName: string,
+  stagingDir: string,
+  fileName: string,
+): string => `docker run --rm \
+  -v ${quote([`${volumeName}:/volume_data`])} \
+  -v ${quote([`${stagingDir}:/backup`])} \
+  ${VOLUME_TAR_IMAGE} \
+  bash -c ${quote([`cd /volume_data && tar cvf /backup/${fileName} .`])}`;
+
 /** Tars the volume from a throwaway ubuntu container into the staging dir,
  * uploads it via rclone copyto, and cleans up the local file.
  *
@@ -155,11 +171,7 @@ export const buildVolumeBackupScript = ({
 	echo "Turning off volume backup: ${turnOff ? 'Yes' : 'No'}"
 	echo "Starting volume backup"
 	echo ${quote([`Dir: ${volumeBackupPath}`])}
-    docker run --rm \
-  -v ${quote([`${volumeName}:/volume_data`])} \
-  -v ${quote([`${volumeBackupPath}:/backup`])} \
-  ${VOLUME_TAR_IMAGE} \
-  bash -c ${quote([`cd /volume_data && tar cvf /backup/${backupFileName} .`])}
+    ${tarVolumeCommand(volumeName, volumeBackupPath, backupFileName)}
   echo "Volume backup done ✅"
   `;
 
@@ -471,6 +483,195 @@ export const buildVolumeBackupScript = ({
 		${uploadCommand}
   `);
 };
+
+export interface StackBackupScriptOptions {
+  /** The machine the stack runs on, which roots the volume locks. */
+  serverId: string | null;
+  /** The stack's `appName`: its compose project, or its swarm stack. */
+  appName: string;
+  composeType: ComposeType;
+  /** Every volume the stack's last successful deploy recorded. */
+  volumeNames: string[];
+  /** This run's staging directory, one per moment:
+   * `{volumeBackupsDirectoryOn(serverId)}/{row.appName}/{moment}`. */
+  momentPath: string;
+  /** The moment folder in the bucket, with its trailing `/`:
+   * `:s3:{bucket}/{appName}/{prefix}/{moment}/`. */
+  rcloneMoment: string;
+  /** Stop the whole stack while the volumes are tarred. */
+  turnOff: boolean;
+  lockMode: VolumeLockMode;
+}
+
+/**
+ * A **Stack backup**'s one run (ADR-0092): every volume of the stack tarred
+ * to `{moment}/{volume}.tar` and uploaded under one moment folder, so the
+ * database and the files are copies of the same moment.
+ *
+ * - **Every volume's lock, in name order**, around the whole script:
+ *   `withVolumeLock` sorts, so two runs naming the same set cannot deadlock.
+ * - **The stack is stopped once, and started again from a trap.** The stop
+ *   and the tars are one subshell with `trap restore_stack EXIT`, the H-96
+ *   shape `buildVolumeBackupScript`'s `stopThenBackUp` argues: under `set -e`
+ *   a failing tar would otherwise end the script with the stack down. The
+ *   uploads stay outside it, so the stack is back up before the first byte
+ *   leaves. Only what this run stopped is started again: the containers that
+ *   were running, or each swarm service at the replica count it had.
+ * - **A failed upload removes the moment's partial folder**, so a moment in
+ *   the bucket is whole or absent; restoring half of one is the mismatch this
+ *   exists to prevent.
+ */
+export const buildStackBackupScript = ({
+  serverId,
+  appName,
+  composeType,
+  volumeNames,
+  momentPath,
+  rcloneMoment,
+  turnOff,
+  lockMode,
+}: StackBackupScriptOptions): string => {
+  const volumes = [...new Set(volumeNames)].sort();
+  const tars = volumes
+    .map(
+      (volumeName) => `
+		echo ${quote([`Volume name: ${volumeName}`])}
+		${tarVolumeCommand(volumeName, momentPath, `${volumeName}.tar`)}
+		echo ${quote([`Volume backup done ✅ ${volumeName}`])}`,
+    )
+    .join('');
+
+  const header = `
+		set -e
+		echo ${quote([`Stack: ${appName}`])}
+		echo ${quote([`Volumes: ${volumes.join(', ')}`])}
+		echo "Stopping the stack while it runs: ${turnOff ? 'Yes' : 'No'}"
+		echo ${quote([`Dir: ${momentPath}`])}`;
+
+  // One `&&` list in the `if`'s condition rather than `set -e` statements:
+  // `set -e` is suspended inside a condition, so a failed copy would
+  // otherwise be passed over.
+  const uploads = volumes
+    .map(
+      (volumeName) =>
+        `rclone copyto ${quote([`${momentPath}/${volumeName}.tar`])} ${quote([`${rcloneMoment}${volumeName}.tar`])}`,
+    )
+    .join(' && \\\n\t\t\t');
+  const upload = `
+		echo "Starting upload to S3..."
+		if ${uploads}; then
+			echo "Upload to S3 done ✅"
+		else
+			echo "❌ Stack backup failed - an upload did not finish, so this moment's partial folder is removed"
+			rclone purge ${quote([rcloneMoment])} || echo ${quote([`   The partial folder '${rcloneMoment}' could not be removed. Remove it by hand, so no half of a moment is left to restore.`])}
+			exit 1
+		fi
+		echo "Cleaning up local backup files..."
+		rm -rf ${quote([momentPath])}
+		echo "Local backup files cleaned up ✅"`;
+
+  const underLock = (body: string) =>
+    withVolumeLock({ serverId, volumeNames: volumes, mode: lockMode }, body);
+
+  if (!turnOff) {
+    return underLock(`${header}
+		${tars}
+		${upload}
+	`);
+  }
+
+  let preStop: string;
+  let stop: string;
+  if (composeType === 'stack') {
+    // Each service at the replica count it runs, read before anything is
+    // stopped; a count that does not read as a number stops nothing
+    // (`requireReplicaCount`'s reason, for every service at once).
+    preStop = `
+		STACK_SERVICES=$(docker service ls --filter ${quote([`label=com.docker.stack.namespace=${appName}`])} --format '{{.Name}}')
+		STACK_REPLICAS=""
+		for STACK_SERVICE in $STACK_SERVICES; do
+			STACK_COUNT=$(docker service inspect "$STACK_SERVICE" --format "{{.Spec.Mode.Replicated.Replicas}}")
+			case "$STACK_COUNT" in
+				''|*[!0-9]*)
+					echo "❌ Stack backup aborted - a replica count could not be read, so nothing was stopped"
+					echo "   'docker service inspect' did not answer a replica count for $STACK_SERVICE: '$STACK_COUNT'"
+					exit 1
+					;;
+			esac
+			STACK_REPLICAS="$STACK_REPLICAS $STACK_SERVICE=$STACK_COUNT"
+		done
+		restore_stack() {
+			RESTORE_FAILED=0
+			for STACK_ENTRY in $STACK_REPLICAS; do
+				echo "Starting \${STACK_ENTRY%=*} to \${STACK_ENTRY#*=} replicas"
+				docker service update --replicas="\${STACK_ENTRY#*=}" --with-registry-auth "\${STACK_ENTRY%=*}" || RESTORE_FAILED=1
+			done
+			if [ "$RESTORE_FAILED" = 0 ]; then
+				return 0
+			fi
+			echo "❌ Stack backup failed - the stack was scaled to 0 for the backup and a service would not scale back up"
+			echo ${quote([`   Stack '${appName}' is DOWN. Read the 'docker service update' error above, then start the stack from Cloudgate or scale its services by hand.`])}
+			echo "   The replica counts it was running before this backup:$STACK_REPLICAS"
+			exit 1
+		}`;
+    stop = `echo "Stopping the stack to 0 replicas"
+			for STACK_ENTRY in $STACK_REPLICAS; do
+				docker service update --replicas=0 "\${STACK_ENTRY%=*}"
+			done`;
+  } else {
+    // The containers that are running are the ones this run stops, and the
+    // only ones it starts again: a stack an operator had stopped stays
+    // stopped (H-118's reason, for the whole project).
+    preStop = `
+		STACK_CONTAINERS=$(docker ps -q --filter ${quote([`label=com.docker.compose.project=${appName}`])})
+		restore_stack() {
+			if [ -z "$STACK_CONTAINERS" ]; then
+				echo "Nothing was running, so nothing is started again"
+				return 0
+			fi
+			echo "Starting the stack again"
+			if docker start $STACK_CONTAINERS; then
+				echo "Stack started"
+				return 0
+			fi
+			echo "❌ Stack backup failed - the stack was stopped for the backup and would not start again"
+			echo ${quote([`   Stack '${appName}' is DOWN. Read the docker error above, then start the stack from Cloudgate.`])}
+			exit 1
+		}`;
+    stop = `if [ -n "$STACK_CONTAINERS" ]; then
+				echo "Stopping the stack"
+				docker stop $STACK_CONTAINERS
+			else
+				echo "No container of the stack is running, so nothing is stopped"
+			fi`;
+  }
+
+  return underLock(`${header}
+		${preStop}
+		(
+			trap restore_stack EXIT
+			${stop}
+			${tars}
+		)
+		${upload}
+	`);
+};
+
+/**
+ * Keep newest N for a Stack backup: the moment folders under
+ * `{appName}/{prefix}/`, newest first by their timestamp names, and every
+ * one past the Nth purged whole — so pruning never leaves half a moment
+ * (ADR-0092). Every word `quote()`d, as `buildPruneCommand`'s are.
+ */
+export const buildMomentPruneCommand = ({
+  momentsPath,
+  keepLatestCount,
+}: {
+  /** `:s3:{bucket}/{appName}/{prefix}/`, with its trailing `/`. */
+  momentsPath: string;
+  keepLatestCount: number;
+}): string =>
+  `rclone lsf --dirs-only ${quote([momentsPath])} | sort -r | tail -n +$((${keepLatestCount}+1)) | xargs -I{} rclone purge ${quote([`${momentsPath}{}`])}`;
 
 /** The service a restore's log header names — the volume itself is looked up
  * by name, so the target styles the log banner — and, for a bucket, the

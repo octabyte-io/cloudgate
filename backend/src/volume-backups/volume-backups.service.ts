@@ -39,6 +39,8 @@ import {
 } from '../common/teardown-steps';
 import type { UnreclaimedArtifact } from '../common/teardown-steps';
 import { refuseExistingDatabaseBackup } from '../databases/postgres/existing-postgres';
+import { compose } from '../compose/compose.schema';
+import { NOT_DEPLOYED_VOLUMES_REASON } from '../compose/compose-file';
 import { DRIZZLE } from '../db/drizzle.module';
 import type { DrizzleDB } from '../db/drizzle.module';
 import type { Destination } from '../db/schema';
@@ -58,6 +60,8 @@ import { SchedulingService } from '../scheduling/scheduling.service';
 import { volumeBackup, volumeBackupServiceFk } from './volume-backup.schema';
 import type { VolumeBackup } from './volume-backup.schema';
 import {
+  buildMomentPruneCommand,
+  buildStackBackupScript,
   buildVolumeBackupScript,
   buildVolumeRestoreScript,
 } from './volume-backup-commands';
@@ -65,7 +69,12 @@ import type {
   VolumeBackupStopTarget,
   VolumeRestoreTarget,
 } from './volume-backup-commands';
-import { storedVolumeBackupShellSchema } from './dto/volume-backup.dto';
+import {
+  STACK_SCOPE_NAMES_NO_VOLUME_MESSAGE,
+  storedVolumeBackupShellSchema,
+  VOLUME_NAME_MESSAGE,
+  VOLUME_NAME_REGEX,
+} from './dto/volume-backup.dto';
 import type {
   CreateVolumeBackupDto,
   ListVolumeBackupsDto,
@@ -129,6 +138,22 @@ function serviceIdOf(row: VolumeBackup): string {
   }
   return serviceId;
 }
+
+/** A one-volume row's volume. `volume_backup_scope_matches_service` makes
+ * it set on every `volume` row; only a Stack backup has none. */
+function oneVolumeOf(row: VolumeBackup): string {
+  if (!row.volumeName) {
+    throw new BadRequestException(
+      `Volume backup ${row.volumeBackupId} names no volume to tar`,
+    );
+  }
+  return row.volumeName;
+}
+
+/** Why a Stack backup's run is refused when the stack's last deploy recorded
+ * services that mount no named volume. */
+export const STACK_HAS_NO_VOLUMES_REASON =
+  'This stack’s services mount no named volume, so a Stack backup has nothing to tar.';
 
 @Injectable()
 export class VolumeBackupsService implements OnApplicationBootstrap {
@@ -319,8 +344,11 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
     // under it has to stay inside the Service's own directory.
     // `bucketKeySegments` carries what that guard is and is not worth.
     bucketKeySegments(data.prefix);
-    // An AI model's weights are downloaded again, not restored.
-    await refuseWeightsVolumeBackup(this.db, data.volumeName);
+    // An AI model's weights are downloaded again, not restored. A Stack
+    // backup names no volume of its own.
+    if (data.volumeName !== undefined) {
+      await refuseWeightsVolumeBackup(this.db, data.volumeName);
+    }
     // An Existing database has no volume of Cloudgate's.
     if (serviceType === 'postgres' || serviceType === 'redis') {
       await refuseExistingDatabaseBackup(this.db, data.serviceId);
@@ -451,6 +479,9 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
     // rather than in the two callers, so a row saved before the refusal
     // cannot run by either way in.
     refuseCloudServiceHostWork(parent, 'volumeBackups');
+    if (row.scope === 'stack') {
+      return this.runStack(row, parent, destination, lockMode);
+    }
     const run = await this.runRecorder.start({
       appName: row.appName,
       serverId: parent.serverId,
@@ -465,7 +496,8 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
     // `removeStagedTarball`, which is what keeps the tarball's writer and its
     // destroyer naming one directory — ADR-0018's rule stated for roots.
     const volumeBackupPath = `${volumeBackupsDirectoryOn(parent.serverId)}/${row.appName}`;
-    const backupFileName = `${row.volumeName}-${getBackupTimestamp()}.tar`;
+    const volumeName = oneVolumeOf(row);
+    const backupFileName = `${volumeName}-${getBackupTimestamp()}.tar`;
 
     try {
       // H-21: the row *is* the input to a shell script, and a row older than
@@ -477,7 +509,7 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
       const rcloneDestination = `:s3:${destination.bucket}/${this.s3AppName(row, parent)}/${normalizeS3Path(row.prefix)}${backupFileName}`;
       const script = buildVolumeBackupScript({
         serverId: parent.serverId,
-        volumeName: row.volumeName,
+        volumeName,
         backupFileName,
         volumeBackupPath,
         rcloneDestination,
@@ -493,7 +525,7 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
         platformHost: this.instanceMode,
       });
       await this.runRecorder.finish(run.deploymentId, 'done');
-      await this.notifyRun(row, parent, 'success');
+      await this.notifyRun(row, parent, volumeName, 'success');
     } catch (error) {
       await this.removeStagedTarball(
         parent.serverId,
@@ -519,15 +551,146 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
       await this.notifyRun(
         row,
         parent,
+        volumeName,
         'error',
         (error as { message?: string })?.message || 'Unknown error',
       );
       if (isVolumeLockBusyError(error)) {
-        throw new ConflictException(volumeLockBusyMessage(row.volumeName));
+        throw new ConflictException(volumeLockBusyMessage(volumeName));
       }
       throw error;
     }
-    await this.pruneOldBackups(row, parent, destination);
+    await this.pruneOldBackups(row, parent, destination, volumeName);
+  }
+
+  /**
+   * A **Stack backup**'s run (ADR-0092): one Run record, every volume the
+   * stack's last successful deploy recorded tarred under one moment folder,
+   * `{appName}/{prefix}/{moment}/{volume}.tar`, with the stack stopped once
+   * when the switch is on — `buildStackBackupScript` carries the script.
+   *
+   * The volumes come from `compose.deployedServiceVolumes` (ADR-0069), never
+   * from the file, so a run tars what the stack really mounts; a stack with no
+   * such record yet fails its run with the reason, recorded like any other
+   * failure. Each recorded name is held to `VOLUME_NAME_REGEX` before it
+   * reaches the script: it was written by a compose file's `name:` rather
+   * than by a DTO, so this is the first rule it meets. The key's leading
+   * segment is the stack's own `appName`, so `checkTarballAccess` resolves a
+   * moment's tarballs to this stack.
+   *
+   * The failure path and the prune follow {@link run}'s: the staged moment is
+   * removed by name, the run recorded and notified, a held lock answered 409,
+   * and **Keep newest N** prunes whole moments after a successful run only.
+   */
+  private async runStack(
+    row: VolumeBackup,
+    parent: ServiceParent,
+    destination: Destination,
+    lockMode: VolumeLockMode,
+  ): Promise<void> {
+    const run = await this.runRecorder.start({
+      appName: row.appName,
+      serverId: parent.serverId,
+      title: 'Stack Backup',
+      description: 'Stack Backup',
+      initMessage: 'Initializing stack backup',
+      parent: { kind: 'volumeBackup', volumeBackupId: row.volumeBackupId },
+    });
+
+    const moment = getBackupTimestamp();
+    const momentPath = `${volumeBackupsDirectoryOn(parent.serverId)}/${row.appName}/${moment}`;
+    const momentsPath = `:s3:${destination.bucket}/${parent.appName}/${normalizeS3Path(row.prefix)}`;
+    let volumeNames: string[] = [];
+
+    try {
+      this.assertStoredValuesShellSafe(row);
+      volumeNames = await this.recordedStackVolumes(serviceIdOf(row));
+      const script = buildStackBackupScript({
+        serverId: parent.serverId,
+        appName: parent.appName,
+        composeType: parent.composeType ?? 'docker-compose',
+        volumeNames,
+        momentPath,
+        rcloneMoment: `${momentsPath}${moment}/`,
+        turnOff: row.turnOff,
+        lockMode,
+      });
+      await execRclone(
+        this.remoteExec,
+        `(${script}) >> ${quote([run.logPath])} 2>&1`,
+        {
+          destination,
+          serverId: parent.serverId,
+          platformHost: this.instanceMode,
+        },
+      );
+      await this.runRecorder.finish(run.deploymentId, 'done');
+      await this.notifyRun(row, parent, volumeNames.join(', '), 'success');
+    } catch (error) {
+      await this.removeStagedMoment(parent.serverId, momentPath);
+      await this.runRecorder.finish(run.deploymentId, 'error');
+      await this.notifyRun(
+        row,
+        parent,
+        volumeNames.join(', ') || parent.name,
+        'error',
+        (error as { message?: string })?.message || 'Unknown error',
+      );
+      if (isVolumeLockBusyError(error)) {
+        throw new ConflictException(
+          volumeLockBusyMessage(volumeNames.join("' or '")),
+        );
+      }
+      throw error;
+    }
+
+    if (!row.keepLatestCount) return;
+    try {
+      await execRclone(
+        this.remoteExec,
+        buildMomentPruneCommand({
+          momentsPath,
+          keepLatestCount: row.keepLatestCount,
+        }),
+        {
+          destination,
+          serverId: parent.serverId,
+          platformHost: this.instanceMode,
+        },
+      );
+    } catch (error) {
+      // As {@link pruneOldBackups}: never fails the run that just succeeded.
+      this.logger.error('Stack backup prune failed', error);
+    }
+  }
+
+  /**
+   * Every named volume a stack's last successful deploy recorded its
+   * services mounting, once each — or a 400 with the reason there is none.
+   */
+  private async recordedStackVolumes(composeId: string): Promise<string[]> {
+    const [row] = await this.db
+      .select({ services: compose.deployedServiceVolumes })
+      .from(compose)
+      .where(eq(compose.composeId, composeId))
+      .limit(1);
+    if (!row?.services) {
+      throw new BadRequestException(NOT_DEPLOYED_VOLUMES_REASON);
+    }
+    const volumeNames = [
+      ...new Set(row.services.flatMap((service) => service.volumes)),
+    ];
+    if (volumeNames.length === 0) {
+      throw new BadRequestException(STACK_HAS_NO_VOLUMES_REASON);
+    }
+    for (const volumeName of volumeNames) {
+      if (!VOLUME_NAME_REGEX.test(volumeName)) {
+        throw new BadRequestException(
+          `The stack records a volume a Stack backup cannot tar — ${VOLUME_NAME_MESSAGE}`,
+        );
+      }
+    }
+    return volumeNames;
   }
 
   /**
@@ -590,6 +753,7 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
   private async notifyRun(
     row: VolumeBackup,
     parent: ServiceParent,
+    volumeName: string,
     status: 'success' | 'error',
     errorMessage?: string,
   ): Promise<void> {
@@ -597,7 +761,7 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
       type: 'volume-backup',
       projectName: parent.projectName,
       applicationName: parent.name,
-      volumeName: row.volumeName,
+      volumeName,
       serviceType: row.serviceType,
       status,
       errorMessage,
@@ -611,12 +775,13 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
     row: VolumeBackup,
     parent: ServiceParent,
     destination: Destination,
+    volumeName: string,
   ): Promise<void> {
     if (!row.keepLatestCount) return;
     try {
       const command = buildPruneCommand({
         backupFilesPath: `:s3:${destination.bucket}/${this.s3AppName(row, parent)}/${normalizeS3Path(row.prefix)}`,
-        include: `${row.volumeName}-*.tar`,
+        include: `${volumeName}-*.tar`,
         keepLatestCount: row.keepLatestCount,
       });
       await execRclone(this.remoteExec, command, {
@@ -690,6 +855,15 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
     // Create's guard, for the same reason: a `PATCH` is the other way a row's
     // `prefix` comes to carry a segment that climbs.
     if (data.prefix !== undefined) bucketKeySegments(data.prefix);
+    // A Stack backup tars every volume its stack records, so a patch cannot
+    // point it at one (the create DTO's rule, and the check constraint's).
+    if (
+      current.scope === 'stack' &&
+      (data.volumeName !== undefined ||
+        (data.serviceName !== undefined && data.serviceName !== null))
+    ) {
+      throw new BadRequestException(STACK_SCOPE_NAMES_NO_VOLUME_MESSAGE);
+    }
     if (data.volumeName !== undefined) {
       await refuseWeightsVolumeBackup(this.db, data.volumeName);
     }
@@ -1029,6 +1203,20 @@ export class VolumeBackupsService implements OnApplicationBootstrap {
       );
     } catch (error) {
       this.logger.error('Volume backup staged tarball cleanup failed', error);
+    }
+  }
+
+  /** A failed Stack backup's staged moment, removed by name: the moment is
+   * this run's own timestamp, so no other run's tarballs are under it. Best
+   * effort, as {@link removeStagedTarball}. */
+  private async removeStagedMoment(
+    serverId: string | null,
+    momentPath: string,
+  ): Promise<void> {
+    try {
+      await this.exec(serverId, `rm -rf ${quote([momentPath])}`);
+    } catch (error) {
+      this.logger.error('Stack backup staged moment cleanup failed', error);
     }
   }
 
