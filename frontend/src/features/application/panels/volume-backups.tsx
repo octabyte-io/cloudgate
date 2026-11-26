@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Card } from "@/components/console/card";
+import { Menu } from "@/components/console/menu";
 import { MetaStrip } from "@/components/console/meta-strip";
 import { Page } from "@/components/console/page";
 import { PageHeader } from "@/components/console/page-header";
@@ -120,10 +121,14 @@ export default function Panel({ id, label, icon }: PanelProps) {
               >
                 Run now
               </Button>
-              <Button size="xs" onClick={() => openRestore(item)}>
-                Restore
-              </Button>
             </>
+          ),
+          // Restore, Edit and Remove share the row's menu, so the list
+          // stays inside its card rather than scrolling sideways.
+          rowMenu: (item) => (
+            <Menu.Item icon="back" onClick={() => openRestore(item)}>
+              Restore
+            </Menu.Item>
           ),
         }}
         query={backups}

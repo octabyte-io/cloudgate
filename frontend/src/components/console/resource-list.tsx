@@ -5,6 +5,7 @@ import { Card } from "@/components/console/card";
 import type { Column } from "@/components/console/data-table";
 import { DataTable } from "@/components/console/data-table";
 import { EmptyState } from "@/components/console/empty-state";
+import { Menu } from "@/components/console/menu";
 import { Skeleton } from "@/components/console/skeleton";
 import { Button } from "@/components/ui/button";
 import {
@@ -104,28 +105,69 @@ export function ResourceList<Row, Values extends Record<string, unknown>>({
       id: "actions",
       head: <span className="sr-only">Actions</span>,
       className: "w-0",
-      cell: (row) => (
-        <span className="inline-flex justify-end gap-1.5 whitespace-nowrap">
-          {spec.rowExtras?.(row)}
-          <Button
-            size="xs"
-            disabled={!edit.allowed}
-            title={edit.allowed ? undefined : edit.refusal}
-            onClick={() => edit.allowed && setEditing(row)}
-          >
-            Edit
-          </Button>
-          <Button
-            size="xs"
-            variant="dngr"
-            disabled={!drop.allowed}
-            title={drop.allowed ? undefined : drop.refusal}
-            onClick={() => drop.allowed && setRemoving(row)}
-          >
-            Remove
-          </Button>
-        </span>
-      ),
+      cell: (row) =>
+        spec.rowMenu ? (
+          <span className="inline-flex justify-end gap-1.5 whitespace-nowrap">
+            {spec.rowExtras?.(row)}
+            <Menu
+              align="end"
+              trigger={
+                <Button
+                  size="icon-xs"
+                  aria-label={`Actions for ${spec.rowName(row)}`}
+                >
+                  <Icon name="sliders" size={15} />
+                </Button>
+              }
+            >
+              {/* `disabled` on `Menu.Item`: Base UI keeps a disabled item in
+                  the menu's roving focus, marked `aria-disabled`, so a
+                  keyboard user still reaches it and hears the reason. */}
+              <Menu.Group label={spec.rowName(row)}>
+                {spec.rowMenu(row)}
+                <Menu.Item
+                  icon="pencil"
+                  disabled={!edit.allowed}
+                  title={edit.allowed ? undefined : edit.refusal}
+                  onClick={() => edit.allowed && setEditing(row)}
+                >
+                  Edit
+                </Menu.Item>
+              </Menu.Group>
+              <Menu.Separator />
+              <Menu.Item
+                icon="trash"
+                destructive
+                disabled={!drop.allowed}
+                title={drop.allowed ? undefined : drop.refusal}
+                onClick={() => drop.allowed && setRemoving(row)}
+              >
+                Remove
+              </Menu.Item>
+            </Menu>
+          </span>
+        ) : (
+          <span className="inline-flex justify-end gap-1.5 whitespace-nowrap">
+            {spec.rowExtras?.(row)}
+            <Button
+              size="xs"
+              disabled={!edit.allowed}
+              title={edit.allowed ? undefined : edit.refusal}
+              onClick={() => edit.allowed && setEditing(row)}
+            >
+              Edit
+            </Button>
+            <Button
+              size="xs"
+              variant="dngr"
+              disabled={!drop.allowed}
+              title={drop.allowed ? undefined : drop.refusal}
+              onClick={() => drop.allowed && setRemoving(row)}
+            >
+              Remove
+            </Button>
+          </span>
+        ),
     },
   ];
 
