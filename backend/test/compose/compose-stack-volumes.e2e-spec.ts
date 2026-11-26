@@ -1,6 +1,9 @@
 import request from 'supertest';
 import { App } from 'supertest/types';
 
+import { eq } from 'drizzle-orm';
+
+import { compose as composeTable } from '../../src/compose/compose.schema';
 import { ComposeService } from '../../src/compose/compose.service';
 import { DeploymentEngineService } from '../../src/deployment-engine/deployment-engine.service';
 import { DEPLOYMENT_QUEUE } from '../../src/deployment-queue/queue.port';
@@ -154,6 +157,28 @@ describe('A Compose stack’s volumes (e2e)', () => {
     expect(answered.services).toEqual([]);
     expect(answered.unavailableReason).toBe(
       'This stack hasn’t deployed successfully yet, and its volumes are read from its first deploy',
+    );
+  });
+
+  /**
+   * A stack deployed by a Cloudgate older than the volume record (0.3.13)
+   * has a successful deploy and no record until it deploys again (#171).
+   * It is running, so "hasn't deployed successfully yet" is false; the
+   * reason says the record comes with its next deploy.
+   */
+  it('says its volumes are recorded at its next deploy, for a stack deployed before the record existed', async () => {
+    const { composeId } = await createStack('docker-compose');
+    await deploy(composeId);
+    await ctx.db
+      .update(composeTable)
+      .set({ deployedServiceVolumes: null })
+      .where(eq(composeTable.composeId, composeId));
+
+    const answered = await volumesOf(composeId);
+
+    expect(answered.services).toEqual([]);
+    expect(answered.unavailableReason).toBe(
+      'This stack last deployed before Cloudgate recorded a stack’s volumes, so they are recorded at its next deploy. Redeploy it to pick its volumes here',
     );
   });
 

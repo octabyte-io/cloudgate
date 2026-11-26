@@ -18,6 +18,7 @@ import {
   stackVolumeFields,
   type StackVolumesChoice,
 } from "./stack-volume-picker";
+import { KEEP_TARBALLS_HINT, KeepNewestHint } from "./keep-newest-hint";
 import { StopStackDefault } from "./stop-stack-default";
 
 /**
@@ -247,7 +248,7 @@ export function volumeBackupsSpec({
         ? [
             // Shown on a new backup only, which is when the switch takes
             // its default from the services as they arrive.
-            { ...stackScopeField(), after: <StopStackDefault stack={stack} /> },
+            { ...stackScopeField(stack), after: <StopStackDefault stack={stack} /> },
             ...stackVolumeFields(stack),
           ]
         : [
@@ -306,9 +307,9 @@ export function volumeBackupsSpec({
         label: "Keep the newest",
         optional: true,
         placeholder: example("7"),
-        hint: stack
-          ? "Older backups under this prefix are deleted after each successful run, a whole stack's moment at a time. Empty keeps every one — safe, and the reason buckets grow without anyone noticing."
-          : "Older tarballs under this prefix are deleted after each successful run. Empty keeps every one — safe, and the reason buckets grow without anyone noticing.",
+        // On a stack, by the Back up choice: a one-volume backup prunes
+        // single tarballs, and only a Stack backup prunes moments (#171).
+        hint: stack ? <KeepNewestHint /> : KEEP_TARBALLS_HINT,
       },
       ...(stack
         ? [

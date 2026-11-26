@@ -79,6 +79,12 @@ export interface ComposePublishedPort {
 export const NOT_DEPLOYED_VOLUMES_REASON =
   'This stack hasn’t deployed successfully yet, and its volumes are read from its first deploy';
 
+/** Why a stack that has deployed has no volumes recorded: its last
+ * successful deploy ran on a Cloudgate older than the record (0.3.13), which
+ * every deploy since writes (#171). */
+export const NOT_RECORDED_VOLUMES_REASON =
+  'This stack last deployed before Cloudgate recorded a stack’s volumes, so they are recorded at its next deploy. Redeploy it to pick its volumes here';
+
 /** One service of a stack, with the named volumes it mounts (#162). */
 export interface ComposeServiceVolumes {
   serviceName: string;

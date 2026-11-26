@@ -123,7 +123,7 @@ import {
 import type { MomentRestoreLifecycle } from '../volume-backups/volume-backup-commands';
 import type { StackLifecycle } from '../volume-backups/stack-lifecycle.port';
 import { composeFileForRead } from './compose-file-lookup';
-import { NOT_DEPLOYED_VOLUMES_REASON } from './compose-file';
+import { unrecordedVolumesReason } from './unrecorded-volumes-reason';
 import type {
   ComposeRefusalEcho,
   ComposeServiceVolumes,
@@ -1632,7 +1632,13 @@ export class ComposeService implements StackLifecycle {
       .where(eq(compose.composeId, current.composeId))
       .limit(1);
     if (!row?.services) {
-      return { services: [], unavailableReason: NOT_DEPLOYED_VOLUMES_REASON };
+      return {
+        services: [],
+        unavailableReason: await unrecordedVolumesReason(
+          this.db,
+          current.composeId,
+        ),
+      };
     }
     return { services: row.services, unavailableReason: null };
   }
