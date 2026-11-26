@@ -411,7 +411,7 @@ export const GATED_SPECS: GatedSpec[] = [
   { file: "features/integrations/ai/ai-spec.tsx", routes: "same-as-list" },
   { file: "features/application/advanced/mounts-spec.tsx", routes: { create: "POST /mounts", update: "PATCH /mounts/:id", remove: "DELETE /mounts/:id" } },
   { file: "features/application/advanced/schedules-spec.tsx", routes: { create: "POST /schedules", update: "PATCH /schedules/:id", remove: "DELETE /schedules/:id" } },
-  { file: "features/application/advanced/volume-backups-spec.tsx", routes: { create: "POST /volume-backups", update: "PATCH /volume-backups/:id", remove: "DELETE /volume-backups/:id" } },
+  { file: "components/console/volume-backups/volume-backups-spec.tsx", routes: { create: "POST /volume-backups", update: "PATCH /volume-backups/:id", remove: "DELETE /volume-backups/:id" } },
   { file: "features/application/advanced/patches-spec.tsx", routes: { create: "POST /patches", update: "PATCH /patches/:id", remove: "DELETE /patches/:id" } },
   { file: "features/database/backups/backup-schedule-spec.tsx", routes: { create: "POST /backups", update: "PATCH /backups/:id", remove: "DELETE /backups/:id" } },
   // A Service's Health tab. Turn off / Turn on is the same PATCH, read

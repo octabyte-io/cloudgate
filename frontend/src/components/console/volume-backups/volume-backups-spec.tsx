@@ -3,12 +3,12 @@ import { z } from "zod";
 import { Chip } from "@/components/console/chip";
 import { Dash } from "@/components/console/dash";
 import { Dot } from "@/components/console/dot";
+import type { ResourceSpec } from "@/components/console/resource-spec";
 import type { ServiceType } from "@/lib/api/endpoints/applications";
 import type { Destination } from "@/lib/api/endpoints/destinations";
 import type { VolumeBackup } from "@/lib/api/endpoints/volume-backups";
 import { describeCron } from "@/lib/format/cron";
 
-import type { ResourceSpec } from "./resource-spec";
 import {
   checkStackVolume,
   pickedVolumeName,

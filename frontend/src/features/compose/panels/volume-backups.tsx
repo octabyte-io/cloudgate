@@ -8,25 +8,25 @@ import { PageHeader } from "@/components/console/page-header";
 import { ResourceList } from "@/components/console/resource-list";
 import { TabPending } from "@/components/console/tab-pending";
 import { toast } from "@/components/console/toast";
+import { RestoreModal } from "@/components/console/volume-backups/restore-modal";
+import { volumeBackupsSpec } from "@/components/console/volume-backups/volume-backups-spec";
 import { Button } from "@/components/ui/button";
-import {
-  RESTORE_REFUSAL,
-  RUN_NOW_REFUSAL,
-} from "@/features/bucket/bucket-volume-backups";
 import type { VolumeBackup } from "@/lib/api/endpoints/volume-backups";
-import { usePermission } from "@/lib/auth/use-permission";
-import { Icon } from "@/lib/design/icons";
-import type { PanelProps } from "@/lib/shell/tab-registry";
-
-import { RestoreModal } from "../../application/advanced/restore-modal";
-import { RunHistoryCard } from "../../application/advanced/run-history-card";
+import { useDestinations } from "@/lib/api/use-destinations";
 import {
-  useDestinations,
   useVolumeBackupMutations,
   useVolumeBackupRuns,
   useVolumeBackups,
-} from "../../application/advanced/use-advanced";
-import { volumeBackupsSpec } from "../../application/advanced/volume-backups-spec";
+} from "@/lib/api/use-volume-backups";
+import { usePermission } from "@/lib/auth/use-permission";
+import {
+  RESTORE_REFUSAL,
+  RUN_NOW_REFUSAL,
+} from "@/lib/auth/volume-backup-refusals";
+import { Icon } from "@/lib/design/icons";
+import type { PanelProps } from "@/lib/shell/tab-registry";
+
+import { RunHistoryCard } from "../../application/advanced/run-history-card";
 import { useCompose, useComposeVolumes } from "../use-compose";
 import { MomentRestoreModal } from "../volume-backups/moment-restore-modal";
 import { StackBackupsNote } from "../volume-backups/stack-backups-note";

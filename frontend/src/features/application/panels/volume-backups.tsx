@@ -8,24 +8,24 @@ import { Page } from "@/components/console/page";
 import { PageHeader } from "@/components/console/page-header";
 import { TabPending } from "@/components/console/tab-pending";
 import { toast } from "@/components/console/toast";
+import { RestoreModal } from "@/components/console/volume-backups/restore-modal";
+import {
+  volumeBackupsSpec,
+  weightsVolumeOf,
+} from "@/components/console/volume-backups/volume-backups-spec";
 import { Button } from "@/components/ui/button";
 import type { VolumeBackup } from "@/lib/api/endpoints/volume-backups";
+import { useDestinations } from "@/lib/api/use-destinations";
+import {
+  useVolumeBackupMutations,
+  useVolumeBackupRuns,
+  useVolumeBackups,
+} from "@/lib/api/use-volume-backups";
 import { Icon } from "@/lib/design/icons";
 import type { PanelProps } from "@/lib/shell/tab-registry";
 
 import { ResourceList } from "@/components/console/resource-list";
-import { RestoreModal } from "../advanced/restore-modal";
 import { RunHistoryCard } from "../advanced/run-history-card";
-import {
-  useDestinations,
-  useVolumeBackupMutations,
-  useVolumeBackupRuns,
-  useVolumeBackups,
-} from "../advanced/use-advanced";
-import {
-  volumeBackupsSpec,
-  weightsVolumeOf,
-} from "../advanced/volume-backups-spec";
 import { useApplication } from "../use-application";
 
 /**

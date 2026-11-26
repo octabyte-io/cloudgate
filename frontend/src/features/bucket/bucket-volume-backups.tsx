@@ -4,28 +4,24 @@ import { Card } from "@/components/console/card";
 import { MetaStrip } from "@/components/console/meta-strip";
 import { ResourceList } from "@/components/console/resource-list";
 import { toast } from "@/components/console/toast";
+import { RestoreModal } from "@/components/console/volume-backups/restore-modal";
+import { volumeBackupsSpec } from "@/components/console/volume-backups/volume-backups-spec";
 import { Button } from "@/components/ui/button";
 import type { Bucket } from "@/lib/api/endpoints/buckets";
-import { usePermission } from "@/lib/auth/use-permission";
-import { Icon } from "@/lib/design/icons";
-
-import { RestoreModal } from "../application/advanced/restore-modal";
-import { RunHistoryCard } from "../application/advanced/run-history-card";
+import { useDestinations } from "@/lib/api/use-destinations";
 import {
-  useDestinations,
   useVolumeBackupMutations,
   useVolumeBackupRuns,
   useVolumeBackups,
-} from "../application/advanced/use-advanced";
-import { volumeBackupsSpec } from "../application/advanced/volume-backups-spec";
+} from "@/lib/api/use-volume-backups";
+import { usePermission } from "@/lib/auth/use-permission";
+import {
+  RESTORE_REFUSAL,
+  RUN_NOW_REFUSAL,
+} from "@/lib/auth/volume-backup-refusals";
+import { Icon } from "@/lib/design/icons";
 
-/** Why Run now is off for a role without `volumeBackup: create`. */
-export const RUN_NOW_REFUSAL =
-  "Your role cannot run a volume backup — that needs volume backup create.";
-
-/** Why Restore is off for a role without `volumeBackup: restore`. */
-export const RESTORE_REFUSAL =
-  "Your role cannot restore a volume — that needs volume backup restore.";
+import { RunHistoryCard } from "../application/advanced/run-history-card";
 
 /**
  * A Server bucket's files, copied off the Server by the volume backup every

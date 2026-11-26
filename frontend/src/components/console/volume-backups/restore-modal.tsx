@@ -5,13 +5,13 @@ import { toast } from "@/components/console/toast";
 import type { Destination } from "@/lib/api/endpoints/destinations";
 import type { RestoreVolumeBackupInput } from "@/lib/api/endpoints/volume-backups";
 import { errorMessage } from "@/lib/api/error-message";
+import { useVolumeRestoreFlow } from "@/lib/api/use-volume-restore";
 
 import {
   ChooseTarballStep,
   ConfirmVolumeStep,
   ReplaceContentsStep,
 } from "./restore-steps";
-import { useVolumeRestoreFlow } from "./use-volume-restore";
 import { VolumeRestoreFooter } from "./volume-restore-footer";
 
 /**

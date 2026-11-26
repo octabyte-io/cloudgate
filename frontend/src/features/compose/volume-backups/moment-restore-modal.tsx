@@ -6,6 +6,7 @@ import { Modal } from "@/components/console/modal";
 import { PickCard, PickGrid } from "@/components/console/pick-card";
 import { Skeleton } from "@/components/console/skeleton";
 import { StatusPill } from "@/components/console/status-pill";
+import { RestoreRefusal } from "@/components/console/volume-backups/restore-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,13 +16,12 @@ import {
 } from "@/lib/api/endpoints/volume-backups";
 import { errorMessage } from "@/lib/api/error-message";
 import { keys } from "@/lib/api/keys";
+import { useVolumeBackupRuns } from "@/lib/api/use-volume-backups";
 import { useActiveOrganizationId } from "@/lib/auth/client";
 import { useDeploymentLog } from "@/lib/realtime/gateways";
 import { timeExact } from "@/lib/format/time";
 
 import { DeploymentLog } from "../../application/deploy/deployment-log";
-import { RestoreRefusal } from "../../application/advanced/restore-modal";
-import { useVolumeBackupRuns } from "../../application/advanced/use-advanced";
 import { MOMENT_STEP_MARK, momentRestoreSteps } from "./moment-restore-steps";
 
 /** How often the run history is read while the restore runs, to find its run. */

@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { schedulesSpec } from "@/features/application/advanced/schedules-spec";
 import { swarmConcerns } from "@/features/application/advanced/swarm/swarm-concerns";
 import { toSwarmValues } from "@/features/application/advanced/swarm/swarm-values";
-import { volumeBackupsSpec } from "@/features/application/advanced/volume-backups-spec";
+import { volumeBackupsSpec } from "@/components/console/volume-backups/volume-backups-spec";
 
 afterEach(cleanup);
 
