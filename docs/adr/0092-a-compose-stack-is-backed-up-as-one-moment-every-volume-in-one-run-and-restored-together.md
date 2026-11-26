@@ -1,6 +1,6 @@
 # A Compose stack is backed up as one moment: every volume in one run, and restored together
 
-Status: accepted. Spec: Compose stack volume backups (issue #161).
+Status: accepted. Spec: #162, from #161.
 
 A catalogue app runs as a Compose stack, and its data is spread over several named volumes, typically a database and a files volume, that only restore correctly as a pair. A volume backup covers one volume and one run, so two backups of one app are two runs with their own stops, and a restore of one volume next to an older copy of the other leaves an app whose files and database disagree.
 
