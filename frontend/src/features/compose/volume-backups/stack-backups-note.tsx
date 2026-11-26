@@ -1,9 +1,13 @@
 import { MetaStrip } from "@/components/console/meta-strip";
 
 /**
- * The Volume backups list's note on a Compose stack (#163): one sentence
- * each, shown only while it holds.
+ * The Volume backups list's notes on a Compose stack (#163): one sentence
+ * each, in a strip of its own, and each shown only while it holds
+ * (design-system rule 8).
  *
+ * - **Always.** The Application's own note: a Deployment replaces the
+ *   containers and leaves the volumes, so losing the Server loses them
+ *   unless a backup has run.
  * - **A swarm `stack`.** A Swarm volume is local to each node, and the tar
  *   runs on the stack's Server, so a copy on any other node is never read
  *   (out of scope in spec #162).
@@ -20,18 +24,18 @@ export function StackBackupsNote({
   unavailableReason: string | null;
 }) {
   return (
-    <MetaStrip className="grid gap-1">
-      <p>
+    <>
+      <MetaStrip>
         A Deployment leaves a volume where it is, so{" "}
         <strong>nothing else here copies one off its Server</strong>.
-      </p>
+      </MetaStrip>
       {swarm ? (
-        <p>
+        <MetaStrip>
           On a swarm stack, only the copy of a volume on this stack’s Server is
           backed up.
-        </p>
+        </MetaStrip>
       ) : null}
-      {unavailableReason ? <p>{unavailableReason}</p> : null}
-    </MetaStrip>
+      {unavailableReason ? <MetaStrip>{unavailableReason}</MetaStrip> : null}
+    </>
   );
 }

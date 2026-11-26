@@ -35,4 +35,16 @@ describe("StackBackupsNote", () => {
 
     expect(screen.getByText(NOT_DEPLOYED)).toBeDefined();
   });
+
+  it("says each thing in a note of its own, one sentence each", () => {
+    render(<StackBackupsNote swarm unavailableReason={NOT_DEPLOYED} />);
+
+    const notes = [
+      ...document.querySelectorAll("[data-slot='meta-strip']"),
+    ].map((note) => (note.textContent ?? "").trim());
+    expect(notes).toHaveLength(3);
+    for (const note of notes) {
+      expect(note.split(/(?<=[.!?])\s+/)).toHaveLength(1);
+    }
+  });
 });

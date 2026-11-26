@@ -73,7 +73,10 @@ export function stackScopeField(): FieldSpec<VolumeBackupValues> {
       { value: "stack", label: "The whole stack" },
       { value: "volume", label: "One volume" },
     ],
-    hint: "The whole stack copies every named volume in one run, so its database and its files come from the same moment. One volume runs on its own schedule.",
+    // The whole stack is the default because its one run copies the
+    // database and the files from the same moment, which is what restores
+    // as a working app (ADR-0092).
+    hint: "The whole stack copies every named volume in one run, and one volume runs on its own schedule.",
   };
 }
 

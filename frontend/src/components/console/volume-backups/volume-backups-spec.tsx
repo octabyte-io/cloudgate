@@ -317,7 +317,10 @@ export function volumeBackupsSpec({
               name: "stopStack" as const,
               label: "Stop the stack while it runs",
               when: (values: VolumeBackupValues) => values.scope === "stack",
-              hint: "Every service is stopped once for the copy and started again afterwards, even when a tar fails. It starts on for a stack that runs a database, whose files may not restore from a copy taken while it writes.",
+              // It starts on for a stack that runs a database
+              // (`stopsStackByDefault`): a database's files may not restore
+              // from a copy taken while it writes (ADR-0092).
+              hint: "Every service is stopped once for the copy and started again afterwards, even when a tar fails.",
             },
           ]
         : []),
