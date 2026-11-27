@@ -102,14 +102,12 @@ export function ConfirmVolumeStep({
   onVolumeNameChange,
   serviceName,
   tarball,
-  backupFileName,
 }: {
   volumeName: string;
   onVolumeNameChange: (value: string) => void;
   serviceName: string;
   /** The key with its bucket, when the destination is known. */
   tarball: string;
-  backupFileName: string;
 }) {
   return (
     <>
@@ -130,7 +128,7 @@ export function ConfirmVolumeStep({
 
       <KVList>
         <KVRow label="Into" value={serviceName} />
-        <KVRow label="From" value={tarball} title={backupFileName} mono />
+        <TarballRow label="From" tarball={tarball} />
       </KVList>
     </>
   );
@@ -140,14 +138,12 @@ export function ReplaceContentsStep({
   volumeName,
   serviceName,
   tarball,
-  backupFileName,
   typed,
   onTypedChange,
 }: {
   volumeName: string;
   serviceName: string;
   tarball: string;
-  backupFileName: string;
   typed: string;
   onTypedChange: (value: string) => void;
 }) {
@@ -162,7 +158,7 @@ export function ReplaceContentsStep({
 
       <KVList>
         <KVRow label="Volume" value={volumeName} mono />
-        <KVRow label="Tarball" value={tarball} title={backupFileName} mono />
+        <TarballRow label="Tarball" tarball={tarball} />
         <KVRow label="On" value={serviceName} />
       </KVList>
 
@@ -180,5 +176,34 @@ export function ReplaceContentsStep({
         />
       </Field>
     </>
+  );
+}
+
+/**
+ * The tarball a restore reads, as a row: its file name whole, on a line of
+ * its own, under its folder. A stack's path runs past the dialog's width,
+ * and cutting it at the end hid the file name, whose timestamp is what
+ * says which backup this is; the folder is what gives way instead, and the
+ * full path is on hover.
+ */
+function TarballRow({ label, tarball }: { label: string; tarball: string }) {
+  const cut = tarball.lastIndexOf("/") + 1;
+  const folder = tarball.slice(0, cut);
+  const file = tarball.slice(cut);
+  return (
+    <KVRow
+      label={label}
+      title={tarball}
+      mono
+      wrap
+      value={
+        <span className="grid justify-items-end gap-0.5">
+          {folder ? (
+            <span className="max-w-full truncate text-tx-3">{folder}</span>
+          ) : null}
+          <span className="wrap-anywhere">{file}</span>
+        </span>
+      }
+    />
   );
 }
