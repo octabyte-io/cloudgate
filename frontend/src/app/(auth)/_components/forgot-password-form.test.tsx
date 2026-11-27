@@ -68,11 +68,13 @@ describe("ForgotPasswordForm, on an instance with no mail sender", () => {
     return document.body.textContent ?? "";
   }
 
-  it("sends them to the platform host, and names the file and the doc", async () => {
+  it("sends them to the platform host, and names the file and the restart", async () => {
     const text = await refuse();
     expect(text).toMatch(/the platform host, the machine Cloudgate runs on/);
     expect(text).toMatch(/an email sender in \/etc\/default\/cloudgate-backend/);
-    expect(text).toMatch(/docs\/deploy\.md, “Locked out”/);
+    expect(text).toMatch(/restart the backend\. Then request the link again\./);
+    // A repository path is no use to someone without the source (#187).
+    expect(text).not.toMatch(/docs\/deploy\.md/);
     // A managed Server is a deploy target, not the machine this runs on.
     expect(text).not.toMatch(/this server/i);
   });

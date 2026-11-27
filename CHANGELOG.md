@@ -28,6 +28,12 @@ A table wider than its card no longer scrolls sideways: each row stacks into its
 
 **What to do on upgrade**: nothing.
 
+### Console copy says what the console does
+
+Six messages were corrected (#187). Server setup names its eight steps, not six. The **Docker cleanup ran** notification hint says the nightly prune removes stopped containers, unused images and build cache, never volumes. A Compose stack's Source form calls it a Compose stack. The forward-auth note under a running proxy on a lapsed plan says removing the proxy makes its gated Domains fail every request, as the remove dialog does, rather than opening them to anyone. The Console domain warning and the password-reset screen no longer name a file in Cloudgate's repository.
+
+**What to do on upgrade**: nothing.
+
 ## 0.3.13 (2026-11-26)
 
 ### A Compose stack on a Server has a Volume backups tab

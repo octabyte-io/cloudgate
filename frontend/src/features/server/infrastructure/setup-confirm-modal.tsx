@@ -26,7 +26,7 @@ export function SetupConfirmModal({
   onConfirm,
 }: {
   server: Server;
-  /** The stored command, or `""` for the default six steps. */
+  /** The stored command, or `""` for the default eight steps. */
   custom: string;
   state: SetupRunState;
   /** The words on the control that opened this dialog — an action keeps its name. */
@@ -42,7 +42,7 @@ export function SetupConfirmModal({
         description={
           custom
             ? `This runs this Server's own setup command on the machine at ${server.ipAddress}.`
-            : `This changes the machine at ${server.ipAddress}. It is the six steps on the tab behind this one.`
+            : `This changes the machine at ${server.ipAddress}. It is the eight steps on the tab behind this one.`
         }
       />
       <Modal.Body>

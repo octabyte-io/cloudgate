@@ -106,6 +106,28 @@ describe("ForwardAuthSection below Business", () => {
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
 
+  /**
+   * The note under a running proxy and the remove dialog describe the same
+   * removal (#187): the proxy goes, each gated Domain keeps its gate, and
+   * Traefik fails every request to it. The note once said removal "opens
+   * them to anyone with the link".
+   */
+  it("says removing the proxy fails gated Domains, as the remove dialog does", () => {
+    state.targets = [PROTECTING];
+    render(<ForwardAuthSection />);
+
+    const note = screen.getByText(/Domains already behind this proxy/);
+    expect(note.textContent).toContain(
+      "Removing the proxy makes every request to them fail until it is deployed again or their gate is turned off.",
+    );
+    expect(note.textContent).not.toMatch(/anyone with the link/);
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove the proxy" }));
+    expect(screen.getByRole("dialog").textContent).toContain(
+      "it fails every request until the proxy is deployed again or its gate is turned off",
+    );
+  });
+
   it("keeps a domain set with no proxy, with deploying off", () => {
     state.targets = [{ ...PROTECTING, status: "stopped" }];
     render(<ForwardAuthSection />);

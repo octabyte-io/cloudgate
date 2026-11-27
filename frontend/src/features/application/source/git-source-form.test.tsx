@@ -120,3 +120,26 @@ describe("GitSourceForm — push controls", () => {
     expect(text).toContain("Nothing — deploys are manual");
   });
 });
+
+/**
+ * **The connection hint names the Service kind it is on** (#187). The chain is
+ * shared by both rows, and on a Compose stack it said "this Application".
+ */
+describe("GitSourceForm — connection hint", () => {
+  it("calls an Application an Application", () => {
+    const text = renderForm(application, "github");
+
+    expect(text).toContain(
+      "Which connected GitHub account this Application clones through.",
+    );
+  });
+
+  it("calls a Compose stack a Compose stack", () => {
+    const text = renderForm(compose, "github");
+
+    expect(text).toContain(
+      "Which connected GitHub account this Compose stack clones through.",
+    );
+    expect(text).not.toContain("this Application");
+  });
+});
