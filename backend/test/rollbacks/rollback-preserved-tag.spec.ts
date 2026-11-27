@@ -58,6 +58,8 @@ const makeRollbackDb = (row: unknown) => {
   chain.from = (table: unknown) =>
     table === server || table === boughtServer ? noServer : chain;
   chain.select = () => chain;
+  // The Rollback's record of when it put the point back (ADR-0093).
+  chain.update = () => ({ set: () => ({ where: () => Promise.resolve() }) });
   return chain as unknown as DrizzleDB;
 };
 
