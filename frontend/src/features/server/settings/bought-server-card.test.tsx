@@ -22,6 +22,7 @@ const api = vi.hoisted(() => ({
   sizes: vi.fn(() => Promise.resolve([])),
   backups: vi.fn(),
   backUpNow: vi.fn(),
+  restore: vi.fn(),
 }));
 const allowed = vi.hoisted(() => ({ current: true }));
 const toast = vi.hoisted(() => ({
@@ -124,6 +125,7 @@ afterEach(() => {
   api.setBackups.mockReset();
   api.backups.mockReset();
   api.backUpNow.mockReset();
+  api.restore.mockReset();
   vi.useRealTimers();
   vi.unstubAllEnvs();
   toast.done.mockReset();
@@ -355,14 +357,12 @@ describe("BoughtServerCard", () => {
       // Seven daily backups, the oldest on Tuesday 17 November at 03:00 UTC,
       // read in UTC: the confirmation names it in the reader's own zone.
       vi.stubEnv("TZ", "UTC");
-      const seven: ServerBackup[] = [23, 22, 21, 20, 19, 18, 17].map(
-        (day) => ({
-          id: day,
-          takenAt: `2026-11-${day}T03:00:00.000Z`,
-          sizeGb: 2.1,
-          beingMade: false,
-        }),
-      );
+      const seven: ServerBackup[] = [23, 22, 21, 20, 19, 18, 17].map((day) => ({
+        id: day,
+        takenAt: `2026-11-${day}T03:00:00.000Z`,
+        sizeGb: 2.1,
+        beingMade: false,
+      }));
       const taken: ServerBackup = {
         id: 24,
         takenAt: "2026-11-24T15:00:00.000Z",
@@ -467,6 +467,143 @@ describe("BoughtServerCard", () => {
         screen.queryByText("The first backup is taken within a day."),
       ).toBeNull();
       expect(api.backups).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Restore", () => {
+    /** The Restore button on the row of the backup taken on `day`. */
+    async function restoreOn(day: RegExp) {
+      const table = await screen.findByRole("table", {
+        name: "Server backups of web-1",
+      });
+      const row = within(table)
+        .getAllByRole("row")
+        .find((each) => day.test(each.textContent ?? ""))!;
+      return within(row).getByRole("button", { name: "Restore" });
+    }
+
+    it("restores a backup from its row once the Server's name is typed, and shows Changing", async () => {
+      api.server.mockResolvedValue(WITH_BACKUPS);
+      api.backups.mockResolvedValue(BACKUPS);
+      const changing: BoughtServerView = {
+        ...WITH_BACKUPS,
+        stage: "changing",
+        change: { restore: { backupTakenAt: BACKUPS[1].takenAt } },
+      };
+      api.restore.mockResolvedValue(changing);
+      renderCard();
+
+      fireEvent.click(await restoreOn(/Nov 26, 2026/));
+      const dialog = screen.getByRole("dialog");
+      expect(dialog.textContent).toMatch(/Restore web-1 to Nov 26, 2026/);
+      api.server.mockResolvedValue(changing);
+      fireEvent.change(within(dialog).getByLabelText("Type web-1 to confirm"), {
+        target: { value: "web-1" },
+      });
+      fireEvent.click(
+        within(dialog).getByRole("button", { name: "Restore this Server" }),
+      );
+
+      await waitFor(() =>
+        expect(api.restore).toHaveBeenCalledWith("abc", 2, false),
+      );
+      expect(await screen.findByText("Changing")).toBeTruthy();
+      await waitFor(() =>
+        expect(document.body.textContent).toMatch(
+          /Restoring the backup of Nov 26, 2026/,
+        ),
+      );
+    });
+
+    it("asks for its own confirmation to restore the oldest of 7 without a safety copy", async () => {
+      const seven: ServerBackup[] = [23, 22, 21, 20, 19, 18, 17].map((day) => ({
+        id: day,
+        takenAt: `2026-11-${day}T12:00:00.000Z`,
+        sizeGb: 2.1,
+        beingMade: false,
+      }));
+      api.server.mockResolvedValue(WITH_BACKUPS);
+      api.backups.mockResolvedValue(seven);
+      api.restore.mockResolvedValue(WITH_BACKUPS);
+      renderCard();
+
+      fireEvent.click(await restoreOn(/Nov 17, 2026/));
+      const dialog = screen.getByRole("dialog");
+      expect(dialog.textContent).toMatch(/so a safety copy would remove it/);
+      fireEvent.change(within(dialog).getByLabelText("Type web-1 to confirm"), {
+        target: { value: "web-1" },
+      });
+      fireEvent.click(
+        within(dialog).getByRole("checkbox", {
+          name: "Restore without a safety copy",
+        }),
+      );
+      fireEvent.click(
+        within(dialog).getByRole("button", { name: "Restore this Server" }),
+      );
+
+      await waitFor(() =>
+        expect(api.restore).toHaveBeenCalledWith("abc", 17, true),
+      );
+    });
+
+    it("takes a safety copy of any newer one of 7", async () => {
+      const seven: ServerBackup[] = [23, 22, 21, 20, 19, 18, 17].map((day) => ({
+        id: day,
+        takenAt: `2026-11-${day}T12:00:00.000Z`,
+        sizeGb: 2.1,
+        beingMade: false,
+      }));
+      api.server.mockResolvedValue(WITH_BACKUPS);
+      api.backups.mockResolvedValue(seven);
+      renderCard();
+
+      fireEvent.click(await restoreOn(/Nov 18, 2026/));
+
+      expect(screen.getByRole("dialog").textContent).toMatch(
+        /a safety copy of the disk as it is now is kept/,
+      );
+    });
+
+    it("holds Restore on a backup still being made", async () => {
+      api.server.mockResolvedValue(WITH_BACKUPS);
+      api.backups.mockResolvedValue(BACKUPS);
+      renderCard();
+
+      const button = await restoreOn(/Nov 27, 2026/);
+      expect(button.getAttribute("aria-disabled")).toBe("true");
+      expect(button.getAttribute("title")).toBe(
+        "This backup can be restored once it is made.",
+      );
+    });
+
+    it("holds Restore while the Server is not Ready", async () => {
+      api.server.mockResolvedValue({
+        ...WITH_BACKUPS,
+        stage: "changing",
+        change: { serverType: "cpx32" },
+      });
+      api.backups.mockResolvedValue(BACKUPS);
+      renderCard();
+
+      const button = await restoreOn(/Nov 26, 2026/);
+      expect(button.getAttribute("aria-disabled")).toBe("true");
+      expect(button.getAttribute("title")).toBe(
+        "This Server can be restored once it is Ready.",
+      );
+    });
+
+    it("holds Restore for a role that may not change the Server", async () => {
+      allowed.current = false;
+      api.server.mockResolvedValue(WITH_BACKUPS);
+      api.backups.mockResolvedValue(BACKUPS);
+      renderCard();
+
+      const button = await restoreOn(/Nov 26, 2026/);
+      expect(button.getAttribute("aria-disabled")).toBe("true");
+      expect(button.getAttribute("title")).toBe(
+        "Your role in this Organization cannot restore this Server. Ask an owner or an admin.",
+      );
     });
   });
 });

@@ -18,6 +18,7 @@ import { counted } from "@/lib/format/plural";
 import { timeExact } from "@/lib/format/time";
 
 import { useBackUpNow, useServerBackups } from "../buy/use-bought-servers";
+import { RestoreBackupModal, takenOn } from "./restore-backup-modal";
 
 /** Said while backups are on and the provider has made none yet: it makes one a day. */
 export const FIRST_BACKUP_WITHIN_A_DAY =
@@ -31,15 +32,20 @@ export const BACK_UP_NOW_REFUSAL =
 export const BACK_UP_NOW_WAITS_FOR_READY =
   "This Server can be backed up once it is Ready.";
 
+/** Said on Restore to a role that may not change the Server. */
+export const RESTORE_REFUSAL =
+  "Your role in this Organization cannot restore this Server. Ask an owner or an admin.";
+
+/** Said on Restore while the Server is busy or not made yet. */
+export const RESTORE_WAITS_FOR_READY =
+  "This Server can be restored once it is Ready.";
+
+/** Said on Restore for a backup the provider is still making. */
+export const RESTORE_WAITS_FOR_BACKUP =
+  "This backup can be restored once it is made.";
+
 /** The provider keeps this many; one more pushes out the oldest (ADR-0093). */
 const SLOTS = 7;
-
-// The day and the minute in the reader's own zone. Not `timeAgo`: a backup is
-// picked by which day it is of, and "3 days ago" makes the reader count.
-const TAKEN = new Intl.DateTimeFormat("en", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
 
 /**
  * The backup a confirmation names, "Tuesday 03:00": the 7 slots span a week
@@ -68,14 +74,17 @@ function sizeOf(gb: number): string {
   return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)} GB`;
 }
 
-const COLUMNS: Column<ServerBackup>[] = [
+const TAKEN_AND_SIZE: Column<ServerBackup>[] = [
   {
     id: "taken",
     head: "Taken",
     tone: "key",
     cell: (backup) => (
       <time dateTime={backup.takenAt} title={timeExact(backup.takenAt)}>
-        {TAKEN.format(new Date(backup.takenAt))}
+        {/* The day and the minute in the reader's own zone. Not `timeAgo`:
+            a backup is picked by which day it is of, and "3 days ago" makes
+            the reader count. */}
+        {takenOn(backup.takenAt)}
       </time>
     ),
   },
@@ -104,12 +113,17 @@ const COLUMNS: Column<ServerBackup>[] = [
  * with its reason, for a Ready Server and a role that may change it
  * (`server: ['create']`); a frozen Organization's refusal comes back from
  * the API as a toast, as the other changes' do.
+ *
+ * **Restore** on each row puts the disk back as it was then
+ * (`RestoreBackupModal`), waiting with its reason for the same two and for a
+ * backup that is whole. While one runs, the strip says which backup.
  */
 export function ServerBackupList({ view }: { view: BoughtServerView }) {
   const backups = useServerBackups(view.id, view.backups);
   const backUpNow = useBackUpNow(view.id);
   const canChange = usePermission({ server: ["create"] });
   const [asking, setAsking] = useState(false);
+  const [restoring, setRestoring] = useState<ServerBackup | null>(null);
   if (!view.backups) return null;
 
   if (backups.error) {
@@ -137,6 +151,35 @@ export function ServerBackupList({ view }: { view: BoughtServerView }) {
       ? BACK_UP_NOW_WAITS_FOR_READY
       : null;
 
+  const restoreWhy = !canChange.allowed
+    ? RESTORE_REFUSAL
+    : view.stage !== "ready"
+      ? RESTORE_WAITS_FOR_READY
+      : null;
+  const columns: Column<ServerBackup>[] = [
+    ...TAKEN_AND_SIZE,
+    {
+      id: "actions",
+      head: <span className="sr-only">Actions</span>,
+      cell: (backup) => {
+        const held =
+          restoreWhy ?? (backup.beingMade ? RESTORE_WAITS_FOR_BACKUP : null);
+        return (
+          <Button
+            type="button"
+            size="xs"
+            disabled={held !== null}
+            title={held ?? undefined}
+            onClick={() => setRestoring(backup)}
+          >
+            Restore
+          </Button>
+        );
+      },
+    },
+  ];
+  const restoringFrom = view.change?.restore?.backupTakenAt;
+
   async function confirm() {
     setAsking(false);
     try {
@@ -151,7 +194,11 @@ export function ServerBackupList({ view }: { view: BoughtServerView }) {
     <>
       <MetaStrip className="flex items-center justify-between gap-3 border-t">
         <span>
-          {rows.length > 0 ? (
+          {restoringFrom ? (
+            <>
+              Restoring the backup of <strong>{takenOn(restoringFrom)}</strong>.
+            </>
+          ) : rows.length > 0 ? (
             <>
               <strong>
                 {counted(rows.length, "Server backup", "Server backups")}
@@ -176,12 +223,24 @@ export function ServerBackupList({ view }: { view: BoughtServerView }) {
         <Card.Body flush>
           <DataTable
             label={`Server backups of ${view.name}`}
-            columns={COLUMNS}
+            columns={columns}
             rows={rows}
             getRowId={(backup) => String(backup.id)}
           />
         </Card.Body>
       ) : null}
+
+      <RestoreBackupModal
+        view={view}
+        backup={restoring}
+        // The oldest of 7: its safety copy would push it out.
+        noSafetyCopy={
+          restoring !== null &&
+          rows.length >= SLOTS &&
+          rows[rows.length - 1].id === restoring.id
+        }
+        onOpenChange={(open) => !open && setRestoring(null)}
+      />
 
       <Modal open={asking} onOpenChange={(open) => !open && setAsking(false)}>
         <Modal.Header

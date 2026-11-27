@@ -78,6 +78,7 @@ export function ConfirmDeleteModal({
   /** Runs it. Throws to show the refusal in place. */
   onConfirm,
   forceRemove,
+  alsoConfirmed = true,
   children,
 }: {
   open: boolean;
@@ -96,6 +97,11 @@ export function ConfirmDeleteModal({
     leftBehind: React.ReactNode;
     onConfirm: () => Promise<void>;
   };
+  /**
+   * A confirmation of the caller's own in the body, beside the typed name:
+   * the button waits for both. A Restore with no safety copy asks for one.
+   */
+  alsoConfirmed?: boolean;
   children: React.ReactNode;
 }) {
   const [typed, setTyped] = useState("");
@@ -106,7 +112,8 @@ export function ConfirmDeleteModal({
   const running = inFlight !== null;
   const field = useRef<HTMLInputElement>(null);
 
-  const confirmed = typed.trim() === confirmWord;
+  const named = typed.trim() === confirmWord;
+  const confirmed = named && alsoConfirmed;
 
   async function run(action: () => Promise<void>, forcing: boolean) {
     if (!confirmed || running) return;
@@ -152,7 +159,7 @@ export function ConfirmDeleteModal({
           <Field
             name="confirm"
             label={`Type ${confirmWord} to confirm`}
-            error={typed !== "" && !confirmed ? mismatch : undefined}
+            error={typed !== "" && !named ? mismatch : undefined}
           >
             <Input
               ref={field}

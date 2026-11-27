@@ -236,6 +236,34 @@ export function useBackUpNow(serverId: string) {
   });
 }
 
+/**
+ * *Restore* on a Ready Bought Server; the answer is the Server, Changing,
+ * which is then read again until it is Ready, and its backups with it, the
+ * safety copy among them.
+ */
+export function useRestoreBackup(serverId: string) {
+  const client = useQueryClient();
+  const { organizationId } = useActiveOrganizationId();
+  const key = keys.boughtServers.server(organizationId, serverId);
+  return useMutation({
+    mutationFn: ({
+      backupId,
+      withoutSafetyCopy,
+    }: {
+      backupId: number;
+      withoutSafetyCopy: boolean;
+    }) => boughtServersApi.restore(serverId, backupId, withoutSafetyCopy),
+    onSuccess: (view) => client.setQueryData(key, view),
+    onSettled: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: key }),
+        client.invalidateQueries({
+          queryKey: keys.boughtServers.backups(organizationId, serverId),
+        }),
+      ]),
+  });
+}
+
 /** A new size on a Ready Bought Server; the answer is the Server as it now is. */
 export function useSetSize(serverId: string) {
   const client = useQueryClient();
