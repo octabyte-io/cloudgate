@@ -1639,6 +1639,27 @@
       "when": 1795677315651,
       "tag": "0233_volume-backup-scope",
       "breakpoints": true
+    },
+    {
+      "idx": 234,
+      "version": "7",
+      "when": 1795783505896,
+      "tag": "0234_service-deployed-at",
+      "breakpoints": true
+    },
+    {
+      "idx": 235,
+      "version": "7",
+      "when": 1795786827687,
+      "tag": "0235_bought-server-restore-redeploys",
+      "breakpoints": true
+    },
+    {
+      "idx": 236,
+      "version": "7",
+      "when": 1795787393868,
+      "tag": "0236_rollback-rolled-back-at",
+      "breakpoints": true
     }
   ]
 }

@@ -30,6 +30,7 @@ import {
   encryptedJson,
   encryptedText,
   generateAppName,
+  deployedAtColumn,
   isoTimestamp,
   nanoidPk,
 } from '../../db/columns';
@@ -107,6 +108,7 @@ export const mysql = pgTable(
     ulimitsSwarm: json('ulimits_swarm').$type<UlimitsSwarm>(),
     replicas: integer('replicas').notNull().default(1),
     createdAt: isoTimestamp('created_at'),
+    deployedAt: deployedAtColumn(),
     environmentId: text('environment_id')
       .notNull()
       .references(() => environment.environmentId, { onDelete: 'cascade' }),

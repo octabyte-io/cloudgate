@@ -103,7 +103,7 @@ const makeCaptureDb = (written: Written) =>
       }),
   }) as unknown as DrizzleDB;
 
-/** `findOwnedRollback`'s one org-scoped select, answered with `row`. */
+/** `findOwnedRollback`'s one org-scoped select, answered with `row`, and the write of when it was put back. */
 const makeRollbackDb = (row: unknown) => {
   const chain: Record<string, unknown> = {
     limit: () => Promise.resolve([row]),
@@ -111,6 +111,8 @@ const makeRollbackDb = (row: unknown) => {
   for (const method of ['select', 'from', 'innerJoin', 'where']) {
     chain[method] = () => chain;
   }
+  // The Rollback's record of when it put the point back (ADR-0093).
+  chain.update = () => ({ set: () => ({ where: () => Promise.resolve() }) });
   return chain as unknown as DrizzleDB;
 };
 

@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Param,
+  ParseIntPipe,
   Post,
   Put,
   Query,
@@ -18,6 +19,7 @@ import {
 import { AllowedWhenFrozen } from '../cloud/billing/allowed-when-frozen.decorator';
 import { RequirePermission } from '../rbac/decorators/require-permission.decorator';
 import type { PermissionCtx } from '../rbac/permission.service';
+import { BoughtServerBackups } from './bought-server-backups.service';
 import { BoughtServerChanges } from './bought-server-changes.service';
 import { BoughtServerPurchases } from './bought-server-purchases.service';
 import { BoughtServersService } from './bought-servers.service';
@@ -25,6 +27,7 @@ import {
   BackupsDto,
   BuyDto,
   FinishPayingDto,
+  RestoreDto,
   SizeDto,
   StorageDto,
   TodayQueryDto,
@@ -55,6 +58,7 @@ export class BoughtServersController {
     private readonly boughtServers: BoughtServersService,
     private readonly purchases: BoughtServerPurchases,
     private readonly changes: BoughtServerChanges,
+    private readonly backups: BoughtServerBackups,
   ) {}
 
   /** Whether *Buy a Server* is offered here. */
@@ -166,6 +170,61 @@ export class BoughtServersController {
     @Body() body: BackupsDto,
   ) {
     return this.changes.setBackups(toCtx(user, session), id, body.enabled);
+  }
+
+  /**
+   * Its Server backups, newest first; none while backups are off. A read,
+   * so a frozen Organization still sees them.
+   */
+  @Get(':id/backups')
+  @RequirePermission('server', 'read')
+  listBackups(
+    @CurrentUser() user: AuthSession['user'],
+    @CurrentSession() session: Session,
+    @Param('id') id: string,
+  ) {
+    return this.backups.list(toCtx(user, session), id);
+  }
+
+  /**
+   * *Back up now*: one more Server backup at once, in the same 7 slots, so
+   * the oldest is pushed out once all 7 are full. It costs nothing, so a
+   * deletion date does not refuse it; a frozen Organization is refused, as
+   * for any write. Answered with the backup, still being made.
+   */
+  @Post(':id/backups')
+  @RequirePermission('server', 'create')
+  createBackup(
+    @CurrentUser() user: AuthSession['user'],
+    @CurrentSession() session: Session,
+    @Param('id') id: string,
+  ) {
+    return this.backups.create(toCtx(user, session), id);
+  }
+
+  /**
+   * *Restore*: the disk put back as it was at one of its Server backups, a
+   * safety copy taken first unless that would push the chosen one out (then
+   * only with `withoutSafetyCopy`). Answered at once, Changing; the steps go
+   * on in the background. It costs nothing; a frozen Organization is
+   * refused, as for any write.
+   */
+  @Post(':id/backups/:backupId/restore')
+  @HttpCode(202)
+  @RequirePermission('server', 'create')
+  restoreBackup(
+    @CurrentUser() user: AuthSession['user'],
+    @CurrentSession() session: Session,
+    @Param('id') id: string,
+    @Param('backupId', ParseIntPipe) backupId: number,
+    @Body() body: RestoreDto,
+  ) {
+    return this.backups.restore(
+      toCtx(user, session),
+      id,
+      backupId,
+      body.withoutSafetyCopy ?? false,
+    );
   }
 
   /**

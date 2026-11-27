@@ -942,6 +942,91 @@ export async function renderBoughtServerChangeRefundedEmail({
 }
 
 /**
+ * How a given-up Restore left the Server, which is what its email says
+ * (#180, ADR-0093):
+ *
+ * - `refused`: every try was refused before its disk was touched, so it is
+ *   as it was.
+ * - `safety-copy-would-remove`: a newer backup arrived after the press, so
+ *   the safety copy would now push out the backup chosen; nothing was asked.
+ * - `not-started`: its disk is the backup's, but it could not be started.
+ * - `may-be-rebuilt`: a rebuild was asked for and never answered, so its
+ *   disk may be the backup's. Never told as "as it was".
+ */
+export type RestoreGivenUp =
+  'refused' | 'safety-copy-would-remove' | 'not-started' | 'may-be-rebuilt';
+
+/** The email's two paragraphs, for each way a Restore was given up. */
+function restoreGivenUpParagraphs(
+  outcome: RestoreGivenUp,
+  serverName: string,
+  backupTakenAt: string,
+): [string, string] {
+  switch (outcome) {
+    case 'refused':
+      return [
+        `We tried twice to restore ${serverName} from its backup of ${backupTakenAt}, and it could not be done.`,
+        `${serverName} is as it was, and keeps running. A restore costs nothing, so nothing was charged. You can try again from its Settings.`,
+      ];
+    case 'safety-copy-would-remove':
+      return [
+        `We did not restore ${serverName} from its backup of ${backupTakenAt}: a newer backup was taken meanwhile, so its safety copy would now remove that backup.`,
+        `${serverName} is as it was, and keeps running. Nothing was charged. To restore it anyway, try again from its Settings and confirm restoring without a safety copy, or pick a newer backup.`,
+      ];
+    case 'not-started':
+      return [
+        `We restored the disk of ${serverName} from its backup of ${backupTakenAt}, and tried twice to start it again, which could not be done.`,
+        `Everything written to its disk since that backup is gone. Contact support to have ${serverName} started, then press Run setup on its Setup card and redeploy each Service deployed after that backup. Nothing was charged.`,
+      ];
+    case 'may-be-rebuilt':
+      return [
+        `We tried twice to restore ${serverName} from its backup of ${backupTakenAt}, and could not tell whether its disk was restored.`,
+        `Treat everything written to its disk since that backup as gone. Press Run setup on its Setup card to set ${serverName} up again, then redeploy each Service deployed after that backup. Nothing was charged.`,
+      ];
+  }
+}
+
+/**
+ * A **Bought Server**'s Restore that was given up (#180, ADR-0093), in
+ * whichever of the ways {@link RestoreGivenUp} names: only a Restore refused
+ * before its disk was touched says the Server is as it was. Nothing was
+ * charged, since a Restore costs nothing. Sent to the owners. It never names
+ * the provider.
+ */
+export async function renderBoughtServerRestoreFailedEmail({
+  userName,
+  serverName,
+  backupTakenAt,
+  outcome,
+  serverUrl,
+}: {
+  userName: string;
+  serverName: string;
+  /** When the backup was taken, as the email says it. */
+  backupTakenAt: string;
+  outcome: RestoreGivenUp;
+  serverUrl: string;
+}): Promise<RenderedEmail> {
+  return {
+    subject: `We couldn't restore ${serverName} from its backup`,
+    html: await render(
+      LapseNoticeTemplate({
+        audience: 'owners',
+        userName: userName || 'User',
+        heading: 'Your restore could not be done',
+        paragraphs: restoreGivenUpParagraphs(
+          outcome,
+          serverName,
+          backupTakenAt,
+        ),
+        action: { label: 'Open the Server', url: serverUrl },
+      }),
+    ),
+    inlineImages: [emailLogoAttachment('dark')],
+  };
+}
+
+/**
  * To every Operator when a **Bought Server**'s first Setup run fails (spec
  * #1387): the run the backend started by itself after Buy, failed on the
  * machine or cut off by a restart twice. The customer sees Setup failed and

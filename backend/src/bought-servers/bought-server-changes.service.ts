@@ -56,7 +56,13 @@ export interface BoughtServerView {
    */
   backupsOfferCents: number | null;
   /** The change running now, while the stage is Changing. */
-  change: { backups?: boolean; storageGb?: number; serverType?: string } | null;
+  change: {
+    backups?: boolean;
+    storageGb?: number;
+    serverType?: string;
+    /** A Restore (#180): when the backup it puts back was taken, ISO. */
+    restore?: { backupTakenAt: string };
+  } | null;
 }
 
 /** One size the Server can move to, in its own Location, as its Settings show it. */
@@ -221,6 +227,11 @@ export class BoughtServerChanges {
               : {}),
             ...(target.serverType !== undefined
               ? { serverType: target.serverType }
+              : {}),
+            ...(target.restore
+              ? {
+                  restore: { backupTakenAt: target.restore.backupTakenAt },
+                }
               : {}),
           }
         : null,
@@ -682,7 +693,11 @@ export class BoughtServerChanges {
     }
   }
 
-  private assertChangeable(row: BoughtServer): void {
+  /**
+   * Refused unless the Server is Ready and an Operator has not powered it
+   * off: the rule of every change, a Restore's too.
+   */
+  assertChangeable(row: BoughtServer): void {
     if (row.stage !== 'ready' || row.serverId === null) {
       throw this.notChangeable(row.stage);
     }
@@ -695,7 +710,7 @@ export class BoughtServerChanges {
     }
   }
 
-  private notChangeable(stage: BoughtServerStage): ConflictException {
+  notChangeable(stage: BoughtServerStage): ConflictException {
     return new ConflictException({
       code: NOT_CHANGEABLE_CODE,
       message:

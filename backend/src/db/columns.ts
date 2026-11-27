@@ -148,6 +148,17 @@ export const configLinksColumn = () =>
 export const wiredChangedAtColumn = () => text('wired_changed_at');
 
 /**
+ * When the last deploy of a Service that writes no Deployment row (a
+ * Database or a Bucket on a Server) finished running, ISO: what its current
+ * Deployment's `finished_at` is to an Application. A Restore of a Bought
+ * Server redeploys it when this is newer than the backup (ADR-0093). Null
+ * while it has never been deployed; a row deployed before the column existed
+ * reads the time its migration ran, so a Restore errs toward a redeploy,
+ * which is harmless, rather than toward older code under a newer record.
+ */
+export const deployedAtColumn = () => text('deployed_at');
+
+/**
  * The two constraints every Service table carries on its Config name: unique
  * within the Environment, and in the Config name's own format. Uniqueness
  * *across* the eight tables is the minting path's, under its per-Environment

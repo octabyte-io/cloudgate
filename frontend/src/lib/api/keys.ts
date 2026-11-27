@@ -1004,6 +1004,15 @@ export const keys = {
         id,
         "sizes",
       ] as const,
+    /** One Bought Server's Server backups; under its key, so a change refreshes them. */
+    backups: (organizationId: OrganizationScope, id: string) =>
+      [
+        ...org(organizationId),
+        "bought-servers",
+        "server",
+        id,
+        "backups",
+      ] as const,
   },
 
   servers: {

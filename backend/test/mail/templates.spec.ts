@@ -1,6 +1,7 @@
 import {
   renderBoughtServerChangeRefundedEmail,
   renderBoughtServerRefundedEmail,
+  renderBoughtServerRestoreFailedEmail,
   renderBoughtServerSetupFailedEmail,
   renderBoughtServersDeletionEmail,
   renderCustomRolesStoppedEmail,
@@ -365,6 +366,171 @@ describe('mail templates', () => {
 
       expect(text(rendered.html)).toContain(
         'The Server web-1 in Hopper Labs now runs on its new size.',
+      );
+    });
+
+    it('says which backup the Server was restored from, that what was written since is gone, and that setup ran again', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: {
+          kind: 'restore',
+          backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+          setupOk: true,
+          redeployed: [],
+          notRedeployed: [],
+        },
+      });
+
+      expect(rendered.subject).toBe(
+        'Your Server web-1 was restored from a backup',
+      );
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'The Server web-1 in Hopper Labs was restored from its backup of Nov 02, 2026 at 03:00 UTC. Everything written to its disk since then is gone.',
+      );
+      expect(body).toContain('Server setup ran on it again.');
+      expect(body).toContain('web-1 now costs $30.00 a month.');
+    });
+
+    it('names each Service a restore redeployed, in order, and says where each redeploy shows', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: {
+          kind: 'restore',
+          backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+          setupOk: true,
+          redeployed: ['web', 'orders', 'shop'],
+          notRedeployed: [],
+        },
+      });
+
+      expect(text(rendered.html)).toContain(
+        'Cloudgate redeployed orders, shop and web, which were deployed after that backup, so they run their current version again. How each redeploy went shows on its Service.',
+      );
+    });
+
+    it('names the one Service a restore redeployed', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: {
+          kind: 'restore',
+          backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+          setupOk: true,
+          redeployed: ['web'],
+          notRedeployed: [],
+        },
+      });
+
+      expect(text(rendered.html)).toContain(
+        'Cloudgate redeployed web, which was deployed after that backup, so it runs its current version again. How the redeploy went shows on that Service.',
+      );
+    });
+
+    it('says a restore redeployed nothing when no Service was deployed after the backup', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: {
+          kind: 'restore',
+          backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+          setupOk: true,
+          redeployed: [],
+          notRedeployed: [],
+        },
+      });
+
+      expect(text(rendered.html)).toContain(
+        'No Service on it was deployed after that backup, so none was redeployed.',
+      );
+    });
+
+    it('lists apart each Service a restore could not redeploy, with the reason, and names only those started as redeployed', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: {
+          kind: 'restore',
+          backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+          setupOk: true,
+          redeployed: ['shop'],
+          notRedeployed: [
+            { name: 'web', reason: 'web-1 is in maintenance' },
+            { name: 'orders', reason: 'web-1 is in maintenance' },
+            { name: 'files', reason: 'files is an S3 bucket' },
+          ],
+        },
+      });
+
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Cloudgate redeployed shop, which was deployed after that backup, so it runs its current version again. How the redeploy went shows on that Service.',
+      );
+      expect(body).toContain(
+        'Cloudgate could not redeploy orders and web, which were deployed after that backup: web-1 is in maintenance. Each shows as failed on its Service, and runs the version the backup holds until it is deployed again.',
+      );
+      expect(body).toContain(
+        'Cloudgate could not redeploy files, which was deployed after that backup: files is an S3 bucket. It shows as failed on its Service, and runs the version the backup holds until it is deployed again.',
+      );
+    });
+
+    it('says which Service a restore rolled back again, to which version, apart from those it redeployed', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: {
+          kind: 'restore',
+          backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+          setupOk: true,
+          redeployed: ['shop'],
+          rolledBack: [{ name: 'web', version: 3 }],
+          notRedeployed: [],
+        },
+      });
+
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Cloudgate rolled web back to v3 again, since the newest change to it after that backup was a rollback to that version.',
+      );
+      expect(body).toContain('Cloudgate redeployed shop, which was deployed');
+    });
+
+    it('says nothing was redeployed, and why, when none could be', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: {
+          kind: 'restore',
+          backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+          setupOk: true,
+          redeployed: [],
+          notRedeployed: [
+            {
+              name: 'web',
+              reason:
+                'its Organization is frozen (Suspended. Contact Octabyte), so no deploy starts',
+            },
+          ],
+        },
+      });
+
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Cloudgate could not redeploy web, which was deployed after that backup: its Organization is frozen (Suspended. Contact Octabyte), so no deploy starts.',
+      );
+      expect(body).not.toContain('Cloudgate redeployed');
+      expect(body).not.toContain('none was redeployed');
+    });
+
+    it('says to run setup again when the setup run after a restore failed', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: {
+          kind: 'restore',
+          backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+          setupOk: false,
+          redeployed: [],
+          notRedeployed: [],
+        },
+      });
+
+      expect(text(rendered.html)).toContain(
+        'Server setup ran on it again and failed: open its Setup card and press Run setup.',
       );
     });
 
@@ -1528,6 +1694,81 @@ describe('mail templates', () => {
       expect(text(rendered.html)).toContain(
         'Charged: monthly, from Dec 15, 2026. The Billing page shows the amount.',
       );
+    });
+  });
+
+  describe('renderBoughtServerRestoreFailedEmail', () => {
+    const props = {
+      userName: 'Grace',
+      serverName: 'web-1',
+      backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+      serverUrl: 'https://console.example.com/servers/abc/settings',
+    };
+
+    const said = async (
+      outcome: Parameters<
+        typeof renderBoughtServerRestoreFailedEmail
+      >[0]['outcome'],
+    ) =>
+      (
+        await renderBoughtServerRestoreFailedEmail({ ...props, outcome })
+      ).html.replace(/<!-- -->/g, '');
+
+    it('says the restore could not be done, that nothing was charged, and that the Server is as it was', async () => {
+      const rendered = await renderBoughtServerRestoreFailedEmail({
+        ...props,
+        outcome: 'refused',
+      });
+
+      expect(rendered.subject).toBe(
+        "We couldn't restore web-1 from its backup",
+      );
+      const text = rendered.html.replace(/<!-- -->/g, '');
+      expect(text).toContain(
+        'We tried twice to restore web-1 from its backup of Nov 02, 2026 at 03:00 UTC, and it could not be done.',
+      );
+      expect(text).toContain(
+        'web-1 is as it was, and keeps running. A restore costs nothing, so nothing was charged. You can try again from its Settings.',
+      );
+      expect(text).toContain(
+        'https://console.example.com/servers/abc/settings',
+      );
+      expect(text).not.toMatch(/hetzner/i);
+    });
+
+    it('says the safety copy would now remove the backup chosen, that nothing was touched, and how to go ahead', async () => {
+      const text = await said('safety-copy-would-remove');
+
+      expect(text).toContain(
+        'We did not restore web-1 from its backup of Nov 02, 2026 at 03:00 UTC: a newer backup was taken meanwhile, so its safety copy would now remove that backup.',
+      );
+      expect(text).toContain(
+        'web-1 is as it was, and keeps running. Nothing was charged. To restore it anyway, try again from its Settings and confirm restoring without a safety copy, or pick a newer backup.',
+      );
+    });
+
+    it('says the disk was restored and what is left to do when only starting the machine again failed', async () => {
+      const text = await said('not-started');
+
+      expect(text).toContain(
+        'We restored the disk of web-1 from its backup of Nov 02, 2026 at 03:00 UTC, and tried twice to start it again, which could not be done.',
+      );
+      expect(text).toContain(
+        'Everything written to its disk since that backup is gone. Contact support to have web-1 started, then press Run setup on its Setup card and redeploy each Service deployed after that backup. Nothing was charged.',
+      );
+      expect(text).not.toContain('as it was');
+    });
+
+    it('never says the Server is as it was when its disk may have been restored', async () => {
+      const text = await said('may-be-rebuilt');
+
+      expect(text).toContain(
+        'We tried twice to restore web-1 from its backup of Nov 02, 2026 at 03:00 UTC, and could not tell whether its disk was restored.',
+      );
+      expect(text).toContain(
+        'Treat everything written to its disk since that backup as gone. Press Run setup on its Setup card to set web-1 up again, then redeploy each Service deployed after that backup. Nothing was charged.',
+      );
+      expect(text).not.toContain('as it was');
     });
   });
 

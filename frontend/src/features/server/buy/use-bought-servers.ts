@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 
 import { ApiError } from "@/lib/api/api-error";
 
@@ -199,6 +200,73 @@ export function useBoughtServerSizes(serverId: string) {
     queryKey: keys.boughtServers.sizes(organizationId, serverId),
     queryFn: () => boughtServersApi.sizes(serverId),
     enabled: organizationId !== null,
+  });
+}
+
+/** How often the list is read again while a backup is still being made: it takes minutes. */
+export const BACKUPS_POLL_MS = 10_000;
+
+/**
+ * A Bought Server's Server backups, newest first; asked only while its
+ * backups are on, and read again while one is still being made, so it
+ * settles with its size. Read again too as the Server leaves Changing: a
+ * Restore's safety copy is one more backup, which shows without a reload.
+ */
+export function useServerBackups(
+  serverId: string,
+  enabled: boolean,
+  changing: boolean,
+) {
+  const { organizationId } = useActiveOrganizationId();
+  const invalidate = useInvalidate();
+  const wasChanging = useRef(changing);
+  useEffect(() => {
+    if (wasChanging.current && !changing) {
+      void invalidate.boughtServerBackups(serverId);
+    }
+    wasChanging.current = changing;
+  }, [changing, invalidate, serverId]);
+  return useQuery({
+    queryKey: keys.boughtServers.backups(organizationId, serverId),
+    queryFn: () => boughtServersApi.backups(serverId),
+    enabled: enabled && organizationId !== null,
+    refetchInterval: (query) =>
+      query.state.data?.some((backup) => backup.beingMade)
+        ? BACKUPS_POLL_MS
+        : false,
+  });
+}
+
+/** *Back up now* on a Ready Bought Server; the list is read again, with the new one in it. */
+export function useBackUpNow(serverId: string) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: () => boughtServersApi.backUpNow(serverId),
+    onSettled: () => invalidate.boughtServerBackups(serverId),
+  });
+}
+
+/**
+ * *Restore* on a Ready Bought Server; the answer is the Server, Changing,
+ * which is then read again until it is Ready, and its backups with it, the
+ * safety copy among them.
+ */
+export function useRestoreBackup(serverId: string) {
+  const client = useQueryClient();
+  const invalidate = useInvalidate();
+  const { organizationId } = useActiveOrganizationId();
+  const key = keys.boughtServers.server(organizationId, serverId);
+  return useMutation({
+    mutationFn: ({
+      backupId,
+      withoutSafetyCopy,
+    }: {
+      backupId: number;
+      withoutSafetyCopy: boolean;
+    }) => boughtServersApi.restore(serverId, backupId, withoutSafetyCopy),
+    onSuccess: (view) => client.setQueryData(key, view),
+    // The Server's key holds its backups' too, so one read covers both.
+    onSettled: () => invalidate.boughtServer(serverId),
   });
 }
 

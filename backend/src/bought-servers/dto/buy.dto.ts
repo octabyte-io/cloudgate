@@ -97,3 +97,18 @@ export const sizeSchema = z.object({
 });
 
 export class SizeDto extends createZodDto(sizeSchema) {}
+
+/**
+ * `POST /bought-servers/:id/backups/:backupId/restore`. `withoutSafetyCopy`
+ * is the go-ahead a Restore of the oldest of 7 backups needs, since its
+ * safety copy would push that backup out; for any other backup a safety
+ * copy is taken whatever it says. `.default({})`, as `finishPayingSchema`'s,
+ * for a press with no body.
+ */
+export const restoreSchema = z
+  .object({
+    withoutSafetyCopy: z.boolean().optional(),
+  })
+  .default({});
+
+export class RestoreDto extends createZodDto(restoreSchema) {}

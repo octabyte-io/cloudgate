@@ -22,7 +22,8 @@
  * catalogue (server types with their per-Location prices and availability,
  * Locations with coordinates, the account's price list), and on a machine:
  * create with labels and a public key, read, change type without growing the
- * disk, power on and off, backups on and off, a Volume's create, attach and
+ * disk, power on and off, backups on and off, the list of them, one
+ * more taken now and a rebuild from one, a Volume's create, attach and
  * resize, delete of the machine, its Volume and its Primary IP, reverse DNS,
  * and a list by label. Snapshots, firewalls, floating IPs, networks, ISO
  * images and rescue mode are out of scope (ADR-0071), so they are not here.
@@ -131,6 +132,24 @@ export interface HetznerImage {
   architecture: 'x86' | 'arm';
 }
 
+/**
+ * `GET /images?type=backup&bound_to=<server id>`, one entry: a copy of a
+ * machine's whole disk, which the provider keeps while its backups are on
+ * (a **Server backup**). Never a snapshot: those are out of scope.
+ */
+export interface HetznerBackup {
+  id: number;
+  /** The provider's own words, or what Cloudgate wrote when it asked for one. */
+  description: string;
+  /** `creating` until the copy is whole. */
+  status: 'creating' | 'available';
+  created: string;
+  /** GB the copy takes; null while it is still being made. */
+  imageSizeGb: number | null;
+  /** GB of the disk it is a copy of. */
+  diskSizeGb: number;
+}
+
 /** An asynchronous task the provider started, and how it stands. */
 export interface HetznerAction {
   id: number;
@@ -193,6 +212,15 @@ export interface CreatedServer {
   action: HetznerAction;
 }
 
+/**
+ * `POST /servers/{id}/actions/create_image` with type `backup`: the backup,
+ * `creating` until the action ends, and the action making it.
+ */
+export interface CreatedBackup {
+  backup: HetznerBackup;
+  action: HetznerAction;
+}
+
 export interface CreateVolumeRequest {
   name: string;
   sizeGb: number;
@@ -243,6 +271,29 @@ export interface HetznerCloudPort {
   enableBackup(serverId: number): Promise<HetznerAnswer<HetznerAction>>;
   /** Also deletes every backup the machine has, at once (the provider's rule). */
   disableBackup(serverId: number): Promise<HetznerAnswer<HetznerAction>>;
+  /** Every backup the machine has, in no promised order. */
+  listBackups(serverId: number): Promise<HetznerAnswer<HetznerBackup[]>>;
+  /**
+   * One more backup, at once (`create_image` with type `backup`): never a
+   * snapshot. It takes one of the machine's 7 backup slots, so once all 7
+   * are full the provider deletes the oldest to make room.
+   */
+  createBackup(
+    serverId: number,
+    description: string,
+  ): Promise<HetznerAnswer<CreatedBackup>>;
+  /**
+   * Puts the machine's disk back as it was in one of its backups
+   * (`rebuild` with the image's id): everything written since is lost. The
+   * machine keeps its id, addresses, labels and Volumes, which no backup
+   * holds. The provider also answers a root password, which is null for a
+   * machine made with a key, as every Bought Server is; it is dropped here,
+   * never logged or stored.
+   */
+  rebuild(
+    serverId: number,
+    imageId: number,
+  ): Promise<HetznerAnswer<HetznerAction>>;
   /** Sets the reverse DNS of one of the machine's addresses. */
   setReverseDns(
     serverId: number,

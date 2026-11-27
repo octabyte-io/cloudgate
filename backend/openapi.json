@@ -10973,6 +10973,89 @@
         "tags": [
           "BoughtServers"
         ]
+      },
+      "get": {
+        "operationId": "BoughtServersController_listBackups",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "BoughtServers"
+        ]
+      },
+      "post": {
+        "operationId": "BoughtServersController_createBackup",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "BoughtServers"
+        ]
+      }
+    },
+    "/bought-servers/{id}/backups/{backupId}/restore": {
+      "post": {
+        "operationId": "BoughtServersController_restoreBackup",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "backupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "BoughtServers"
+        ]
       }
     },
     "/bought-servers/{id}/storage": {
@@ -25833,6 +25916,15 @@
         "required": [
           "enabled"
         ]
+      },
+      "RestoreDto": {
+        "type": "object",
+        "properties": {
+          "withoutSafetyCopy": {
+            "type": "boolean"
+          }
+        },
+        "default": {}
       },
       "StorageDto": {
         "type": "object",

@@ -80,6 +80,13 @@ export const rollback = pgTable('rollback', {
    * `null` on every Server point.
    */
   folder: text('folder'),
+  /**
+   * When the point was last put back on a Server, ISO; null until it is.
+   * A Server rollback writes no Deployment row, so this is the one record of
+   * it: a Restore of its Bought Server reads it to put the point back when
+   * it is the Service's newest change after the backup (ADR-0093).
+   */
+  rolledBackAt: text('rolled_back_at'),
   createdAt: isoTimestamp('created_at'),
 });
 

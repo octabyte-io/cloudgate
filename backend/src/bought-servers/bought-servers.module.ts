@@ -3,6 +3,7 @@ import { MailModule } from '../mail/mail.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { SchedulingModule } from '../scheduling/scheduling.module';
 import { SshKeysModule } from '../ssh-keys/ssh-keys.module';
+import { BoughtServerBackups } from './bought-server-backups.service';
 import { BoughtServerClock } from './bought-server-clock.service';
 import { BoughtServerNotifications } from './bought-server-notifications.service';
 import { BoughtServerChanges } from './bought-server-changes.service';
@@ -10,6 +11,7 @@ import { BoughtServerChangeSteps } from './bought-server-change-steps.service';
 import { BoughtServerDeletion } from './bought-server-deletion.service';
 import { BoughtServerPurchases } from './bought-server-purchases.service';
 import { BoughtServerReprices } from './bought-server-reprices.service';
+import { BoughtServerRestoreSteps } from './bought-server-restore-steps.service';
 import { BoughtServerSettings } from './bought-server-settings.service';
 import { BoughtServerStages } from './bought-server-stages.service';
 import { BoughtServersConfig } from './bought-servers.config';
@@ -22,6 +24,7 @@ import { EXCHANGE_RATE } from './exchange-rate/exchange-rate.port';
 import { HetznerCloudAdapter } from './hetzner/hetzner-cloud.adapter';
 import { HETZNER_MACHINES, HETZNER_PRICES } from './hetzner/hetzner-cloud.port';
 import { OrphanMachines } from './orphan-machines.service';
+import { RestoreRedeploys } from './restore-redeploys.service';
 
 /**
  * **Bought Servers** (ADR-0071), Hosted instance only. The provider port is
@@ -45,6 +48,9 @@ import { OrphanMachines } from './orphan-machines.service';
     BoughtServerClock,
     BoughtServerChanges,
     BoughtServerChangeSteps,
+    BoughtServerRestoreSteps,
+    RestoreRedeploys,
+    BoughtServerBackups,
     BoughtServerSettings,
     DayRates,
     { provide: EXCHANGE_RATE, useClass: EcbExchangeRate },

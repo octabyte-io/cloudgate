@@ -24,6 +24,7 @@ import {
   configNameConstraints,
   encryptedText,
   generateAppName,
+  deployedAtColumn,
   isoTimestamp,
   nanoidPk,
 } from '../../db/columns';
@@ -78,6 +79,7 @@ export const mongo = pgTable(
     replicas: integer('replicas').notNull().default(1),
     replicaSets: boolean('replica_sets').notNull().default(false),
     createdAt: isoTimestamp('created_at'),
+    deployedAt: deployedAtColumn(),
     environmentId: text('environment_id')
       .notNull()
       .references(() => environment.environmentId, { onDelete: 'cascade' }),

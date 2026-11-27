@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Card } from "@/components/console/card";
 import { Chip } from "@/components/console/chip";
@@ -13,16 +13,14 @@ import { usePermission } from "@/lib/auth/use-permission";
 
 import { wholeUsd } from "../buy/buy-model";
 import { useBoughtServer, useSetBackups } from "../buy/use-bought-servers";
+import { CHANGE_WAITS_FOR_READY } from "./bought-server-reasons";
 import { BoughtServerSizeRow } from "./bought-server-size";
 import { ExtraStorageRow } from "./extra-storage-row";
+import { ServerBackupList } from "./server-backup-list";
 
 /** Said on the switch to a role that may not change what the Organization pays for. */
 export const BOUGHT_SERVER_CHANGE_REFUSAL =
   "Your role in this Organization cannot change what this Server is charged for. Ask an owner or an admin.";
-
-/** Said while the switch is off because the Server is busy or not made yet. */
-export const CHANGE_WAITS_FOR_READY =
-  "This Server can be changed once it is Ready.";
 
 /** US cents a month as whole dollars: `$5/month`. */
 function perMonth(cents: number): string {
@@ -36,17 +34,25 @@ function perMonth(cents: number): string {
  *
  * Each change asks first. Turning backups on says what it costs and that
  * today's part is charged now; turning them off warns that every backup is
- * deleted at once and says the unused part is credited. While a change runs
+ * deleted at once and says the unused part is credited. While backups are
+ * on, the Server backups are listed under it (`ServerBackupList`). While a change runs
  * the card says **Changing** and every switch waits.
  */
 export function BoughtServerCard({ server }: { server: Server }) {
   const bought = useBoughtServer(server.serverId);
   if (!bought.data) return null;
-  return <BoughtServerChanges view={bought.data} />;
+  return <BoughtServerChanges view={bought.data} server={server} />;
 }
 
-function BoughtServerChanges({ view }: { view: BoughtServerView }) {
+function BoughtServerChanges({
+  view,
+  server,
+}: {
+  view: BoughtServerView;
+  server: Server;
+}) {
   const canChange = usePermission({ server: ["create"] });
+  const whyId = useId();
   const setBackups = useSetBackups(view.id);
   const [asking, setAsking] = useState<"on" | "off" | null>(null);
 
@@ -116,9 +122,12 @@ function BoughtServerChanges({ view }: { view: BoughtServerView }) {
           <BoughtServerSizeRow view={view} why={rowWhy} />
         </QAList>
         {why && canChange.allowed ? (
-          <p className="mt-2 text-meta text-tx-3">{why}</p>
+          <p id={whyId} className="mt-2 text-meta text-tx-3">
+            {why}
+          </p>
         ) : null}
       </Card.Body>
+      <ServerBackupList view={view} server={server} readyNoteId={whyId} />
 
       <Modal
         open={asking === "on"}

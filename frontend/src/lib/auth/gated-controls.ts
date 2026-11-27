@@ -150,6 +150,8 @@ export const GATED_CONTROLS: GatedControl[] = [
   { file: "features/server/fleet/fleet-screen.tsx", label: "Add a Server", requires: { server: ["create"] }, route: "POST /servers" },
   { file: "features/server/settings/server-danger-card.tsx", label: "Delete", requires: { server: ["delete"] }, route: "DELETE /servers/:id" },
   { file: "features/server/settings/bought-server-size.tsx", label: "Change size", requires: { server: ["create"] }, route: "PUT /bought-servers/:id/size" },
+  { file: "features/server/settings/server-backup-list.tsx", label: "Back up now", requires: { server: ["create"] }, route: "POST /bought-servers/:id/backups" },
+  { file: "features/server/settings/server-backup-list.tsx", label: "Restore", requires: { server: ["create"] }, route: "POST /bought-servers/:id/backups/:backupId/restore" },
   { file: "features/server/settings/maintenance-card.tsx", label: "Start maintenance", requires: { server: ["create"] }, route: "POST /servers/:id/start-maintenance" },
   { file: "features/server/settings/maintenance-card.tsx", label: "End maintenance", requires: { server: ["create"] }, route: "POST /servers/:id/end-maintenance" },
   { file: "features/ssh-keys/manage-keys-modal.tsx", label: "Add key", requires: { sshKeys: ["create"] }, route: "POST /ssh-keys" },

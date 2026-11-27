@@ -843,6 +843,21 @@ export function useInvalidate() {
         ]),
 
       /**
+       * One Bought Server after a change to it that answers with its view
+       * (a Restore): the view, and under its key its sizes and its Server
+       * backups, the safety copy among them.
+       */
+      boughtServer: (id: string) =>
+        invalidate(keys.boughtServers.server(organizationId, id)),
+
+      /**
+       * One Bought Server's Server backups (ADR-0093): after Back up now,
+       * and as a Restore ends, which leaves its safety copy among them.
+       */
+      boughtServerBackups: (id: string) =>
+        invalidate(keys.boughtServers.backups(organizationId, id)),
+
+      /**
        * An Operator suspended or lifted an Organization: the Operator
        * page's list, and the billing standing — the frozen banner — in case
        * the Operator's own active Organization is the one they acted on.

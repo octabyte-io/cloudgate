@@ -164,7 +164,13 @@ export type BoughtServerView = {
   /** What backups would cost if turned on now; null while on, or when the size is no longer sold there. */
   backupsOfferCents: number | null;
   /** The change running now, while the stage is Changing. */
-  change: { backups?: boolean; storageGb?: number; serverType?: string } | null;
+  change: {
+    backups?: boolean;
+    storageGb?: number;
+    serverType?: string;
+    /** A Restore: when the backup it puts back was taken, ISO 8601. */
+    restore?: { backupTakenAt: string };
+  } | null;
 };
 
 /**
@@ -198,6 +204,20 @@ export type ServerPurchase = {
   /** US cents a month. */
   monthlyCents: number;
   createdAt: string;
+};
+
+/**
+ * `GET /bought-servers/:id/backups`: one **Server backup**, a copy of the
+ * Server's whole disk. Listed newest first; none while backups are off.
+ */
+export type ServerBackup = {
+  /** What a restore names; nothing renders it. */
+  id: number;
+  /** When it was taken, ISO 8601. */
+  takenAt: string;
+  /** GB it takes; null while it is still being made. */
+  sizeGb: number | null;
+  beingMade: boolean;
 };
 
 export const boughtServersApi = {
@@ -245,6 +265,24 @@ export const boughtServersApi = {
     api.put<BoughtServerView>(
       `/bought-servers/${encodeURIComponent(id)}/storage`,
       { sizeGb },
+    ),
+  /** Its Server backups, newest first; none while backups are off. */
+  backups: (id: string) =>
+    api.get<ServerBackup[]>(
+      `/bought-servers/${encodeURIComponent(id)}/backups`,
+    ),
+  /** *Back up now*: one more Server backup at once, answered still being made. */
+  backUpNow: (id: string) =>
+    api.post<ServerBackup>(`/bought-servers/${encodeURIComponent(id)}/backups`),
+  /**
+   * *Restore*: the disk put back as it was at one of its Server backups, a
+   * safety copy taken first. The oldest of 7 needs `withoutSafetyCopy`,
+   * since its safety copy would push it out. Answered at once, Changing.
+   */
+  restore: (id: string, backupId: number, withoutSafetyCopy: boolean) =>
+    api.post<BoughtServerView>(
+      `/bought-servers/${encodeURIComponent(id)}/backups/${backupId}/restore`,
+      { withoutSafetyCopy },
     ),
   /** The sizes the Server can move to in its Location, with their prices. */
   sizes: (id: string) =>

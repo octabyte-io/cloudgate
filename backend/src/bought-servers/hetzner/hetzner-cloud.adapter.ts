@@ -1,10 +1,12 @@
 import type {
   CreateServerRequest,
   CreateVolumeRequest,
+  CreatedBackup,
   CreatedServer,
   CreatedVolume,
   HetznerAction,
   HetznerAnswer,
+  HetznerBackup,
   HetznerCloudPort,
   HetznerImage,
   HetznerLocation,
@@ -180,6 +182,70 @@ export class HetznerCloudAdapter implements HetznerCloudPort {
 
   disableBackup(serverId: number): Promise<HetznerAnswer<HetznerAction>> {
     return this.action(`/servers/${serverId}/actions/disable_backup`);
+  }
+
+  /**
+   * The machine's backup images: never its snapshots, which share the list.
+   * One the provider marks `unavailable` is left out: it is neither whole nor
+   * still being made, so nothing could be restored from it.
+   */
+  async listBackups(serverId: number): Promise<HetznerAnswer<HetznerBackup[]>> {
+    const answer = await this.everyPage<ApiBackupImage>('/images', 'images', {
+      type: 'backup',
+      bound_to: String(serverId),
+    });
+    return answer.ok
+      ? {
+          ok: true,
+          value: answer.value.flatMap((api) => {
+            const backup = backupOf(api);
+            return backup ? [backup] : [];
+          }),
+        }
+      : answer;
+  }
+
+  async createBackup(
+    serverId: number,
+    description: string,
+  ): Promise<HetznerAnswer<CreatedBackup>> {
+    const answer = await this.call<{
+      image: ApiBackupImage;
+      action: ApiAction;
+    }>('POST', `/servers/${serverId}/actions/create_image`, {
+      type: 'backup',
+      description,
+    });
+    if (!answer.ok) return answer;
+    const backup = backupOf(answer.value.image);
+    // A new image is `creating`; one already `unavailable` is no backup.
+    if (!backup) {
+      return {
+        ok: false,
+        code: 'unavailable',
+        message: `backup ${answer.value.image.id} is unavailable`,
+      };
+    }
+    return {
+      ok: true,
+      value: { backup, action: actionOf(answer.value.action) },
+    };
+  }
+
+  async rebuild(
+    serverId: number,
+    imageId: number,
+  ): Promise<HetznerAnswer<HetznerAction>> {
+    // The image by its id, as the provider's own Go client sends it. Only
+    // the action is read: the root password beside it is never kept.
+    const answer = await this.call<{ action: ApiAction }>(
+      'POST',
+      `/servers/${serverId}/actions/rebuild`,
+      { image: imageId },
+    );
+    return answer.ok
+      ? { ok: true, value: actionOf(answer.value.action) }
+      : answer;
   }
 
   setReverseDns(
@@ -411,6 +477,17 @@ interface ApiImage {
   architecture: 'x86' | 'arm';
 }
 
+/** An image of type `backup`, as `GET /images` lists it. */
+interface ApiBackupImage {
+  id: number;
+  description: string | null;
+  status: 'creating' | 'available' | 'unavailable';
+  created: string;
+  /** GB; null while it is being made. */
+  image_size: number | null;
+  disk_size: number;
+}
+
 interface ApiAction {
   id: number;
   command: string;
@@ -504,6 +581,18 @@ function imageOf(api: ApiImage): HetznerImage | null {
     osVersion: api.os_version,
     description: api.description,
     architecture: api.architecture,
+  };
+}
+
+function backupOf(api: ApiBackupImage): HetznerBackup | null {
+  if (api.status === 'unavailable') return null;
+  return {
+    id: api.id,
+    description: api.description ?? '',
+    status: api.status,
+    created: api.created,
+    imageSizeGb: api.image_size,
+    diskSizeGb: api.disk_size,
   };
 }
 
