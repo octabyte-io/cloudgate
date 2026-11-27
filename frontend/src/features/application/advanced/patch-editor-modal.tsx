@@ -33,10 +33,11 @@ import { diffLines } from "@/lib/format/diff-lines";
  * the whole file as added would say the patch rewrites something, when what it
  * does is add it.
  *
- * Tabs rather than panes side by side, and the reason is width: a diff cannot wrap
- * without lying about its indentation (`DiffView` owns its own horizontal scroll
- * for exactly that), and two of them beside a textarea inside a dialog leaves each
- * about 200px on a laptop. Tabs give the whole measure to whichever is being read.
+ * Tabs rather than panes side by side, and the reason is width: a diff wraps its
+ * long lines (`DiffView` hangs them at their indentation rather than scrolling),
+ * and two of them beside a textarea inside a dialog leaves each about 200px on a
+ * laptop, where nearly every line would wrap. Tabs give the whole measure to
+ * whichever is being read.
  *
  * **Mark for deletion is here, not on the list.** A `delete` patch is written by
  * a different route (`POST /patches/mark-for-deletion`), it is the one action

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Dash } from "@/components/console/dash";
 import type { Column } from "@/components/console/data-table";
 import type { ResourceSpec } from "@/components/console/resource-spec";
+import { RowSub } from "@/components/console/rows/cells";
 import {
   destinationsApi,
   type Destination,
@@ -64,30 +65,48 @@ const schema = z.object({
 
 export type DestinationValues = z.infer<typeof schema>;
 
+/**
+ * Three columns and the actions, every one of them a value with no natural
+ * limit: a name someone typed, a bucket (`…-eu-west-1-production-archive`) and
+ * an endpoint URL. Each truncates in a column that shares the width the
+ * others leave, whole on its `title`, so the row fits its card at tablet and
+ * laptop width instead of holding Edit and Remove behind a scroll. The region
+ * belongs to the endpoint — it is where that endpoint answers — so it is the
+ * line under it rather than a column of its own.
+ */
 export const destinationColumns: Column<Destination>[] = [
   {
     id: "name",
     head: "Name",
     tone: "key",
+    truncate: true,
     compare: (a, b) => a.name.localeCompare(b.name),
-    cell: (row) => row.name,
+    cell: (row) => <span title={row.name}>{row.name}</span>,
   },
   {
     id: "bucket",
     head: "Bucket",
-    cell: (row) => <span className="font-mono text-meta">{row.bucket}</span>,
+    truncate: true,
+    cell: (row) => (
+      <span title={row.bucket} className="font-mono text-meta">
+        {row.bucket}
+      </span>
+    ),
   },
   {
     id: "endpoint",
     head: "Endpoint",
-    tone: "wrap",
-    cell: (row) => <span className="font-mono text-meta">{row.endpoint}</span>,
-  },
-  {
-    id: "region",
-    head: "Region",
-    tone: "muted",
-    cell: (row) => row.region || <Dash word="None" />,
+    truncate: true,
+    cell: (row) => (
+      <>
+        <div title={row.endpoint} className="truncate font-mono text-meta">
+          {row.endpoint}
+        </div>
+        <RowSub mono title={row.region || undefined}>
+          {row.region || <Dash word="No region" />}
+        </RowSub>
+      </>
+    ),
   },
 ];
 

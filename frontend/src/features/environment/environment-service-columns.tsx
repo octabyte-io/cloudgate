@@ -1,5 +1,5 @@
 import { type Column } from "@/components/console/data-table";
-import { RowTime } from "@/components/console/rows/cells";
+import { RowSub, RowTime } from "@/components/console/rows/cells";
 import {
   serviceColumns,
   type ServiceRow,
@@ -24,8 +24,8 @@ import { spendFact } from "@/lib/format/token-spend";
  */
 
 /**
- * The four `serviceColumns()` the Environment read can honestly fill, plus when
- * the service was created.
+ * The four `serviceColumns()` the Environment read can honestly fill, with when
+ * the service was created under its type.
  *
  * See the note at the top for why source, domain, replicas and last-deployment
  * are dropped rather than dashed: the projection is uniform across eight kinds,
@@ -51,11 +51,23 @@ export const ENVIRONMENT_SERVICE_COLUMNS: Column<EnvironmentServiceRow>[] = (() 
   const kept: Column<EnvironmentServiceRow>[] = serviceColumns().filter(
     (column) => KEPT.has(column.id),
   );
-  const created: Column<EnvironmentServiceRow> = {
-    id: "created",
-    head: "Created",
-    compare: (a, b) => a.createdAt.localeCompare(b.createdAt),
-    cell: (row) => <RowTime iso={row.createdAt} />,
+  // **When it was created is the line under its type**, not a column of its
+  // own. Name, Type, Status, Health, Created and Open held Open behind the
+  // scroll at 1280px, where this card sits beside the facts rail; the time is
+  // an aside to what the Service is, so it reads as one, with the exact
+  // stamp on its `title`. The column still sorts by type.
+  const kindAt = kept.findIndex((column) => column.id === "kind");
+  const kind = kept[kindAt];
+  kept[kindAt] = {
+    ...kind,
+    cell: (row) => (
+      <>
+        {kind.cell(row)}
+        <RowSub>
+          Created <RowTime iso={row.createdAt} />
+        </RowSub>
+      </>
+    ),
   };
   // Worst first when sorted ascending; a row the batch does not name last.
   const health: Column<EnvironmentServiceRow> = {
@@ -66,16 +78,9 @@ export const ENVIRONMENT_SERVICE_COLUMNS: Column<EnvironmentServiceRow>[] = (() 
       (b.health ? HEALTH_STATE_RANK[b.health.state] : 99),
     cell: (row) => <HealthCell row={row.health} pending={row.healthPending} />,
   };
-  // Health beside Status; Created before "open", which is the actions cell
-  // and stays last.
+  // Health beside Status; "open", the actions cell, stays last.
   const status = kept.findIndex((column) => column.id === "status");
-  return [
-    ...kept.slice(0, status + 1),
-    health,
-    ...kept.slice(status + 1, -1),
-    created,
-    ...kept.slice(-1),
-  ];
+  return [...kept.slice(0, status + 1), health, ...kept.slice(status + 1)];
 })();
 
 /** Tokens, prompt and completion, reported and estimated together. */
@@ -89,14 +94,16 @@ const tokensOf = (figures: SpendFigures | undefined) =>
 
 /**
  * {@link ENVIRONMENT_SERVICE_COLUMNS} with each AI model's 30-day Token spend
- * before Created; a row that is not an AI model the reader can read
+ * before the actions; a row that is not an AI model the reader can read
  * reads as a dash, and sorts below every figure.
  */
 export const ENVIRONMENT_SERVICE_COLUMNS_WITH_SPEND: Column<EnvironmentServiceRow>[] =
   (() => {
     const spend: Column<EnvironmentServiceRow> = {
       id: "token-spend",
-      head: "Token spend, 30 days",
+      // One word: a `nowrap` header is its column's minimum. The full name
+      // is on the header's `title` and on each figure's.
+      head: <span title="Token spend, 30 days">Spend</span>,
       compare: (a, b) => tokensOf(a.spend) - tokensOf(b.spend),
       cell: (row) => {
         if (!row.spend) return <span className="text-tx-3">—</span>;
@@ -104,13 +111,10 @@ export const ENVIRONMENT_SERVICE_COLUMNS_WITH_SPEND: Column<EnvironmentServiceRo
         return <span title={fact.title}>{fact.value}</span>;
       },
     };
-    const created = ENVIRONMENT_SERVICE_COLUMNS.findIndex(
-      (column) => column.id === "created",
-    );
     return [
-      ...ENVIRONMENT_SERVICE_COLUMNS.slice(0, created),
+      ...ENVIRONMENT_SERVICE_COLUMNS.slice(0, -1),
       spend,
-      ...ENVIRONMENT_SERVICE_COLUMNS.slice(created),
+      ...ENVIRONMENT_SERVICE_COLUMNS.slice(-1),
     ];
   })();
 

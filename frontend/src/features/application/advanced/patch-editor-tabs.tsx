@@ -25,15 +25,15 @@ type Rows = ReturnType<typeof diffLines>;
  * so `source=repo` 404s. Rendering the whole file as added would say the patch
  * rewrites something, when what it does is add it.
  *
- * Tabs rather than panes side by side, and the reason is width: a diff cannot wrap
- * without lying about its indentation (`DiffView` owns its own horizontal scroll for
- * exactly that), and two of them beside a textarea inside a dialog leaves each about
- * 200px on a laptop.
+ * Tabs rather than panes side by side, and the reason is width: a diff wraps its
+ * long lines (`DiffView` hangs them at their indentation rather than scrolling),
+ * and two of them beside a textarea inside a dialog leaves each about 200px on a
+ * laptop, where nearly every line would wrap.
  *
- * `DiffView`'s scrollbar only exists if the dialog's grid item around these tabs
- * may shrink below a diff line's width, which is `patch-editor-modal.tsx`'s
- * `min-w-0` on `Modal.Body`. A class here cannot do it: these tabs are not
- * the grid item, so their minimum width does not size the dialog's column.
+ * The dialog's grid item around these tabs keeps `min-w-0` on `Modal.Body`
+ * (`patch-editor-modal.tsx`) as the guard against anything inside it with an
+ * unbreakable min-content widening the dialog. A class here cannot do it: these
+ * tabs are not the grid item, so their minimum width does not size the column.
  */
 export function PatchEditorTabs({
   filePath,

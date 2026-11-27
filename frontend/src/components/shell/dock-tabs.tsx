@@ -43,7 +43,7 @@ export function DockTabs({ dock }: { dock: DockApi }) {
   return (
     <div
       data-dock-tabs
-      className="flex min-w-0 shrink items-center gap-1.5 overflow-x-auto"
+      className="no-scrollbar flex min-w-0 shrink items-center gap-1.5 overflow-x-auto"
     >
       <span className="shrink-0 text-meta whitespace-nowrap text-tx-3">
         Shells {shells.length}/{MAX_DOCK_SHELLS}

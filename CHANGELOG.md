@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Nothing in the console scrolls sideways
+
+A table wider than its card no longer scrolls sideways: each row stacks into its name and actions on one line, with the other columns as labelled values under it, and the table comes back once there is room. The Servers, Backup destinations, Registries, Services, Domains and Audit log tables were reshaped so they stay tables at laptop width (the SSH address moves under the Server's name, region under the endpoint, username under the registry, Created under the type). Compose files, project config, converted files, diffs and other code views wrap long lines at their indentation instead of scrolling. The Create an Agent dialog, option details in pickers, the resource switcher on a phone and a long search in ⌘K no longer run past their box.
+
+**What to do on upgrade**: nothing.
+
 ## 0.3.13 (2026-11-26)
 
 ### A Compose stack on a Server has a Volume backups tab

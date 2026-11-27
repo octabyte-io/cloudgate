@@ -4,6 +4,7 @@ import { Chip } from "@/components/console/chip";
 import { Dash } from "@/components/console/dash";
 import type { Column } from "@/components/console/data-table";
 import type { ResourceSpec } from "@/components/console/resource-spec";
+import { RowSub } from "@/components/console/rows/cells";
 import { registriesApi, type Registry } from "@/lib/api/endpoints/registries";
 import { redactSecrets } from "@/lib/format/redact";
 import { example } from "@/components/console/form-spec";
@@ -79,37 +80,53 @@ const schema = z.object({
 
 export type RegistryValues = z.infer<typeof schema>;
 
+/**
+ * Every value here is one someone typed and none has a limit — a name, a
+ * hostname, a username, an image prefix like
+ * `octabyte-io/very-long-organization-image-prefix` — so each column
+ * truncates in a share of the width the others leave, whole on its `title`,
+ * and the row's Edit and Remove stay on screen at tablet and laptop width.
+ * The username is the line under the registry it signs in to: the two are
+ * one credential, and a column each was a column too many.
+ */
 export const registryColumns: Column<Registry>[] = [
   {
     id: "name",
     head: "Name",
     tone: "key",
+    truncate: true,
     compare: (a, b) => a.name.localeCompare(b.name),
-    cell: (row) => row.name,
+    cell: (row) => <span title={row.name}>{row.name}</span>,
   },
   {
     id: "url",
     head: "Registry",
-    cell: (row) =>
-      row.url ? (
-        <span className="font-mono text-meta">{row.url}</span>
-      ) : (
-        // Not a `Dash`: the empty column is a real answer, not a missing one.
-        <span className="text-tx-2">Docker Hub</span>
-      ),
-  },
-  {
-    id: "username",
-    head: "Username",
-    tone: "muted",
-    cell: (row) => row.username,
+    truncate: true,
+    cell: (row) => (
+      <>
+        {row.url ? (
+          <div title={row.url} className="truncate font-mono text-meta">
+            {row.url}
+          </div>
+        ) : (
+          // Not a `Dash`: the empty column is a real answer, not a missing one.
+          <div className="text-tx-2">Docker Hub</div>
+        )}
+        <RowSub title={`Signs in as ${row.username}`}>
+          as <span className="font-mono tracking-mono">{row.username}</span>
+        </RowSub>
+      </>
+    ),
   },
   {
     id: "imagePrefix",
-    head: "Image prefix",
+    head: "Prefix",
+    truncate: true,
     cell: (row) =>
       row.imagePrefix ? (
-        <Chip variant="mono">{row.imagePrefix}</Chip>
+        <Chip variant="mono" title={row.imagePrefix} className="max-w-full">
+          <span className="truncate">{row.imagePrefix}</span>
+        </Chip>
       ) : (
         <Dash word="None" />
       ),

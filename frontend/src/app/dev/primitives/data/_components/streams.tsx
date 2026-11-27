@@ -85,7 +85,7 @@ export function StreamsGallery() {
 
       <Row
         label="DiffView"
-        note="Adds, deletes and unchanged context, with a sticky gutter. Diff lines cannot wrap without lying about their indentation, so this one scrolls sideways inside itself — try the long DATABASE_URL."
+        note="Adds, deletes and unchanged context, with a fixed gutter. Long lines wrap into the content column, hanging at their own indentation, so nothing scrolls sideways — try the long DATABASE_URL."
         className="block"
       >
         <DiffView

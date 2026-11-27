@@ -184,7 +184,10 @@ export function CreateAgentModal({
                 </PickGrid>
               </div>
 
-              <section aria-labelledby={accessHeading} className="grid gap-3">
+              <section
+                aria-labelledby={accessHeading}
+                className="grid min-w-0 grid-cols-1 gap-3"
+              >
                 <div>
                   <h3
                     id={accessHeading}

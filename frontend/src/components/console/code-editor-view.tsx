@@ -1,11 +1,20 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { yaml } from "@codemirror/lang-yaml";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { EditorState, type Extension } from "@codemirror/state";
-import { EditorView, keymap, lineNumbers } from "@codemirror/view";
+import { EditorState, RangeSetBuilder, type Extension } from "@codemirror/state";
+import {
+  Decoration,
+  type DecorationSet,
+  EditorView,
+  keymap,
+  lineNumbers,
+  ViewPlugin,
+  type ViewUpdate,
+} from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import { useEffect, useRef } from "react";
 
+import { hangColumns } from "@/lib/format/hang";
 import { cn } from "@/lib/utils";
 
 /**
@@ -45,6 +54,14 @@ import { cn } from "@/lib/utils";
  * string green would make the same colour mean "fine" in a log and "string" one
  * card above it. Two hues and two greys is enough to read YAML: keys separate from
  * values, comments out of the way.
+ *
+ * ## Long lines wrap
+ *
+ * Nothing in the console scrolls sideways, and an editor that did hid the end
+ * of every long image reference behind a scrollbar at phone width (370px of
+ * overflow at 375). `EditorView.lineWrapping` plus `HANGING_INDENT` below: a
+ * wrapped line keeps one line number and its continuation rows sit at its own
+ * indentation, so the wrap never changes what the YAML appears to nest under.
  */
 export function CodeEditorView({
   value,
@@ -146,6 +163,9 @@ export function CodeEditorView({
       yaml(),
       syntaxHighlighting(YAML_HIGHLIGHT),
       history(),
+      // Long lines wrap rather than scroll sideways — see `HANGING_INDENT`.
+      EditorView.lineWrapping,
+      HANGING_INDENT,
       // `defaultKeymap` and `historyKeymap` only. **Not `indentWithTab`**: it
       // binds Tab inside the editor, which takes away the one key a keyboard user
       // has for leaving a control. Two spaces typed is a smaller cost than a
@@ -190,6 +210,15 @@ const CONSOLE_THEME = EditorView.theme({
     paddingBlock: "calc(var(--spacing) * 3)",
   },
   ".cm-content": { caretColor: "var(--well-tx)" },
+  // CodeMirror's own line padding is `0 2px 0 6px`; the left side gains the
+  // line's `--hang` and gives it back as a negative indent, so a wrapped line's
+  // first row is where it always was and its continuation rows sit at its
+  // indentation. CodeMirror reads `text-indent` when it measures, so the caret
+  // and selection land where the text is.
+  ".cm-line": {
+    paddingLeft: "calc(6px + var(--hang, 0ch))",
+    textIndent: "calc(var(--hang, 0ch) * -1)",
+  },
   // See the note on the wrapper: the base layer's ring is moved off the
   // contenteditable and onto the box, because this one is inside a scroller.
   ".cm-content:focus-visible": { outline: "none" },
@@ -224,3 +253,53 @@ const YAML_HIGHLIGHT = HighlightStyle.define([
     color: "color-mix(in oklch, var(--well-tx) 62%, transparent)",
   },
 ]);
+
+/**
+ * **Wrapped lines hang at their own indentation.**
+ *
+ * `EditorView.lineWrapping` alone sends a long line's continuation back to the
+ * left edge, which in YAML — where indentation *is* the structure — makes a
+ * wrapped value look like a new key at the top level. This sets `--hang` (the
+ * line's leading whitespace, in `ch`) on every visible line, and the theme turns
+ * it into padding plus an equal negative `text-indent`. Line numbers stay one
+ * per logical line: the gutter follows the line block, not its rows.
+ *
+ * Only the viewport is decorated, so a long file costs what is on screen.
+ */
+const HANGING_INDENT = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+    constructor(view: EditorView) {
+      this.decorations = hangDecorations(view);
+    }
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = hangDecorations(update.view);
+      }
+    }
+  },
+  { decorations: (plugin) => plugin.decorations },
+);
+
+function hangDecorations(view: EditorView): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>();
+  const tabSize = view.state.tabSize;
+  // Two visible ranges can meet inside one line; a line is decorated once.
+  let last = -1;
+  for (const { from, to } of view.visibleRanges) {
+    for (let pos = from; pos <= to; ) {
+      const line = view.state.doc.lineAt(pos);
+      const columns = hangColumns(line.text, tabSize);
+      if (columns > 0 && line.from > last) {
+        last = line.from;
+        builder.add(
+          line.from,
+          line.from,
+          Decoration.line({ attributes: { style: `--hang: ${columns}ch` } }),
+        );
+      }
+      pos = line.to + 1;
+    }
+  }
+  return builder.finish();
+}

@@ -75,7 +75,7 @@ export function ResolutionCard({
           <p className="text-meta text-tx-2">
             To use a Project or Environment variable, reference it by name:
           </p>
-          <pre className="mt-1.5 overflow-x-auto font-mono text-meta text-tx">
+          <pre className="mt-1.5 whitespace-pre-wrap wrap-anywhere font-mono text-meta text-tx">
             <code>{"CACHE_URL=${{project.REDIS_URL}}"}</code>
           </pre>
           <p className="mt-1.5 text-meta text-tx-3">An unset name fails the deploy.</p>

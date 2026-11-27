@@ -166,10 +166,21 @@ const ENVIRONMENT_DOMAIN_COLUMNS: Column<EnvironmentDomain>[] = (() => {
   const service: Column<EnvironmentDomain> = {
     id: "service",
     head: "Service",
+    // A cell is `nowrap` by default, so the name's `wrap-anywhere` below needs
+    // the column to allow wrapping at all.
+    className: "whitespace-normal",
     compare: (a, b) => a.service.name.localeCompare(b.service.name),
     cell: (row) => (
       <>
-        <RowLink href={serviceHref(row.service)}>{row.service.name}</RowLink>
+        {/* `wrap-anywhere`: a Service name has no limit and no spaces, and
+            on one line it set this column's minimum, which held the row's
+            Open behind the scroll at 1280px. */}
+        <RowLink
+          href={serviceHref(row.service)}
+          className="wrap-anywhere"
+        >
+          {row.service.name}
+        </RowLink>
         <RowSub>{SERVICE_KIND[row.service.serviceType]}</RowSub>
       </>
     ),

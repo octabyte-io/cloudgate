@@ -51,7 +51,7 @@ export function VariableReferenceCard() {
           variables. To use one set on the Environment or the Project, it names
           it:
         </p>
-        <pre className="mt-1.5 overflow-x-auto rounded-lg border border-line bg-panel-2 px-3 py-2.5 font-mono text-meta text-tx">
+        <pre className="mt-1.5 whitespace-pre-wrap wrap-anywhere rounded-lg border border-line bg-panel-2 px-3 py-2.5 font-mono text-meta text-tx">
           <code>{"CACHE_URL=${{environment.REDIS_URL}}"}</code>
         </pre>
         <p className="mt-3 text-meta text-tx-2">

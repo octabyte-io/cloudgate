@@ -153,7 +153,7 @@ export function Picker({
               {option.label}
             </span>
             {option.detail ? (
-              <span className="flex-none font-mono text-meta font-normal text-tx-3">
+              <span className="min-w-0 truncate font-mono text-meta font-normal text-tx-3">
                 {option.detail}
               </span>
             ) : null}

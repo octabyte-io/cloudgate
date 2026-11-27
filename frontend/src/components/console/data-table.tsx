@@ -26,14 +26,22 @@ import { cn } from "@/lib/utils";
  * meaningful inside a `grid`/`treegrid`, so the checkbox announces the state and
  * the `--brand-tint` fill follows it through `data-selected`.
  *
- * **A table that scrolls says so**. At phone width most tables are
- * wider than their card, and nothing showed it: the row's actions sat
- * off-screen and read as missing. So the side that has more gets a fade, and a
- * last column with no visible head — the row's actions, by the console's own
- * convention of an `sr-only` "Actions" head — is pinned to the right edge, so
- * the thing a row is *for* is always on screen. A stacked card layout below
- * the small breakpoint was the other option; it would mean every column set
- * saying which of its cells is the title, for the same result.
+ * **A table that does not fit its box stacks; it never scrolls sideways.**
+ * This reverses an earlier call. At phone width most tables were wider than
+ * their card, and the answer then was a horizontal scroll with a fade and the
+ * Actions column pinned to the right edge. That kept the row's actions on
+ * screen but left everything between the first column and the actions behind a
+ * sideways gesture nobody makes on purpose. A stacked layout was turned down
+ * because every column set would have to say which cell is its title; it does
+ * not: the first column is the row's title by the console's own convention, and
+ * a last column with an `sr-only` head is its actions. So when the table's
+ * natural width is more than its box — measured, not guessed from a breakpoint,
+ * because the same table sits in a full-width page and in a half-width card —
+ * each row becomes a block: the title and the actions on one line, then the
+ * other columns as label and value pairs. The table comes back once its box is
+ * as wide as the table needed. Sorting is a table control and is not offered in
+ * the stack, which keeps the order the table last had. The fade and the pinned
+ * Actions stay as the table's own fallback for the moment before the measure.
  *
  * **The empty state sits under the scroller, not in it.** In a `colSpan` cell
  * it was centred across the table's full scroll width, so at 390px its text
@@ -60,6 +68,17 @@ const CELL: Record<CellTone, string> = {
   wrap: "min-w-55 whitespace-normal wrap-anywhere",
   muted: "text-tx-3",
 };
+
+/**
+ * The one part of a column's `className` a stacked row keeps: its face. The
+ * rest are widths and alignment for a table cell, which mean nothing in a
+ * label and value pair.
+ */
+function stackFace<T>(column: Column<T>): string | undefined {
+  return /(^|\s)font-mono(\s|$)/.test(column.className ?? "")
+    ? "font-mono"
+    : undefined;
+}
 
 export type Column<T> = {
   id: string;
@@ -107,7 +126,9 @@ type Edges = { start: boolean; end: boolean };
  * container `ui/table.tsx` renders, on scroll and whenever it or the table
  * resizes. jsdom has no layout, so there it is always `{false, false}`.
  */
-function useScrollEdges(): [React.RefObject<HTMLDivElement | null>, Edges] {
+function useScrollEdges(
+  active: boolean,
+): [React.RefObject<HTMLDivElement | null>, Edges] {
   const ref = React.useRef<HTMLDivElement>(null);
   const [edges, setEdges] = React.useState<Edges>({ start: false, end: false });
 
@@ -137,9 +158,64 @@ function useScrollEdges(): [React.RefObject<HTMLDivElement | null>, Edges] {
       scroller.removeEventListener("scroll", measure);
       observer?.disconnect();
     };
-  }, []);
+  }, [active]);
 
   return [ref, edges];
+}
+
+/**
+ * Whether the table fits its box, or its rows should stack. jsdom has no
+ * layout, so there it always fits.
+ *
+ * Measured in a layout effect so a table that does not fit is never painted:
+ * the table renders, is found too wide, and the stack replaces it before the
+ * frame. `needed` is the width the table asked for when it was last laid out,
+ * and the box has to reach it before the table is tried again — otherwise a
+ * box one pixel short would flip between the two on every resize. A change in
+ * the number of rows or in the columns tries the table again, since what it
+ * needs may have changed. `shape` is a string on purpose: most callers build
+ * their rows and columns during render, so their identity changes every time,
+ * and keying on it would measure, stack and reset in a loop.
+ */
+function useFits(
+  ref: React.RefObject<HTMLDivElement | null>,
+  shape: string,
+): boolean {
+  // Stacking is remembered for one shape only, so a new shape is a table again
+  // without an effect having to reset it.
+  const [stackedFor, setStackedFor] = React.useState<string | null>(null);
+  const stacked = stackedFor === shape;
+  const needed = React.useRef(0);
+  const setStacked = React.useCallback(
+    (on: boolean) => setStackedFor(on ? shape : null),
+    [shape],
+  );
+
+  React.useLayoutEffect(() => {
+    const box = ref.current;
+    if (!box) return;
+    const measure = () => {
+      if (stacked) {
+        if (box.clientWidth >= needed.current) setStacked(false);
+        return;
+      }
+      const scroller = box.querySelector<HTMLElement>(
+        '[data-slot="table-container"]',
+      );
+      if (!scroller || scroller.clientWidth === 0) return;
+      if (scroller.scrollWidth > scroller.clientWidth + 1) {
+        needed.current = scroller.scrollWidth;
+        setStacked(true);
+      }
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [ref, stacked, setStacked]);
+
+  return !stacked;
 }
 
 /** The fade on a side that has more table beyond it. Tokens, not a shadow value. */
@@ -218,7 +294,12 @@ export function DataTable<T>({
   const truncating = columns.filter((column) => column.truncate).length;
   const share = truncating > 0 ? `${100 / truncating}%` : undefined;
 
-  const [scrollRef, edges] = useScrollEdges();
+  const boxRef = React.useRef<HTMLDivElement>(null);
+  const fits = useFits(
+    boxRef,
+    `${rows.length}:${columns.map((column) => column.id).join(",")}`,
+  );
+  const [scrollRef, edges] = useScrollEdges(fits);
   const pinned = isActions(columns.at(-1)) ? columns.at(-1)?.id : undefined;
   // The pinned cell is opaque, so rows pass *under* it, and while there is
   // more table to its left it carries the fade on its own left edge — the
@@ -237,9 +318,97 @@ export function DataTable<T>({
     );
   const showEmpty = sorted.length === 0 && !!empty;
 
+
+  if (!fits) {
+    const [title, ...rest] = columns;
+    const actions = pinned ? rest.at(-1) : undefined;
+    const pairs = actions ? rest.slice(0, -1) : rest;
+    return (
+      <>
+        <div ref={boxRef}>
+          <ul
+            data-slot="data-stack"
+            aria-label={label}
+            className="flex flex-col text-ui"
+          >
+            {sorted.map((row) => {
+              const id = getRowId(row);
+              const isSelected = selected.has(id);
+              return (
+                <li
+                  key={id}
+                  data-selected={isSelected || undefined}
+                  className={cn(
+                    "flex flex-col gap-2 border-b border-line px-3 py-2.75 last:border-b-0 data-selected:bg-brand-tint",
+                    rowClassName?.(row),
+                  )}
+                >
+                  <div className="flex min-w-0 items-start gap-3">
+                    {selectable ? (
+                      <Checkbox
+                        className="mt-0.5"
+                        checked={isSelected}
+                        onCheckedChange={(next) => toggle(id, next)}
+                        aria-label={`Select ${rowName?.(row) ?? id}`}
+                      />
+                    ) : null}
+                    {title ? (
+                      <div
+                        className={cn(
+                          "min-w-0 flex-1 wrap-anywhere text-tx-2",
+                          title.tone === "key" && CELL.key,
+                          stackFace(title),
+                        )}
+                      >
+                        {title.cell(row)}
+                      </div>
+                    ) : null}
+                    {actions ? (
+                      <div className="-my-0.5 flex shrink-0 items-center">
+                        {actions.cell(row)}
+                      </div>
+                    ) : null}
+                  </div>
+                  {pairs.length > 0 ? (
+                    <dl className="grid grid-cols-[minmax(0,max-content)_minmax(0,1fr)] gap-x-4 gap-y-1.5">
+                      {pairs.map((column) => (
+                        <React.Fragment key={column.id}>
+                          <dt className="text-tx-3">{column.head}</dt>
+                          <dd
+                            className={cn(
+                              "min-w-0 text-tx-2",
+                              column.truncate ? "truncate" : "wrap-anywhere",
+                              column.tone === "num" && "num",
+                              column.tone === "key" && CELL.key,
+                              column.tone === "muted" && CELL.muted,
+                              stackFace(column),
+                            )}
+                          >
+                            {column.cell(row)}
+                          </dd>
+                        </React.Fragment>
+                      ))}
+                    </dl>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+        {showEmpty ? <div data-slot="table-empty">{empty}</div> : null}
+      </>
+    );
+  }
+
   return (
     <>
-      <div ref={scrollRef} className="relative">
+      <div
+        ref={(node) => {
+          scrollRef.current = node;
+          boxRef.current = node;
+        }}
+        className="relative"
+      >
         <Table className={cn("w-full text-ui", className)}>
           <caption className="sr-only">{label}</caption>
           <TableHeader>

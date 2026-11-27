@@ -1,3 +1,4 @@
+import { hangStyle } from "@/lib/format/hang";
 import { cn } from "@/lib/utils";
 
 export type DiffKind = "add" | "del" | "ctx";
@@ -35,13 +36,17 @@ export type DiffViewProps = Omit<React.ComponentProps<"div">, "children"> & {
  * A diff (e-console.html:782-795): a gutter of signs, a tinted row per change,
  * and lines that keep their whitespace.
  *
- * **It scrolls sideways inside itself.** Diff lines cannot wrap — a wrapped line
- * in a diff is a line whose indentation lies — so this is one of the two
- * components in the console that owns a horizontal scrollbar, and the page
- * behind it never gets one. The gutter is `sticky` at the left edge, so the
- * signs stay put while a long line scrolls under them; the reference lets them
- * scroll away, and losing the column that says which lines changed while
- * reading the change is not a trade worth keeping.
+ * **Long lines wrap, and the wrap does not lie about indentation.** A diff
+ * used to own a horizontal scrollbar on the argument that a wrapped diff line is
+ * one whose indentation lies — and a wrap that sends the continuation back to
+ * the left edge, under the sign, does exactly that. So each row is a flex row: a
+ * fixed sign gutter, then a content column that is `pre-wrap` (every space
+ * kept) and `wrap-anywhere` (a digest still breaks). A continuation row starts
+ * at the content column, never under the gutter, so the signs stay one clean
+ * column of changes; and it **hangs at the line's own indentation** (padding
+ * plus an equal negative `text-indent`), so a wrapped value still sits inside
+ * its block rather than reading as a line at column zero. The page never
+ * scrolls sideways and neither does the diff.
  *
  * Every row's sign carries its word for a screen reader. `+` and `−` are a
  * pixel apart at 12px, and the difference between them is what the deploy will
@@ -54,7 +59,7 @@ export function DiffView({ className, label, rows, ...props }: DiffViewProps) {
       role="group"
       aria-label={label}
       className={cn(
-        "overflow-x-auto overscroll-x-contain rounded-lg border border-line bg-panel-2 font-mono text-meta leading-diff",
+        "min-w-0 overflow-hidden rounded-lg border border-line bg-panel-2 font-mono text-meta leading-diff",
         className,
       )}
       {...props}
@@ -64,18 +69,24 @@ export function DiffView({ className, label, rows, ...props }: DiffViewProps) {
         return (
           <div
             key={index}
-            className={cn("flex w-max min-w-full whitespace-pre", mark.row)}
+            className={cn("flex", mark.row)}
           >
             <span
               className={cn(
-                "sticky left-0 w-6.5 flex-none border-r border-line bg-panel text-center",
+                "w-6.5 flex-none border-r border-line bg-panel text-center whitespace-pre",
                 mark.gutter,
               )}
             >
               <span aria-hidden="true">{mark.glyph}</span>
               <span className="sr-only">{mark.word}</span>
             </span>
-            <span className="flex-1 px-3">{row.text}</span>
+            <span
+              data-slot="diff-text"
+              className="min-h-[1lh] min-w-0 flex-1 pr-3 pl-[calc(var(--spacing)*3+var(--hang))] indent-[calc(var(--hang)*-1)] whitespace-pre-wrap wrap-anywhere"
+              style={hangStyle(row.text)}
+            >
+              {row.text}
+            </span>
           </div>
         );
       })}

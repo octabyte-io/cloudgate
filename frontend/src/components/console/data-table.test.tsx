@@ -193,4 +193,44 @@ describe("DataTable at phone width", () => {
     overflow(container.querySelector<HTMLElement>('[data-slot="table-container"]')!, 0);
     expect(container.querySelector(".bg-linear-to-l")).not.toBeNull();
   });
+
+  it("stacks its rows, title and actions first, when the table is wider than its box", () => {
+    // jsdom lays nothing out, so the table container reports the widths a
+    // phone did: a 900px table in a 358px card.
+    const widths = (el: HTMLElement, scroll: number, client: number) => {
+      if (el.dataset.slot !== "table-container") return undefined;
+      return { scroll, client };
+    };
+    const scrollWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollWidth");
+    const clientWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+    Object.defineProperty(HTMLElement.prototype, "scrollWidth", {
+      configurable: true,
+      get(this: HTMLElement) {
+        return widths(this, 900, 358)?.scroll ?? 0;
+      },
+    });
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+      configurable: true,
+      get(this: HTMLElement) {
+        return widths(this, 900, 358)?.client ?? 0;
+      },
+    });
+    try {
+      const { container } = render(
+        <DataTable label="Domains" columns={COLUMNS} rows={ROWS} getRowId={(row) => row.id} />,
+      );
+      expect(container.querySelector("table")).toBeNull();
+      const list = screen.getByRole("list", { name: "Domains" });
+      const item = list.querySelector("li")!;
+      // The first column is the row's title and the sr-only-headed last one
+      // its actions, on one line; the rest are label and value pairs.
+      expect(item.firstElementChild?.textContent).toBe(`${ROWS[0].host}Remove`);
+      const labels = [...item.querySelectorAll("dt")].map((dt) => dt.textContent);
+      expect(labels).toEqual(["Port", "Sign-in"]);
+      expect([...item.querySelectorAll("dd")].map((dd) => dd.textContent)).toEqual(["3000", "on"]);
+    } finally {
+      if (scrollWidth) Object.defineProperty(HTMLElement.prototype, "scrollWidth", scrollWidth);
+      if (clientWidth) Object.defineProperty(HTMLElement.prototype, "clientWidth", clientWidth);
+    }
+  });
 });

@@ -38,27 +38,54 @@ const ROLE: Record<Server["serverType"], string> = {
   build: "Build",
 };
 
+/**
+ * How an operator reaches the Server: the SSH user, the address and the port.
+ * The port is part of it — a Server on 2222 is a different thing to reach.
+ */
+function sshEndpoint(row: Server): string {
+  return `${row.username}@${row.ipAddress}:${row.port}`;
+}
+
 export function serverColumns(): Column<Server>[] {
   return [
     {
       id: "name",
       head: "Server",
       tone: "key",
+      // **One cell, two lines: what the Server is called, and how it is
+      // reached.** The SSH endpoint (`user@address:port`) used to be two
+      // columns of its own, Address and SSH user, and with a name like
+      // `eu-west-worker-node-01-high-memory` the row held its Open behind the
+      // scroll at 1280px. A name and an endpoint have no natural limit, so the
+      // column takes the width the others leave and both lines end in an
+      // ellipsis, whole on their `title`. The description, which used to be
+      // the sub-line on its own, follows the endpoint on it.
+      truncate: true,
       compare: (a, b) => a.name.localeCompare(b.name),
-      cell: (row) => (
-        <>
-          <RowLink href={`/servers/${row.serverId}`} className="wrap-anywhere">
-            {row.name}
-          </RowLink>
-          {/* Capped at the reference's 260px (e-console.html:2641). Without it one
-              Server's two-sentence description sets the width of the whole column
-              and squeezes every other one — a table column is sized by its widest
-              cell, and a description is the one cell with no natural limit. */}
-          {row.description ? (
-            <RowSub className="max-w-65">{row.description}</RowSub>
-          ) : null}
-        </>
-      ),
+      cell: (row) => {
+        const endpoint = sshEndpoint(row);
+        return (
+          <>
+            <RowLink
+              href={`/servers/${row.serverId}`}
+              title={row.name}
+              className="inline-block max-w-full truncate align-top"
+            >
+              {row.name}
+            </RowLink>
+            <RowSub
+              title={
+                row.description
+                  ? `${endpoint} · ${row.description}`
+                  : endpoint
+              }
+            >
+              <span className="font-mono tracking-mono">{endpoint}</span>
+              {row.description ? <> · {row.description}</> : null}
+            </RowSub>
+          </>
+        );
+      },
     },
     {
       id: "status",
@@ -69,23 +96,9 @@ export function serverColumns(): Column<Server>[] {
       cell: (row) => <StatusPill mark={serverMark(row)} />,
     },
     {
-      id: "address",
-      head: "Address",
-      className: "font-mono",
-      // The SSH endpoint, which is the address an operator actually uses. The
-      // port is part of it: a Server on 2222 is a different thing to reach.
-      cell: (row) => `${row.ipAddress}:${row.port}`,
-    },
-    {
       id: "role",
       head: "Role",
       cell: (row) => ROLE[row.serverType],
-    },
-    {
-      id: "user",
-      head: "SSH user",
-      className: "font-mono",
-      cell: (row) => row.username,
     },
     {
       id: "added",

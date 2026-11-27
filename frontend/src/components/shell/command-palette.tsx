@@ -166,7 +166,7 @@ export function CommandPalette({
         {query === "" ? (
           <Tips />
         ) : results.length === 0 ? (
-          <p className="px-3.5 py-6.5 text-center text-body text-tx-2">
+          <p className="px-3.5 py-6.5 text-center text-body wrap-anywhere text-tx-2">
             {pending ? "Looking…" : noMatch(all, unavailable, kind, query)}
           </p>
         ) : (
