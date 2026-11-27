@@ -1,7 +1,12 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { yaml } from "@codemirror/lang-yaml";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { EditorState, RangeSetBuilder, type Extension } from "@codemirror/state";
+import {
+  Compartment,
+  EditorState,
+  RangeSetBuilder,
+  type Extension,
+} from "@codemirror/state";
 import {
   Decoration,
   type DecorationSet,
@@ -12,7 +17,10 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef, useSyncExternalStore } from "react";
+
+import { createLocalStore } from "@/components/shell/local-store";
+import { Switch } from "@/components/ui/switch";
 
 import { hangColumns } from "@/lib/format/hang";
 import { cn } from "@/lib/utils";
@@ -55,12 +63,22 @@ import { cn } from "@/lib/utils";
  * card above it. Two hues and two greys is enough to read YAML: keys separate from
  * values, comments out of the way.
  *
- * ## Long lines wrap
+ * ## Long lines: an editor scrolls, a view wraps
  *
- * Nothing in the console scrolls sideways, and an editor that did hid the end
- * of every long image reference behind a scrollbar at phone width (370px of
- * overflow at 375). `EditorView.lineWrapping` plus `HANGING_INDENT` below: a
- * wrapped line keeps one line number and its continuation rows sit at its own
+ * **An editable file does not wrap by default**, and is the one place in the
+ * console that scrolls sideways on purpose. In a file being written, a wrapped
+ * line makes YAML indentation harder to read at a glance, and a parser's
+ * "line 12, column 80" stops matching what is on screen. So the box keeps its
+ * own horizontal scroll, and a **Wrap lines** switch under it turns wrapping on
+ * for the rare long image reference. The choice is this browser's, kept in
+ * `localStorage` for every editor, because it is a reading preference and not
+ * a property of any one file.
+ *
+ * **A read-only view always wraps** (no `onChange`): nothing is being typed,
+ * columns are not being counted, and nothing in a page someone only reads
+ * should hide behind a scrollbar (the Compose file overflowed by 370px at 375).
+ * Wrapping is `EditorView.lineWrapping` plus `HANGING_INDENT` below: a wrapped
+ * line keeps one line number and its continuation rows sit at its own
  * indentation, so the wrap never changes what the YAML appears to nest under.
  */
 export function CodeEditorView({
@@ -97,6 +115,14 @@ export function CodeEditorView({
   }, [onChange]);
 
   const editable = onChange !== undefined;
+  const wrapPreferred = useSyncExternalStore(
+    WRAP_LINES.subscribe,
+    WRAP_LINES.get,
+    () => false,
+  );
+  const wrap = !editable || wrapPreferred;
+  const wrapping = useRef(new Compartment());
+  const switchId = useId();
 
   useEffect(() => {
     const parent = host.current;
@@ -106,7 +132,7 @@ export function CodeEditorView({
       parent,
       state: EditorState.create({
         doc: value,
-        extensions: extensions({ editable, label }),
+        extensions: extensions({ editable, label, wrap }),
       }),
     });
     view.current = instance;
@@ -119,6 +145,13 @@ export function CodeEditorView({
     // into the live document instead of rebuilding the editor around it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editable, label]);
+
+  /** The switch, applied to the live editor without rebuilding it. */
+  useEffect(() => {
+    view.current?.dispatch({
+      effects: wrapping.current.reconfigure(wrap ? WRAPPED : []),
+    });
+  }, [wrap]);
 
   /**
    * An external change to `value` — a refetch landing, a Reset — replaced into
@@ -148,24 +181,42 @@ export function CodeEditorView({
    */
   return (
     <div
-      ref={host}
       className={cn(
-        "overflow-hidden rounded-lg border border-line bg-well",
-        "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-ring",
+        "flex flex-col overflow-hidden rounded-lg border border-line bg-well",
+        "has-[.cm-content:focus-visible]:outline-2 has-[.cm-content:focus-visible]:outline-offset-2 has-[.cm-content:focus-visible]:outline-brand-ring",
         className,
       )}
-    />
+    >
+      <div ref={host} className="min-h-0 min-w-0 flex-1" />
+      {editable ? (
+        <div className="flex items-center justify-end gap-2 border-t border-line/40 px-3 py-1.5">
+          <label htmlFor={switchId} className="text-meta text-well-ts">
+            Wrap lines
+          </label>
+          <Switch
+            id={switchId}
+            size="sm"
+            checked={wrapPreferred}
+            onCheckedChange={(next) => WRAP_LINES.set(next)}
+          />
+        </div>
+      ) : null}
+    </div>
   );
 
-  function extensions(options: { editable: boolean; label: string }): Extension[] {
+  function extensions(options: {
+    editable: boolean;
+    label: string;
+    wrap: boolean;
+  }): Extension[] {
     return [
       lineNumbers(),
       yaml(),
       syntaxHighlighting(YAML_HIGHLIGHT),
       history(),
-      // Long lines wrap rather than scroll sideways — see `HANGING_INDENT`.
-      EditorView.lineWrapping,
-      HANGING_INDENT,
+      // Off in an editor until its switch says so, always on in a view — see
+      // "Long lines" above.
+      wrapping.current.of(options.wrap ? WRAPPED : []),
       // `defaultKeymap` and `historyKeymap` only. **Not `indentWithTab`**: it
       // binds Tab inside the editor, which takes away the one key a keyboard user
       // has for leaving a control. Two spaces typed is a smaller cost than a
@@ -303,3 +354,13 @@ function hangDecorations(view: EditorView): DecorationSet {
   }
   return builder.finish();
 }
+
+/** Wrapping, as one unit the switch turns on and off. */
+const WRAPPED: Extension = [EditorView.lineWrapping, HANGING_INDENT];
+
+/** Whether this browser's editors wrap long lines. Off until someone turns it on. */
+const WRAP_LINES = createLocalStore<boolean>(
+  "cloudgate.editor.wrapLines",
+  false,
+  (value) => (typeof value === "boolean" ? value : null),
+);
