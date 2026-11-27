@@ -265,6 +265,11 @@ export const boughtServersApi = {
     api.get<ServerBackup[]>(
       `/bought-servers/${encodeURIComponent(id)}/backups`,
     ),
+  /** *Back up now*: one more Server backup at once, answered still being made. */
+  backUpNow: (id: string) =>
+    api.post<ServerBackup>(
+      `/bought-servers/${encodeURIComponent(id)}/backups`,
+    ),
   /** The sizes the Server can move to in its Location, with their prices. */
   sizes: (id: string) =>
     api.get<SizeChoice[]>(`/bought-servers/${encodeURIComponent(id)}/sizes`),

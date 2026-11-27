@@ -21,6 +21,7 @@ const api = vi.hoisted(() => ({
   setBackups: vi.fn(),
   sizes: vi.fn(() => Promise.resolve([])),
   backups: vi.fn(),
+  backUpNow: vi.fn(),
 }));
 const allowed = vi.hoisted(() => ({ current: true }));
 const toast = vi.hoisted(() => ({
@@ -52,6 +53,7 @@ vi.mock("@/components/console/toast", () => ({ toast }));
 
 const { BoughtServerCard, BOUGHT_SERVER_CHANGE_REFUSAL } =
   await import("./bought-server-card");
+const { BACKUPS_POLL_MS } = await import("../buy/use-bought-servers");
 
 const SERVER = { serverId: "abc", name: "web-1" } as Server;
 
@@ -121,6 +123,9 @@ afterEach(() => {
   api.server.mockReset();
   api.setBackups.mockReset();
   api.backups.mockReset();
+  api.backUpNow.mockReset();
+  vi.useRealTimers();
+  vi.unstubAllEnvs();
   toast.done.mockReset();
   toast.error.mockReset();
 });
@@ -292,6 +297,165 @@ describe("BoughtServerCard", () => {
       expect(
         screen.queryByText("The first backup is taken within a day."),
       ).toBeNull();
+    });
+
+    it("takes a backup now, listed as Being made until it is made, then with its size", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const taken: ServerBackup = {
+        id: 4,
+        takenAt: "2026-11-27T15:00:00.000Z",
+        sizeGb: null,
+        beingMade: true,
+      };
+      const settled = [BACKUPS[1], BACKUPS[2]];
+      api.server.mockResolvedValue(WITH_BACKUPS);
+      api.backups.mockResolvedValue(settled);
+      api.backUpNow.mockResolvedValue(taken);
+      renderCard();
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Back up now" }),
+      );
+      expect(screen.getByText("Back up web-1 now?")).toBeTruthy();
+      expect(api.backUpNow).not.toHaveBeenCalled();
+      api.backups.mockResolvedValue([taken, ...settled]);
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Back up now",
+        }),
+      );
+
+      await waitFor(() => expect(api.backUpNow).toHaveBeenCalledWith("abc"));
+      const table = screen.getByRole("table", {
+        name: "Server backups of web-1",
+      });
+      await waitFor(() =>
+        expect(within(table).getAllByRole("row")[1].textContent).toMatch(
+          /Nov 27, 2026.*Being made/,
+        ),
+      );
+      expect(toast.done).toHaveBeenCalledWith(
+        "A backup of web-1 is being made.",
+      );
+
+      api.backups.mockResolvedValue([
+        { ...taken, sizeGb: 2.4, beingMade: false },
+        ...settled,
+      ]);
+      await vi.advanceTimersByTimeAsync(BACKUPS_POLL_MS);
+
+      await waitFor(() =>
+        expect(within(table).getAllByRole("row")[1].textContent).toMatch(
+          /Nov 27, 2026.*2\.4 GB/,
+        ),
+      );
+    });
+
+    it("names the oldest of 7 backups in the confirmation, and lists it no more afterwards", async () => {
+      // Seven daily backups, the oldest on Tuesday 17 November at 03:00 UTC,
+      // read in UTC: the confirmation names it in the reader's own zone.
+      vi.stubEnv("TZ", "UTC");
+      const seven: ServerBackup[] = [23, 22, 21, 20, 19, 18, 17].map(
+        (day) => ({
+          id: day,
+          takenAt: `2026-11-${day}T03:00:00.000Z`,
+          sizeGb: 2.1,
+          beingMade: false,
+        }),
+      );
+      const taken: ServerBackup = {
+        id: 24,
+        takenAt: "2026-11-24T15:00:00.000Z",
+        sizeGb: null,
+        beingMade: true,
+      };
+      api.server.mockResolvedValue(WITH_BACKUPS);
+      api.backups.mockResolvedValue(seven);
+      api.backUpNow.mockResolvedValue(taken);
+      renderCard();
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Back up now" }),
+      );
+      const dialog = screen.getByRole("dialog");
+      expect(dialog.textContent).toMatch(/Tuesday 03:00 will be removed/);
+      api.backups.mockResolvedValue([taken, ...seven.slice(0, 6)]);
+      fireEvent.click(
+        within(dialog).getByRole("button", { name: "Back up now" }),
+      );
+
+      const table = screen.getByRole("table", {
+        name: "Server backups of web-1",
+      });
+      await waitFor(() =>
+        expect(within(table).getAllByRole("row")[1].textContent).toMatch(
+          /Being made/,
+        ),
+      );
+      expect(within(table).getAllByRole("row")).toHaveLength(8);
+      expect(table.textContent).not.toMatch(/Nov 17, 2026/);
+    });
+
+    it("names no backup to be removed while fewer than 7 are kept", async () => {
+      api.server.mockResolvedValue(WITH_BACKUPS);
+      api.backups.mockResolvedValue(BACKUPS);
+      renderCard();
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Back up now" }),
+      );
+
+      expect(screen.getByRole("dialog").textContent).not.toMatch(
+        /will be removed/,
+      );
+    });
+
+    it("says why a refused backup was not taken", async () => {
+      const refused = new ApiError(
+        503,
+        "This Server can't be backed up right now. Try again later",
+      );
+      api.server.mockResolvedValue(WITH_BACKUPS);
+      api.backUpNow.mockRejectedValue(refused);
+      renderCard();
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Back up now" }),
+      );
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Back up now",
+        }),
+      );
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith(refused));
+    });
+
+    it("holds Back up now while the Server is not Ready", async () => {
+      api.server.mockResolvedValue({
+        ...WITH_BACKUPS,
+        stage: "changing",
+        change: { serverType: "cpx32" },
+      });
+      renderCard();
+
+      const button = await screen.findByRole("button", { name: "Back up now" });
+      expect(button.getAttribute("aria-disabled")).toBe("true");
+      expect(button.getAttribute("title")).toBe(
+        "This Server can be backed up once it is Ready.",
+      );
+    });
+
+    it("holds Back up now for a role that may not change the Server", async () => {
+      allowed.current = false;
+      api.server.mockResolvedValue(WITH_BACKUPS);
+      renderCard();
+
+      const button = await screen.findByRole("button", { name: "Back up now" });
+      expect(button.getAttribute("aria-disabled")).toBe("true");
+      expect(button.getAttribute("title")).toBe(
+        "Your role in this Organization cannot back up this Server. Ask an owner or an admin.",
+      );
     });
 
     it("shows no list, and asks for none, while backups are off", async () => {

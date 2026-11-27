@@ -202,13 +202,37 @@ export function useBoughtServerSizes(serverId: string) {
   });
 }
 
-/** A Bought Server's Server backups, newest first; asked only while its backups are on. */
+/** How often the list is read again while a backup is still being made: it takes minutes. */
+export const BACKUPS_POLL_MS = 10_000;
+
+/**
+ * A Bought Server's Server backups, newest first; asked only while its
+ * backups are on, and read again while one is still being made, so it
+ * settles with its size.
+ */
 export function useServerBackups(serverId: string, enabled: boolean) {
   const { organizationId } = useActiveOrganizationId();
   return useQuery({
     queryKey: keys.boughtServers.backups(organizationId, serverId),
     queryFn: () => boughtServersApi.backups(serverId),
     enabled: enabled && organizationId !== null,
+    refetchInterval: (query) =>
+      query.state.data?.some((backup) => backup.beingMade)
+        ? BACKUPS_POLL_MS
+        : false,
+  });
+}
+
+/** *Back up now* on a Ready Bought Server; the list is read again, with the new one in it. */
+export function useBackUpNow(serverId: string) {
+  const client = useQueryClient();
+  const { organizationId } = useActiveOrganizationId();
+  return useMutation({
+    mutationFn: () => boughtServersApi.backUpNow(serverId),
+    onSettled: () =>
+      client.invalidateQueries({
+        queryKey: keys.boughtServers.backups(organizationId, serverId),
+      }),
   });
 }
 
