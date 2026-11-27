@@ -199,6 +199,18 @@ describe('Restore a Bought Server from a Server backup (e2e)', () => {
       const row = await rowOf(id);
       return row.stage === 'ready' && row;
     });
+  /**
+   * Every one of `addresses` has been sent `subject`. Ready is written before
+   * the email is sent, so a spec that reads the mail waits for it rather than
+   * for Ready: beside other suites, the send can land after the read.
+   */
+  const told = (subject: string, ...addresses: string[]) =>
+    eventually(() =>
+      addresses.every((address) =>
+        mail.to(address).some((one) => one.email.subject === subject),
+      ),
+    );
+  const RESTORED = 'Your Server web-1 was restored from a backup';
   const providerCalls = () =>
     fake()
       .calls.map((call) => call.method)
@@ -227,6 +239,8 @@ describe('Restore a Bought Server from a Server backup (e2e)', () => {
     current = id;
     (await setupRun()).finish();
     await readyRow(id);
+    // Its Ready email too, so it is not left to land in the spec's own mail.
+    await told('Your Server web-1 is ready', 'grace@example.com');
     held = [];
     const daily = backups
       ? [1, 2, 3].map((day) =>
@@ -282,6 +296,8 @@ describe('Restore a Bought Server from a Server backup (e2e)', () => {
     (await setupRun()).finish();
     held = [];
     await readyRow(id);
+    // Its last step, the email, is over too: nothing of it lands in the next.
+    await told(RESTORED, 'grace@example.com');
     return copy;
   }
 
@@ -423,6 +439,7 @@ describe('Restore a Bought Server from a Server backup (e2e)', () => {
       run.fail(new Error('E: Unable to locate package docker-ce'));
 
       await readyRow(id);
+      await told(RESTORED, 'grace@example.com');
       expect(await serverOf(id)).toMatchObject({ setupOk: false });
     });
   });
@@ -467,6 +484,7 @@ describe('Restore a Bought Server from a Server backup (e2e)', () => {
       expect(fake().callsTo('rebuild')).toEqual([[machine().id, oldest]]);
       run.finish();
       await readyRow(id);
+      await told(RESTORED, 'grace@example.com');
     });
 
     it('still takes a safety copy of a newer one, pushing out the oldest', async () => {
@@ -623,6 +641,7 @@ describe('Restore a Bought Server from a Server backup (e2e)', () => {
       expect((await rowOf(id)).changeTarget?.restore?.setupStarts).toBe(2);
       run.finish();
       await readyRow(id);
+      await told(RESTORED, 'grace@example.com');
     });
 
     it('starts no third setup run: Ready with Setup failed, and the owners told once', async () => {
@@ -638,6 +657,7 @@ describe('Restore a Bought Server from a Server backup (e2e)', () => {
 
       expect(setupCalls()).toEqual([]);
       await readyRow(id);
+      await told(RESTORED, 'grace@example.com');
       expect(await serverOf(id)).toMatchObject({ setupOk: false });
       expect(
         mail.to('grace@example.com').map((one) => one.email.subject),
@@ -730,6 +750,7 @@ describe('Restore a Bought Server from a Server backup (e2e)', () => {
       mail.clear();
 
       await restoredFully(id, daily[1].id);
+      await told(RESTORED, 'grace@example.com', 'ada@example.com');
 
       expect(createPrice).not.toHaveBeenCalled();
       expect(updateSubscription).not.toHaveBeenCalled();
@@ -777,6 +798,10 @@ describe('Restore a Bought Server from a Server backup (e2e)', () => {
       fake().finishBackup((await safetyCopy()).id, 2.2);
 
       const row = await readyRow(id);
+      await told(
+        "We couldn't restore web-1 from its backup",
+        'grace@example.com',
+      );
       expect(row).toMatchObject({ changeTarget: null, changeTries: 0 });
       expect(fake().callsTo('rebuild')).toHaveLength(2);
       expect(machine()).toMatchObject({ rebuiltFrom: null, status: 'running' });
