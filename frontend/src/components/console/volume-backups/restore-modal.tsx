@@ -182,7 +182,6 @@ export function RestoreModal({
             onVolumeNameChange={flow.setVolumeName}
             serviceName={serviceName}
             tarball={tarball}
-            backupFileName={backupFileName}
           />
         ) : null}
 
@@ -191,7 +190,6 @@ export function RestoreModal({
             volumeName={volumeName}
             serviceName={serviceName}
             tarball={tarball}
-            backupFileName={backupFileName}
             typed={typed}
             onTypedChange={flow.setTyped}
           />
