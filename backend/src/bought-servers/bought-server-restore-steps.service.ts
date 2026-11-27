@@ -16,6 +16,8 @@ import type { BoughtServer, BoughtServerRestore } from './bought-server.schema';
 import { HETZNER_MACHINES } from './hetzner/hetzner-cloud.port';
 import type { HetznerCloudPort } from './hetzner/hetzner-cloud.port';
 import { backupDateOf } from './restore';
+import { RestoreRedeploys } from './restore-redeploys.service';
+import type { RestoreRedeploy } from './restore-redeploys.service';
 import type { NextStep } from './stages';
 
 /** What the Server setup run after a Restore cut off by a restart each time it was started is stored as. */
@@ -58,8 +60,9 @@ export type RestoreStep = Extract<
  * - *Server setup run*, which waits for SSH and mounts the extra storage
  *   again (`ServersService.setup`); once more if a restart cut it off, then
  *   stored as failed.
- * - *After the setup run* ({@link afterSetup}): Ready, and the owners and
- *   admins told once.
+ * - *After the setup run* ({@link afterSetup}): Ready, the redeploy of
+ *   every Service deployed after the backup started, and the owners and
+ *   admins told once, naming them.
  *
  * Every write is conditional on the row's stored target and tries, so two
  * callers (a press's follow and the hourly resume) never both take a step,
@@ -81,6 +84,7 @@ export class BoughtServerRestoreSteps {
     private readonly notifications: LapseNotifications,
     private readonly mail: MailService,
     private readonly billingConfig: BillingConfig,
+    private readonly redeploys: RestoreRedeploys,
   ) {}
 
   /** One step of a Restore; false once there is nothing more to do now. */
@@ -326,29 +330,51 @@ export class BoughtServerRestoreSteps {
 
   /**
    * **What follows the Server setup run after a Restore**, the one place it
-   * happens: whether the run ended here, or a restart read it ended. Today
-   * only the finish; the redeploys of #181 go here, before it.
+   * happens: whether the run ended here, or a restart read it ended. The
+   * Services deployed after the backup (#181, ADR-0093) are read while it
+   * is still Changing, then {@link finish}.
    */
   private async afterSetup(row: BoughtServer): Promise<boolean> {
-    return this.finish(row);
+    const restore = restoreOf(row);
+    const redeploys = row.serverId
+      ? await this.redeploys.newerThan(row.serverId, restore.backupTakenAt)
+      : [];
+    return this.finish(row, redeploys);
   }
 
-  /** Ready again. Whoever made that write emails the owners and admins, once. */
-  private async finish(row: BoughtServer): Promise<boolean> {
+  /**
+   * Ready again, and only then the redeploys: the readiness rule refuses
+   * any deploy to a Bought Server that is not Ready, the queued ones at
+   * their claim too. That write is the claim on them, as on the email:
+   * whoever made it starts each redeploy once and emails the owners and
+   * admins once, naming them, so a restart or a second caller reaching
+   * this again finds the Server Ready and starts none.
+   */
+  private async finish(
+    row: BoughtServer,
+    redeploys: readonly RestoreRedeploy[],
+  ): Promise<boolean> {
     const restore = restoreOf(row);
     const [done] = await this.db
       .update(boughtServer)
       .set({ stage: 'ready', changeTarget: null, changeTries: 0 })
       .where(this.unchanged(row))
       .returning({ id: boughtServer.id });
-    if (done) await this.sendRestored(row, restore);
+    if (!done) return false;
+    await this.redeploys.start(row.name, restore.backupTakenAt, redeploys);
+    await this.sendRestored(
+      row,
+      restore,
+      redeploys.map((one) => one.name),
+    );
     return false;
   }
 
-  /** To every owner and admin, as any finished change is: which backup, and how setup ended. */
+  /** To every owner and admin, as any finished change is: which backup, how setup ended, and what was redeployed. */
   private async sendRestored(
     row: BoughtServer,
     restore: BoughtServerRestore,
+    redeployed: readonly string[],
   ): Promise<void> {
     try {
       const lines = await this.db
@@ -371,6 +397,7 @@ export class BoughtServerRestoreSteps {
               kind: 'restore',
               backupTakenAt: backupDateOf(restore.backupTakenAt),
               setupOk: restore.setup?.ok ?? false,
+              redeployed,
             },
             monthlyPrice,
             serverUrl: this.serverUrl(row),

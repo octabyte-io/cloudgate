@@ -600,6 +600,31 @@ export class DeploymentsService
     return this.queueBuild(app, 'deploy', meta);
   }
 
+  /**
+   * Queues a redeploy of an Application or a Compose stack whose Bought
+   * Server was just restored from a Server backup (ADR-0093): the Restore was
+   * the press, allowed under `server: ['create']`, so no statement of its own
+   * is asked, as {@link deployForLinkedOutput} asks none. Refused as a
+   * {@link redeploy} or a {@link deployCompose} is; a stack has no redeploy
+   * of its own, so its Deployment is the one Deploy queues.
+   */
+  async redeployAfterServerRestore(
+    service: { kind: BuiltServiceType; id: string },
+    meta: { title: string; description: string },
+  ): Promise<Deployment> {
+    if (service.kind === 'compose') {
+      return this.queueCompose(
+        await this.findOwnedCompose(null, service.id),
+        meta,
+      );
+    }
+    return this.queueBuild(
+      await this.findOwnedApplication(null, service.id),
+      'redeploy',
+      meta,
+    );
+  }
+
   /** Shared by {@link deploy} and {@link redeploy}: whoever can read the
    * Application and create deployments may trigger one, the attempt is
    * recorded pending before it is enqueued, and only the job's `type` and the

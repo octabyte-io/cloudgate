@@ -376,6 +376,7 @@ describe('mail templates', () => {
           kind: 'restore',
           backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
           setupOk: true,
+          redeployed: [],
         },
       });
 
@@ -390,6 +391,54 @@ describe('mail templates', () => {
       expect(body).toContain('web-1 now costs $30.00 a month.');
     });
 
+    it('names each Service a restore redeployed, in order, and says where each redeploy shows', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: {
+          kind: 'restore',
+          backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+          setupOk: true,
+          redeployed: ['web', 'orders', 'shop'],
+        },
+      });
+
+      expect(text(rendered.html)).toContain(
+        'Cloudgate redeployed orders, shop and web, which were deployed after that backup, so they run their current version again. How each redeploy went shows on its Service.',
+      );
+    });
+
+    it('names the one Service a restore redeployed', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: {
+          kind: 'restore',
+          backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+          setupOk: true,
+          redeployed: ['web'],
+        },
+      });
+
+      expect(text(rendered.html)).toContain(
+        'Cloudgate redeployed web, which was deployed after that backup, so it runs its current version again. How the redeploy went shows on that Service.',
+      );
+    });
+
+    it('says a restore redeployed nothing when no Service was deployed after the backup', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: {
+          kind: 'restore',
+          backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+          setupOk: true,
+          redeployed: [],
+        },
+      });
+
+      expect(text(rendered.html)).toContain(
+        'No Service on it was deployed after that backup, so none was redeployed.',
+      );
+    });
+
     it('says to run setup again when the setup run after a restore failed', async () => {
       const rendered = await renderServerChangedEmail({
         ...props,
@@ -397,6 +446,7 @@ describe('mail templates', () => {
           kind: 'restore',
           backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
           setupOk: false,
+          redeployed: [],
         },
       });
 

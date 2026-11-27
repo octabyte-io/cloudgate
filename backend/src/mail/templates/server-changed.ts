@@ -12,10 +12,33 @@ export type ServerChange =
   | { kind: 'storage'; storageGb: number }
   | { kind: 'size'; size: string | null }
   /**
-   * A Restore (#180): the backup's date as the email says it, and how the
-   * Server setup run after it ended.
+   * A Restore (#180): the backup's date as the email says it, how the
+   * Server setup run after it ended, and the name of each Service it
+   * redeployed because it was deployed after that backup (#181).
    */
-  | { kind: 'restore'; backupTakenAt: string; setupOk: boolean };
+  | {
+      kind: 'restore';
+      backupTakenAt: string;
+      setupOk: boolean;
+      redeployed: readonly string[];
+    };
+
+/** What a Restore redeployed, by name, or that it redeployed nothing. */
+function restoreRedeploysSentence(names: readonly string[]): string {
+  if (names.length === 0) {
+    return 'No Service on it was deployed after that backup, so none was redeployed.';
+  }
+  const sorted = [...names].sort((a, b) => a.localeCompare(b));
+  return names.length === 1
+    ? `Cloudgate redeployed ${sorted[0]}, which was deployed after that backup, so it runs its current version again. How the redeploy went shows on that Service.`
+    : `Cloudgate redeployed ${listed(sorted)}, which were deployed after that backup, so they run their current version again. How each redeploy went shows on its Service.`;
+}
+
+/** `a`, `a and b`, `a, b and c`. */
+function listed(names: readonly string[]): string {
+  if (names.length <= 1) return names.join('');
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
 
 /**
  * A change to a **Bought Server** finished (spec #69, #75): backups turned on
@@ -66,6 +89,7 @@ export async function renderServerChangedEmail({
           ? 'Server setup ran on it again.'
           : 'Server setup ran on it again and failed: open its Setup card and press Run setup.',
       );
+      more.push(restoreRedeploysSentence(change.redeployed));
       break;
   }
   return renderConfirmationEmail(userName, {

@@ -24,6 +24,7 @@ import { EXCHANGE_RATE } from './exchange-rate/exchange-rate.port';
 import { HetznerCloudAdapter } from './hetzner/hetzner-cloud.adapter';
 import { HETZNER_MACHINES, HETZNER_PRICES } from './hetzner/hetzner-cloud.port';
 import { OrphanMachines } from './orphan-machines.service';
+import { RestoreRedeploys } from './restore-redeploys.service';
 
 /**
  * **Bought Servers** (ADR-0071), Hosted instance only. The provider port is
@@ -48,6 +49,7 @@ import { OrphanMachines } from './orphan-machines.service';
     BoughtServerChanges,
     BoughtServerChangeSteps,
     BoughtServerRestoreSteps,
+    RestoreRedeploys,
     BoughtServerBackups,
     BoughtServerSettings,
     DayRates,

@@ -52,6 +52,7 @@ import { RbacModule } from './rbac/rbac.module';
 import { AdminModule } from './admin/admin.module';
 import { OperatorModule } from './operator/operator.module';
 import { BoughtServersModule } from './bought-servers/bought-servers.module';
+import { RestoreRedeployerModule } from './bought-servers/restore-redeployer.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SettingsModule } from './settings/settings.module';
 import { RegistriesModule } from './registries/registries.module';
@@ -153,8 +154,10 @@ import { SsoModule } from './enterprise/sso/sso.module';
     AdminModule,
     // The hosted-only Operator page (ADR-0050).
     OperatorModule,
-    // Bought Servers, hosted only (ADR-0071).
+    // Bought Servers, hosted only (ADR-0071), and the redeploys after a
+    // Restore, beside the deploy paths it cannot import (#181).
     BoughtServersModule,
+    RestoreRedeployerModule,
     TemplatesModule,
     AiModule,
     CustomRolesModule,
