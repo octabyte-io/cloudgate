@@ -261,7 +261,12 @@ export function ServerBackupList({ view }: { view: BoughtServerView }) {
         <Modal.Footer>
           <Modal.Gap />
           <Modal.Close render={<Button type="button">Cancel</Button>} />
-          <Button type="button" variant="pri" onClick={() => void confirm()}>
+          <Button
+            type="button"
+            variant="pri"
+            disabled={why !== null}
+            onClick={() => void confirm()}
+          >
             Back up now
           </Button>
         </Modal.Footer>
