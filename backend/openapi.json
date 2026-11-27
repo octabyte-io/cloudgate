@@ -10994,6 +10994,27 @@
         "tags": [
           "BoughtServers"
         ]
+      },
+      "post": {
+        "operationId": "BoughtServersController_createBackup",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "BoughtServers"
+        ]
       }
     },
     "/bought-servers/{id}/storage": {

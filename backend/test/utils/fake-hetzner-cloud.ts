@@ -1,6 +1,7 @@
 import type {
   CreateServerRequest,
   CreateVolumeRequest,
+  CreatedBackup,
   CreatedServer,
   CreatedVolume,
   HetznerAction,
@@ -276,8 +277,10 @@ export function seededCatalogue(currency: 'USD' | 'EUR'): FakeCatalogue {
  * pass: a size changes only on a machine that is off, a deleted machine
  * leaves its Volumes and Primary IPs behind (detached, still there), and a
  * Volume or Primary IP is deleted only once nothing holds it. A machine's
- * backups go with it, and with its backups turned off. Every action it
- * starts has already succeeded.
+ * backups go with it, and with its backups turned off; it keeps 7, the
+ * oldest dropped when another is made. Every action it starts has already
+ * succeeded, but for a backup asked for, which is being made until a spec
+ * calls {@link finishBackup}.
  */
 export class FakeHetznerCloud implements HetznerCloudPort {
   /** Every call, in order, with its arguments. */
@@ -290,7 +293,7 @@ export class FakeHetznerCloud implements HetznerCloudPort {
   /** Backup images, each bound to the machine it is of. */
   private readonly backupRows = new Map<
     number,
-    HetznerBackup & { boundTo: number }
+    HetznerBackup & { boundTo: number; actionId?: number }
   >();
   private readonly actions = new Map<number, HetznerAction>();
   private readonly refusals = new Map<
@@ -375,10 +378,22 @@ export class FakeHetznerCloud implements HetznerCloudPort {
       diskSizeGb: this.diskOf(machine),
       boundTo: serverId,
     };
+    this.keepBackupSlot(serverId);
     this.backupRows.set(backup.id, backup);
     const { boundTo: _boundTo, ...view } = backup;
     void _boundTo;
     return view;
+  }
+
+  /** The provider has made a backup it was asked for: it is whole, at this size. */
+  finishBackup(backupId: number, imageSizeGb: number): void {
+    const backup = this.backupRows.get(backupId);
+    if (!backup) throw new Error(`no backup ${backupId} to finish`);
+    backup.status = 'available';
+    backup.imageSizeGb = imageSizeGb;
+    const action =
+      backup.actionId !== undefined ? this.actions.get(backup.actionId) : null;
+    if (action) action.status = 'success';
   }
 
   /** The Primary IPs the account holds now, assigned or not. */
@@ -539,10 +554,45 @@ export class FakeHetznerCloud implements HetznerCloudPort {
     return this.answer('listBackups', [serverId], () =>
       [...this.backupRows.values()]
         .filter((backup) => backup.boundTo === serverId)
-        .map(({ boundTo: _boundTo, ...backup }) => {
+        .map(({ boundTo: _boundTo, actionId: _actionId, ...backup }) => {
           void _boundTo;
+          void _actionId;
           return backup;
         }),
+    );
+  }
+
+  /**
+   * Being made until {@link finishBackup}, and only while the machine's
+   * backups are on, as the provider's slots are.
+   */
+  createBackup(
+    serverId: number,
+    description: string,
+  ): Promise<HetznerAnswer<CreatedBackup>> {
+    return this.answer('createBackup', [serverId, description], () =>
+      this.withMachine(serverId, (machine) => {
+        if (!machine.backups) {
+          return refusal('invalid_input', 'backups are not enabled');
+        }
+        const action = this.action('create_image');
+        this.actions.get(action.id)!.status = 'running';
+        const backup = {
+          id: this.id(),
+          description,
+          status: 'creating' as const,
+          created: new Date().toISOString(),
+          imageSizeGb: null,
+          diskSizeGb: this.diskOf(machine),
+        };
+        this.keepBackupSlot(serverId);
+        this.backupRows.set(backup.id, {
+          ...backup,
+          boundTo: serverId,
+          actionId: action.id,
+        });
+        return { backup, action: { ...action, status: 'running' as const } };
+      }),
     );
   }
 
@@ -742,6 +792,16 @@ export class FakeHetznerCloud implements HetznerCloudPort {
       (t) => t.name === machine.serverType,
     );
     return type?.diskGb ?? 0;
+  }
+
+  /** Room for one more: with 7 already, the oldest is deleted, as the provider does. */
+  private keepBackupSlot(serverId: number): void {
+    const held = [...this.backupRows.values()]
+      .filter((backup) => backup.boundTo === serverId)
+      .sort((a, b) => Date.parse(a.created) - Date.parse(b.created));
+    for (const backup of held.slice(0, Math.max(0, held.length - 6))) {
+      this.backupRows.delete(backup.id);
+    }
   }
 
   /** The provider deletes a machine's backups with it, and when they are turned off. */

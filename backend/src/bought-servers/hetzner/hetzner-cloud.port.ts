@@ -22,8 +22,8 @@
  * catalogue (server types with their per-Location prices and availability,
  * Locations with coordinates, the account's price list), and on a machine:
  * create with labels and a public key, read, change type without growing the
- * disk, power on and off, backups on and off and the list of them, a
- * Volume's create, attach and
+ * disk, power on and off, backups on and off, the list of them and one
+ * more taken now, a Volume's create, attach and
  * resize, delete of the machine, its Volume and its Primary IP, reverse DNS,
  * and a list by label. Snapshots, firewalls, floating IPs, networks, ISO
  * images and rescue mode are out of scope (ADR-0071), so they are not here.
@@ -212,6 +212,15 @@ export interface CreatedServer {
   action: HetznerAction;
 }
 
+/**
+ * `POST /servers/{id}/actions/create_image` with type `backup`: the backup,
+ * `creating` until the action ends, and the action making it.
+ */
+export interface CreatedBackup {
+  backup: HetznerBackup;
+  action: HetznerAction;
+}
+
 export interface CreateVolumeRequest {
   name: string;
   sizeGb: number;
@@ -264,6 +273,15 @@ export interface HetznerCloudPort {
   disableBackup(serverId: number): Promise<HetznerAnswer<HetznerAction>>;
   /** Every backup the machine has, in no promised order. */
   listBackups(serverId: number): Promise<HetznerAnswer<HetznerBackup[]>>;
+  /**
+   * One more backup, at once (`create_image` with type `backup`): never a
+   * snapshot. It takes one of the machine's 7 backup slots, so once all 7
+   * are full the provider deletes the oldest to make room.
+   */
+  createBackup(
+    serverId: number,
+    description: string,
+  ): Promise<HetznerAnswer<CreatedBackup>>;
   /** Sets the reverse DNS of one of the machine's addresses. */
   setReverseDns(
     serverId: number,

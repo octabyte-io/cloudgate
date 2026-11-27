@@ -185,6 +185,22 @@ export class BoughtServersController {
   }
 
   /**
+   * *Back up now*: one more Server backup at once, in the same 7 slots, so
+   * the oldest is pushed out once all 7 are full. It costs nothing, so a
+   * deletion date does not refuse it; a frozen Organization is refused, as
+   * for any write. Answered with the backup, still being made.
+   */
+  @Post(':id/backups')
+  @RequirePermission('server', 'create')
+  createBackup(
+    @CurrentUser() user: AuthSession['user'],
+    @CurrentSession() session: Session,
+    @Param('id') id: string,
+  ) {
+    return this.backups.create(toCtx(user, session), id);
+  }
+
+  /**
    * Extra storage grown: charged at once for the rest of the plan's month,
    * then the Volume and the filesystem are grown. It never shrinks.
    */

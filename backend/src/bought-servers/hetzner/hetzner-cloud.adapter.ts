@@ -1,6 +1,7 @@
 import type {
   CreateServerRequest,
   CreateVolumeRequest,
+  CreatedBackup,
   CreatedServer,
   CreatedVolume,
   HetznerAction,
@@ -202,6 +203,33 @@ export class HetznerCloudAdapter implements HetznerCloudPort {
           }),
         }
       : answer;
+  }
+
+  async createBackup(
+    serverId: number,
+    description: string,
+  ): Promise<HetznerAnswer<CreatedBackup>> {
+    const answer = await this.call<{
+      image: ApiBackupImage;
+      action: ApiAction;
+    }>('POST', `/servers/${serverId}/actions/create_image`, {
+      type: 'backup',
+      description,
+    });
+    if (!answer.ok) return answer;
+    const backup = backupOf(answer.value.image);
+    // A new image is `creating`; one already `unavailable` is no backup.
+    if (!backup) {
+      return {
+        ok: false,
+        code: 'unavailable',
+        message: `backup ${answer.value.image.id} is unavailable`,
+      };
+    }
+    return {
+      ok: true,
+      value: { backup, action: actionOf(answer.value.action) },
+    };
   }
 
   setReverseDns(
