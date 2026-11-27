@@ -10973,6 +10973,27 @@
         "tags": [
           "BoughtServers"
         ]
+      },
+      "get": {
+        "operationId": "BoughtServersController_listBackups",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "BoughtServers"
+        ]
       }
     },
     "/bought-servers/{id}/storage": {

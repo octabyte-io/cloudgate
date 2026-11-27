@@ -22,7 +22,8 @@
  * catalogue (server types with their per-Location prices and availability,
  * Locations with coordinates, the account's price list), and on a machine:
  * create with labels and a public key, read, change type without growing the
- * disk, power on and off, backups on and off, a Volume's create, attach and
+ * disk, power on and off, backups on and off and the list of them, a
+ * Volume's create, attach and
  * resize, delete of the machine, its Volume and its Primary IP, reverse DNS,
  * and a list by label. Snapshots, firewalls, floating IPs, networks, ISO
  * images and rescue mode are out of scope (ADR-0071), so they are not here.
@@ -129,6 +130,24 @@ export interface HetznerImage {
   /** `Ubuntu 24.04`. */
   description: string;
   architecture: 'x86' | 'arm';
+}
+
+/**
+ * `GET /images?type=backup&bound_to=<server id>`, one entry: a copy of a
+ * machine's whole disk, which the provider keeps while its backups are on
+ * (a **Server backup**). Never a snapshot: those are out of scope.
+ */
+export interface HetznerBackup {
+  id: number;
+  /** The provider's own words, or what Cloudgate wrote when it asked for one. */
+  description: string;
+  /** `creating` until the copy is whole. */
+  status: 'creating' | 'available';
+  created: string;
+  /** GB the copy takes; null while it is still being made. */
+  imageSizeGb: number | null;
+  /** GB of the disk it is a copy of. */
+  diskSizeGb: number;
 }
 
 /** An asynchronous task the provider started, and how it stands. */
@@ -243,6 +262,8 @@ export interface HetznerCloudPort {
   enableBackup(serverId: number): Promise<HetznerAnswer<HetznerAction>>;
   /** Also deletes every backup the machine has, at once (the provider's rule). */
   disableBackup(serverId: number): Promise<HetznerAnswer<HetznerAction>>;
+  /** Every backup the machine has, in no promised order. */
+  listBackups(serverId: number): Promise<HetznerAnswer<HetznerBackup[]>>;
   /** Sets the reverse DNS of one of the machine's addresses. */
   setReverseDns(
     serverId: number,

@@ -3,6 +3,7 @@ import { MailModule } from '../mail/mail.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { SchedulingModule } from '../scheduling/scheduling.module';
 import { SshKeysModule } from '../ssh-keys/ssh-keys.module';
+import { BoughtServerBackups } from './bought-server-backups.service';
 import { BoughtServerClock } from './bought-server-clock.service';
 import { BoughtServerNotifications } from './bought-server-notifications.service';
 import { BoughtServerChanges } from './bought-server-changes.service';
@@ -45,6 +46,7 @@ import { OrphanMachines } from './orphan-machines.service';
     BoughtServerClock,
     BoughtServerChanges,
     BoughtServerChangeSteps,
+    BoughtServerBackups,
     BoughtServerSettings,
     DayRates,
     { provide: EXCHANGE_RATE, useClass: EcbExchangeRate },

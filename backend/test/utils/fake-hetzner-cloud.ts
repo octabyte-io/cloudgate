@@ -5,6 +5,7 @@ import type {
   CreatedVolume,
   HetznerAction,
   HetznerAnswer,
+  HetznerBackup,
   HetznerCloudPort,
   HetznerImage,
   HetznerLocation,
@@ -43,6 +44,15 @@ export interface FakePrimaryIp {
 export interface FakeMachine extends HetznerServer {
   sshPublicKey: string;
   image: string;
+}
+
+/** A backup a spec puts on a machine: what the provider would have made by itself. */
+export interface FakeBackupSeed {
+  created: string;
+  /** GB, as the provider writes it; null while it is still being made. */
+  imageSizeGb: number | null;
+  status?: HetznerBackup['status'];
+  description?: string;
 }
 
 /** The catalogue a fake account answers with, before a spec changes it. */
@@ -265,8 +275,9 @@ export function seededCatalogue(currency: 'USD' | 'EUR'): FakeCatalogue {
  * It keeps the provider's rules a caller could otherwise get wrong and still
  * pass: a size changes only on a machine that is off, a deleted machine
  * leaves its Volumes and Primary IPs behind (detached, still there), and a
- * Volume or Primary IP is deleted only once nothing holds it. Every action
- * it starts has already succeeded.
+ * Volume or Primary IP is deleted only once nothing holds it. A machine's
+ * backups go with it, and with its backups turned off. Every action it
+ * starts has already succeeded.
  */
 export class FakeHetznerCloud implements HetznerCloudPort {
   /** Every call, in order, with its arguments. */
@@ -276,6 +287,11 @@ export class FakeHetznerCloud implements HetznerCloudPort {
   private readonly machines = new Map<number, FakeMachine>();
   private readonly volumeRows = new Map<number, HetznerVolume>();
   private readonly ips = new Map<number, FakePrimaryIp>();
+  /** Backup images, each bound to the machine it is of. */
+  private readonly backupRows = new Map<
+    number,
+    HetznerBackup & { boundTo: number }
+  >();
   private readonly actions = new Map<number, HetznerAction>();
   private readonly refusals = new Map<
     HetznerMethod,
@@ -294,6 +310,7 @@ export class FakeHetznerCloud implements HetznerCloudPort {
     this.machines.clear();
     this.volumeRows.clear();
     this.ips.clear();
+    this.backupRows.clear();
     this.actions.clear();
     this.refusals.clear();
     this.nextId = 1000;
@@ -338,6 +355,30 @@ export class FakeHetznerCloud implements HetznerCloudPort {
   /** The Volumes the account holds now, attached or not. */
   volumes(): HetznerVolume[] {
     return [...this.volumeRows.values()].map((volume) => ({ ...volume }));
+  }
+
+  /**
+   * Puts a backup on a machine, as the provider's daily run would: the
+   * provider makes them by itself, so a spec seeds them rather than asks.
+   */
+  addBackup(serverId: number, seed: FakeBackupSeed): HetznerBackup {
+    if (!this.machines.has(serverId)) {
+      throw new Error(`no machine ${serverId} to back up`);
+    }
+    const machine = this.machines.get(serverId)!;
+    const backup = {
+      id: this.id(),
+      description: seed.description ?? '',
+      status: seed.status ?? 'available',
+      created: seed.created,
+      imageSizeGb: seed.imageSizeGb,
+      diskSizeGb: this.diskOf(machine),
+      boundTo: serverId,
+    };
+    this.backupRows.set(backup.id, backup);
+    const { boundTo: _boundTo, ...view } = backup;
+    void _boundTo;
+    return view;
   }
 
   /** The Primary IPs the account holds now, assigned or not. */
@@ -487,8 +528,21 @@ export class FakeHetznerCloud implements HetznerCloudPort {
     return this.answer('disableBackup', [serverId], () =>
       this.withMachine(serverId, (machine) => {
         machine.backups = false;
+        this.dropBackups(machine.id);
         return this.action('disable_backup');
       }),
+    );
+  }
+
+  /** In the order they were made, as the provider lists images: a caller sorts. */
+  listBackups(serverId: number): Promise<HetznerAnswer<HetznerBackup[]>> {
+    return this.answer('listBackups', [serverId], () =>
+      [...this.backupRows.values()]
+        .filter((backup) => backup.boundTo === serverId)
+        .map(({ boundTo: _boundTo, ...backup }) => {
+          void _boundTo;
+          return backup;
+        }),
     );
   }
 
@@ -519,6 +573,7 @@ export class FakeHetznerCloud implements HetznerCloudPort {
         for (const ip of this.ips.values()) {
           if (ip.serverId === machine.id) ip.serverId = null;
         }
+        this.dropBackups(machine.id);
         this.machines.delete(machine.id);
         return this.action('delete_server');
       }),
@@ -680,6 +735,20 @@ export class FakeHetznerCloud implements HetznerCloudPort {
         .filter((volume) => volume.serverId === machine.id)
         .map((volume) => volume.id),
     };
+  }
+
+  private diskOf(machine: FakeMachine): number {
+    const type = this.catalogue.serverTypes.find(
+      (t) => t.name === machine.serverType,
+    );
+    return type?.diskGb ?? 0;
+  }
+
+  /** The provider deletes a machine's backups with it, and when they are turned off. */
+  private dropBackups(serverId: number): void {
+    for (const [id, backup] of this.backupRows) {
+      if (backup.boundTo === serverId) this.backupRows.delete(id);
+    }
   }
 
   private primaryIp(

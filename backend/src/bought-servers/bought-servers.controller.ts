@@ -18,6 +18,7 @@ import {
 import { AllowedWhenFrozen } from '../cloud/billing/allowed-when-frozen.decorator';
 import { RequirePermission } from '../rbac/decorators/require-permission.decorator';
 import type { PermissionCtx } from '../rbac/permission.service';
+import { BoughtServerBackups } from './bought-server-backups.service';
 import { BoughtServerChanges } from './bought-server-changes.service';
 import { BoughtServerPurchases } from './bought-server-purchases.service';
 import { BoughtServersService } from './bought-servers.service';
@@ -55,6 +56,7 @@ export class BoughtServersController {
     private readonly boughtServers: BoughtServersService,
     private readonly purchases: BoughtServerPurchases,
     private readonly changes: BoughtServerChanges,
+    private readonly backups: BoughtServerBackups,
   ) {}
 
   /** Whether *Buy a Server* is offered here. */
@@ -166,6 +168,20 @@ export class BoughtServersController {
     @Body() body: BackupsDto,
   ) {
     return this.changes.setBackups(toCtx(user, session), id, body.enabled);
+  }
+
+  /**
+   * Its Server backups, newest first; none while backups are off. A read,
+   * so a frozen Organization still sees them.
+   */
+  @Get(':id/backups')
+  @RequirePermission('server', 'read')
+  listBackups(
+    @CurrentUser() user: AuthSession['user'],
+    @CurrentSession() session: Session,
+    @Param('id') id: string,
+  ) {
+    return this.backups.list(toCtx(user, session), id);
   }
 
   /**
