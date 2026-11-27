@@ -9,8 +9,9 @@ import {
 import { and, eq, isNotNull, isNull, notExists } from 'drizzle-orm';
 import { DRIZZLE } from '../db/drizzle.module';
 import type { DrizzleDB } from '../db/drizzle.module';
+import { boughtServer, server } from '../db/schema';
+import type { BoughtServer, BoughtServerChangeTarget } from '../db/schema';
 import type { PermissionCtx } from '../rbac/permission.service';
-import { server } from '../servers/server.schema';
 import { refuseWhileInMaintenance } from '../servers/server-maintenance';
 import {
   BoughtServerChanges,
@@ -18,11 +19,7 @@ import {
 } from './bought-server-changes.service';
 import type { BoughtServerView } from './bought-server-changes.service';
 import { BoughtServerStages } from './bought-server-stages.service';
-import { boughtServer } from './bought-server.schema';
-import type {
-  BoughtServer,
-  BoughtServerChangeTarget,
-} from './bought-server.schema';
+
 import { BoughtServersConfig } from './bought-servers.config';
 import { HETZNER_MACHINES } from './hetzner/hetzner-cloud.port';
 import { safetyCopyDescription, safetyCopyPushesOut } from './restore';
@@ -87,7 +84,8 @@ export class BoughtServerBackups {
 
   /**
    * Every Server backup, newest first, org-scoped through the Bought
-   * Server's own row. With backups off there are none (turning them off
+   * Server's own row: one outside the caller's active Organization answers
+   * 404. The route asks `server: ['read']`. With backups off there are none (turning them off
    * deletes every one), so the provider is not asked.
    */
   async list(ctx: PermissionCtx, id: string): Promise<ServerBackupView[]> {
@@ -113,6 +111,11 @@ export class BoughtServerBackups {
    * oldest, which the console's confirmation names. No limit, and a deletion
    * date does not refuse it, since it costs nothing (ADR-0093). Refused
    * unless the Server is Ready and its backups are on.
+   *
+   * Scoped to the caller as the list is: the Bought Server is read in the
+   * caller's active Organization, so another one's answers 404 before the
+   * provider is asked. The route asks `server: ['create']`, as every change
+   * does, and `FrozenGuard` refuses a frozen Organization first.
    */
   async create(ctx: PermissionCtx, id: string): Promise<ServerBackupView> {
     const row = await this.ownRow(ctx, id);
@@ -155,6 +158,13 @@ export class BoughtServerBackups {
    * ahead with none. It costs nothing, so neither a charge nor a deletion
    * date stands in its way. Answered at once, Changing; the steps follow
    * from the stored row.
+   *
+   * Scoped to the caller: the Bought Server is read in the caller's active
+   * Organization (another one's answers 404), and the backup must be one
+   * the provider lists for that Server's own machine, so no other machine's
+   * backup can be named. The route asks `server: ['create']`, as every
+   * change does, and `FrozenGuard` refuses a frozen Organization first. The
+   * setup run afterwards is the caller's own (`requestedBy`).
    */
   async restore(
     ctx: PermissionCtx,
