@@ -40,12 +40,6 @@ vi.mock("@/lib/auth/client", () => ({
 vi.mock("@/lib/api/endpoints/bought-servers", () => ({
   boughtServersApi: api,
 }));
-vi.mock("@/lib/api/use-invalidate", () => ({
-  useInvalidate: () => ({
-    boughtServers: () => Promise.resolve(),
-    billing: () => Promise.resolve(),
-  }),
-}));
 vi.mock("@/lib/auth/use-permission", async (original) => ({
   ...(await original<typeof import("@/lib/auth/use-permission")>()),
   usePermission: () => ({ allowed: allowed.current, pending: false }),
@@ -56,7 +50,11 @@ const { BoughtServerCard, BOUGHT_SERVER_CHANGE_REFUSAL } =
   await import("./bought-server-card");
 const { BACKUPS_POLL_MS } = await import("../buy/use-bought-servers");
 
-const SERVER = { serverId: "abc", name: "web-1" } as Server;
+const SERVER = {
+  serverId: "abc",
+  name: "web-1",
+  maintenanceSince: null,
+} as Server;
 
 const READY: BoughtServerView = {
   id: "abc",
@@ -100,15 +98,21 @@ const BACKUPS: ServerBackup[] = [
   },
 ];
 
-function renderCard() {
+function renderCard(server: Server = SERVER) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <BoughtServerCard server={SERVER} />
+      <BoughtServerCard server={server} />
     </QueryClientProvider>,
   );
+}
+
+/** The sentence on screen a held control points `aria-describedby` at. */
+function describedBy(control: HTMLElement): string | null | undefined {
+  const id = control.getAttribute("aria-describedby");
+  return id ? document.getElementById(id)?.textContent : null;
 }
 
 const backupsSwitch = () => screen.findByRole("switch", { name: "Backups" });
@@ -279,6 +283,17 @@ describe("BoughtServerCard", () => {
       expect(document.body.textContent).not.toMatch(/hetzner/i);
     });
 
+    it("says in one sentence how many backups are kept", async () => {
+      api.server.mockResolvedValue(WITH_BACKUPS);
+      api.backups.mockResolvedValue(BACKUPS);
+      renderCard();
+
+      await screen.findByRole("table", { name: "Server backups of web-1" });
+      expect(
+        document.querySelector('[data-slot="meta-strip"]')?.textContent,
+      ).toMatch(/^3 Server backups kept, at most 7\.Back up now$/);
+    });
+
     it("says the first backup is taken within a day while backups are on and none exist yet", async () => {
       api.server.mockResolvedValue(WITH_BACKUPS);
       renderCard();
@@ -442,8 +457,15 @@ describe("BoughtServerCard", () => {
       const button = await screen.findByRole("button", { name: "Back up now" });
       expect(button.getAttribute("aria-disabled")).toBe("true");
       expect(button.getAttribute("title")).toBe(
-        "This Server can be backed up once it is Ready.",
+        "This Server can be changed once it is Ready.",
       );
+      expect(describedBy(button)).toBe(
+        "This Server can be changed once it is Ready.",
+      );
+      // Said once on screen, by the card's own note.
+      expect(
+        screen.getAllByText("This Server can be changed once it is Ready."),
+      ).toHaveLength(1);
     });
 
     it("holds Back up now for a role that may not change the Server", async () => {
@@ -454,7 +476,10 @@ describe("BoughtServerCard", () => {
       const button = await screen.findByRole("button", { name: "Back up now" });
       expect(button.getAttribute("aria-disabled")).toBe("true");
       expect(button.getAttribute("title")).toBe(
-        "Your role in this Organization cannot back up this Server. Ask an owner or an admin.",
+        "Your role in this Organization cannot back up or restore this Server. Ask an owner or an admin.",
+      );
+      expect(describedBy(button)).toBe(
+        "Your role in this Organization cannot back up or restore this Server. Ask an owner or an admin.",
       );
     });
 
@@ -575,6 +600,7 @@ describe("BoughtServerCard", () => {
       expect(button.getAttribute("title")).toBe(
         "This backup can be restored once it is made.",
       );
+      expect(describedBy(button)).toBe("Being made");
     });
 
     it("holds Restore while the Server is not Ready", async () => {
@@ -589,7 +615,10 @@ describe("BoughtServerCard", () => {
       const button = await restoreOn(/Nov 26, 2026/);
       expect(button.getAttribute("aria-disabled")).toBe("true");
       expect(button.getAttribute("title")).toBe(
-        "This Server can be restored once it is Ready.",
+        "This Server can be changed once it is Ready.",
+      );
+      expect(describedBy(button)).toBe(
+        "This Server can be changed once it is Ready.",
       );
     });
 
@@ -602,7 +631,61 @@ describe("BoughtServerCard", () => {
       const button = await restoreOn(/Nov 26, 2026/);
       expect(button.getAttribute("aria-disabled")).toBe("true");
       expect(button.getAttribute("title")).toBe(
-        "Your role in this Organization cannot restore this Server. Ask an owner or an admin.",
+        "Your role in this Organization cannot back up or restore this Server. Ask an owner or an admin.",
+      );
+      expect(describedBy(button)).toBe(
+        "Your role in this Organization cannot back up or restore this Server. Ask an owner or an admin.",
+      );
+    });
+
+    it("holds Restore, saying why, while the Server is in maintenance, and leaves Back up now live", async () => {
+      api.server.mockResolvedValue(WITH_BACKUPS);
+      api.backups.mockResolvedValue(BACKUPS);
+      renderCard({ ...SERVER, maintenanceSince: "2026-11-27T10:00:00.000Z" });
+
+      const button = await restoreOn(/Nov 26, 2026/);
+      expect(button.getAttribute("aria-disabled")).toBe("true");
+      expect(button.getAttribute("title")).toBe(
+        "This Server can be restored once its maintenance is ended.",
+      );
+      expect(describedBy(button)).toBe(
+        "This Server can be restored once its maintenance is ended.",
+      );
+      expect(
+        screen
+          .getByRole("button", { name: "Back up now" })
+          .getAttribute("aria-disabled"),
+      ).not.toBe("true");
+    });
+
+    it("lists the safety copy once the Server is Ready again, without a reload", async () => {
+      const copy: ServerBackup = {
+        id: 9,
+        takenAt: "2026-11-27T16:00:00.000Z",
+        sizeGb: 2.5,
+        beingMade: false,
+      };
+      api.server.mockResolvedValue({
+        ...WITH_BACKUPS,
+        stage: "changing",
+        change: { restore: { backupTakenAt: BACKUPS[1].takenAt } },
+      });
+      api.backups.mockResolvedValue([BACKUPS[1], BACKUPS[2]]);
+      renderCard();
+      const table = await screen.findByRole("table", {
+        name: "Server backups of web-1",
+      });
+      expect(within(table).getAllByRole("row")).toHaveLength(3);
+
+      api.backups.mockResolvedValue([copy, BACKUPS[1], BACKUPS[2]]);
+      api.server.mockResolvedValue(WITH_BACKUPS);
+
+      await waitFor(
+        () => expect(within(table).getAllByRole("row")).toHaveLength(4),
+        { timeout: 6_000 },
+      );
+      expect(within(table).getAllByRole("row")[1].textContent).toMatch(
+        /Nov 27, 2026.*2\.5 GB/,
       );
     });
   });

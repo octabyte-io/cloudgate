@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -12,11 +13,16 @@ import type {
   ServerBackup,
 } from "@/lib/api/endpoints/bought-servers";
 
-const restore = vi.hoisted(() => ({ mutateAsync: vi.fn() }));
+// Only the network side is replaced, as the card's test does: the dialog's
+// own hook, its cache writes and its read again run as they do in the app.
+const api = vi.hoisted(() => ({ restore: vi.fn() }));
 const toast = vi.hoisted(() => ({ done: vi.fn(), error: vi.fn() }));
 
-vi.mock("../buy/use-bought-servers", () => ({
-  useRestoreBackup: () => ({ ...restore, isPending: false }),
+vi.mock("@/lib/auth/client", () => ({
+  useActiveOrganizationId: () => ({ organizationId: "org-1" }),
+}));
+vi.mock("@/lib/api/endpoints/bought-servers", () => ({
+  boughtServersApi: api,
 }));
 vi.mock("@/components/console/toast", () => ({ toast }));
 
@@ -46,13 +52,18 @@ function renderModal(
   noSafetyCopy = false,
   onOpenChange: (open: boolean) => void = () => {},
 ) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(
-    <RestoreBackupModal
-      view={view}
-      backup={BACKUP}
-      noSafetyCopy={noSafetyCopy}
-      onOpenChange={onOpenChange}
-    />,
+    <QueryClientProvider client={client}>
+      <RestoreBackupModal
+        view={view}
+        backup={BACKUP}
+        noSafetyCopy={noSafetyCopy}
+        onOpenChange={onOpenChange}
+      />
+    </QueryClientProvider>,
   );
 }
 
@@ -62,13 +73,13 @@ const restoreButton = () =>
 
 beforeEach(() => {
   vi.stubEnv("TZ", "UTC");
-  restore.mutateAsync.mockResolvedValue(VIEW);
+  api.restore.mockResolvedValue(VIEW);
 });
 
 afterEach(() => {
   cleanup();
   vi.unstubAllEnvs();
-  restore.mutateAsync.mockReset();
+  api.restore.mockReset();
   toast.done.mockReset();
 });
 
@@ -117,10 +128,7 @@ describe("RestoreBackupModal", () => {
     fireEvent.click(restoreButton());
 
     await waitFor(() =>
-      expect(restore.mutateAsync).toHaveBeenCalledWith({
-        backupId: 2,
-        withoutSafetyCopy: false,
-      }),
+      expect(api.restore).toHaveBeenCalledWith("abc", 2, false),
     );
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(toast.done).toHaveBeenCalledWith("web-1 is being restored.", {
@@ -150,15 +158,12 @@ describe("RestoreBackupModal", () => {
     fireEvent.click(restoreButton());
 
     await waitFor(() =>
-      expect(restore.mutateAsync).toHaveBeenCalledWith({
-        backupId: 2,
-        withoutSafetyCopy: true,
-      }),
+      expect(api.restore).toHaveBeenCalledWith("abc", 2, true),
     );
   });
 
   it("keeps a refusal in the dialog", async () => {
-    restore.mutateAsync.mockRejectedValue(new Error("refused"));
+    api.restore.mockRejectedValue(new Error("refused"));
     renderModal();
 
     fireEvent.change(nameField(), { target: { value: "web-1" } });

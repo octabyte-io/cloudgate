@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Card } from "@/components/console/card";
 import { DataTable, type Column } from "@/components/console/data-table";
@@ -12,33 +12,31 @@ import type {
   BoughtServerView,
   ServerBackup,
 } from "@/lib/api/endpoints/bought-servers";
+import type { Server } from "@/lib/api/endpoints/servers";
 import { usePermission } from "@/lib/auth/use-permission";
 import { Icon } from "@/lib/design/icons";
 import { counted } from "@/lib/format/plural";
 import { timeExact } from "@/lib/format/time";
 
 import { useBackUpNow, useServerBackups } from "../buy/use-bought-servers";
+import { CHANGE_WAITS_FOR_READY } from "./bought-server-reasons";
 import { RestoreBackupModal, takenOn } from "./restore-backup-modal";
 
 /** Said while backups are on and the provider has made none yet: it makes one a day. */
 export const FIRST_BACKUP_WITHIN_A_DAY =
   "The first backup is taken within a day.";
 
-/** Said on Back up now to a role that may not change the Server. */
-export const BACK_UP_NOW_REFUSAL =
-  "Your role in this Organization cannot back up this Server. Ask an owner or an admin.";
+/** Said on Back up now and Restore to a role that may not change the Server. */
+export const BACKUPS_REFUSAL =
+  "Your role in this Organization cannot back up or restore this Server. Ask an owner or an admin.";
 
-/** Said on Back up now while the Server is busy or not made yet. */
-export const BACK_UP_NOW_WAITS_FOR_READY =
-  "This Server can be backed up once it is Ready.";
-
-/** Said on Restore to a role that may not change the Server. */
-export const RESTORE_REFUSAL =
-  "Your role in this Organization cannot restore this Server. Ask an owner or an admin.";
-
-/** Said on Restore while the Server is busy or not made yet. */
-export const RESTORE_WAITS_FOR_READY =
-  "This Server can be restored once it is Ready.";
+/**
+ * Said on Restore while the Server is in maintenance, which refuses it as it
+ * does any change that starts work: a Restore runs Server setup and
+ * redeploys. Back up now starts nothing on it, so it stays live.
+ */
+export const RESTORE_WAITS_FOR_MAINTENANCE =
+  "This Server can be restored once its maintenance is ended.";
 
 /** Said on Restore for a backup the provider is still making. */
 export const RESTORE_WAITS_FOR_BACKUP =
@@ -74,33 +72,30 @@ function sizeOf(gb: number): string {
   return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)} GB`;
 }
 
-const TAKEN_AND_SIZE: Column<ServerBackup>[] = [
-  {
-    id: "taken",
-    head: "Taken",
-    tone: "key",
-    cell: (backup) => (
-      <time dateTime={backup.takenAt} title={timeExact(backup.takenAt)}>
-        {/* The day and the minute in the reader's own zone. Not `timeAgo`:
+const TAKEN: Column<ServerBackup> = {
+  id: "taken",
+  head: "Taken",
+  tone: "key",
+  cell: (backup) => (
+    <time dateTime={backup.takenAt} title={timeExact(backup.takenAt)}>
+      {/* The day and the minute in the reader's own zone. Not `timeAgo`:
             a backup is picked by which day it is of, and "3 days ago" makes
             the reader count. */}
-        {takenOn(backup.takenAt)}
-      </time>
-    ),
-  },
-  {
-    id: "size",
-    head: "Size",
-    tone: "num",
-    // A size is not known until the copy is whole, so the word stands in for it.
-    cell: (backup) =>
-      backup.beingMade || backup.sizeGb === null ? (
-        <span className="text-tx-3">Being made</span>
-      ) : (
-        sizeOf(backup.sizeGb)
-      ),
-  },
-];
+      {takenOn(backup.takenAt)}
+    </time>
+  ),
+};
+
+/**
+ * A size is not known until the copy is whole, so "Being made" stands in for
+ * it; its cell is made per list, since that word is also why the row's
+ * Restore waits, and carries an id it is described by.
+ */
+const SIZE: Pick<Column<ServerBackup>, "id" | "head" | "tone"> = {
+  id: "size",
+  head: "Size",
+  tone: "num",
+};
 
 /**
  * A Bought Server's **Server backups** (ADR-0093), newest first, under its
@@ -115,15 +110,38 @@ const TAKEN_AND_SIZE: Column<ServerBackup>[] = [
  * the API as a toast, as the other changes' do.
  *
  * **Restore** on each row puts the disk back as it was then
- * (`RestoreBackupModal`), waiting with its reason for the same two and for a
- * backup that is whole. While one runs, the strip says which backup.
+ * (`RestoreBackupModal`), waiting with its reason for the same two, for a
+ * Server out of maintenance and for a backup that is whole. While one runs,
+ * the strip says which backup; as it ends, the list is read again, so the
+ * safety copy shows.
+ *
+ * A control that waits says why on screen as well as in its `title`, and
+ * points `aria-describedby` at that sentence (design-system.md, "Off, and
+ * looking off"): the card's own note while the Server is not Ready
+ * (`readyNoteId`, so the sentence is not said twice), a note under the strip
+ * for the role and for maintenance, and a backup's "Being made".
  */
-export function ServerBackupList({ view }: { view: BoughtServerView }) {
-  const backups = useServerBackups(view.id, view.backups);
+export function ServerBackupList({
+  view,
+  server,
+  readyNoteId,
+}: {
+  view: BoughtServerView;
+  server: Server;
+  /** The card's note saying {@link CHANGE_WAITS_FOR_READY}, while it shows. */
+  readyNoteId: string;
+}) {
+  const backups = useServerBackups(
+    view.id,
+    view.backups,
+    view.stage === "changing",
+  );
   const backUpNow = useBackUpNow(view.id);
   const canChange = usePermission({ server: ["create"] });
   const [asking, setAsking] = useState(false);
   const [restoring, setRestoring] = useState<ServerBackup | null>(null);
+  const noteId = useId();
+  const rowId = useId();
   if (!view.backups) return null;
 
   if (backups.error) {
@@ -145,19 +163,35 @@ export function ServerBackupList({ view }: { view: BoughtServerView }) {
   }
   const rows = backups.data;
   const pushedOut = rows.length >= SLOTS ? rows[rows.length - 1] : null;
+  const ready = view.stage === "ready";
+  const inMaintenance = server.maintenanceSince !== null;
   const why = !canChange.allowed
-    ? BACK_UP_NOW_REFUSAL
-    : view.stage !== "ready"
-      ? BACK_UP_NOW_WAITS_FOR_READY
+    ? BACKUPS_REFUSAL
+    : !ready
+      ? CHANGE_WAITS_FOR_READY
       : null;
+  const restoreWhy =
+    why ?? (inMaintenance ? RESTORE_WAITS_FOR_MAINTENANCE : null);
+  // Where each reason is said on screen: the card's note says Ready's.
+  const whyId = why === CHANGE_WAITS_FOR_READY ? readyNoteId : noteId;
+  const restoreWhyId =
+    restoreWhy === CHANGE_WAITS_FOR_READY ? readyNoteId : noteId;
+  const note = restoreWhy === CHANGE_WAITS_FOR_READY ? null : restoreWhy;
+  const beingMadeId = (backup: ServerBackup) => `${rowId}-${backup.id}`;
 
-  const restoreWhy = !canChange.allowed
-    ? RESTORE_REFUSAL
-    : view.stage !== "ready"
-      ? RESTORE_WAITS_FOR_READY
-      : null;
   const columns: Column<ServerBackup>[] = [
-    ...TAKEN_AND_SIZE,
+    TAKEN,
+    {
+      ...SIZE,
+      cell: (backup) =>
+        backup.beingMade || backup.sizeGb === null ? (
+          <span id={beingMadeId(backup)} className="text-tx-3">
+            Being made
+          </span>
+        ) : (
+          sizeOf(backup.sizeGb)
+        ),
+    },
     {
       id: "actions",
       head: <span className="sr-only">Actions</span>,
@@ -170,6 +204,13 @@ export function ServerBackupList({ view }: { view: BoughtServerView }) {
             size="xs"
             disabled={held !== null}
             title={held ?? undefined}
+            aria-describedby={
+              restoreWhy !== null
+                ? restoreWhyId
+                : held !== null
+                  ? beingMadeId(backup)
+                  : undefined
+            }
             onClick={() => setRestoring(backup)}
           >
             Restore
@@ -202,8 +243,8 @@ export function ServerBackupList({ view }: { view: BoughtServerView }) {
             <>
               <strong>
                 {counted(rows.length, "Server backup", "Server backups")}
-              </strong>
-              , newest first. The last 7 are kept.
+              </strong>{" "}
+              kept, at most 7.
             </>
           ) : (
             FIRST_BACKUP_WITHIN_A_DAY
@@ -214,11 +255,20 @@ export function ServerBackupList({ view }: { view: BoughtServerView }) {
           size="xs"
           disabled={why !== null || backUpNow.isPending}
           title={why ?? undefined}
+          aria-describedby={why !== null ? whyId : undefined}
           onClick={() => setAsking(true)}
         >
           Back up now
         </Button>
       </MetaStrip>
+      {note ? (
+        <p
+          id={noteId}
+          className="border-b border-line px-4 py-2 text-meta text-tx-2"
+        >
+          {note}
+        </p>
+      ) : null}
       {rows.length > 0 ? (
         <Card.Body flush>
           <DataTable

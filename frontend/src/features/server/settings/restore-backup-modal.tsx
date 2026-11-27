@@ -9,6 +9,7 @@ import type {
 } from "@/lib/api/endpoints/bought-servers";
 
 import { useRestoreBackup } from "../buy/use-bought-servers";
+import { STORAGE_MOUNT_POINT } from "./extra-storage-row";
 
 /**
  * When a backup was taken, in the reader's own zone: "Nov 2, 2026, 3:00 AM".
@@ -89,8 +90,9 @@ export function RestoreBackupModal({
       </p>
       {view.storageGb !== null ? (
         <p className="text-body text-tx">
-          Extra storage at <code className="font-mono">/mnt/storage</code> is
-          not in a backup, so it is not restored and keeps what it holds now.
+          Extra storage at{" "}
+          <code className="font-mono">{STORAGE_MOUNT_POINT}</code> is not in a
+          backup, so it is not restored and keeps what it holds now.
         </p>
       ) : null}
       {noSafetyCopy ? (

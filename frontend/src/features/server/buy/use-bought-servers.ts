@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 
 import { ApiError } from "@/lib/api/api-error";
 
@@ -208,10 +209,23 @@ export const BACKUPS_POLL_MS = 10_000;
 /**
  * A Bought Server's Server backups, newest first; asked only while its
  * backups are on, and read again while one is still being made, so it
- * settles with its size.
+ * settles with its size. Read again too as the Server leaves Changing: a
+ * Restore's safety copy is one more backup, which shows without a reload.
  */
-export function useServerBackups(serverId: string, enabled: boolean) {
+export function useServerBackups(
+  serverId: string,
+  enabled: boolean,
+  changing: boolean,
+) {
   const { organizationId } = useActiveOrganizationId();
+  const invalidate = useInvalidate();
+  const wasChanging = useRef(changing);
+  useEffect(() => {
+    if (wasChanging.current && !changing) {
+      void invalidate.boughtServerBackups(serverId);
+    }
+    wasChanging.current = changing;
+  }, [changing, invalidate, serverId]);
   return useQuery({
     queryKey: keys.boughtServers.backups(organizationId, serverId),
     queryFn: () => boughtServersApi.backups(serverId),
@@ -225,14 +239,10 @@ export function useServerBackups(serverId: string, enabled: boolean) {
 
 /** *Back up now* on a Ready Bought Server; the list is read again, with the new one in it. */
 export function useBackUpNow(serverId: string) {
-  const client = useQueryClient();
-  const { organizationId } = useActiveOrganizationId();
+  const invalidate = useInvalidate();
   return useMutation({
     mutationFn: () => boughtServersApi.backUpNow(serverId),
-    onSettled: () =>
-      client.invalidateQueries({
-        queryKey: keys.boughtServers.backups(organizationId, serverId),
-      }),
+    onSettled: () => invalidate.boughtServerBackups(serverId),
   });
 }
 
@@ -243,6 +253,7 @@ export function useBackUpNow(serverId: string) {
  */
 export function useRestoreBackup(serverId: string) {
   const client = useQueryClient();
+  const invalidate = useInvalidate();
   const { organizationId } = useActiveOrganizationId();
   const key = keys.boughtServers.server(organizationId, serverId);
   return useMutation({
@@ -254,13 +265,8 @@ export function useRestoreBackup(serverId: string) {
       withoutSafetyCopy: boolean;
     }) => boughtServersApi.restore(serverId, backupId, withoutSafetyCopy),
     onSuccess: (view) => client.setQueryData(key, view),
-    onSettled: () =>
-      Promise.all([
-        client.invalidateQueries({ queryKey: key }),
-        client.invalidateQueries({
-          queryKey: keys.boughtServers.backups(organizationId, serverId),
-        }),
-      ]),
+    // The Server's key holds its backups' too, so one read covers both.
+    onSettled: () => invalidate.boughtServer(serverId),
   });
 }
 
