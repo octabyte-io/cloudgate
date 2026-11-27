@@ -22,8 +22,8 @@
  * catalogue (server types with their per-Location prices and availability,
  * Locations with coordinates, the account's price list), and on a machine:
  * create with labels and a public key, read, change type without growing the
- * disk, power on and off, backups on and off, the list of them and one
- * more taken now, a Volume's create, attach and
+ * disk, power on and off, backups on and off, the list of them, one
+ * more taken now and a rebuild from one, a Volume's create, attach and
  * resize, delete of the machine, its Volume and its Primary IP, reverse DNS,
  * and a list by label. Snapshots, firewalls, floating IPs, networks, ISO
  * images and rescue mode are out of scope (ADR-0071), so they are not here.
@@ -282,6 +282,18 @@ export interface HetznerCloudPort {
     serverId: number,
     description: string,
   ): Promise<HetznerAnswer<CreatedBackup>>;
+  /**
+   * Puts the machine's disk back as it was in one of its backups
+   * (`rebuild` with the image's id): everything written since is lost. The
+   * machine keeps its id, addresses, labels and Volumes, which no backup
+   * holds. The provider also answers a root password, which is null for a
+   * machine made with a key, as every Bought Server is; it is dropped here,
+   * never logged or stored.
+   */
+  rebuild(
+    serverId: number,
+    imageId: number,
+  ): Promise<HetznerAnswer<HetznerAction>>;
   /** Sets the reverse DNS of one of the machine's addresses. */
   setReverseDns(
     serverId: number,

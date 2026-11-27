@@ -232,6 +232,22 @@ export class HetznerCloudAdapter implements HetznerCloudPort {
     };
   }
 
+  async rebuild(
+    serverId: number,
+    imageId: number,
+  ): Promise<HetznerAnswer<HetznerAction>> {
+    // The image by its id, as the provider's own Go client sends it. Only
+    // the action is read: the root password beside it is never kept.
+    const answer = await this.call<{ action: ApiAction }>(
+      'POST',
+      `/servers/${serverId}/actions/rebuild`,
+      { image: imageId },
+    );
+    return answer.ok
+      ? { ok: true, value: actionOf(answer.value.action) }
+      : answer;
+  }
+
   setReverseDns(
     serverId: number,
     ip: string,

@@ -45,6 +45,8 @@ export interface FakePrimaryIp {
 export interface FakeMachine extends HetznerServer {
   sshPublicKey: string;
   image: string;
+  /** The backup its disk was last rebuilt from, if it was. */
+  rebuiltFrom: number | null;
 }
 
 /** A backup a spec puts on a machine: what the provider would have made by itself. */
@@ -278,9 +280,10 @@ export function seededCatalogue(currency: 'USD' | 'EUR'): FakeCatalogue {
  * leaves its Volumes and Primary IPs behind (detached, still there), and a
  * Volume or Primary IP is deleted only once nothing holds it. A machine's
  * backups go with it, and with its backups turned off; it keeps 7, the
- * oldest dropped when another is made. Every action it starts has already
- * succeeded, but for a backup asked for, which is being made until a spec
- * calls {@link finishBackup}.
+ * oldest dropped when another is made. A rebuild is only from a whole
+ * backup of the same machine, and changes nothing but its disk. Every action
+ * it starts has already succeeded, but for a backup asked for, which is
+ * being made until a spec calls {@link finishBackup}.
  */
 export class FakeHetznerCloud implements HetznerCloudPort {
   /** Every call, in order, with its arguments. */
@@ -468,6 +471,7 @@ export class FakeHetznerCloud implements HetznerCloudPort {
         created: new Date().toISOString(),
         sshPublicKey: request.sshPublicKey,
         image: request.image,
+        rebuiltFrom: null,
       };
       this.machines.set(id, machine);
       return {
@@ -592,6 +596,30 @@ export class FakeHetznerCloud implements HetznerCloudPort {
           actionId: action.id,
         });
         return { backup, action: { ...action, status: 'running' as const } };
+      }),
+    );
+  }
+
+  /**
+   * Only from a backup of this machine that is whole, as the provider's
+   * images are bound. The machine keeps its id, addresses, labels, Volumes
+   * and power state: only its disk is the backup's.
+   */
+  rebuild(
+    serverId: number,
+    imageId: number,
+  ): Promise<HetznerAnswer<HetznerAction>> {
+    return this.answer('rebuild', [serverId, imageId], () =>
+      this.withMachine(serverId, (machine) => {
+        const backup = this.backupRows.get(imageId);
+        if (!backup || backup.boundTo !== machine.id) {
+          return refusal(HETZNER_NOT_FOUND, 'image not found');
+        }
+        if (backup.status !== 'available') {
+          return refusal('image_not_available', 'image is not available');
+        }
+        machine.rebuiltFrom = imageId;
+        return this.action('rebuild_server');
       }),
     );
   }
@@ -775,9 +803,15 @@ export class FakeHetznerCloud implements HetznerCloudPort {
 
   /** The port's view of a machine: no key, no image. */
   private view(machine: FakeMachine): HetznerServer {
-    const { sshPublicKey: _key, image: _image, ...server } = machine;
+    const {
+      sshPublicKey: _key,
+      image: _image,
+      rebuiltFrom: _rebuiltFrom,
+      ...server
+    } = machine;
     void _key;
     void _image;
+    void _rebuiltFrom;
     return {
       ...server,
       labels: { ...server.labels },
