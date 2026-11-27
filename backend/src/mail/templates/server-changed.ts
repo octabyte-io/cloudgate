@@ -10,7 +10,12 @@ import { renderConfirmationEmail } from './confirmation';
 export type ServerChange =
   | { kind: 'backups'; on: boolean }
   | { kind: 'storage'; storageGb: number }
-  | { kind: 'size'; size: string | null };
+  | { kind: 'size'; size: string | null }
+  /**
+   * A Restore (#180): the backup's date as the email says it, and how the
+   * Server setup run after it ended.
+   */
+  | { kind: 'restore'; backupTakenAt: string; setupOk: boolean };
 
 /**
  * A change to a **Bought Server** finished (spec #69, #75): backups turned on
@@ -37,6 +42,7 @@ export async function renderServerChangedEmail({
   const where = `the Server ${serverName} in ${organizationName}`;
   let subject: string;
   let what: string;
+  const more: string[] = [];
   switch (change.kind) {
     case 'backups':
       subject = `Backups are ${change.on ? 'on' : 'off'} for your Server ${serverName}`;
@@ -52,11 +58,24 @@ export async function renderServerChangedEmail({
       subject = `Your Server ${serverName} has a new size`;
       what = `The Server ${serverName} in ${organizationName} now runs on ${change.size ?? 'its new size'}.`;
       break;
+    case 'restore':
+      subject = `Your Server ${serverName} was restored from a backup`;
+      what = `The Server ${serverName} in ${organizationName} was restored from its backup of ${change.backupTakenAt}. Everything written to its disk since then is gone.`;
+      more.push(
+        change.setupOk
+          ? 'Server setup ran on it again.'
+          : 'Server setup ran on it again and failed: open its Setup card and press Run setup.',
+      );
+      break;
   }
   return renderConfirmationEmail(userName, {
     subject,
     heading: `${serverName} changed`,
-    paragraphs: [what, `${serverName} now costs ${monthlyPrice} a month.`],
+    paragraphs: [
+      what,
+      ...more,
+      `${serverName} now costs ${monthlyPrice} a month.`,
+    ],
     action: { label: 'Open the Server', url: serverUrl },
   });
 }

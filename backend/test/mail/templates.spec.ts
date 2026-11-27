@@ -1,6 +1,7 @@
 import {
   renderBoughtServerChangeRefundedEmail,
   renderBoughtServerRefundedEmail,
+  renderBoughtServerRestoreFailedEmail,
   renderBoughtServerSetupFailedEmail,
   renderBoughtServersDeletionEmail,
   renderCustomRolesStoppedEmail,
@@ -365,6 +366,42 @@ describe('mail templates', () => {
 
       expect(text(rendered.html)).toContain(
         'The Server web-1 in Hopper Labs now runs on its new size.',
+      );
+    });
+
+    it('says which backup the Server was restored from, that what was written since is gone, and that setup ran again', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: {
+          kind: 'restore',
+          backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+          setupOk: true,
+        },
+      });
+
+      expect(rendered.subject).toBe(
+        'Your Server web-1 was restored from a backup',
+      );
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'The Server web-1 in Hopper Labs was restored from its backup of Nov 02, 2026 at 03:00 UTC. Everything written to its disk since then is gone.',
+      );
+      expect(body).toContain('Server setup ran on it again.');
+      expect(body).toContain('web-1 now costs $30.00 a month.');
+    });
+
+    it('says to run setup again when the setup run after a restore failed', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: {
+          kind: 'restore',
+          backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+          setupOk: false,
+        },
+      });
+
+      expect(text(rendered.html)).toContain(
+        'Server setup ran on it again and failed: open its Setup card and press Run setup.',
       );
     });
 
@@ -1527,6 +1564,48 @@ describe('mail templates', () => {
 
       expect(text(rendered.html)).toContain(
         'Charged: monthly, from Dec 15, 2026. The Billing page shows the amount.',
+      );
+    });
+  });
+
+  describe('renderBoughtServerRestoreFailedEmail', () => {
+    const props = {
+      userName: 'Grace',
+      serverName: 'web-1',
+      backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+      serverUrl: 'https://console.example.com/servers/abc/settings',
+    };
+
+    it('says the restore could not be done, that nothing was charged, and that the Server is as it was', async () => {
+      const rendered = await renderBoughtServerRestoreFailedEmail({
+        ...props,
+        rebuilt: false,
+      });
+
+      expect(rendered.subject).toBe(
+        "We couldn't restore web-1 from its backup",
+      );
+      const text = rendered.html.replace(/<!-- -->/g, '');
+      expect(text).toContain(
+        'We tried twice to restore web-1 from its backup of Nov 02, 2026 at 03:00 UTC, and it could not be done.',
+      );
+      expect(text).toContain(
+        'web-1 is as it was, and keeps running. A restore costs nothing, so nothing was charged. You can try again from its Settings.',
+      );
+      expect(text).toContain(
+        'https://console.example.com/servers/abc/settings',
+      );
+      expect(text).not.toMatch(/hetzner/i);
+    });
+
+    it('says the disk was restored when only starting the machine again failed', async () => {
+      const rendered = await renderBoughtServerRestoreFailedEmail({
+        ...props,
+        rebuilt: true,
+      });
+
+      expect(rendered.html.replace(/<!-- -->/g, '')).toContain(
+        'Its disk was restored, but web-1 could not be started again. Contact support to have it started.',
       );
     });
   });

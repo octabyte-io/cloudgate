@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { formatAmount } from '../cloud/billing/billing-notifications.service';
 import { BillingConfig } from '../cloud/billing/billing.config';
@@ -19,6 +19,8 @@ import type {
   BoughtServer,
   BoughtServerChangeTarget,
 } from './bought-server.schema';
+import { BoughtServerRestoreSteps } from './bought-server-restore-steps.service';
+import type { RestoreStep } from './bought-server-restore-steps.service';
 import { BoughtServersService } from './bought-servers.service';
 import { HETZNER_MACHINES } from './hetzner/hetzner-cloud.port';
 import type {
@@ -84,6 +86,10 @@ export function attemptedOf(
  * {@link shows}. A storage change grows the Volume, then the filesystem on
  * the machine as it finishes; a size change powers the machine off while it
  * changes, and never leaves it off.
+ *
+ * A **Restore** (#180) is a change of its own steps, never charged: they are
+ * `BoughtServerRestoreSteps`', which {@link restore} and {@link giveUp} hand
+ * it to.
  */
 @Injectable()
 export class BoughtServerChangeSteps {
@@ -98,7 +104,16 @@ export class BoughtServerChangeSteps {
     private readonly billingConfig: BillingConfig,
     private readonly remoteExec: RemoteExecService,
     private readonly catalogue: BoughtServersService,
+    // Forward: a Restore's steps start a Server setup run, whose service
+    // reaches back to the stages that inject this.
+    @Inject(forwardRef(() => BoughtServerRestoreSteps))
+    private readonly restores: BoughtServerRestoreSteps,
   ) {}
+
+  /** One step of a Restore, from the stored row. */
+  restore(row: BoughtServer, step: RestoreStep): Promise<boolean> {
+    return this.restores.run(row, step);
+  }
 
   /** One try at the change, or its finish when the machine already shows it. */
   async apply(row: BoughtServer): Promise<boolean> {
@@ -144,6 +159,7 @@ export class BoughtServerChangeSteps {
    */
   async giveUp(row: BoughtServer): Promise<boolean> {
     const target = row.changeTarget!;
+    if (target.restore) return this.restores.giveUp(row);
     const machine = await this.machine(row);
     if (!machine) return false;
     const volume = await this.volumeFor(row, target);

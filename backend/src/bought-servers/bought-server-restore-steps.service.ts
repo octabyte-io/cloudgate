@@ -1,0 +1,478 @@
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { and, eq, sql } from 'drizzle-orm';
+import { formatAmount } from '../cloud/billing/billing-notifications.service';
+import { BillingConfig } from '../cloud/billing/billing.config';
+import { LapseNotifications } from '../cloud/billing/lapse-notifications.service';
+import { DRIZZLE } from '../db/drizzle.module';
+import type { DrizzleDB } from '../db/drizzle.module';
+import { MailService } from '../mail/mail.service';
+import { renderBoughtServerRestoreFailedEmail } from '../mail/templates';
+import { renderServerChangedEmail } from '../mail/templates/server-changed';
+import { server } from '../servers/server.schema';
+import { ServerSetupRuns } from '../servers/server-setup-runs';
+import type { SetupRunOutcome } from '../servers/server-setup-runs';
+import { boughtServer, boughtServerLine } from './bought-server.schema';
+import type { BoughtServer, BoughtServerRestore } from './bought-server.schema';
+import { HETZNER_MACHINES } from './hetzner/hetzner-cloud.port';
+import type { HetznerCloudPort } from './hetzner/hetzner-cloud.port';
+import { backupDateOf } from './restore';
+import type { NextStep } from './stages';
+
+/** What the Server setup run after a Restore cut off by a restart each time it was started is stored as. */
+export const RESTORE_SETUP_CUT_OFF_MESSAGE =
+  'The setup run after a restore was cut off before it ended. Run setup to try again.';
+
+/** The steps of a Restore that `nextStep` names. */
+export type RestoreStep = Extract<
+  NextStep,
+  {
+    kind:
+      | 'take-safety-copy'
+      | 'wait-for-safety-copy'
+      | 'rebuild'
+      | 'wait-for-rebuild'
+      | 'start-machine'
+      | 'restore-setup'
+      | 'restore-setup-cut-off'
+      | 'after-restore-setup';
+  }
+>;
+
+/**
+ * **A Restore's steps** (#180, ADR-0093): the Changing stage's steps for a
+ * Restore, which `BoughtServerStages` runs from the stored row through
+ * `BoughtServerChangeSteps`, so a restart resumes at whichever step it cut
+ * off. `nextStep` (`stages.ts`, pure) decides which from the progress stored
+ * in `changeTarget.restore`; each step here does one thing and writes how
+ * far it came.
+ *
+ * - *Safety copy*: a Server backup of the disk as it is, described "Before
+ *   restore, <date>". A try is claimed before the provider is asked, and a
+ *   later try first looks for it by that description, so a copy a restart
+ *   cut off is found rather than taken twice. It is waited on until whole:
+ *   the rebuild never starts before the way back exists.
+ * - *Rebuild* from the chosen backup: claimed, asked, its action stored and
+ *   waited on. A rebuild a restart cut off before its action was stored is
+ *   asked again, which only puts back the same disk.
+ * - *Start*: powered on if it is off, until it runs.
+ * - *Server setup run*, which waits for SSH and mounts the extra storage
+ *   again (`ServersService.setup`); once more if a restart cut it off, then
+ *   stored as failed.
+ * - *After the setup run* ({@link afterSetup}): Ready, and the owners and
+ *   admins told once.
+ *
+ * Every write is conditional on the row's stored target and tries, so two
+ * callers (a press's follow and the hourly resume) never both take a step,
+ * and a stale one never writes progress back over a later one. Nothing is
+ * charged at any step. A provider refusal leaves the next step to decide:
+ * once more, or give up ({@link giveUp}), back to Ready with the owners told.
+ */
+@Injectable()
+export class BoughtServerRestoreSteps {
+  private readonly logger = new Logger(BoughtServerRestoreSteps.name);
+
+  constructor(
+    @Inject(DRIZZLE) private readonly db: DrizzleDB,
+    @Inject(HETZNER_MACHINES) private readonly machines: HetznerCloudPort,
+    // Forward, as in `BoughtServerStages`: ServerSetupRuns provisions through
+    // ServersService, which reaches back into this module.
+    @Inject(forwardRef(() => ServerSetupRuns))
+    private readonly setupRuns: ServerSetupRuns,
+    private readonly notifications: LapseNotifications,
+    private readonly mail: MailService,
+    private readonly billingConfig: BillingConfig,
+  ) {}
+
+  /** One step of a Restore; false once there is nothing more to do now. */
+  run(row: BoughtServer, step: RestoreStep): Promise<boolean> {
+    switch (step.kind) {
+      case 'take-safety-copy':
+        return this.takeSafetyCopy(row, step.findFirst);
+      case 'wait-for-safety-copy':
+        return this.waitForSafetyCopy(row);
+      case 'rebuild':
+        return this.rebuild(row);
+      case 'wait-for-rebuild':
+        return this.waitForRebuild(row);
+      case 'start-machine':
+        return this.startMachine(row);
+      case 'restore-setup':
+        return this.startSetup(row);
+      case 'restore-setup-cut-off':
+        return this.setupCutOff(row);
+      case 'after-restore-setup':
+        return this.afterSetup(row);
+    }
+  }
+
+  /**
+   * Refused every try: back to Ready, with nothing charged, and the owners
+   * told. Before the rebuild the Server is as it was; after it, only
+   * starting the machine failed, and the email says so.
+   */
+  async giveUp(row: BoughtServer): Promise<boolean> {
+    const restore = restoreOf(row);
+    const [kept] = await this.db
+      .update(boughtServer)
+      .set({ stage: 'ready', changeTarget: null, changeTries: 0 })
+      .where(this.unchanged(row))
+      .returning({ id: boughtServer.id });
+    if (!kept) return false;
+    this.logger.warn(
+      `Bought Server ${row.id}: the provider refused every try to restore backup ${restore.backupId}; it is Ready${restore.rebuilt ? ', its disk restored but not started' : ' as it was'}`,
+    );
+    await this.sendFailed(row, restore);
+    return false;
+  }
+
+  private async takeSafetyCopy(
+    row: BoughtServer,
+    findFirst: boolean,
+  ): Promise<boolean> {
+    const restore = restoreOf(row);
+    const copy = restore.safetyCopy!;
+    const machineId = row.providerServerId;
+    if (machineId === null) return false;
+    if (findFirst) {
+      const listed = await this.machines.listBackups(machineId);
+      if (!listed.ok) {
+        this.logger.warn(
+          `Bought Server ${row.id}: looking for its safety copy was refused: ${listed.code}: ${listed.message}`,
+        );
+        return false;
+      }
+      const found = listed.value.find(
+        (backup) => backup.description === copy.description,
+      );
+      if (found) {
+        return this.progress(row, { safetyCopy: { ...copy, id: found.id } });
+      }
+    }
+    if (!(await this.claim(row))) return false;
+    const taken = await this.machines.createBackup(machineId, copy.description);
+    if (!taken.ok) {
+      this.logger.warn(
+        `Bought Server ${row.id}: safety copy ${row.changeTries + 1} was refused: ${taken.code}: ${taken.message}`,
+      );
+      return true;
+    }
+    return this.progress(
+      { ...row, changeTries: row.changeTries + 1 },
+      { safetyCopy: { ...copy, id: taken.value.backup.id } },
+    );
+  }
+
+  /**
+   * Whole: the rebuild may go. Still being made: waited on. Gone (the
+   * provider failed it): taken again, counted as a refused try.
+   */
+  private async waitForSafetyCopy(row: BoughtServer): Promise<boolean> {
+    const restore = restoreOf(row);
+    const copy = restore.safetyCopy!;
+    const listed = await this.machines.listBackups(row.providerServerId!);
+    if (!listed.ok) {
+      this.logger.warn(
+        `Bought Server ${row.id}: reading its safety copy was refused: ${listed.code}: ${listed.message}`,
+      );
+      return false;
+    }
+    const found = listed.value.find((backup) => backup.id === copy.id);
+    if (found?.status === 'creating') return false;
+    if (found) {
+      return this.progress(
+        row,
+        { safetyCopy: { ...copy, available: true } },
+        0,
+      );
+    }
+    this.logger.warn(
+      `Bought Server ${row.id}: its safety copy ${copy.id} is gone before it was made; taking it again`,
+    );
+    return this.progress(row, { safetyCopy: { ...copy, id: null } });
+  }
+
+  private async rebuild(row: BoughtServer): Promise<boolean> {
+    const restore = restoreOf(row);
+    if (!(await this.claim(row))) return false;
+    const asked = await this.machines.rebuild(
+      row.providerServerId!,
+      restore.backupId,
+    );
+    const tries = row.changeTries + 1;
+    if (!asked.ok) {
+      this.logger.warn(
+        `Bought Server ${row.id}: rebuild ${tries} was refused: ${asked.code}: ${asked.message}`,
+      );
+      return true;
+    }
+    return this.progress(
+      { ...row, changeTries: tries },
+      { rebuildActionId: asked.value.id },
+    );
+  }
+
+  /** The rebuild ended well: rebuilt. Ended in an error: a refused try. */
+  private async waitForRebuild(row: BoughtServer): Promise<boolean> {
+    const restore = restoreOf(row);
+    const action = await this.machines.getAction(restore.rebuildActionId!);
+    if (!action.ok) {
+      this.logger.warn(
+        `Bought Server ${row.id}: reading its rebuild was refused: ${action.code}: ${action.message}`,
+      );
+      return false;
+    }
+    if (action.value.status === 'running') return false;
+    if (action.value.status === 'success') {
+      return this.progress(
+        row,
+        { rebuildActionId: undefined, rebuilt: true },
+        0,
+      );
+    }
+    this.logger.warn(
+      `Bought Server ${row.id}: rebuild ${row.changeTries} failed: ${action.value.error?.code}: ${action.value.error?.message}`,
+    );
+    return this.progress(row, { rebuildActionId: undefined });
+  }
+
+  /** Running: on to setup. Off: powered on, a claimed try. Anything else: still starting. */
+  private async startMachine(row: BoughtServer): Promise<boolean> {
+    const machine = await this.machines.getServer(row.providerServerId!);
+    if (!machine.ok) {
+      this.logger.warn(
+        `Bought Server ${row.id}: reading its machine was refused: ${machine.code}: ${machine.message}`,
+      );
+      return false;
+    }
+    if (machine.value.status === 'running') {
+      return this.progress(row, { running: true }, 0);
+    }
+    if (machine.value.status !== 'off') return false;
+    if (!(await this.claim(row))) return false;
+    const on = await this.machines.powerOn(machine.value.id);
+    if (!on.ok) {
+      this.logger.warn(
+        `Bought Server ${row.id}: powering it on after the rebuild was refused: ${on.code}: ${on.message}`,
+      );
+    }
+    return true;
+  }
+
+  /**
+   * The Server setup run, as the person who pressed Restore would start it:
+   * claimed on the row first, so a restart reads it as started. A run
+   * already going on this backend (a *Run setup* pressed meanwhile) is left
+   * alone. Its end is stored, and what follows it runs then.
+   */
+  private async startSetup(row: BoughtServer): Promise<boolean> {
+    const restore = restoreOf(row);
+    if (!row.serverId || this.setupRuns.inFlight(row.serverId)) return false;
+    const claimed = await this.progress(row, {
+      setupStarts: (restore.setupStarts ?? 0) + 1,
+    });
+    if (!claimed) return false;
+    const { ended } = this.setupRuns.start(
+      row.serverId,
+      {
+        user: { id: restore.requestedBy },
+        session: { activeOrganizationId: row.organizationId },
+      },
+      { waitForSsh: true },
+    );
+    void ended.then((outcome) => this.setupEnded(row.id, outcome));
+    return false;
+  }
+
+  /** The run ended, either way: stored, then what follows it. */
+  private async setupEnded(
+    id: string,
+    outcome: SetupRunOutcome,
+  ): Promise<void> {
+    try {
+      const row = await this.find(id);
+      const restore = row?.changeTarget?.restore;
+      if (!row || row.stage !== 'changing' || !restore || restore.setup) {
+        return;
+      }
+      const stored = await this.progress(row, {
+        setup: { ok: outcome.ok, message: outcome.message },
+      });
+      if (!stored) return;
+      const after = await this.find(id);
+      if (after) await this.afterSetup(after);
+    } catch (error) {
+      this.logger.error(
+        `Bought Server ${id}: could not record how the setup run after its restore ended: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  /** Started twice and cut off by a restart both times: stored as a failed run, as the first setup's is. */
+  private async setupCutOff(row: BoughtServer): Promise<boolean> {
+    if (row.serverId) {
+      await this.db
+        .update(server)
+        .set({
+          setupRanAt: new Date().toISOString(),
+          setupOk: false,
+          setupMessage: RESTORE_SETUP_CUT_OFF_MESSAGE,
+        })
+        .where(eq(server.serverId, row.serverId));
+    }
+    return this.progress(row, {
+      setup: { ok: false, message: RESTORE_SETUP_CUT_OFF_MESSAGE },
+    });
+  }
+
+  /**
+   * **What follows the Server setup run after a Restore**, the one place it
+   * happens: whether the run ended here, or a restart read it ended. Today
+   * only the finish; the redeploys of #181 go here, before it.
+   */
+  private async afterSetup(row: BoughtServer): Promise<boolean> {
+    return this.finish(row);
+  }
+
+  /** Ready again. Whoever made that write emails the owners and admins, once. */
+  private async finish(row: BoughtServer): Promise<boolean> {
+    const restore = restoreOf(row);
+    const [done] = await this.db
+      .update(boughtServer)
+      .set({ stage: 'ready', changeTarget: null, changeTries: 0 })
+      .where(this.unchanged(row))
+      .returning({ id: boughtServer.id });
+    if (done) await this.sendRestored(row, restore);
+    return false;
+  }
+
+  /** To every owner and admin, as any finished change is: which backup, and how setup ended. */
+  private async sendRestored(
+    row: BoughtServer,
+    restore: BoughtServerRestore,
+  ): Promise<void> {
+    try {
+      const lines = await this.db
+        .select({ monthlyCents: boughtServerLine.monthlyCents })
+        .from(boughtServerLine)
+        .where(eq(boughtServerLine.boughtServerId, row.id));
+      const monthlyPrice = formatAmount(
+        lines.reduce((sum, line) => sum + line.monthlyCents, 0),
+        'usd',
+      );
+      await this.notifications.sendToOwnersAndAdmins(
+        row.organizationId,
+        'Bought Server restored',
+        (recipient, organizationName) =>
+          renderServerChangedEmail({
+            userName: recipient.name,
+            organizationName,
+            serverName: row.name,
+            change: {
+              kind: 'restore',
+              backupTakenAt: backupDateOf(restore.backupTakenAt),
+              setupOk: restore.setup?.ok ?? false,
+            },
+            monthlyPrice,
+            serverUrl: this.serverUrl(row),
+          }),
+      );
+    } catch (error) {
+      this.logger.error(
+        `Bought Server ${row.id}: could not email that its restore finished: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  /** To the owners, as a refused change is told. */
+  private async sendFailed(
+    row: BoughtServer,
+    restore: BoughtServerRestore,
+  ): Promise<void> {
+    const { recipients } = await this.notifications.audienceOf(
+      row.organizationId,
+      ['owner'],
+    );
+    for (const recipient of recipients) {
+      try {
+        await this.mail.send(
+          recipient.email,
+          await renderBoughtServerRestoreFailedEmail({
+            userName: recipient.name,
+            serverName: row.name,
+            backupTakenAt: backupDateOf(restore.backupTakenAt),
+            rebuilt: restore.rebuilt ?? false,
+            serverUrl: this.serverUrl(row),
+          }),
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to send the restore-failed email to ${recipient.email}: ${(error as Error).message}`,
+        );
+      }
+    }
+  }
+
+  /** One try of the step, claimed before the provider is asked. */
+  private async claim(row: BoughtServer): Promise<boolean> {
+    const [claimed] = await this.db
+      .update(boughtServer)
+      .set({ changeTries: row.changeTries + 1 })
+      .where(this.unchanged(row))
+      .returning({ id: boughtServer.id });
+    // Someone else took this try.
+    return claimed !== undefined;
+  }
+
+  /**
+   * How far the Restore came, written over the row as it is stored now (a
+   * claim just made counts). The step's tries are kept for progress inside
+   * a step, so a copy or a rebuild lost after it was asked for still counts
+   * as a try, and `tries: 0` once a step is done.
+   */
+  private async progress(
+    row: BoughtServer,
+    patch: Partial<BoughtServerRestore>,
+    tries = row.changeTries,
+  ): Promise<boolean> {
+    const target = row.changeTarget!;
+    const [written] = await this.db
+      .update(boughtServer)
+      .set({
+        changeTarget: {
+          ...target,
+          restore: { ...target.restore!, ...patch },
+        },
+        changeTries: tries,
+      })
+      .where(this.unchanged(row))
+      .returning({ id: boughtServer.id });
+    return written !== undefined;
+  }
+
+  /** The row still as it was read: Changing, with the same target and tries. */
+  private unchanged(row: BoughtServer) {
+    return and(
+      eq(boughtServer.id, row.id),
+      eq(boughtServer.stage, 'changing'),
+      eq(boughtServer.changeTries, row.changeTries),
+      sql`${boughtServer.changeTarget} = ${JSON.stringify(row.changeTarget)}::jsonb`,
+    );
+  }
+
+  private serverUrl(row: BoughtServer): string {
+    return `${this.billingConfig.siteUrl}/servers/${row.id}/settings`;
+  }
+
+  private async find(id: string): Promise<BoughtServer | null> {
+    const [row] = await this.db
+      .select()
+      .from(boughtServer)
+      .where(eq(boughtServer.id, id))
+      .limit(1);
+    return row ?? null;
+  }
+}
+
+function restoreOf(row: BoughtServer): BoughtServerRestore {
+  return row.changeTarget!.restore!;
+}

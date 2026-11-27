@@ -11,6 +11,7 @@ import { BoughtServerChangeSteps } from './bought-server-change-steps.service';
 import { BoughtServerDeletion } from './bought-server-deletion.service';
 import { BoughtServerPurchases } from './bought-server-purchases.service';
 import { BoughtServerReprices } from './bought-server-reprices.service';
+import { BoughtServerRestoreSteps } from './bought-server-restore-steps.service';
 import { BoughtServerSettings } from './bought-server-settings.service';
 import { BoughtServerStages } from './bought-server-stages.service';
 import { BoughtServersConfig } from './bought-servers.config';
@@ -46,6 +47,7 @@ import { OrphanMachines } from './orphan-machines.service';
     BoughtServerClock,
     BoughtServerChanges,
     BoughtServerChangeSteps,
+    BoughtServerRestoreSteps,
     BoughtServerBackups,
     BoughtServerSettings,
     DayRates,

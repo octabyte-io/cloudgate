@@ -4,8 +4,9 @@ import {
   Injectable,
   Logger,
   OnApplicationBootstrap,
+  OnModuleDestroy,
 } from '@nestjs/common';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { subscriptionIdOf } from '../cloud/billing/billing.plans';
 import { STRIPE_API } from '../cloud/billing/stripe-api';
@@ -82,6 +83,20 @@ const ACTION_POLL_MS = 2_000;
 const MAX_STEPS = 8;
 
 /**
+ * How long a Restore is followed after its press or a boot, read again every
+ * {@link ACTION_POLL_MS}: its safety copy and its rebuild take minutes. Past
+ * it, the hourly resume carries it on.
+ */
+const RESTORE_FOLLOW_POLLS = 900;
+
+/** The steps a Restore waits on the provider in, which a follow reads again. */
+const RESTORE_WAITS = new Set([
+  'wait-for-safety-copy',
+  'wait-for-rebuild',
+  'start-machine',
+]);
+
+/**
  * Carries a Bought Server through its stages from what is stored: each
  * step is decided by `nextStep` (`stages.ts`, pure) over the row read
  * fresh, so the same call resumes it after a restart, and a step claims its
@@ -100,8 +115,12 @@ const MAX_STEPS = 8;
  * the Operators, and is not refunded.
  */
 @Injectable()
-export class BoughtServerStages implements OnApplicationBootstrap {
+export class BoughtServerStages
+  implements OnApplicationBootstrap, OnModuleDestroy
+{
   private readonly logger = new Logger(BoughtServerStages.name);
+  /** Set on shutdown, so no follow outlives the app. */
+  private stopping = false;
 
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
@@ -110,6 +129,9 @@ export class BoughtServerStages implements OnApplicationBootstrap {
     private readonly sshKeys: SshKeysService,
     @Inject(STRIPE_API) private readonly stripe: StripeApi,
     private readonly notifications: BoughtServerNotifications,
+    // Forward too: a Restore's steps start a Server setup run, so the change
+    // steps import ServerSetupRuns, and the same three files go round.
+    @Inject(forwardRef(() => BoughtServerChangeSteps))
     private readonly changes: BoughtServerChangeSteps,
     // Forward: ServerSetupRuns provisions through ServersService, which reaches
     // back here; whichever file loads first sees the other's class undefined.
@@ -130,6 +152,50 @@ export class BoughtServerStages implements OnApplicationBootstrap {
    */
   onApplicationBootstrap(): void {
     void this.resumeSetups();
+    void this.resumeRestores();
+  }
+
+  onModuleDestroy(): void {
+    this.stopping = true;
+  }
+
+  /**
+   * Follows a Restore (#180) while it waits on the provider: its safety copy
+   * being made, its rebuild, the machine starting. Each read is an
+   * {@link advance}, so it takes the next step as soon as the provider is
+   * done. Not awaited by the press, which answers at once. Never throws.
+   */
+  async follow(id: string): Promise<void> {
+    for (let i = 0; i < RESTORE_FOLLOW_POLLS && !this.stopping; i++) {
+      await this.advance(id);
+      const row = await this.find(id).catch(() => null);
+      if (!row?.changeTarget?.restore || row.stage !== 'changing') return;
+      const next = nextStep({ ...row, linesOnSubscription: 0 });
+      if (!RESTORE_WAITS.has(next.kind)) return;
+      await new Promise((resolve) =>
+        setTimeout(resolve, ACTION_POLL_MS).unref(),
+      );
+    }
+  }
+
+  /** A restart cut every follow off: each Restore still Changing is followed again. */
+  async resumeRestores(): Promise<void> {
+    try {
+      const rows = await this.db
+        .select({ id: boughtServer.id })
+        .from(boughtServer)
+        .where(
+          and(
+            eq(boughtServer.stage, 'changing'),
+            sql`${boughtServer.changeTarget} -> 'restore' is not null`,
+          ),
+        );
+      for (const row of rows) void this.follow(row.id);
+    } catch (error) {
+      this.logger.error(
+        `Could not resume the Bought Servers being restored: ${(error as Error).message}`,
+      );
+    }
   }
 
   /** Carries on every Bought Server Setting up whose run is not going here. */
@@ -187,6 +253,15 @@ export class BoughtServerStages implements OnApplicationBootstrap {
         return this.changes.giveUp(row);
       case 'abandon-change':
         return this.changes.abandonForDelete(row);
+      case 'take-safety-copy':
+      case 'wait-for-safety-copy':
+      case 'rebuild':
+      case 'wait-for-rebuild':
+      case 'start-machine':
+      case 'restore-setup':
+      case 'restore-setup-cut-off':
+      case 'after-restore-setup':
+        return this.changes.restore(row, step);
       case 'remove-lines':
         return this.deletion.removeLines(row);
       case 'delete-machine':

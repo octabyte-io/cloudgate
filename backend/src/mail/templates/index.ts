@@ -942,6 +942,47 @@ export async function renderBoughtServerChangeRefundedEmail({
 }
 
 /**
+ * A **Bought Server**'s Restore that could not be done (#180, ADR-0093):
+ * Cloudgate asked twice, then gave it up. Nothing was charged, since a
+ * Restore costs nothing. `rebuilt` when only starting the machine again
+ * failed, so the disk is the backup's already. Sent to the owners. It never
+ * names the provider.
+ */
+export async function renderBoughtServerRestoreFailedEmail({
+  userName,
+  serverName,
+  backupTakenAt,
+  rebuilt,
+  serverUrl,
+}: {
+  userName: string;
+  serverName: string;
+  /** When the backup was taken, as the email says it. */
+  backupTakenAt: string;
+  rebuilt: boolean;
+  serverUrl: string;
+}): Promise<RenderedEmail> {
+  return {
+    subject: `We couldn't restore ${serverName} from its backup`,
+    html: await render(
+      LapseNoticeTemplate({
+        audience: 'owners',
+        userName: userName || 'User',
+        heading: 'Your restore could not be done',
+        paragraphs: [
+          `We tried twice to restore ${serverName} from its backup of ${backupTakenAt}, and it could not be done.`,
+          rebuilt
+            ? `Its disk was restored, but ${serverName} could not be started again. Contact support to have it started.`
+            : `${serverName} is as it was, and keeps running. A restore costs nothing, so nothing was charged. You can try again from its Settings.`,
+        ],
+        action: { label: 'Open the Server', url: serverUrl },
+      }),
+    ),
+    inlineImages: [emailLogoAttachment('dark')],
+  };
+}
+
+/**
  * To every Operator when a **Bought Server**'s first Setup run fails (spec
  * #1387): the run the backend started by itself after Buy, failed on the
  * machine or cut off by a restart twice. The customer sees Setup failed and

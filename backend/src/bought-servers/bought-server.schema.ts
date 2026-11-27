@@ -83,6 +83,44 @@ export interface BoughtServerChangeLine {
 }
 
 /**
+ * A **Restore** in progress (#180, ADR-0093): the Server backup it puts the
+ * disk back to, and how far it has come, one field per step, so a restart
+ * reads where to resume. Each step that asks the provider counts its tries
+ * in the row's `changeTries`, reset as it finishes, as any change's do.
+ */
+export interface BoughtServerRestore {
+  /** The Server backup restored, by the provider's id. */
+  backupId: number;
+  /** When that backup was taken, ISO: what the console and the email say. */
+  backupTakenAt: string;
+  /** Who pressed Restore: the Server setup run afterwards is theirs. */
+  requestedBy: string;
+  /**
+   * The safety copy, taken before the rebuild, named by its description so a
+   * copy a restart cut off is found rather than taken twice. Null when the
+   * restore goes without one: confirmed, since it would push out the backup
+   * chosen.
+   */
+  safetyCopy: {
+    description: string;
+    /** Stored once the provider answered with it. */
+    id: number | null;
+    /** The provider has made it whole. */
+    available: boolean;
+  } | null;
+  /** The rebuild the provider is making, until it ends. */
+  rebuildActionId?: number;
+  /** The disk is back as it was at the backup. */
+  rebuilt?: boolean;
+  /** The machine runs again. */
+  running?: boolean;
+  /** How many times the Server setup run after it was started. */
+  setupStarts?: number;
+  /** How that run ended; only what follows it is left. */
+  setup?: { ok: boolean; message: string | null };
+}
+
+/**
  * The change in progress, as `changeTarget` holds it (#1394–#1396): what the
  * machine becomes (only the fields that change), whether it was charged at
  * once or is credited, and the lines it leaves. Lines of other kinds stay
@@ -92,6 +130,11 @@ export interface BoughtServerChangeTarget {
   serverType?: string;
   backups?: boolean;
   storageGb?: number;
+  /**
+   * A Restore (#180): never charged and with no lines, since it costs
+   * nothing; its steps are its own.
+   */
+  restore?: BoughtServerRestore;
   /** Costs more, so paid before the provider is asked; otherwise credited once it is done. */
   charged: boolean;
   lines: BoughtServerChangeLine[];

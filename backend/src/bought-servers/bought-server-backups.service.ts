@@ -10,10 +10,17 @@ import { and, eq } from 'drizzle-orm';
 import { DRIZZLE } from '../db/drizzle.module';
 import type { DrizzleDB } from '../db/drizzle.module';
 import type { PermissionCtx } from '../rbac/permission.service';
-import { NOT_CHANGEABLE_CODE } from './bought-server-changes.service';
+import {
+  BoughtServerChanges,
+  NOT_CHANGEABLE_CODE,
+} from './bought-server-changes.service';
+import type { BoughtServerView } from './bought-server-changes.service';
+import { BoughtServerStages } from './bought-server-stages.service';
 import { boughtServer } from './bought-server.schema';
+import type { BoughtServerChangeTarget } from './bought-server.schema';
 import { BoughtServersConfig } from './bought-servers.config';
 import { HETZNER_MACHINES } from './hetzner/hetzner-cloud.port';
+import { safetyCopyDescription, safetyCopyPushesOut } from './restore';
 import type {
   HetznerBackup,
   HetznerCloudPort,
@@ -40,6 +47,12 @@ export const BACKUP_NOT_TAKEN =
   "This Server can't be backed up right now. Try again later";
 
 export const BACKUPS_OFF_CODE = 'BACKUPS_OFF';
+export const BACKUP_BEING_MADE_CODE = 'BACKUP_BEING_MADE';
+export const NO_SAFETY_COPY_CODE = 'NO_SAFETY_COPY';
+
+/** Said when the oldest of 7 is chosen without the go-ahead: its safety copy would push it out. */
+export const NO_SAFETY_COPY =
+  'This is the oldest of 7 backups, so a safety copy would remove it. Confirm restoring without one, or pick a newer backup';
 
 /**
  * A Bought Server's **Server backups** (ADR-0093): the copies of its disk
@@ -50,6 +63,10 @@ export const BACKUPS_OFF_CODE = 'BACKUPS_OFF';
  * never frozen); Back up now is a write, which `FrozenGuard` refuses while
  * it is frozen. What is answered is Cloudgate's shape, never the provider's:
  * its description and status words stay behind the port (ADR-0071).
+ *
+ * **Restore** puts the disk back as it was at one: a change on the Changing
+ * stage, whose steps `BoughtServerRestoreSteps` runs; this only checks the
+ * press and claims it.
  */
 @Injectable()
 export class BoughtServerBackups {
@@ -59,6 +76,8 @@ export class BoughtServerBackups {
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     @Inject(HETZNER_MACHINES) private readonly machines: HetznerCloudPort,
     private readonly config: BoughtServersConfig,
+    private readonly changes: BoughtServerChanges,
+    private readonly stages: BoughtServerStages,
   ) {}
 
   /**
@@ -120,6 +139,102 @@ export class BoughtServerBackups {
       throw new ServiceUnavailableException(BACKUP_NOT_TAKEN);
     }
     return viewOf(answer.value.backup);
+  }
+
+  /**
+   * **Restore** (#180, ADR-0093): the disk put back as it was at one of its
+   * Server backups, a safety copy taken first. Refused as any change is
+   * unless the Server is Ready (and not powered off by an Operator), while
+   * its backups are off, for a backup that is not its own or is still being
+   * made, and for the oldest of 7 unless `withoutSafetyCopy` says to go
+   * ahead with none. It costs nothing, so neither a charge nor a deletion
+   * date stands in its way. Answered at once, Changing; the steps follow
+   * from the stored row.
+   */
+  async restore(
+    ctx: PermissionCtx,
+    id: string,
+    backupId: number,
+    withoutSafetyCopy: boolean,
+  ): Promise<BoughtServerView> {
+    if (this.config.offer === 'absent') throw new NotFoundException();
+    const [row] = await this.db
+      .select()
+      .from(boughtServer)
+      .where(
+        and(
+          eq(boughtServer.id, id),
+          eq(boughtServer.organizationId, ctx.session.activeOrganizationId),
+        ),
+      )
+      .limit(1);
+    if (!row) throw new NotFoundException('Server not found');
+    this.changes.assertChangeable(row);
+    if (!row.backups || row.providerServerId === null) {
+      throw new ConflictException({
+        code: BACKUPS_OFF_CODE,
+        message: 'Turn backups on to restore this Server',
+      });
+    }
+
+    const listed = await this.machines.listBackups(row.providerServerId);
+    if (!listed.ok) {
+      this.logger.error(
+        `The provider refused the backups of machine ${row.providerServerId}: ${listed.code}: ${listed.message}`,
+      );
+      throw new ServiceUnavailableException(BACKUPS_UNREADABLE);
+    }
+    const chosen = listed.value.find((backup) => backup.id === backupId);
+    if (!chosen) {
+      throw new NotFoundException('That backup is not one of this Server’s');
+    }
+    if (chosen.status !== 'available') {
+      throw new ConflictException({
+        code: BACKUP_BEING_MADE_CODE,
+        message: 'That backup is still being made. Restore it once it is made',
+      });
+    }
+    const noCopy = safetyCopyPushesOut(listed.value, backupId);
+    if (noCopy && !withoutSafetyCopy) {
+      throw new ConflictException({
+        code: NO_SAFETY_COPY_CODE,
+        message: NO_SAFETY_COPY,
+      });
+    }
+
+    const now = new Date();
+    const target: BoughtServerChangeTarget = {
+      charged: false,
+      lines: [],
+      startedAt: now.toISOString(),
+      restore: {
+        backupId,
+        backupTakenAt: new Date(chosen.created).toISOString(),
+        requestedBy: ctx.user.id,
+        safetyCopy: noCopy
+          ? null
+          : {
+              description: safetyCopyDescription(now),
+              id: null,
+              available: false,
+            },
+      },
+    };
+    // Claimed once: a second press, or a change already running, is refused.
+    const [claimed] = await this.db
+      .update(boughtServer)
+      .set({
+        stage: 'changing',
+        changeTarget: target,
+        changeTries: 0,
+        changeInvoiceId: null,
+      })
+      .where(and(eq(boughtServer.id, id), eq(boughtServer.stage, 'ready')))
+      .returning({ id: boughtServer.id });
+    if (!claimed) throw this.changes.notChangeable('changing');
+
+    void this.stages.follow(id);
+    return this.changes.view(ctx, id);
   }
 
   /** The Bought Server's own row, org-scoped; a bare 404 where the feature is absent. */

@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Param,
+  ParseIntPipe,
   Post,
   Put,
   Query,
@@ -26,6 +27,7 @@ import {
   BackupsDto,
   BuyDto,
   FinishPayingDto,
+  RestoreDto,
   SizeDto,
   StorageDto,
   TodayQueryDto,
@@ -198,6 +200,31 @@ export class BoughtServersController {
     @Param('id') id: string,
   ) {
     return this.backups.create(toCtx(user, session), id);
+  }
+
+  /**
+   * *Restore*: the disk put back as it was at one of its Server backups, a
+   * safety copy taken first unless that would push the chosen one out (then
+   * only with `withoutSafetyCopy`). Answered at once, Changing; the steps go
+   * on in the background. It costs nothing; a frozen Organization is
+   * refused, as for any write.
+   */
+  @Post(':id/backups/:backupId/restore')
+  @HttpCode(202)
+  @RequirePermission('server', 'create')
+  restoreBackup(
+    @CurrentUser() user: AuthSession['user'],
+    @CurrentSession() session: Session,
+    @Param('id') id: string,
+    @Param('backupId', ParseIntPipe) backupId: number,
+    @Body() body: RestoreDto,
+  ) {
+    return this.backups.restore(
+      toCtx(user, session),
+      id,
+      backupId,
+      body.withoutSafetyCopy ?? false,
+    );
   }
 
   /**
