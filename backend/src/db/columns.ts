@@ -153,7 +153,8 @@ export const wiredChangedAtColumn = () => text('wired_changed_at');
  * Deployment's `finished_at` is to an Application. A Restore of a Bought
  * Server redeploys it when this is newer than the backup (ADR-0093). Null
  * while it has never been deployed; a row deployed before the column existed
- * reads its `created_at`, the earliest its last deploy can have been.
+ * reads the time its migration ran, so a Restore errs toward a redeploy,
+ * which is harmless, rather than toward older code under a newer record.
  */
 export const deployedAtColumn = () => text('deployed_at');
 
