@@ -143,7 +143,7 @@ afterEach(() => {
 });
 
 /** Runs the script on a box whose `uname -m` answers `machine`. */
-function run(bin: string, machine = 'x86_64') {
+function run(bin: string, machine = 'x86_64', tag?: string) {
   fs.writeFileSync(
     path.join(bin, 'uname'),
     `#!/usr/bin/env bash
@@ -155,7 +155,7 @@ echo ${machine}
   // Not jest's NODE_ENV=test: the script sets NODE_ENV where it means to.
   const env = { ...process.env };
   delete env.NODE_ENV;
-  return spawnSync('bash', [script, out], {
+  return spawnSync('bash', tag ? [script, out, tag] : [script, out], {
     cwd: tree,
     env: { ...env, PATH: `${bin}:${process.env.PATH}` },
     encoding: 'utf8',
@@ -231,6 +231,59 @@ describe('deploy/version-tarball.sh', () => {
       fs.readFileSync(path.join(out, `${ARM64_TARBALL}.sha256`), 'utf8'),
     ).toMatch(/^[0-9a-f]{64} {2}cloudgate-0\.3\.0-linux-arm64\.tar\.gz\n$/);
   });
+
+  it('takes the version tag, v<backend/package.json version>, as it is', () => {
+    const built = run(shimPnpm(), 'x86_64', 'v0.3.0');
+
+    expect(built.status).toBe(0);
+    expect(fs.readdirSync(out).sort()).toEqual([TARBALL, `${TARBALL}.sha256`]);
+  });
+
+  // eslint-disable-next-line no-restricted-syntax -- a release candidate of a Cloudgate version (ADR-0094), not a Deployment's
+  it('builds a release candidate as one: named, VERSION and backend/package.json all X.Y.Z-rc.N (ADR-0094)', () => {
+    const candidate = 'cloudgate-0.3.0-rc.2-linux-amd64.tar.gz';
+
+    const built = run(shimPnpm(), 'x86_64', 'v0.3.0-rc.2');
+
+    expect(built.stderr).toBe('');
+    expect(built.status).toBe(0);
+    expect(fs.readdirSync(out).sort()).toEqual([
+      candidate,
+      `${candidate}.sha256`,
+    ]);
+    const into = path.join(scratch, 'unpacked');
+    fs.mkdirSync(into);
+    const unpacked = spawnSync('tar', [
+      '-xzf',
+      path.join(out, candidate),
+      '-C',
+      into,
+    ]);
+    expect(unpacked.status).toBe(0);
+    expect(fs.readFileSync(path.join(into, 'VERSION'), 'utf8')).toBe(
+      '0.3.0-rc.2\n',
+    );
+    expect(
+      JSON.parse(
+        fs.readFileSync(path.join(into, 'backend/package.json'), 'utf8'),
+      ),
+    ).toEqual({ name: 'backend', version: '0.3.0-rc.2' });
+  });
+
+  it.each(['v0.4.0', 'v0.4.0-rc.1', 'v0.3.0-rc.0', 'v0.3.0-beta.1'])(
+    // eslint-disable-next-line no-restricted-syntax -- a release candidate of a Cloudgate version (ADR-0094), not a Deployment's
+    'packs nothing for %s, which is neither backend/package.json version nor a release candidate of it',
+    (tag) => {
+      const refused = run(shimPnpm(), 'x86_64', tag);
+
+      expect(refused.status).toBe(1);
+      expect(refused.stderr).toContain(
+        // eslint-disable-next-line no-restricted-syntax -- a release candidate of a Cloudgate version (ADR-0094), not a Deployment's
+        `${tag} is neither v0.3.0, backend/package.json's version, nor a release candidate of it`,
+      );
+      expect(fs.existsSync(calls)).toBe(false);
+    },
+  );
 
   it('builds nothing on a CPU that is neither amd64 nor arm64', () => {
     const refused = run(shimPnpm(), 'riscv64');

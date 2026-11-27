@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Release candidates, to check a version on a box before it ships
+
+A version can be released as a candidate first, `v0.3.14-rc.1` (ADR-0094). It is tested, built and signed like a version and published as a GitHub pre-release, but it is not deployed to the Hosted instance and no install or update notice offers it. `CLOUDGATE_VERSION=v0.3.14-rc.1` installs it on a test box. **Promote release candidate** in GitHub Actions then publishes `v0.3.14` from the same commit without running the tests again, and deploys it to the Hosted instance. The install now takes a release candidate in `CLOUDGATE_VERSION` and orders it before the version it becomes. docs/deploy.md §11 has the steps.
+
+**What to do on upgrade**: nothing.
+
 ### The file editor scrolls sideways again, with a Wrap lines switch
 
 An editable file (a Compose file, the project config, a Traefik file) no longer wraps long lines by default: it scrolls sideways inside its own box, so YAML indentation and a parser's column numbers read as written. A **Wrap lines** switch under the editor turns wrapping on, and this browser remembers it for every editor. Read-only views (diffs, converted files, plan copies) still always wrap.

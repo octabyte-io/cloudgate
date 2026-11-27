@@ -9,10 +9,14 @@
 # with the conclusion and head commit of the `E2E (release)` run that started
 # it. The tag checks are deploy-hosted.yml's and deploy/hosted-release-gate.sh's.
 #
+# The tag is a version, vX.Y.Z, or a release candidate of one, vX.Y.Z-rc.N
+# (ADR-0094): published the same way, as a GitHub pre-release, and never
+# deployed to the Hosted instance or counted as the latest version.
+#
 #   0  publish it: E2E passed, the tag still names the commit E2E tested and
 #      the one checked out here, that commit is on origin/main, and the tag is
-#      backend/package.json's version.
-#   1  refused, saying why: the tag is not vX.Y.Z, E2E did not pass, the tag
+#      backend/package.json's version (X.Y.Z for vX.Y.Z-rc.N too).
+#   1  refused, saying why: the tag is neither vX.Y.Z nor vX.Y.Z-rc.N, E2E did not pass, the tag
 #      moved after E2E tested it, it is not on main (or main was not fetched),
 #      or the Instance would report another version.
 #
@@ -27,8 +31,8 @@ fail() {
 }
 
 tag="${1:-}"
-[[ "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]] ||
-  fail "A Cloudgate version tag is vX.Y.Z, not \"$tag\"."
+[[ "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)(-rc\.[1-9][0-9]*)?$ ]] ||
+  fail "A Cloudgate version tag is vX.Y.Z, or vX.Y.Z-rc.N for a release candidate, not \"$tag\"."
 version="${BASH_REMATCH[1]}"
 
 [ "${E2E_CONCLUSION:-}" = success ] ||

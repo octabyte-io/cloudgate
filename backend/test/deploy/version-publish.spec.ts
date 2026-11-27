@@ -74,7 +74,10 @@ afterEach(() => {
  * `view` is what `gh release view v0.3.0 --json assets` does: the names of the
  * release's assets, no release at all, or a failure to ask.
  */
-function run(view: { assets: string[] } | 'not found' | 'unreachable') {
+function run(
+  view: { assets: string[] } | 'not found' | 'unreachable',
+  tag = 'v0.3.0',
+) {
   const bin = path.join(scratch, 'bin');
   fs.mkdirSync(bin, { recursive: true });
   const answer =
@@ -98,11 +101,24 @@ exit 0
 `,
     { mode: 0o755 },
   );
-  return spawnSync('bash', [script, 'v0.3.0', dist], {
+  return spawnSync('bash', [script, tag, dist], {
     cwd: tree,
     env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
     encoding: 'utf8',
   });
+}
+
+/** The six files of `version`, written to dist as version-tarball.sh and version-sign.sh would. */
+function distFor(version: string): string[] {
+  const files: string[] = [];
+  for (const cpu of ['amd64', 'arm64']) {
+    const tarball = `cloudgate-${version}-linux-${cpu}.tar.gz`;
+    fs.writeFileSync(path.join(dist, tarball), 'tarball');
+    fs.writeFileSync(path.join(dist, `${tarball}.sha256`), `abc  ${tarball}\n`);
+    fs.writeFileSync(path.join(dist, `${tarball}.sha256.sig`), 'signature');
+    files.push(tarball, `${tarball}.sha256`, `${tarball}.sha256.sig`);
+  }
+  return files;
 }
 
 function called(): string[] {
@@ -127,6 +143,48 @@ describe('deploy/version-publish.sh', () => {
     expect(notes).toContain('### Install a Cloudgate version');
     expect(notes).not.toContain('Not this');
     expect(notes).not.toContain('Older');
+  });
+
+  // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
+  it('creates a release candidate as a pre-release, its notes its version CHANGELOG section (ADR-0094)', () => {
+    const files = distFor('0.3.0-rc.2');
+
+    const published = run('not found', 'v0.3.0-rc.2');
+
+    expect(published.stderr).toBe('');
+    expect(published.status).toBe(0);
+    expect(published.stdout).toContain('as a pre-release');
+    const [create, ...rest] = called();
+    expect(rest).toEqual([]);
+    expect(create.replace(/--notes-file \S+$/, '--notes-file <notes>')).toBe(
+      `gh release create v0.3.0-rc.2 ${files.map((file) => `${dist}/${file}`).join(' ')} --verify-tag --prerelease --title Cloudgate 0.3.0-rc.2 --notes-file <notes>`,
+    );
+    const notes = fs.readFileSync(path.join(scratch, 'notes'), 'utf8');
+    expect(notes).toContain('### Install a Cloudgate version');
+  });
+
+  // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
+  it('takes a release candidate notes from Unreleased while its version has no CHANGELOG section', () => {
+    distFor('0.4.0-rc.1');
+
+    const published = run('not found', 'v0.4.0-rc.1');
+
+    expect(published.status).toBe(0);
+    expect(called()[0]).toContain('--prerelease');
+    const notes = fs.readFileSync(path.join(scratch, 'notes'), 'utf8');
+    expect(notes).toContain('### Not this');
+    expect(notes).not.toContain('Install a Cloudgate version');
+  });
+
+  // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
+  it('refuses a release candidate whose six files are not there, publishing nothing', () => {
+    const refused = run('not found', 'v0.3.0-rc.1');
+
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain(
+      'cloudgate-0.3.0-rc.1-linux-amd64.tar.gz is not there',
+    );
+    expect(called()).toEqual([]);
   });
 
   // eslint-disable-next-line no-restricted-syntax -- a GitHub Release, not a Deployment's
@@ -235,11 +293,11 @@ describe('deploy/version-sign.sh', () => {
     }
   });
 
-  function sign(key: string | undefined) {
+  function sign(key: string | undefined, tag = 'v0.3.0') {
     const env: NodeJS.ProcessEnv = { ...process.env };
     delete env.VERSION_SIGNING_KEY;
     if (key !== undefined) env.VERSION_SIGNING_KEY = key;
-    return spawnSync('bash', [signScript, 'v0.3.0', dist], {
+    return spawnSync('bash', [signScript, tag, dist], {
       cwd: tree,
       env,
       encoding: 'utf8',
@@ -269,6 +327,31 @@ describe('deploy/version-sign.sh', () => {
       ).status === 0
     );
   }
+
+  // eslint-disable-next-line no-restricted-syntax -- a release candidate of a Cloudgate version (ADR-0094), not a Deployment's
+  it('signs a release candidate checksums, named for the candidate (ADR-0094)', () => {
+    const files = distFor('0.3.0-rc.1');
+    for (const file of files.filter((name) => name.endsWith('.sig'))) {
+      fs.rmSync(path.join(dist, file));
+    }
+
+    const signed = sign(trusted.privateKey, 'v0.3.0-rc.1');
+
+    expect(signed.stderr).toBe('');
+    expect(signed.status).toBe(0);
+    expect(
+      verifies(
+        'cloudgate-0.3.0-rc.1-linux-amd64.tar.gz.sha256',
+        trusted.signers,
+      ),
+    ).toBe(true);
+    expect(
+      verifies(
+        'cloudgate-0.3.0-rc.1-linux-arm64.tar.gz.sha256',
+        trusted.signers,
+      ),
+    ).toBe(true);
+  });
 
   it('signs both checksums with the key, in the cloudgate-version namespace', () => {
     const signed = sign(trusted.privateKey);
@@ -411,5 +494,100 @@ describe('.github/workflows/publish-version.yml', () => {
     expect([publish.needs].flat()).toContain('smoke');
     // An `if:` such as always() would publish past a failed smoke run.
     expect(publish.if).toBeUndefined();
+  });
+
+  // eslint-disable-next-line no-restricted-syntax -- a release candidate of a Cloudgate version (ADR-0094), not a Deployment's
+  it('names the tarball for the tag, so a release candidate is built as one (ADR-0094)', () => {
+    const steps = (jobs().build as Job & { steps: { run?: string }[] }).steps;
+
+    expect(
+      steps.some((step) =>
+        step.run?.includes(
+          'bash deploy/version-tarball.sh "$RUNNER_TEMP/version" "$TAG"',
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  // eslint-disable-next-line no-restricted-syntax -- a release candidate of a Cloudgate version (ADR-0094), not a Deployment's
+  it('never starts the Hosted instance upgrade for a release candidate', () => {
+    expect(jobs()['deploy-hosted'].if).toBe(
+      "${{ !contains(inputs.tag || github.event.workflow_run.head_branch, '-rc.') }}",
+    );
+  });
+
+  it('is called by a promotion with the version tag and the commit the candidate tested', () => {
+    const workflow = parse(
+      fs.readFileSync(
+        path.join(repoRoot, '.github/workflows/publish-version.yml'),
+        'utf8',
+      ),
+      { logLevel: 'error' },
+    ) as {
+      on: { workflow_call: { inputs: Record<string, { required: boolean }> } };
+      env: Record<string, string>;
+    };
+
+    expect(Object.keys(workflow.on.workflow_call.inputs).sort()).toEqual([
+      'tag',
+      'tested_sha',
+    ]);
+    expect(workflow.env.TAG).toBe(
+      '${{ inputs.tag || github.event.workflow_run.head_branch }}',
+    );
+    expect(workflow.env.TESTED_SHA).toBe(
+      '${{ inputs.tested_sha || github.event.workflow_run.head_sha }}',
+    );
+  });
+});
+
+/**
+ * `.github/workflows/promote-release-candidate.yml`: run by hand, it tags the
+ * version on the candidate's tested commit with deploy/version-promote.sh,
+ * then publishes and deploys it through publish-version.yml (ADR-0094).
+ */
+describe('.github/workflows/promote-release-candidate.yml', () => {
+  const workflow = () =>
+    parse(
+      fs.readFileSync(
+        path.join(repoRoot, '.github/workflows/promote-release-candidate.yml'),
+        'utf8',
+      ),
+      { logLevel: 'error' },
+    ) as {
+      on: Record<string, unknown>;
+      jobs: Record<
+        string,
+        {
+          needs?: string;
+          uses?: string;
+          with?: Record<string, string>;
+          secrets?: Record<string, string>;
+          steps?: { run?: string }[];
+        }
+      >;
+    };
+
+  it('runs only by hand', () => {
+    expect(Object.keys(workflow().on)).toEqual(['workflow_dispatch']);
+  });
+
+  it('promotes with deploy/version-promote.sh, then calls publish-version.yml with what it printed', () => {
+    const { promote, publish } = workflow().jobs;
+
+    expect(
+      promote.steps?.some((step) =>
+        step.run?.includes('bash deploy/version-promote.sh "$CANDIDATE"'),
+      ),
+    ).toBe(true);
+    expect(publish.needs).toBe('promote');
+    expect(publish.uses).toBe('./.github/workflows/publish-version.yml');
+    expect(publish.with).toEqual({
+      tag: '${{ needs.promote.outputs.tag }}',
+      tested_sha: '${{ needs.promote.outputs.tested_sha }}',
+    });
+    expect(publish.secrets).toEqual({
+      VERSION_SIGNING_KEY: '${{ secrets.VERSION_SIGNING_KEY }}',
+    });
   });
 });

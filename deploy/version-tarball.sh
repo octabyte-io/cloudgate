@@ -3,13 +3,17 @@
 # Builds the Cloudgate version tarball (ADR-0082) from the repository it is run
 # in, and writes it and its checksum to <out-dir>:
 #
-#     bash deploy/version-tarball.sh <out-dir>
+#     bash deploy/version-tarball.sh <out-dir> [<tag>]
 #
 #     <out-dir>/cloudgate-<version>-linux-<cpu>.tar.gz
 #     <out-dir>/cloudgate-<version>-linux-<cpu>.tar.gz.sha256   (sha256sum -c reads it)
 #
 # <version> is backend/package.json's, which deploy/version-gate.sh has already
-# matched to the tag. <cpu> is the CPU it runs on, amd64 or arm64 (`uname -m`
+# matched to the tag. A release candidate's tag, v<version>-rc.N (ADR-0094),
+# makes it <version>-rc.N: the tarball is named for it, VERSION says it, and
+# the packed backend/package.json is set to it, so the Instance reports the
+# release candidate it runs and the install tells it from the version it
+# becomes (an rc of 0.3.14 is older than 0.3.14). <cpu> is the CPU it runs on, amd64 or arm64 (`uname -m`
 # x86_64 or aarch64; any other is refused), because node-pty's pty.node is
 # compiled here and runs only on the CPU it was compiled for.
 # .github/workflows/publish-version.yml runs it twice, on ubuntu-24.04 and
@@ -52,7 +56,8 @@
 # a checkout made for it, never a working copy.
 #
 #   0  built
-#   1  refused: a CPU that is neither amd64 nor arm64, node-pty did not
+#   1  refused: a tag that is neither v<version> nor v<version>-rc.N, a CPU
+#      that is neither amd64 nor arm64, node-pty did not
 #      compile, or production node_modules cannot run the migrations. Nothing
 #      is written to <out-dir>.
 #
@@ -69,7 +74,8 @@ fail() {
 log() { printf '\n==> %s\n' "$*"; }
 
 out="${1:-}"
-[ -n "$out" ] || fail "Usage: bash deploy/version-tarball.sh <out-dir>"
+tag="${2:-}"
+[ -n "$out" ] || fail "Usage: bash deploy/version-tarball.sh <out-dir> [<tag>]"
 
 machine="$(uname -m)"
 case "$machine" in
@@ -78,6 +84,11 @@ case "$machine" in
   *) fail "A Cloudgate version is built for amd64 or arm64, not $machine. Nothing was packed." ;;
 esac
 version="$(node -p "require('./backend/package.json').version")"
+if [ -n "$tag" ]; then
+  [[ "$tag" =~ ^v${version//./\\.}(-rc\.[1-9][0-9]*)?$ ]] ||
+    fail "$tag is neither v$version, backend/package.json's version, nor a release candidate of it (v$version-rc.N). Nothing was packed."
+  version="${tag#v}"
+fi
 name="cloudgate-$version-linux-$cpu"
 # Where the install's console reaches its backend (deploy/install.sh writes the
 # same value): fixed into the console's rewrites by its build.
@@ -131,6 +142,18 @@ contents=(
 for package in api-schemas backend frontend; do
   if [ -d "$package/node_modules" ]; then contents+=("$package/node_modules"); fi
 done
+
+# A release candidate reports itself: the backend reads its version from this
+# file when it starts (backend/src/settings/version.ts).
+if [ "$version" != "$(node -p "require('./backend/package.json').version")" ]; then
+  VERSION="$version" node -e '
+    const fs = require("fs");
+    const file = "backend/package.json";
+    const info = JSON.parse(fs.readFileSync(file, "utf8"));
+    info.version = process.env.VERSION;
+    fs.writeFileSync(file, JSON.stringify(info, null, 2) + "\n");
+  '
+fi
 
 log "Packing $name.tar.gz"
 stage="$(mktemp -d)"

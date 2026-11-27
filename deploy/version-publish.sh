@@ -22,6 +22,11 @@
 #                              version someone may have installed
 #   a release with some        refuses, replacing nothing; a person looks
 #
+# A release candidate, vX.Y.Z-rc.N (ADR-0094), is created as a GitHub
+# pre-release, its notes X.Y.Z's CHANGELOG.md section, or Unreleased's while
+# X.Y.Z has none yet. Nothing that installs reads it as the latest version:
+# root install.sh and the console's update check count vX.Y.Z tags only.
+#
 # Exit 0 when the release has all six files, 1 otherwise.
 #
 # backend/test/deploy/version-publish.spec.ts runs it with gh shimmed.
@@ -35,8 +40,8 @@ fail() {
 
 tag="${1:-}"
 dir="${2:-}"
-[[ "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]] ||
-  fail "A Cloudgate version tag is vX.Y.Z, not \"$tag\"."
+[[ "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-rc\.[1-9][0-9]*)?)$ ]] ||
+  fail "A Cloudgate version tag is vX.Y.Z, or vX.Y.Z-rc.N for a release candidate, not \"$tag\"."
 version="${BASH_REMATCH[1]}"
 files=()
 for cpu in amd64 arm64; do
@@ -66,22 +71,37 @@ else
 fi
 
 if [ "$exists" = false ]; then
+  base="${version%%-rc.*}"
   # The version's section: from its "## " heading, which may carry a date, to
   # the next one (as deploy/hosted-release-gate.sh reads it).
-  awk -v version="$version" '
-    /^## / {
-      if (inside) exit
-      heading = substr($0, 4)
-      sub(/^v/, "", heading)
-      if (heading == version || index(heading, version " ") == 1) inside = 1
-      next
-    }
-    inside { print }
-  ' CHANGELOG.md > "$notes"
+  section() {
+    awk -v version="$1" '
+      /^## / {
+        if (inside) exit
+        heading = substr($0, 4)
+        sub(/^v/, "", heading)
+        if (heading == version || index(heading, version " ") == 1) inside = 1
+        next
+      }
+      inside { print }
+    ' CHANGELOG.md
+  }
+  section "$base" > "$notes"
+  prerelease=()
+  if [ "$base" != "$version" ]; then
+    # Before its version is released, a release candidate's changes are
+    # still under Unreleased.
+    [ -s "$notes" ] || section Unreleased > "$notes"
+    prerelease=(--prerelease)
+  fi
   [ -s "$notes" ] || echo "Cloudgate $version." > "$notes"
   gh release create "$tag" "${paths[@]}" \
-    --verify-tag --title "Cloudgate $version" --notes-file "$notes"
-  echo "Published $tag with its amd64 and arm64 tarballs, signed ✅"
+    --verify-tag "${prerelease[@]}" --title "Cloudgate $version" --notes-file "$notes"
+  if [ "${#prerelease[@]}" -gt 0 ]; then
+    echo "Published $tag as a pre-release with its amd64 and arm64 tarballs, signed ✅"
+  else
+    echo "Published $tag with its amd64 and arm64 tarballs, signed ✅"
+  fi
   exit 0
 fi
 

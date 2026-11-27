@@ -27,8 +27,8 @@ fail() {
 
 tag="${1:-}"
 dir="${2:-}"
-[[ "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]] ||
-  fail "A Cloudgate version tag is vX.Y.Z, not \"$tag\"."
+[[ "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-rc\.[1-9][0-9]*)?)$ ]] ||
+  fail "A Cloudgate version tag is vX.Y.Z, or vX.Y.Z-rc.N for a release candidate, not \"$tag\"."
 version="${BASH_REMATCH[1]}"
 [ -n "${VERSION_SIGNING_KEY:-}" ] ||
   fail "VERSION_SIGNING_KEY is not set, so nothing was signed." \

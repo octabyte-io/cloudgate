@@ -1,0 +1,78 @@
+# Promotes a release candidate to its Cloudgate version (ADR-0094), by hand:
+# Actions > Promote release candidate > Run workflow, with the candidate's
+# tag, such as v0.3.0-rc.2, once it has been installed on a test box and
+# checked there.
+#
+#   1. deploy/version-promote.sh checks the candidate's `E2E (release)` run
+#      passed on the commit its tag names and its pre-release carries both
+#      signed tarballs, then tags v0.3.0 on that same commit;
+#   2. it calls `Publish Cloudgate version` (publish-version.yml) with v0.3.0
+#      and that commit, which builds the v0.3.0 tarballs, boots each on Ubuntu
+#      24.04 and 26.04, signs and publishes them as the v0.3.0 release, and
+#      dispatches `Deploy the Hosted instance` (deploy-hosted.yml).
+#
+# The tests are not run again: E2E passed on the very commit v0.3.0 names, and
+# the tag this run makes, with GITHUB_TOKEN, starts no E2E run. Only the build
+# and the boot checks repeat, a few minutes, because a version's tarballs are
+# named for it. From v0.3.0 on, self-hosted instances see it as the latest
+# version, as with a version tagged by hand.
+name: Promote release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_candidate:
+        description: The release candidate to promote, such as v0.3.0-rc.2
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# One promotion of a candidate at a time.
+concurrency:
+  group: promote-${{ inputs.release_candidate }}
+  cancel-in-progress: false
+
+# pipefail, so a refused promotion fails its step through the tee.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  promote:
+    name: Tag the version on the candidate's tested commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # the version tag
+      actions: read # the candidate's E2E run
+    outputs:
+      tag: ${{ steps.promote.outputs.tag }}
+      tested_sha: ${{ steps.promote.outputs.tested_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Every tag, for the candidate's commit and the version's, if any.
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Promote ${{ inputs.release_candidate }}
+        id: promote
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE: ${{ inputs.release_candidate }}
+        run: bash deploy/version-promote.sh "$CANDIDATE" | tee -a "$GITHUB_OUTPUT"
+
+  publish:
+    name: Publish and deploy
+    needs: promote
+    permissions:
+      contents: write # the GitHub Release
+      actions: write # dispatching deploy-hosted.yml
+    uses: ./.github/workflows/publish-version.yml
+    with:
+      tag: ${{ needs.promote.outputs.tag }}
+      tested_sha: ${{ needs.promote.outputs.tested_sha }}
+    secrets:
+      VERSION_SIGNING_KEY: ${{ secrets.VERSION_SIGNING_KEY }}
