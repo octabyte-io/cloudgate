@@ -399,6 +399,16 @@ export class FakeHetznerCloud implements HetznerCloudPort {
     if (action) action.status = 'success';
   }
 
+  /**
+   * The machine's status as the provider reports it, as it would be mid-way
+   * through an action the spec plays out by hand: `rebuilding`, `starting`.
+   */
+  setStatus(serverId: number, status: string): void {
+    const machine = this.machines.get(serverId);
+    if (!machine) throw new Error(`no machine ${serverId}`);
+    machine.status = status;
+  }
+
   /** The Primary IPs the account holds now, assigned or not. */
   primaryIps(): FakePrimaryIp[] {
     return [...this.ips.values()].map((ip) => ({ ...ip }));

@@ -12,6 +12,7 @@ import { App } from 'supertest/types';
 
 import { boughtServer } from '../../src/bought-servers/bought-server.schema';
 import type { BoughtServerRestore } from '../../src/bought-servers/bought-server.schema';
+import { RESTORE_GAVE_UP_SETUP_MESSAGE } from '../../src/bought-servers/bought-server-restore-steps.service';
 import { BoughtServerStages } from '../../src/bought-servers/bought-server-stages.service';
 import { BOUGHT_SERVER_NOT_READY_CODE } from '../../src/bought-servers/server-readiness';
 import { subscription } from '../../src/cloud/billing/billing.schema';
@@ -664,6 +665,76 @@ describe('Restore a Bought Server from a Server backup (e2e)', () => {
       ).toEqual(['Your Server web-1 was restored from a backup']);
     });
 
+    it('waits for a rebuild the provider is still making after a restart cut its answer off, and asks for no second one', async () => {
+      const { id } = await readyServer();
+      await cutOff(id, { safetyCopy: null }, 1);
+      fake().setStatus(machine().id, 'rebuilding');
+
+      await resume(id);
+
+      expect(fake().callsTo('rebuild')).toEqual([]);
+      expect(await rowOf(id)).toMatchObject({
+        stage: 'changing',
+        changeTries: 1,
+      });
+    });
+
+    it('never says the Server is as it was when a rebuild a restart cut off may have been made, and marks its setup failed', async () => {
+      const { id } = await readyServer();
+      await cutOff(id, { safetyCopy: null }, 1);
+      fake().refuse('rebuild', 'locked');
+
+      await resume(id);
+
+      await readyRow(id);
+      expect(fake().callsTo('rebuild')).toHaveLength(1);
+      expect(await serverOf(id)).toMatchObject({
+        setupOk: false,
+        setupMessage: RESTORE_GAVE_UP_SETUP_MESSAGE,
+      });
+      const [sent] = mail.to('grace@example.com');
+      const html = sent.email.html.replace(/<!-- -->/g, '');
+      expect(html).toContain('could not tell whether its disk was restored');
+      expect(html).not.toContain('as it was');
+    });
+
+    it('gives up without touching the disk when a newer backup means the safety copy would now remove the one chosen', async () => {
+      const { id } = await readyServer();
+      // Nov 2 is chosen; five more days push Nov 1 out, and Nov 2 is the oldest of 7.
+      const chosen = await cutOff(id, {});
+      for (const day of [4, 5, 6, 7, 8]) {
+        fake().addBackup(machine().id, {
+          created: `2026-11-0${day}T03:00:00+00:00`,
+          imageSizeGb: 2.1,
+        });
+      }
+      fake().calls.length = 0;
+
+      await resume(id);
+
+      expect(providerCalls()).toEqual([]);
+      expect(await rowOf(id)).toMatchObject({
+        stage: 'ready',
+        changeTarget: null,
+        changeTries: 0,
+      });
+      expect(machine().rebuiltFrom).toBeNull();
+      const backups = await fake().listBackups(machine().id);
+      expect(backups.ok && backups.value.map((one) => one.id)).toContain(
+        chosen.id,
+      );
+      expect(await serverOf(id)).toMatchObject({ setupOk: true });
+      expect(createRefund).not.toHaveBeenCalled();
+      expect(updateSubscription).not.toHaveBeenCalled();
+      const sent = mail.to('grace@example.com');
+      expect(sent.map((one) => one.email.subject)).toEqual([
+        "We couldn't restore web-1 from its backup",
+      ]);
+      expect(sent[0].email.html.replace(/<!-- -->/g, '')).toContain(
+        'its safety copy would now remove that backup',
+      );
+    });
+
     it('finishes when the setup run ended before a restart could say so', async () => {
       const { id } = await readyServer();
       await cutOff(id, {
@@ -814,6 +885,35 @@ describe('Restore a Bought Server from a Server backup (e2e)', () => {
       const html = sent[0].email.html.replace(/<!-- -->/g, '');
       expect(html).toContain('web-1 is as it was');
       expect(html).not.toMatch(/hetzner|locked/i);
+    });
+  });
+
+  describe('given up once its disk was restored', () => {
+    it('marks its setup failed, so Run setup is offered, and the email says the disk was restored and what is left', async () => {
+      const { id, daily } = await readyServer();
+      await fake().powerOff(machine().id);
+      fake().refuse('powerOn', 'locked', 2);
+
+      expect((await restore(id, daily[1].id)).status).toBe(202);
+      fake().finishBackup((await safetyCopy()).id, 2.2);
+
+      await readyRow(id);
+      await told(
+        "We couldn't restore web-1 from its backup",
+        'grace@example.com',
+      );
+      expect(machine().rebuiltFrom).toBe(daily[1].id);
+      expect(setupCalls()).toEqual([]);
+      expect(await serverOf(id)).toMatchObject({
+        setupOk: false,
+        setupMessage: RESTORE_GAVE_UP_SETUP_MESSAGE,
+      });
+      const html = mail
+        .to('grace@example.com')[0]
+        .email.html.replace(/<!-- -->/g, '');
+      expect(html).toContain('We restored the disk of web-1');
+      expect(html).toContain('press Run setup on its Setup card');
+      expect(html).not.toContain('as it was');
     });
   });
 

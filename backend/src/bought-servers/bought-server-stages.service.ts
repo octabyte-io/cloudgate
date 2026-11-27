@@ -92,6 +92,8 @@ const RESTORE_FOLLOW_POLLS = 900;
 /** The steps a Restore waits on the provider in, which a follow reads again. */
 const RESTORE_WAITS = new Set([
   'wait-for-safety-copy',
+  // A rebuild a restart cut off may still be going on: it is waited on.
+  'rebuild',
   'wait-for-rebuild',
   'start-machine',
 ]);

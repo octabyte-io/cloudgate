@@ -7,6 +7,7 @@ import { DRIZZLE } from '../db/drizzle.module';
 import type { DrizzleDB } from '../db/drizzle.module';
 import { MailService } from '../mail/mail.service';
 import { renderBoughtServerRestoreFailedEmail } from '../mail/templates';
+import type { RestoreGivenUp } from '../mail/templates';
 import { renderServerChangedEmail } from '../mail/templates/server-changed';
 import { server } from '../servers/server.schema';
 import { ServerSetupRuns } from '../servers/server-setup-runs';
@@ -15,7 +16,7 @@ import { boughtServer, boughtServerLine } from './bought-server.schema';
 import type { BoughtServer, BoughtServerRestore } from './bought-server.schema';
 import { HETZNER_MACHINES } from './hetzner/hetzner-cloud.port';
 import type { HetznerCloudPort } from './hetzner/hetzner-cloud.port';
-import { backupDateOf } from './restore';
+import { backupDateOf, safetyCopyPushesOut } from './restore';
 import { RestoreRedeploys } from './restore-redeploys.service';
 import type { RestoreRedeploy } from './restore-redeploys.service';
 import type { NextStep } from './stages';
@@ -23,6 +24,33 @@ import type { NextStep } from './stages';
 /** What the Server setup run after a Restore cut off by a restart each time it was started is stored as. */
 export const RESTORE_SETUP_CUT_OFF_MESSAGE =
   'The setup run after a restore was cut off before it ended. Run setup to try again.';
+
+/**
+ * What a Server's setup is stored as when its Restore was given up once its
+ * disk was, or may have been, put back: no setup ran on the restored disk,
+ * so the console offers Run setup, as for any failed setup (#180).
+ */
+export const RESTORE_GAVE_UP_SETUP_MESSAGE =
+  'The restore stopped after its disk was restored, before Server setup ran. Run setup to set it up again.';
+
+/** What the provider reports a machine as while it rebuilds its disk. */
+const REBUILDING = 'rebuilding';
+
+/**
+ * Whether the disk is, or may be, the backup's: rebuilt, a rebuild the
+ * provider accepted (even one that then ended in an error), or one asked for
+ * whose answer a restart cut off. While the rebuild step runs, its tries
+ * count the asks, so any ask beyond the answers stored was never answered.
+ */
+export function diskMayBeRestored(
+  restore: BoughtServerRestore,
+  tries: number,
+): boolean {
+  if (restore.rebuilt || restore.rebuildAccepted) return true;
+  const copy = restore.safetyCopy;
+  const rebuilding = !copy || copy.available;
+  return rebuilding && tries > (restore.rebuildAnswers ?? 0);
+}
 
 /** The steps of a Restore that `nextStep` names. */
 export type RestoreStep = Extract<
@@ -111,10 +139,26 @@ export class BoughtServerRestoreSteps {
 
   /**
    * Refused every try: back to Ready, with nothing charged, and the owners
-   * told. Before the rebuild the Server is as it was; after it, only
-   * starting the machine failed, and the email says so.
+   * told. Before any rebuild was asked for, the Server is as it was. Once
+   * its disk was, or may have been, put back ({@link diskMayBeRestored}),
+   * no setup ran on it, so its setup is stored as failed and the console
+   * offers Run setup; the email says what is left, never "as it was".
    */
   async giveUp(row: BoughtServer): Promise<boolean> {
+    const restore = restoreOf(row);
+    const outcome: RestoreGivenUp = restore.rebuilt
+      ? 'not-started'
+      : diskMayBeRestored(restore, row.changeTries)
+        ? 'may-be-rebuilt'
+        : 'refused';
+    return this.leave(row, outcome);
+  }
+
+  /** Back to Ready with nothing charged, the setup marked failed if the disk may be the backup's, and the owners told how. */
+  private async leave(
+    row: BoughtServer,
+    outcome: RestoreGivenUp,
+  ): Promise<boolean> {
     const restore = restoreOf(row);
     const [kept] = await this.db
       .update(boughtServer)
@@ -122,10 +166,21 @@ export class BoughtServerRestoreSteps {
       .where(this.unchanged(row))
       .returning({ id: boughtServer.id });
     if (!kept) return false;
+    const touched = outcome === 'not-started' || outcome === 'may-be-rebuilt';
+    if (touched && row.serverId) {
+      await this.db
+        .update(server)
+        .set({
+          setupRanAt: new Date().toISOString(),
+          setupOk: false,
+          setupMessage: RESTORE_GAVE_UP_SETUP_MESSAGE,
+        })
+        .where(eq(server.serverId, row.serverId));
+    }
     this.logger.warn(
-      `Bought Server ${row.id}: the provider refused every try to restore backup ${restore.backupId}; it is Ready${restore.rebuilt ? ', its disk restored but not started' : ' as it was'}`,
+      `Bought Server ${row.id}: its restore of backup ${restore.backupId} was given up (${outcome}); it is Ready`,
     );
-    await this.sendFailed(row, restore);
+    await this.sendFailed(row, restore, outcome);
     return false;
   }
 
@@ -151,6 +206,20 @@ export class BoughtServerRestoreSteps {
       if (found) {
         return this.progress(row, { safetyCopy: { ...copy, id: found.id } });
       }
+    }
+    // Asked again just before the copy: a daily backup made since the press
+    // can make the chosen one the oldest of 7, and the copy would push it
+    // out. The go-ahead without a copy was not given (or there would be no
+    // copy to take), so it is given up with the disk untouched.
+    const now = await this.machines.listBackups(machineId);
+    if (!now.ok) {
+      this.logger.warn(
+        `Bought Server ${row.id}: reading its backups before the safety copy was refused: ${now.code}: ${now.message}`,
+      );
+      return false;
+    }
+    if (safetyCopyPushesOut(now.value, restore.backupId)) {
+      return this.leave(row, 'safety-copy-would-remove');
     }
     if (!(await this.claim(row))) return false;
     const taken = await this.machines.createBackup(machineId, copy.description);
@@ -195,23 +264,50 @@ export class BoughtServerRestoreSteps {
     return this.progress(row, { safetyCopy: { ...copy, id: null } });
   }
 
+  /**
+   * The rebuild asked for, a try claimed first. Before asking again, the
+   * machine is read: a rebuild a restart cut off before its answer was
+   * stored may be going on, and the provider shows it as `rebuilding`; that
+   * is waited on rather than asked a second time, which it would refuse,
+   * and a refusal would then read as the Server kept as it was. Each answer
+   * is counted ({@link diskMayBeRestored}).
+   */
   private async rebuild(row: BoughtServer): Promise<boolean> {
     const restore = restoreOf(row);
+    if (row.changeTries > 0) {
+      const machine = await this.machines.getServer(row.providerServerId!);
+      if (!machine.ok) {
+        this.logger.warn(
+          `Bought Server ${row.id}: reading its machine before rebuilding again was refused: ${machine.code}: ${machine.message}`,
+        );
+        return false;
+      }
+      if (machine.value.status === REBUILDING) return false;
+    }
     if (!(await this.claim(row))) return false;
     const asked = await this.machines.rebuild(
       row.providerServerId!,
       restore.backupId,
     );
     const tries = row.changeTries + 1;
+    const answers = (restore.rebuildAnswers ?? 0) + 1;
     if (!asked.ok) {
       this.logger.warn(
         `Bought Server ${row.id}: rebuild ${tries} was refused: ${asked.code}: ${asked.message}`,
+      );
+      await this.progress(
+        { ...row, changeTries: tries },
+        { rebuildAnswers: answers },
       );
       return true;
     }
     return this.progress(
       { ...row, changeTries: tries },
-      { rebuildActionId: asked.value.id },
+      {
+        rebuildActionId: asked.value.id,
+        rebuildAnswers: answers,
+        rebuildAccepted: true,
+      },
     );
   }
 
@@ -414,6 +510,7 @@ export class BoughtServerRestoreSteps {
   private async sendFailed(
     row: BoughtServer,
     restore: BoughtServerRestore,
+    outcome: RestoreGivenUp,
   ): Promise<void> {
     const { recipients } = await this.notifications.audienceOf(
       row.organizationId,
@@ -427,7 +524,7 @@ export class BoughtServerRestoreSteps {
             userName: recipient.name,
             serverName: row.name,
             backupTakenAt: backupDateOf(restore.backupTakenAt),
-            rebuilt: restore.rebuilt ?? false,
+            outcome,
             serverUrl: this.serverUrl(row),
           }),
         );

@@ -1626,10 +1626,19 @@ describe('mail templates', () => {
       serverUrl: 'https://console.example.com/servers/abc/settings',
     };
 
+    const said = async (
+      outcome: Parameters<
+        typeof renderBoughtServerRestoreFailedEmail
+      >[0]['outcome'],
+    ) =>
+      (
+        await renderBoughtServerRestoreFailedEmail({ ...props, outcome })
+      ).html.replace(/<!-- -->/g, '');
+
     it('says the restore could not be done, that nothing was charged, and that the Server is as it was', async () => {
       const rendered = await renderBoughtServerRestoreFailedEmail({
         ...props,
-        rebuilt: false,
+        outcome: 'refused',
       });
 
       expect(rendered.subject).toBe(
@@ -1648,15 +1657,39 @@ describe('mail templates', () => {
       expect(text).not.toMatch(/hetzner/i);
     });
 
-    it('says the disk was restored when only starting the machine again failed', async () => {
-      const rendered = await renderBoughtServerRestoreFailedEmail({
-        ...props,
-        rebuilt: true,
-      });
+    it('says the safety copy would now remove the backup chosen, that nothing was touched, and how to go ahead', async () => {
+      const text = await said('safety-copy-would-remove');
 
-      expect(rendered.html.replace(/<!-- -->/g, '')).toContain(
-        'Its disk was restored, but web-1 could not be started again. Contact support to have it started.',
+      expect(text).toContain(
+        'We did not restore web-1 from its backup of Nov 02, 2026 at 03:00 UTC: a newer backup was taken meanwhile, so its safety copy would now remove that backup.',
       );
+      expect(text).toContain(
+        'web-1 is as it was, and keeps running. Nothing was charged. To restore it anyway, try again from its Settings and confirm restoring without a safety copy, or pick a newer backup.',
+      );
+    });
+
+    it('says the disk was restored and what is left to do when only starting the machine again failed', async () => {
+      const text = await said('not-started');
+
+      expect(text).toContain(
+        'We restored the disk of web-1 from its backup of Nov 02, 2026 at 03:00 UTC, and tried twice to start it again, which could not be done.',
+      );
+      expect(text).toContain(
+        'Everything written to its disk since that backup is gone. Contact support to have web-1 started, then press Run setup on its Setup card and redeploy each Service deployed after that backup. Nothing was charged.',
+      );
+      expect(text).not.toContain('as it was');
+    });
+
+    it('never says the Server is as it was when its disk may have been restored', async () => {
+      const text = await said('may-be-rebuilt');
+
+      expect(text).toContain(
+        'We tried twice to restore web-1 from its backup of Nov 02, 2026 at 03:00 UTC, and could not tell whether its disk was restored.',
+      );
+      expect(text).toContain(
+        'Treat everything written to its disk since that backup as gone. Press Run setup on its Setup card to set web-1 up again, then redeploy each Service deployed after that backup. Nothing was charged.',
+      );
+      expect(text).not.toContain('as it was');
     });
   });
 

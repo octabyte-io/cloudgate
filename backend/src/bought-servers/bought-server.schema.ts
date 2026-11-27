@@ -110,6 +110,14 @@ export interface BoughtServerRestore {
   } | null;
   /** The rebuild the provider is making, until it ends. */
   rebuildActionId?: number;
+  /**
+   * How many rebuilds asked for the provider answered, refused or accepted:
+   * a try claimed beyond these was cut off before its answer, so the disk
+   * may be the backup's.
+   */
+  rebuildAnswers?: number;
+  /** The provider accepted a rebuild, even one that then ended in an error. */
+  rebuildAccepted?: boolean;
   /** The disk is back as it was at the backup. */
   rebuilt?: boolean;
   /** The machine runs again. */
