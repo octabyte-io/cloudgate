@@ -200,6 +200,20 @@ export type ServerPurchase = {
   createdAt: string;
 };
 
+/**
+ * `GET /bought-servers/:id/backups`: one **Server backup**, a copy of the
+ * Server's whole disk. Listed newest first; none while backups are off.
+ */
+export type ServerBackup = {
+  /** What a restore names; nothing renders it. */
+  id: number;
+  /** When it was taken, ISO 8601. */
+  takenAt: string;
+  /** GB it takes; null while it is still being made. */
+  sizeGb: number | null;
+  beingMade: boolean;
+};
+
 export const boughtServersApi = {
   /** Whether *Buy a Server* is offered on this instance. */
   offer: () => api.get<{ offered: boolean }>("/bought-servers/offer"),
@@ -245,6 +259,11 @@ export const boughtServersApi = {
     api.put<BoughtServerView>(
       `/bought-servers/${encodeURIComponent(id)}/storage`,
       { sizeGb },
+    ),
+  /** Its Server backups, newest first; none while backups are off. */
+  backups: (id: string) =>
+    api.get<ServerBackup[]>(
+      `/bought-servers/${encodeURIComponent(id)}/backups`,
     ),
   /** The sizes the Server can move to in its Location, with their prices. */
   sizes: (id: string) =>

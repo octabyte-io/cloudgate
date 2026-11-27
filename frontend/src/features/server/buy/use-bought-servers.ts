@@ -202,6 +202,16 @@ export function useBoughtServerSizes(serverId: string) {
   });
 }
 
+/** A Bought Server's Server backups, newest first; asked only while its backups are on. */
+export function useServerBackups(serverId: string, enabled: boolean) {
+  const { organizationId } = useActiveOrganizationId();
+  return useQuery({
+    queryKey: keys.boughtServers.backups(organizationId, serverId),
+    queryFn: () => boughtServersApi.backups(serverId),
+    enabled: enabled && organizationId !== null,
+  });
+}
+
 /** A new size on a Ready Bought Server; the answer is the Server as it now is. */
 export function useSetSize(serverId: string) {
   const client = useQueryClient();

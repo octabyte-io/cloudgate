@@ -5,17 +5,22 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api/api-error";
-import type { BoughtServerView } from "@/lib/api/endpoints/bought-servers";
+import type {
+  BoughtServerView,
+  ServerBackup,
+} from "@/lib/api/endpoints/bought-servers";
 import type { Server } from "@/lib/api/endpoints/servers";
 
 const api = vi.hoisted(() => ({
   server: vi.fn(),
   setBackups: vi.fn(),
   sizes: vi.fn(() => Promise.resolve([])),
+  backups: vi.fn(),
 }));
 const allowed = vi.hoisted(() => ({ current: true }));
 const toast = vi.hoisted(() => ({
@@ -70,6 +75,28 @@ const WITH_BACKUPS: BoughtServerView = {
   backupsOfferCents: null,
 };
 
+/** Three Server backups as the API lists them: newest first, the newest still being made. */
+const BACKUPS: ServerBackup[] = [
+  {
+    id: 3,
+    takenAt: "2026-11-27T12:00:00.000Z",
+    sizeGb: null,
+    beingMade: true,
+  },
+  {
+    id: 2,
+    takenAt: "2026-11-26T12:00:00.000Z",
+    sizeGb: 2.31,
+    beingMade: false,
+  },
+  {
+    id: 1,
+    takenAt: "2026-11-25T12:00:00.000Z",
+    sizeGb: 0.42,
+    beingMade: false,
+  },
+];
+
 function renderCard() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -86,12 +113,14 @@ const backupsSwitch = () => screen.findByRole("switch", { name: "Backups" });
 beforeEach(() => {
   allowed.current = true;
   api.server.mockResolvedValue(READY);
+  api.backups.mockResolvedValue([]);
 });
 
 afterEach(() => {
   cleanup();
   api.server.mockReset();
   api.setBackups.mockReset();
+  api.backups.mockReset();
   toast.done.mockReset();
   toast.error.mockReset();
 });
@@ -219,5 +248,61 @@ describe("BoughtServerCard", () => {
 
     const toggle = await backupsSwitch();
     expect(toggle.getAttribute("title")).toBe(BOUGHT_SERVER_CHANGE_REFUSAL);
+  });
+
+  describe("Server backups", () => {
+    it("lists each backup newest first, with the day it was taken, its size, and Being made while it is", async () => {
+      api.server.mockResolvedValue(WITH_BACKUPS);
+      api.backups.mockResolvedValue(BACKUPS);
+      renderCard();
+
+      const table = await screen.findByRole("table", {
+        name: "Server backups of web-1",
+      });
+      expect(api.backups).toHaveBeenCalledWith("abc");
+      const rows = within(table).getAllByRole("row").slice(1);
+      expect(rows.map((row) => row.textContent)).toEqual([
+        expect.stringMatching(/Nov 27, 2026.*Being made/),
+        expect.stringMatching(/Nov 26, 2026.*2\.3 GB/),
+        expect.stringMatching(/Nov 25, 2026.*420 MB/),
+      ]);
+      expect(rows[0].querySelector("time")?.getAttribute("datetime")).toBe(
+        "2026-11-27T12:00:00.000Z",
+      );
+      expect(document.body.textContent).not.toMatch(/hetzner/i);
+    });
+
+    it("says the first backup is taken within a day while backups are on and none exist yet", async () => {
+      api.server.mockResolvedValue(WITH_BACKUPS);
+      renderCard();
+
+      expect(
+        await screen.findByText("The first backup is taken within a day."),
+      ).toBeTruthy();
+    });
+
+    it("says the list could not be read rather than that there are none", async () => {
+      api.server.mockResolvedValue(WITH_BACKUPS);
+      api.backups.mockRejectedValue(
+        new ApiError(503, "This Server's backups can't be read right now"),
+      );
+      renderCard();
+
+      expect((await screen.findByRole("alert")).textContent).toBeTruthy();
+      expect(
+        screen.queryByText("The first backup is taken within a day."),
+      ).toBeNull();
+    });
+
+    it("shows no list, and asks for none, while backups are off", async () => {
+      renderCard();
+
+      await backupsSwitch();
+      expect(screen.queryByRole("table")).toBeNull();
+      expect(
+        screen.queryByText("The first backup is taken within a day."),
+      ).toBeNull();
+      expect(api.backups).not.toHaveBeenCalled();
+    });
   });
 });

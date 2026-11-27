@@ -15,6 +15,7 @@ import { wholeUsd } from "../buy/buy-model";
 import { useBoughtServer, useSetBackups } from "../buy/use-bought-servers";
 import { BoughtServerSizeRow } from "./bought-server-size";
 import { ExtraStorageRow } from "./extra-storage-row";
+import { ServerBackupList } from "./server-backup-list";
 
 /** Said on the switch to a role that may not change what the Organization pays for. */
 export const BOUGHT_SERVER_CHANGE_REFUSAL =
@@ -36,7 +37,8 @@ function perMonth(cents: number): string {
  *
  * Each change asks first. Turning backups on says what it costs and that
  * today's part is charged now; turning them off warns that every backup is
- * deleted at once and says the unused part is credited. While a change runs
+ * deleted at once and says the unused part is credited. While backups are
+ * on, the Server backups are listed under it (`ServerBackupList`). While a change runs
  * the card says **Changing** and every switch waits.
  */
 export function BoughtServerCard({ server }: { server: Server }) {
@@ -119,6 +121,7 @@ function BoughtServerChanges({ view }: { view: BoughtServerView }) {
           <p className="mt-2 text-meta text-tx-3">{why}</p>
         ) : null}
       </Card.Body>
+      <ServerBackupList view={view} />
 
       <Modal
         open={asking === "on"}
