@@ -710,7 +710,14 @@ export class BucketsService {
         found.serverId,
         bucketCorsProgram(found.appName, found.bucketName, origins),
       );
-      await this.setStatus(bucketId, 'done');
+      // When it ran, for a Restore of its Bought Server (ADR-0093).
+      await this.db
+        .update(bucket)
+        .set({
+          applicationStatus: 'done',
+          deployedAt: new Date().toISOString(),
+        })
+        .where(eq(bucket.bucketId, bucketId));
     } catch (error) {
       this.logger.warn(
         `${found.appName}: the bucket ${found.bucketName} was not deployed — ${describeError(error)}`,

@@ -1639,6 +1639,13 @@
       "when": 1795677315651,
       "tag": "0233_volume-backup-scope",
       "breakpoints": true
+    },
+    {
+      "idx": 234,
+      "version": "7",
+      "when": 1795783505896,
+      "tag": "0234_service-deployed-at",
+      "breakpoints": true
     }
   ]
 }

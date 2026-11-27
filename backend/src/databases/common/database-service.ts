@@ -777,7 +777,8 @@ export abstract class BaseDatabaseService<
    * deploy of this database **and** the row still reads `running`: a newer
    * deploy owns the row once it starts, and a Stop or a Rebuild in between
    * wrote a status this one must not undo. Undefined when it did not
-   * write.
+   * write. A deploy that ran also stores when, as `deployed_at`: what a
+   * Restore of its Bought Server compares with the backup (ADR-0093).
    */
   private async settleStatus(
     databaseId: string,
@@ -788,7 +789,10 @@ export abstract class BaseDatabaseService<
     this.currentDeploy.delete(databaseId);
     const [updated] = await this.db
       .update(this.table)
-      .set({ applicationStatus: status })
+      .set({
+        applicationStatus: status,
+        ...(status === 'done' ? { deployedAt: new Date().toISOString() } : {}),
+      })
       .where(
         and(
           eq(this.columns.id, databaseId),
