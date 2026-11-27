@@ -277,6 +277,28 @@ describe('UpdatesService.getUpdateData', () => {
     expect(data.upgradeCommand).toBe(UPGRADE_TO_040);
   });
 
+  // ADR-0094: a release candidate is installed only by naming it.
+  // eslint-disable-next-line no-restricted-syntax -- a release candidate of a Cloudgate version (ADR-0094), not a Deployment's
+  it('never offers a release candidate, however new', async () => {
+    const fetchClient = releases('v0.4.0-rc.1', 'v0.3.0');
+
+    const data = await service(fetchClient).getUpdateData('0.3.0');
+
+    expect(data.latestVersion).toBe('v0.3.0');
+    expect(data.updateAvailable).toBe(false);
+  });
+
+  // eslint-disable-next-line no-restricted-syntax -- a release candidate of a Cloudgate version (ADR-0094), not a Deployment's
+  it('offers an instance on a release candidate the version it became', async () => {
+    const fetchClient = releases('v0.4.0', 'v0.4.0-rc.2', 'v0.3.0');
+
+    const data = await service(fetchClient).getUpdateData('0.4.0-rc.2');
+
+    expect(data.latestVersion).toBe('v0.4.0');
+    expect(data.updateAvailable).toBe(true);
+    expect(data.upgradeCommand).toBe(UPGRADE_TO_040);
+  });
+
   it('never counts a cli-v release as a Cloudgate version', async () => {
     const fetchClient = releases('cli-v9.0.0', 'v0.3.0', 'cli-v1.2.0');
 

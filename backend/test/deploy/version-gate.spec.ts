@@ -188,16 +188,50 @@ describe('deploy/version-gate.sh', () => {
     );
   });
 
-  it.each([['0.3.0'], ['v0.3'], ['cli-v0.3.0'], ['v0.3.0-beta.1']])(
-    'refuses %j as a Cloudgate version tag',
-    (tag) => {
-      const tested = commit('0.3.0');
-      git('tag', tag);
+  // eslint-disable-next-line no-restricted-syntax -- a release candidate of a Cloudgate version (ADR-0094), not a Deployment's
+  it('passes a release candidate of backend/package.json version (ADR-0094)', () => {
+    const tested = commit('0.3.0');
+    git('tag', 'v0.3.0-rc.2');
 
-      const refused = run(tag, { conclusion: 'success', testedSha: tested });
+    const passed = run('v0.3.0-rc.2', {
+      conclusion: 'success',
+      testedSha: tested,
+    });
 
-      expect(refused.status).toBe(1);
-      expect(refused.stderr).toContain('A Cloudgate version tag is vX.Y.Z');
-    },
-  );
+    expect(passed.stderr).toBe('');
+    expect(passed.status).toBe(0);
+  });
+
+  // eslint-disable-next-line no-restricted-syntax -- a release candidate of a Cloudgate version (ADR-0094), not a Deployment's
+  it('refuses a release candidate of another version than backend/package.json', () => {
+    const tested = commit('0.2.0');
+    git('tag', 'v0.3.0-rc.1');
+
+    const refused = run('v0.3.0-rc.1', {
+      conclusion: 'success',
+      testedSha: tested,
+    });
+
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain(
+      "v0.3.0-rc.1 is not backend/package.json's version (0.2.0)",
+    );
+  });
+
+  it.each([
+    ['0.3.0'],
+    ['v0.3'],
+    ['cli-v0.3.0'],
+    ['v0.3.0-beta.1'],
+    ['v0.3.0-rc.0'],
+    ['v0.3.0-rc'],
+  ])('refuses %j as a Cloudgate version tag', (tag) => {
+    const tested = commit('0.3.0');
+    git('tag', tag);
+
+    const refused = run(tag, { conclusion: 'success', testedSha: tested });
+
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain('A Cloudgate version tag is vX.Y.Z');
+  });
 });

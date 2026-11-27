@@ -19,7 +19,9 @@
 #
 # Inputs, all optional, read from the environment (`| sudo VAR=value sh`):
 #
-#   CLOUDGATE_VERSION      the Cloudgate version to install, vX.Y.Z (or X.Y.Z).
+#   CLOUDGATE_VERSION      the Cloudgate version to install, vX.Y.Z (or X.Y.Z),
+#                          or a release candidate, vX.Y.Z-rc.N, which is only
+#                          ever installed when named here (ADR-0094).
 #                          Default: the latest one published.
 #   CLOUDGATE_PUBLIC_HOST  the public IP or hostname browsers will use: the
 #                          host alone, an IPv4 or IPv6 address or a hostname,
@@ -174,20 +176,32 @@ detect_public_ipv4() {
   return 1
 }
 
-# X.Y.Z when $1 is vX.Y.Z or X.Y.Z, and nothing (status 1) otherwise.
+# X.Y.Z when $1 is vX.Y.Z or X.Y.Z, X.Y.Z-rc.N when it is a release candidate
+# of one (ADR-0094), and nothing (status 1) otherwise.
 plain_version() {
   version="${1#v}"
-  case "$version" in
+  base="${version%%-rc.*}"
+  if [ "$base" != "$version" ]; then
+    case "${version#"$base"-rc.}" in
+      '' | 0* | *[!0-9]*) return 1 ;;
+    esac
+  fi
+  case "$base" in
     '' | *[!0-9.]* | .* | *. | *..*) return 1 ;;
   esac
-  [ "$(printf '%s' "$version" | tr -cd . | wc -c)" -eq 2 ] || return 1
+  [ "$(printf '%s' "$base" | tr -cd . | wc -c)" -eq 2 ] || return 1
   printf '%s\n' "$version"
 }
 
-# Prints whichever of two X.Y.Z versions is lower, compared as numbers
-# (0.9.0 is before 0.10.0).
+# Prints whichever of two versions is lower, compared as numbers (0.9.0 is
+# before 0.10.0), a release candidate before the version it becomes and
+# after the one before (0.3.13 < 0.3.14-rc.1 < 0.3.14-rc.2 < 0.3.14).
 lower_version() {
-  printf '%s\n%s\n' "$1" "$2" | sort -t . -k 1,1n -k 2,2n -k 3,3n | head -n 1
+  for candidate in "$1" "$2"; do
+    base="${candidate%%-rc.*}"
+    if [ "$base" = "$candidate" ]; then rank='1 0'; else rank="0 ${candidate#"$base"-rc.}"; fi
+    printf '%s %s %s\n' "$(printf '%s' "$base" | tr . ' ')" "$rank" "$candidate"
+  done | sort -k 1,1n -k 2,2n -k 3,3n -k 4,4n -k 5,5n | head -n 1 | cut -d ' ' -f 6
 }
 
 # Refuses <version> when it is older than the one installed: going back is not
@@ -464,7 +478,7 @@ main() {
   requested=''
   if [ -n "${CLOUDGATE_VERSION:-}" ]; then
     requested="$(plain_version "$CLOUDGATE_VERSION")" || fail \
-      "CLOUDGATE_VERSION names a Cloudgate version such as v0.3.0, not \"$CLOUDGATE_VERSION\"." \
+      "CLOUDGATE_VERSION names a Cloudgate version such as v0.3.0, or a release candidate such as v0.3.0-rc.1, not \"$CLOUDGATE_VERSION\"." \
       "The versions are listed at $RELEASES_PAGE."
   fi
 

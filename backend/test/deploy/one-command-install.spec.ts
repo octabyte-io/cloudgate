@@ -791,18 +791,111 @@ describe('install.sh (the one-command install)', () => {
       expect(called()).not.toContain('deploy/install.sh');
     });
 
-    it.each(['main', 'cli-v1.4.0', 'v1.2', 'v0.9.0-rc.1'])(
+    it.each([
+      'main',
+      'cli-v1.4.0',
+      'v1.2',
+      'v0.9.0-beta.1',
+      'v0.9.0-rc.0',
+      'v0.9.0-rc.',
+      'v0.9-rc.1',
+    ])(
       'refuses CLOUDGATE_VERSION=%s, which is not a Cloudgate version',
       (value) => {
         const refused = install({ CLOUDGATE_VERSION: value });
 
         expect(refused.status).toBe(1);
         expect(refused.stderr).toContain(
-          `CLOUDGATE_VERSION names a Cloudgate version such as v0.3.0, not "${value}".`,
+          // eslint-disable-next-line no-restricted-syntax -- a release candidate of a Cloudgate version (ADR-0094), not a Deployment's
+          `CLOUDGATE_VERSION names a Cloudgate version such as v0.3.0, or a release candidate such as v0.3.0-rc.1, not "${value}".`,
         );
         expect(called()).toBe('');
       },
     );
+
+    // eslint-disable-next-line no-restricted-syntax -- a release candidate of a Cloudgate version (ADR-0094), not a Deployment's
+    describe('a release candidate (ADR-0094)', () => {
+      // eslint-disable-next-line no-restricted-syntax -- a release candidate of a Cloudgate version (ADR-0094), not a Deployment's
+      it('installs the release candidate CLOUDGATE_VERSION names', () => {
+        publish('0.10.0-rc.2');
+
+        const named = install({ CLOUDGATE_VERSION: 'v0.10.0-rc.2' });
+
+        expect(named.stderr).toBe('');
+        expect(named.status).toBe(0);
+        expect(called()).toContain(
+          `curl https://${DOWNLOAD}/v0.10.0-rc.2/cloudgate-0.10.0-rc.2-linux-amd64.tar.gz\n`,
+        );
+        expect(called()).toContain(
+          `deploy/install.sh 0.10.0-rc.2 from ${root}/opt/cloudgate.next`,
+        );
+      });
+
+      // eslint-disable-next-line no-restricted-syntax -- a release candidate of a Cloudgate version (ADR-0094), not a Deployment's
+      it('never counts a release candidate as the latest version, however new', () => {
+        releases('v0.11.0-rc.1', 'v0.10.0');
+        publish('0.10.0');
+        publish('0.11.0-rc.1');
+
+        const fresh = install();
+
+        expect(fresh.status).toBe(0);
+        expect(called()).toContain(
+          `deploy/install.sh 0.10.0 from ${root}/opt/cloudgate.next`,
+        );
+        expect(called()).not.toContain('0.11.0-rc.1/');
+      });
+
+      // eslint-disable-next-line no-restricted-syntax -- a release candidate of a Cloudgate version (ADR-0094), not a Deployment's
+      it('upgrades a box on a release candidate to the version it became', () => {
+        releases('v0.10.0', 'v0.10.0-rc.2');
+        publish('0.10.0');
+        versionTree('0.10.0-rc.2', path.join(root, 'opt/cloudgate'));
+
+        const upgrade = install();
+
+        expect(upgrade.stderr).toBe('');
+        expect(upgrade.status).toBe(0);
+        expect(called()).toContain(
+          `deploy/install.sh 0.10.0 from ${root}/opt/cloudgate.next`,
+        );
+      });
+
+      // eslint-disable-next-line no-restricted-syntax -- a release candidate of a Cloudgate version (ADR-0094), not a Deployment's
+      it('upgrades a box on one release candidate to the next, rc.10 after rc.9', () => {
+        publish('0.10.0-rc.10');
+        versionTree('0.10.0-rc.9', path.join(root, 'opt/cloudgate'));
+
+        const upgrade = install({ CLOUDGATE_VERSION: 'v0.10.0-rc.10' });
+
+        expect(upgrade.stderr).toBe('');
+        expect(upgrade.status).toBe(0);
+        expect(called()).toContain(
+          `deploy/install.sh 0.10.0-rc.10 from ${root}/opt/cloudgate.next`,
+        );
+      });
+
+      it.each([
+        ['0.10.0', 'v0.10.0-rc.1'],
+        ['0.10.0-rc.2', 'v0.10.0-rc.1'],
+      ])(
+        'refuses to take a box on %s back to %s, before changing anything',
+        (installed, requested) => {
+          publish(requested.replace(/^v/, ''));
+          versionTree(installed, path.join(root, 'opt/cloudgate'));
+          const before = opt();
+
+          const older = install({ CLOUDGATE_VERSION: requested });
+
+          expect(older.status).toBe(1);
+          expect(older.stderr).toContain(
+            `Cloudgate ${installed} is installed, and ${requested.replace(/^v/, '')} is older`,
+          );
+          expect(opt()).toEqual(before);
+          expect(called()).toBe('');
+        },
+      );
+    });
 
     it('says so when no Cloudgate version has been published', () => {
       releases('cli-v1.4.0');

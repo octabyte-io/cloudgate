@@ -826,6 +826,23 @@ In GitHub, Settings > Environments > New environment `hosted`. Under deployment 
 
 The Stripe, Resend, Turnstile and B2 inputs never go to GitHub. A failed upgrade leaves the box on the version the failure reached; `journalctl -u cloudgate-update.service` on the box says why, and the backup the run took first is in B2.
 
+### Checking a version on a box first: release candidates
+
+When a change has to be seen on a real box before the Hosted instance or anyone else gets it, release it as a candidate first ([ADR-0094](adr/0094-a-release-candidate-is-published-as-a-pre-release-and-reaches-the-hosted-instance-only-when-promoted.md)):
+
+1. Bump `backend/package.json` and `CHANGELOG.md` to the version on `main` as for any release, then tag a candidate of it: `git tag v0.3.0-rc.1 && git push origin v0.3.0-rc.1`. `E2E (release)` and **Publish Cloudgate version** run as for a version, and publish `v0.3.0-rc.1` as a GitHub **pre-release**. Nothing is deployed to the Hosted instance.
+2. Install it on a test box by naming it. Nothing else installs it: the install and the console's update notice count `vX.Y.Z` tags only.
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/octabyte-io/cloudgate/main/install.sh \
+     | sudo CLOUDGATE_VERSION=v0.3.0-rc.1 sh
+   ```
+
+3. Found a problem? Fix it on `main` and tag `v0.3.0-rc.2`; the test box upgrades to it the same way.
+4. Happy with it? Run **Promote release candidate** (Actions > Run workflow) with `v0.3.0-rc.2`. It checks the candidate's E2E run passed on the commit its tag names and its pre-release has both signed tarballs, tags `v0.3.0` on that same commit, and calls **Publish Cloudgate version**, which builds, boots, signs and publishes `v0.3.0` and deploys it to the Hosted instance as in the steps above. The tests are not run again; only the build and the boot checks are, a few minutes.
+
+A test box on a candidate is upgraded to the version by running the install again, or from the console's update notice, which offers it once it is published.
+
 ## What has not been verified
 
 - **A Cloudgate version installed on a host.** The install's download, checksum, staging, hand-over and switching a checkout over are driven by `backend/test/deploy/one-command-install.spec.ts` with GitHub and systemd stubbed, and the publish workflow boots each tarball against an empty database before publishing it. Nobody has yet installed or upgraded a real host from a published version, or switched a real checkout over; every host run recorded below built from a checkout.

@@ -32,21 +32,48 @@
 # tarballs leaves that release as it is: a published version is never replaced.
 # A release made by hand on github.com before this run gets the six files added.
 #
+# A release candidate, `vX.Y.Z-rc.N` (ADR-0094), goes through steps 1 to 4
+# the same way and is published as a GitHub pre-release, its tarballs named
+# X.Y.Z-rc.N. Step 5 is skipped: a release candidate never reaches the Hosted
+# instance, and neither root install.sh nor the console's update check counts
+# it as the latest version, so it is installed only on a box that names it
+# (CLOUDGATE_VERSION=v0.3.0-rc.1). It becomes a version through **Promote
+# release candidate** (promote-release-candidate.yml), which tags vX.Y.Z on
+# the same commit and calls this workflow with that tag and the commit the
+# candidate's E2E run tested, so a promoted version is built, booted, signed,
+# published and deployed here without its tests running again.
+#
 # There is no workflow_dispatch: a version is published only from a green E2E
-# run of its tag. To publish again after a failure, re-run this workflow's run.
+# run of its tag, or of the release candidate it was promoted from. To
+# publish again after a failure, re-run this workflow's run.
 name: Publish Cloudgate version
 
 on:
   workflow_run:
     workflows: ['E2E (release)']
     types: [completed]
+  # From promote-release-candidate.yml only, once it has checked the
+  # candidate's E2E run and release.
+  workflow_call:
+    inputs:
+      tag:
+        description: The version tag to publish, vX.Y.Z, already on the tested commit
+        required: true
+        type: string
+      tested_sha:
+        description: The commit the release candidate's green E2E run tested
+        required: true
+        type: string
+    secrets:
+      VERSION_SIGNING_KEY:
+        required: true
 
 permissions:
   contents: read
 
 # One publish per tag at a time, never cancelled half-way.
 concurrency:
-  group: publish-version-${{ github.event.workflow_run.head_branch }}
+  group: publish-version-${{ inputs.tag || github.event.workflow_run.head_branch }}
   cancel-in-progress: false
 
 defaults:
@@ -54,17 +81,21 @@ defaults:
     shell: bash
 
 env:
-  TAG: ${{ github.event.workflow_run.head_branch }}
+  # From E2E's run, or from the promotion that called this workflow.
+  TAG: ${{ inputs.tag || github.event.workflow_run.head_branch }}
+  TESTED_SHA: ${{ inputs.tested_sha || github.event.workflow_run.head_sha }}
 
 jobs:
   build:
     name: Build the ${{ matrix.cpu }} tarball
     # From E2E: only a green run on a pushed tag. deploy/version-gate.sh checks
-    # the conclusion again, beside the tag.
+    # the conclusion again, beside the tag. From a promotion: always, as the
+    # promotion checked the candidate's green run before it called this.
     if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
-      startsWith(github.event.workflow_run.head_branch, 'v')
+      inputs.tag != '' || (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        startsWith(github.event.workflow_run.head_branch, 'v'))
     # Natively on each CPU: pty.node runs only on the CPU it was compiled for.
     strategy:
       matrix:
@@ -80,10 +111,10 @@ jobs:
       node: ${{ steps.node.outputs.version }}
     steps:
       # Before the tag is used anywhere.
-      - name: The tag is a Cloudgate version
+      - name: The tag is a Cloudgate version or a release candidate
         run: |
-          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::\"$TAG\" is not a Cloudgate version tag (vX.Y.Z)."
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[1-9][0-9]*)?$ ]]; then
+            echo "::error::\"$TAG\" is not a Cloudgate version tag (vX.Y.Z, or vX.Y.Z-rc.N)."
             exit 1
           fi
 
@@ -111,13 +142,13 @@ jobs:
 
       - name: E2E passed on the commit the tag names, on main, at backend/package.json's version
         env:
-          E2E_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-          TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
+          # A promotion is called only once the candidate's run is green.
+          E2E_CONCLUSION: ${{ inputs.tag && 'success' || github.event.workflow_run.conclusion }}
         run: bash deploy/version-gate.sh "$TAG"
 
       - name: Build the ${{ matrix.cpu }} tarball
         run: |
-          bash deploy/version-tarball.sh "$RUNNER_TEMP/version"
+          bash deploy/version-tarball.sh "$RUNNER_TEMP/version" "$TAG"
           # The script names it for the CPU it ran on; this is that CPU.
           test -f "$RUNNER_TEMP/version/cloudgate-${TAG#v}-linux-${{ matrix.cpu }}.tar.gz"
 
@@ -242,6 +273,9 @@ jobs:
   deploy-hosted:
     name: Start the Hosted instance's upgrade
     needs: publish
+    # A release candidate is installed by hand on a test box, never here
+    # (ADR-0094); promoting it publishes vX.Y.Z, which is.
+    if: ${{ !contains(inputs.tag || github.event.workflow_run.head_branch, '-rc.') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -253,7 +287,6 @@ jobs:
       - name: Dispatch deploy-hosted.yml for ${{ env.TAG }}
         env:
           GH_TOKEN: ${{ github.token }}
-          TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           gh workflow run deploy-hosted.yml --repo "$GITHUB_REPOSITORY" --ref main \
             -f tag="$TAG" -f tested_sha="$TESTED_SHA"
