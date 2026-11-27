@@ -1,0 +1,1 @@
+ALTER TABLE "rollback" ADD COLUMN "rolled_back_at" text;

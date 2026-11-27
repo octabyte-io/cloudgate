@@ -557,7 +557,12 @@ export class BoughtServerRestoreSteps {
           ...claimed,
           starting: null,
           started: outcome.started
-            ? [...claimed.started, { name: next.name }]
+            ? [
+                ...claimed.started,
+                outcome.rolledBackTo !== undefined
+                  ? { name: next.name, rolledBackTo: outcome.rolledBackTo }
+                  : { name: next.name },
+              ]
             : claimed.started,
           notStarted: outcome.started
             ? claimed.notStarted
@@ -619,7 +624,14 @@ export class BoughtServerRestoreSteps {
               kind: 'restore',
               backupTakenAt: backupDateOf(done.backupTakenAt),
               setupOk: done.setupOk,
-              redeployed: done.started.map((one) => one.name),
+              redeployed: done.started
+                .filter((one) => one.rolledBackTo === undefined)
+                .map((one) => one.name),
+              rolledBack: done.started.flatMap((one) =>
+                one.rolledBackTo === undefined
+                  ? []
+                  : [{ name: one.name, version: one.rolledBackTo }],
+              ),
               notRedeployed: done.notStarted,
             },
             monthlyPrice,

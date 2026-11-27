@@ -179,7 +179,7 @@ describe('refuseWhilePoweredOff, beside every maintenance refusal', () => {
   it('finds the known maintenance refusals', () => {
     expect(refusingMaintenance.map((site) => site.key)).toEqual(
       expect.arrayContaining([
-        'src/rollbacks/rollbacks.service.ts#rollback',
+        'src/rollbacks/rollbacks.service.ts#putBack',
         'src/compose/compose.service.ts#restart',
         'src/docker-ops/docker-ops.service.ts#containerOp',
         'src/cron-services/cron-runs.service.ts#runNow',

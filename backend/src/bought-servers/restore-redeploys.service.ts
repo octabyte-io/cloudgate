@@ -1,6 +1,16 @@
 import { HttpException, Inject, Injectable, Logger } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import { and, eq, exists, gt, isNull, sql } from 'drizzle-orm';
+import {
+  and,
+  desc,
+  eq,
+  exists,
+  gt,
+  isNotNull,
+  isNull,
+  or,
+  sql,
+} from 'drizzle-orm';
 import type { AnyPgColumn, PgTable } from 'drizzle-orm/pg-core';
 import { FrozenOrganizations } from '../cloud/billing/frozen-organizations.service';
 import { DRIZZLE } from '../db/drizzle.module';
@@ -16,6 +26,7 @@ import {
   mysql,
   postgres,
   redis,
+  rollback,
 } from '../db/schema';
 import type { RestoreRedeploy } from '../db/schema';
 import { backupDateOf } from './restore';
@@ -86,9 +97,9 @@ const ENGINES: readonly Engine[] = [
   },
 ];
 
-/** How starting one redeploy went: started, or refused before it started and why. */
+/** How starting one redeploy went: started (or rolled back again), or refused before it started and why. */
 export type RedeployStart =
-  { started: true } | { started: false; reason: string };
+  { started: true; rolledBackTo?: number } | { started: false; reason: string };
 
 /**
  * **The redeploys after a Restore** (#181, ADR-0093): the disk is back as it
@@ -100,7 +111,10 @@ export type RedeployStart =
  * "Its current Deployment" is each deploy path's own: an Application's or a
  * Compose stack's newest Deployment that ended `done` (not a preview's, not
  * a Cron service's run); a Database's or a Bucket's `deployed_at`, since
- * neither writes a Deployment row.
+ * neither writes a Deployment row. An Application's newest change can also
+ * be a Rollback, which writes none either (its point's `rolled_back_at`):
+ * when that is the newest after the backup, the point is put back instead,
+ * since a redeploy would undo the Rollback.
  *
  * The deploys themselves go through {@link RESTORE_REDEPLOYER}, resolved at
  * call time: the deploy paths are in modules that import the Bought Servers
@@ -142,15 +156,42 @@ export class RestoreRedeploys {
           ),
       );
 
-    const applications = await this.db
+    const rolledBackAfter = exists(
+      this.db
+        .select({ one: sql`1` })
+        .from(rollback)
+        .innerJoin(
+          deployment,
+          eq(deployment.deploymentId, rollback.deploymentId),
+        )
+        .where(
+          and(
+            eq(deployment.applicationId, application.applicationId),
+            isNotNull(rollback.rolledBackAt),
+            after(rollback.rolledBackAt),
+          ),
+        ),
+    );
+    const candidates = await this.db
       .select({ id: application.applicationId, name: application.name })
       .from(application)
       .where(
         and(
           eq(application.serverId, serverId),
-          builtAfter(deployment.applicationId, application.applicationId),
+          or(
+            builtAfter(deployment.applicationId, application.applicationId),
+            rolledBackAfter,
+          ),
         ),
       );
+    const applications: RestoreRedeploy[] = [];
+    for (const app of candidates) {
+      applications.push({
+        kind: 'application',
+        ...app,
+        ...(await this.rolledBackLast(app.id)),
+      });
+    }
     const stacks = await this.db
       .select({ id: compose.composeId, name: compose.name })
       .from(compose)
@@ -181,11 +222,56 @@ export class RestoreRedeploys {
         ),
       );
     return [
-      ...applications.map((row) => ({ kind: 'application' as const, ...row })),
+      ...applications,
       ...stacks.map((row) => ({ kind: 'compose' as const, ...row })),
       ...databases,
       ...buckets.map((row) => ({ kind: 'bucket' as const, ...row })),
     ];
+  }
+
+  /**
+   * The point an Application was last rolled back to, when that Rollback is
+   * newer than its newest `done` Deployment: then it is what runs, and what
+   * a Restore puts back. Nothing when a deploy came after it.
+   */
+  private async rolledBackLast(
+    applicationId: string,
+  ): Promise<Pick<RestoreRedeploy, 'rollBackTo'>> {
+    const [last] = await this.db
+      .select({
+        rollbackId: rollback.rollbackId,
+        version: rollback.version,
+        at: rollback.rolledBackAt,
+      })
+      .from(rollback)
+      .innerJoin(deployment, eq(deployment.deploymentId, rollback.deploymentId))
+      .where(
+        and(
+          eq(deployment.applicationId, applicationId),
+          isNotNull(rollback.rolledBackAt),
+        ),
+      )
+      .orderBy(desc(sql`${rollback.rolledBackAt}::timestamptz`))
+      .limit(1);
+    if (!last?.at) return {};
+    const [built] = await this.db
+      .select({ at: deployment.finishedAt })
+      .from(deployment)
+      .where(
+        and(
+          eq(deployment.applicationId, applicationId),
+          eq(deployment.status, 'done'),
+          isNull(deployment.previewDeploymentId),
+          isNull(deployment.cronRun),
+          isNotNull(deployment.finishedAt),
+        ),
+      )
+      .orderBy(desc(sql`${deployment.finishedAt}::timestamptz`))
+      .limit(1);
+    if (built?.at && Date.parse(built.at) >= Date.parse(last.at)) return {};
+    return {
+      rollBackTo: { rollbackId: last.rollbackId, version: last.version },
+    };
   }
 
   /**
@@ -202,10 +288,16 @@ export class RestoreRedeploys {
     backupTakenAt: string,
     one: RestoreRedeploy,
   ): Promise<RedeployStart> {
-    const meta = {
-      title: `Redeploy after restoring ${serverName}`,
-      description: `Queued by restoring ${serverName} from its backup of ${backupDateOf(backupTakenAt)}, since it was deployed after that backup`,
-    };
+    const point = one.rollBackTo;
+    const meta = point
+      ? {
+          title: `Rollback to v${point.version} after restoring ${serverName}`,
+          description: `Put back by restoring ${serverName} from its backup of ${backupDateOf(backupTakenAt)}, since it was rolled back to v${point.version} after that backup`,
+        }
+      : {
+          title: `Redeploy after restoring ${serverName}`,
+          description: `Queued by restoring ${serverName} from its backup of ${backupDateOf(backupTakenAt)}, since it was deployed after that backup`,
+        };
     const redeployer = this.moduleRef.get<RestoreRedeployer>(
       RESTORE_REDEPLOYER,
       { strict: false },
@@ -215,6 +307,10 @@ export class RestoreRedeploys {
     try {
       const frozen = await this.frozen.refusalAt({ organizationId });
       if (frozen === null) {
+        if (point) {
+          await redeployer.rollBack(point.rollbackId);
+          return { started: true, rolledBackTo: point.version };
+        }
         await redeployer.redeploy(service, meta);
         return { started: true };
       }

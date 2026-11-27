@@ -14,6 +14,7 @@ import { boughtServer } from '../../src/bought-servers/bought-server.schema';
 import type { BoughtServerRestoreRedeploys } from '../../src/bought-servers/bought-server.schema';
 import { BoughtServersHourly } from '../../src/bought-servers/bought-servers-hourly.service';
 import { BoughtServerStages } from '../../src/bought-servers/bought-server-stages.service';
+import { ApplicationsService } from '../../src/applications/applications.service';
 import { bucket } from '../../src/buckets/bucket.schema';
 import { BucketsService } from '../../src/buckets/buckets.service';
 import { subscription } from '../../src/cloud/billing/billing.schema';
@@ -32,6 +33,8 @@ import { RemoteDockerFactory } from '../../src/docker/remote-docker.factory';
 import { MailService } from '../../src/mail/mail.service';
 import type { ExecResult } from '../../src/remote/remote-exec.service';
 import { RemoteExecService } from '../../src/remote/remote-exec.service';
+import { rollback } from '../../src/rollbacks/rollback.schema';
+import { RollbacksService } from '../../src/rollbacks/rollbacks.service';
 import { server } from '../../src/servers/server.schema';
 import { serverSetupCommand } from '../../src/servers/server-setup';
 import { SSH_ANSWERS_PROBE } from '../../src/servers/servers.service';
@@ -839,6 +842,99 @@ describe('Restore a Bought Server redeploys what is newer (e2e)', () => {
         'Cloudgate could not redeploy orders and web, which were deployed after that backup: its Organization is frozen (Suspended. Contact Octabyte), so no deploy starts.',
       );
       expect(told.html).not.toContain('Cloudgate redeployed');
+    });
+  });
+
+  describe('a Rollback after the backup', () => {
+    /** The Swarm images a converge asked for, in order. */
+    const images = () =>
+      docker.createService.mock.calls.map(
+        (args: unknown[]) =>
+          (
+            args[args.length - 1] as {
+              TaskTemplate: { ContainerSpec: { Image: string } };
+            }
+          ).TaskTemplate.ContainerSpec.Image,
+      );
+
+    /** A rollback point of `web`, captured from a Deployment before the backup. */
+    async function pointOf(applicationId: string) {
+      const [made] = await ctx.db
+        .insert(deployment)
+        .values({
+          applicationId,
+          title: 'Deploy',
+          status: 'done',
+          logPath: '/etc/cloudgate/logs/past.log',
+          startedAt: BEFORE_THE_BACKUP,
+          finishedAt: BEFORE_THE_BACKUP,
+        })
+        .returning();
+      await ctx.app
+        .get(RollbacksService, { strict: false })
+        .capture(
+          made.deploymentId,
+          await ctx.app
+            .get(ApplicationsService, { strict: false })
+            .findDeployable(applicationId),
+        );
+      const [point] = await ctx.db
+        .select()
+        .from(rollback)
+        .where(eq(rollback.deploymentId, made.deploymentId));
+      return point;
+    }
+
+    const rolledBackAt = (rollbackId: string, at: string) =>
+      ctx.db
+        .update(rollback)
+        .set({ rolledBackAt: at })
+        .where(eq(rollback.rollbackId, rollbackId));
+
+    it('puts back the version the Rollback went to, rather than redeploying the current one, and the email says so', async () => {
+      const { id, chosen } = await readyServer();
+      const web = await applicationOn(id, 'web');
+      const point = await pointOf(web);
+      await deployedAt({ applicationId: web }, AFTER_THE_BACKUP);
+      // Rolled back after that deploy: the Rollback is its newest change.
+      await rolledBackAt(point.rollbackId, '2026-11-02T10:00:00.000Z');
+
+      await restored(id, chosen.id);
+
+      expect(queuedFor()).toEqual([]);
+      await eventually(() => images().length > 0);
+      expect(images()).toEqual([`web:v${point.version}`]);
+      const [told] = toldOwner();
+      expect(told.html).toContain(
+        `Cloudgate rolled web back to v${point.version} again, since the newest change to it after that backup was a rollback to that version.`,
+      );
+      expect(told.html).not.toContain('Cloudgate redeployed');
+    });
+
+    it('puts back a Rollback after the backup even with no deploy after it', async () => {
+      const { id, chosen } = await readyServer();
+      const web = await applicationOn(id, 'web');
+      const point = await pointOf(web);
+      await rolledBackAt(point.rollbackId, AFTER_THE_BACKUP);
+
+      await restored(id, chosen.id);
+
+      await eventually(() => images().length > 0);
+      expect(images()).toEqual([`web:v${point.version}`]);
+      expect(queuedFor()).toEqual([]);
+    });
+
+    it('redeploys as usual when a deploy after the Rollback is the newest change', async () => {
+      const { id, chosen } = await readyServer();
+      const web = await applicationOn(id, 'web');
+      const point = await pointOf(web);
+      await rolledBackAt(point.rollbackId, AFTER_THE_BACKUP);
+      await deployedAt({ applicationId: web }, '2026-11-02T10:00:00.000Z');
+
+      await restored(id, chosen.id);
+
+      expect(queuedFor()).toEqual([web]);
+      expect(images()).toEqual([]);
     });
   });
 });

@@ -134,6 +134,11 @@ export interface RestoreRedeploy {
   kind: RedeployedKind;
   id: string;
   name: string;
+  /**
+   * An Application whose newest change after the backup was a Rollback:
+   * that point is put back, rather than the current version redeployed.
+   */
+  rollBackTo?: { rollbackId: string; version: number };
 }
 
 /**
@@ -155,8 +160,8 @@ export interface BoughtServerRestoreRedeploys {
    * again, a harmless redeploy, rather than lose it.
    */
   starting: RestoreRedeploy | null;
-  /** Started: queued, or its deploy under way. */
-  started: { name: string }[];
+  /** Started: queued, or its deploy under way; or rolled back again to this version. */
+  started: { name: string; rolledBackTo?: number }[];
   /** Refused before it started, and why: recorded on the Service as a failed deploy. */
   notStarted: { name: string; reason: string }[];
 }

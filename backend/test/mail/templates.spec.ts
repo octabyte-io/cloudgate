@@ -471,6 +471,26 @@ describe('mail templates', () => {
       );
     });
 
+    it('says which Service a restore rolled back again, to which version, apart from those it redeployed', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: {
+          kind: 'restore',
+          backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+          setupOk: true,
+          redeployed: ['shop'],
+          rolledBack: [{ name: 'web', version: 3 }],
+          notRedeployed: [],
+        },
+      });
+
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Cloudgate rolled web back to v3 again, since the newest change to it after that backup was a rollback to that version.',
+      );
+      expect(body).toContain('Cloudgate redeployed shop, which was deployed');
+    });
+
     it('says nothing was redeployed, and why, when none could be', async () => {
       const rendered = await renderServerChangedEmail({
         ...props,

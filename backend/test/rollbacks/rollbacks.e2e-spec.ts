@@ -421,6 +421,28 @@ describe('Rollbacks (e2e)', () => {
       expect(settings.Mode).toEqual({ Replicated: { Replicas: 1 } });
     });
 
+    it('records when a point was put back on a Server, which a restore of its Bought Server reads', async () => {
+      const { ownerCtx, application } = await setUpApplication();
+      await applications.update(ownerCtx, application.applicationId, {
+        rollbackActive: true,
+      });
+      await deploy(application.applicationId);
+      const [snapshot] = await rollbacks.findAllByApplicationId(
+        ownerCtx,
+        application.applicationId,
+      );
+      expect(snapshot.rolledBackAt).toBeNull();
+      const before = Date.now();
+
+      await rollbacks.rollback(ownerCtx, snapshot.rollbackId);
+
+      const [after] = await rollbacks.findAllByApplicationId(
+        ownerCtx,
+        application.applicationId,
+      );
+      expect(Date.parse(after.rolledBackAt!)).toBeGreaterThanOrEqual(before);
+    });
+
     it('rolling back after a registry rotation authenticates as neither registry, so no private credential is offered against the rollback tag', async () => {
       // A second out-of-scope finding of the snapshot fix. `resolveAuthConfig`'s docker
       // branch reads `registryUrl`, `username` and `password` off the merged

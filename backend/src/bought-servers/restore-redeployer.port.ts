@@ -33,6 +33,13 @@ export interface RestoreRedeployer {
   ): Promise<void>;
 
   /**
+   * Puts an Application's rollback point back through the call a person's
+   * Rollback takes, for one whose newest change after the backup was a
+   * Rollback to it. A refusal is thrown, as {@link redeploy}'s is.
+   */
+  rollBack(rollbackId: string): Promise<void>;
+
+  /**
    * Records on the Service a redeploy refused before it started, so it
    * shows failed as a failed deploy would: a Deployment ended `error` with
    * the reason, or a Database's or a Bucket's status `error`.

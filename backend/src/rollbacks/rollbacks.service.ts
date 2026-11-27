@@ -365,6 +365,42 @@ export class RollbacksService implements RollbackRecorder {
     await this.permissions.checkPermission(ctx, { deployment: ['create'] });
     const owned = await this.findOwnedRollback(ctx, rollbackId);
     await this.permissions.checkServiceAccess(ctx, owned.applicationId, 'read');
+    return this.putBack(owned);
+  }
+
+  /**
+   * Puts a point back after its Bought Server was restored from a Server
+   * backup (ADR-0093, #181), when a Rollback to it was the Service's newest
+   * change after that backup: the disk is the backup's, so the Swarm service
+   * is as it was before the Rollback. Internal: the Restore was the press,
+   * allowed under `server: ['create']`, so no statement of its own is
+   * asked, as `DeploymentsService.redeployAfterServerRestore` asks none.
+   * Refused as {@link rollback} is.
+   */
+  async rollbackAfterServerRestore(rollbackId: string): Promise<void> {
+    const [found] = await this.db
+      .select({
+        rollback,
+        applicationId: application.applicationId,
+        serverId: application.serverId,
+        buildServerId: application.buildServerId,
+      })
+      .from(rollback)
+      .innerJoin(deployment, eq(rollback.deploymentId, deployment.deploymentId))
+      .innerJoin(
+        application,
+        eq(deployment.applicationId, application.applicationId),
+      )
+      .where(eq(rollback.rollbackId, rollbackId))
+      .limit(1);
+    if (!found) throw new NotFoundException('Rollback not found');
+    await this.putBack(found);
+  }
+
+  /** {@link rollback}'s work, once the caller may: refused, or put back and recorded. */
+  private async putBack(
+    owned: Awaited<ReturnType<RollbacksService['findOwnedRollback']>>,
+  ): Promise<RollbackAnswer> {
     // Nothing is restored onto a Server in maintenance (spec #1420), nor
     // onto a Bought Server an Operator powered off (#1401).
     await refuseWhilePoweredOff(this.db, [owned.serverId], 'roll back');
@@ -415,6 +451,11 @@ export class RollbacksService implements RollbackRecorder {
       // the snapshot never held a value.
       wiredEnv: await wiredEnv(this.db, fresh.environmentId, fresh.configLinks),
     });
+    // The one record of a Server rollback, which a restore reads (ADR-0093).
+    await this.db
+      .update(rollback)
+      .set({ rolledBackAt: new Date().toISOString() })
+      .where(eq(rollback.rollbackId, owned.rollback.rollbackId));
     return { deploymentId: null };
   }
 

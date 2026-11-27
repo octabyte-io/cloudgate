@@ -22,6 +22,8 @@ export type ServerChange =
       backupTakenAt: string;
       setupOk: boolean;
       redeployed: readonly string[];
+      /** Put back on the version a Rollback after the backup went to. */
+      rolledBack?: readonly { name: string; version: number }[];
       notRedeployed: readonly { name: string; reason: string }[];
     };
 
@@ -32,9 +34,10 @@ export type ServerChange =
  */
 function restoreRedeploysSentences(
   names: readonly string[],
+  rolledBack: readonly { name: string; version: number }[],
   refused: readonly { name: string; reason: string }[],
 ): string[] {
-  if (names.length === 0 && refused.length === 0) {
+  if (names.length === 0 && rolledBack.length === 0 && refused.length === 0) {
     return [
       'No Service on it was deployed after that backup, so none was redeployed.',
     ];
@@ -46,6 +49,13 @@ function restoreRedeploysSentences(
       names.length === 1
         ? `Cloudgate redeployed ${sorted[0]}, which was deployed after that backup, so it runs its current version again. How the redeploy went shows on that Service.`
         : `Cloudgate redeployed ${listed(sorted)}, which were deployed after that backup, so they run their current version again. How each redeploy went shows on its Service.`,
+    );
+  }
+  for (const one of [...rolledBack].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  )) {
+    sentences.push(
+      `Cloudgate rolled ${one.name} back to v${one.version} again, since the newest change to it after that backup was a rollback to that version.`,
     );
   }
   const byReason = new Map<string, string[]>();
@@ -119,7 +129,11 @@ export async function renderServerChangedEmail({
           : 'Server setup ran on it again and failed: open its Setup card and press Run setup.',
       );
       more.push(
-        ...restoreRedeploysSentences(change.redeployed, change.notRedeployed),
+        ...restoreRedeploysSentences(
+          change.redeployed,
+          change.rolledBack ?? [],
+          change.notRedeployed,
+        ),
       );
       break;
   }

@@ -20,6 +20,7 @@ import {
   redis,
 } from '../db/schema';
 import { DeploymentsService } from '../deployments/deployments.service';
+import { RollbacksService } from '../rollbacks/rollbacks.service';
 import { maintenanceRefusal } from '../servers/server-maintenance';
 import type {
   RedeployedKind,
@@ -87,7 +88,8 @@ const TABLES: Record<
 /**
  * {@link RestoreRedeployer} over the deploy paths themselves (#181): an
  * Application's redeploy and a stack's Deploy queued through
- * `DeploymentsService`, a Database's deploy (`apply`, so one someone
+ * `DeploymentsService`, an Application's rollback point put back through
+ * `RollbacksService`, a Database's deploy (`apply`, so one someone
  * stopped stays stopped with the current spec) and a Bucket's Garage
  * deploy run on in the background, each failing on its own Service as its
  * deploy does.
@@ -105,6 +107,7 @@ export class RestoreRedeployerAdapter implements RestoreRedeployer {
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly deployments: DeploymentsService,
+    private readonly rollbacks: RollbacksService,
     private readonly buckets: BucketsService,
     private readonly postgres: PostgresService,
     private readonly mysql: MysqlService,
@@ -133,6 +136,10 @@ export class RestoreRedeployerAdapter implements RestoreRedeployer {
         `The ${kind} ${id} was not redeployed after its Server was restored: ${error instanceof Error ? error.message : String(error)}`,
       ),
     );
+  }
+
+  rollBack(rollbackId: string): Promise<void> {
+    return this.rollbacks.rollbackAfterServerRestore(rollbackId);
   }
 
   async recordRefused(

@@ -7,6 +7,7 @@ import { MysqlModule } from '../databases/mysql/mysql.module';
 import { PostgresModule } from '../databases/postgres/postgres.module';
 import { RedisModule } from '../databases/redis/redis.module';
 import { DeploymentsModule } from '../deployments/deployments.module';
+import { RollbacksModule } from '../rollbacks/rollbacks.module';
 import { RestoreRedeployerAdapter } from './restore-redeployer.adapter';
 import { RESTORE_REDEPLOYER } from './restore-redeployer.port';
 
@@ -18,6 +19,7 @@ import { RESTORE_REDEPLOYER } from './restore-redeployer.port';
 @Module({
   imports: [
     DeploymentsModule,
+    RollbacksModule,
     BucketsModule,
     PostgresModule,
     MysqlModule,
