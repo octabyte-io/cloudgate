@@ -92,8 +92,7 @@ export function LiveScreensCaveat() {
       address on this same hostname in{" "}
       <span className="font-mono wrap-anywhere">/etc/default/cloudgate-console</span>,
       then restart the console. The routers saved here send the hostname to
-      the console only, so on a stock install those screens stay blank there (
-      <span className="font-mono">docs/deploy.md</span> §3).
+      the console only, so on a stock install those screens stay blank there.
     </>
   );
 }

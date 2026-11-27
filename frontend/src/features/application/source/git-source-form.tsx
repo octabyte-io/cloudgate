@@ -175,6 +175,7 @@ export function GitSourceForm({
           }}
           onRepository={setChosen}
           locked={locked}
+          noun={"applicationId" in row ? "Application" : "Compose stack"}
         />
 
         <GitSourceBuildFields

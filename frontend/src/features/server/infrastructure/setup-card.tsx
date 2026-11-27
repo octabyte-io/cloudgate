@@ -179,12 +179,12 @@ export function SetupCard({ server }: { server: Server }) {
           {run.state === "idle" ? null : (
             <>
               <RunPanel run={run} server={server} />
-              {/* Only true of the default script: a stored command is not the six
+              {/* Only true of the default script: a stored command is not the eight
                   steps and does not number anything. */}
               <h3 className="mt-4 mb-1 text-meta text-tx-3">
                 {custom
                   ? "What the default script would have done, for reference."
-                  : "The six steps, numbered the way the script numbers them in the output above."}
+                  : "The eight steps, numbered the way the script numbers them in the output above."}
               </h3>
             </>
           )}

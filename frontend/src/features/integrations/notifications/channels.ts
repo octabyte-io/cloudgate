@@ -292,7 +292,7 @@ const EVENT_LABELS: Record<EventFlag, { label: string; hint: string }> = {
   },
   dockerCleanup: {
     label: "Docker cleanup ran",
-    hint: "The scheduled prune of unused images, containers and volumes.",
+    hint: "The nightly prune of stopped containers, unused images and build cache. It never removes volumes.",
   },
   serverThreshold: {
     label: "A Server crossed a threshold",

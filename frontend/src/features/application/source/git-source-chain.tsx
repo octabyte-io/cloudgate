@@ -28,6 +28,7 @@ export function GitSourceChain({
   onConnection,
   onRepository,
   locked,
+  noun,
 }: {
   spec: GitProviderSpec;
   options: readonly { id: string; name: string }[];
@@ -45,6 +46,9 @@ export function GitSourceChain({
    * list's question.
    */
   locked?: string;
+  /** What the row is called in copy: the chain serves an Application and a
+   *  Compose stack alike, and its hint names the one it is on. */
+  noun: "Application" | "Compose stack";
 }) {
   const form = useFormContext<GitSourceValues>();
 
@@ -53,7 +57,7 @@ export function GitSourceChain({
       <Field
         name="connection"
         label={`${spec.label} connection`}
-        hint={`Which connected ${spec.label} account this Application clones through.`}
+        hint={`Which connected ${spec.label} account this ${noun} clones through.`}
         manual
       >
         <Controller

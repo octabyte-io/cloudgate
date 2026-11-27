@@ -138,8 +138,8 @@ export function ForgotPasswordForm() {
           Password reset needs an email sender, and this backend has none
           configured. Ask whoever manages the platform host, the machine
           Cloudgate runs on, to configure an email sender in
-          /etc/default/cloudgate-backend and restart the backend (docs/deploy.md,
-          “Locked out”). Then request the link again.
+          /etc/default/cloudgate-backend and restart the backend. Then request
+          the link again.
         </AuthOutcome>
       </AuthPanel>
     );

@@ -153,7 +153,8 @@ export function TargetCard({
           {stopped && target.status === "running" ? (
             <p className="text-meta text-tx-2">
               Domains already behind this proxy stay behind the sign-in.
-              Removing the proxy opens them to anyone with the link.
+              Removing the proxy makes every request to them fail until it is
+              deployed again or their gate is turned off.
             </p>
           ) : null}
 
