@@ -11,9 +11,12 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 
 import { boughtServer } from '../../src/bought-servers/bought-server.schema';
+import type { BoughtServerRestoreRedeploys } from '../../src/bought-servers/bought-server.schema';
+import { BoughtServersHourly } from '../../src/bought-servers/bought-servers-hourly.service';
 import { BoughtServerStages } from '../../src/bought-servers/bought-server-stages.service';
 import { bucket } from '../../src/buckets/bucket.schema';
 import { BucketsService } from '../../src/buckets/buckets.service';
+import { subscription } from '../../src/cloud/billing/billing.schema';
 import { STRIPE_API } from '../../src/cloud/billing/stripe-api';
 import type { StripeApi } from '../../src/cloud/billing/stripe-api';
 import { postgres } from '../../src/databases/postgres/postgres.schema';
@@ -29,6 +32,7 @@ import { RemoteDockerFactory } from '../../src/docker/remote-docker.factory';
 import { MailService } from '../../src/mail/mail.service';
 import type { ExecResult } from '../../src/remote/remote-exec.service';
 import { RemoteExecService } from '../../src/remote/remote-exec.service';
+import { server } from '../../src/servers/server.schema';
 import { serverSetupCommand } from '../../src/servers/server-setup';
 import { SSH_ANSWERS_PROBE } from '../../src/servers/servers.service';
 import { withArgvExec } from '../utils/exec-double';
@@ -267,6 +271,12 @@ describe('Restore a Bought Server redeploys what is newer (e2e)', () => {
     current = id;
     (await setupRun()).finish();
     await readyRow(id);
+    // Its Ready email too, so it does not land among the restore's.
+    await eventually(() =>
+      mail
+        .to('grace@example.com')
+        .some((one) => one.email.subject === 'Your Server web-1 is ready'),
+    );
     held = [];
     const daily = [1, 2, 3].map((day) =>
       fake().addBackup(machine().id, {
@@ -402,8 +412,15 @@ describe('Restore a Bought Server redeploys what is newer (e2e)', () => {
       return data.applicationId ?? data.composeId;
     });
 
-  /** Restores the backup of Nov 2, and ends the setup run after it. */
-  async function restored(id: string, backupId: number) {
+  /**
+   * Restores the backup of Nov 2, and ends the setup run after it, having
+   * done `meanwhile` while it ran.
+   */
+  async function restored(
+    id: string,
+    backupId: number,
+    meanwhile: () => Promise<unknown> = () => Promise.resolve(),
+  ) {
     queue.jobs = [];
     docker.createService.mockClear();
     mail.clear();
@@ -424,11 +441,46 @@ describe('Restore a Bought Server redeploys what is newer (e2e)', () => {
       );
     });
     fake().finishBackup(copy.id, 2.2);
-    (await setupRun()).finish();
+    const run = await setupRun();
+    await meanwhile();
+    run.finish();
     held = [];
     await readyRow(id);
     await eventually(() => mail.sent.length > 0);
   }
+
+  /** The Server Ready again, a finished Restore's redeploys still stored as a restart left them. */
+  async function leftToStart(
+    id: string,
+    left: Partial<BoughtServerRestoreRedeploys>,
+  ) {
+    await ctx.db
+      .update(boughtServer)
+      .set({
+        stage: 'ready',
+        changeTarget: null,
+        changeTries: 0,
+        restoreRedeploys: {
+          backupTakenAt: '2026-11-02T03:00:00.000Z',
+          setupOk: true,
+          toStart: [],
+          starting: null,
+          started: [],
+          notStarted: [],
+          ...left,
+        },
+      })
+      .where(eq(boughtServer.id, id));
+    queue.jobs = [];
+    mail.clear();
+  }
+
+  /** The subjects and the text of every email to the owner. */
+  const toldOwner = () =>
+    mail.to('grace@example.com').map((one) => ({
+      subject: one.email.subject,
+      html: one.email.html.replace(/<!-- -->/g, ''),
+    }));
 
   beforeAll(async () => {
     ctx = await createTestApp({
@@ -671,5 +723,122 @@ describe('Restore a Bought Server redeploys what is newer (e2e)', () => {
 
     expect((await rowOf(id)).stage).toBe('ready');
     expect(queuedFor()).toEqual([web]);
+  });
+
+  describe('a restart between Ready and the redeploys', () => {
+    it('starts each redeploy left to start once, however many callers reach it, then sends the one email naming them', async () => {
+      const { id } = await readyServer();
+      const web = await applicationOn(id, 'web');
+      const shop = await composeOn(id, 'shop');
+      await leftToStart(id, {
+        toStart: [
+          { kind: 'application', id: web, name: 'web' },
+          { kind: 'compose', id: shop, name: 'shop' },
+        ],
+      });
+      const stages = ctx.app.get(BoughtServerStages);
+
+      await Promise.all([stages.advance(id), stages.advance(id)]);
+      await stages.advance(id);
+
+      expect(queuedFor()).toEqual([web, shop]);
+      expect((await rowOf(id)).restoreRedeploys).toBeNull();
+      const told = toldOwner();
+      expect(told.map((one) => one.subject)).toEqual([
+        'Your Server web-1 was restored from a backup',
+      ]);
+      expect(told[0].html).toContain('Cloudgate redeployed shop and web');
+    });
+
+    it('starts again one a restart cut off between its claim and its record, rather than lose it', async () => {
+      const { id } = await readyServer();
+      const web = await applicationOn(id, 'web');
+      await leftToStart(id, {
+        starting: { kind: 'application', id: web, name: 'web' },
+      });
+
+      await ctx.app.get(BoughtServerStages).advance(id);
+
+      expect(queuedFor()).toEqual([web]);
+      expect(toldOwner()).toHaveLength(1);
+    });
+
+    it('is carried on by the hourly resume, though the Server is Ready', async () => {
+      const { id } = await readyServer();
+      const web = await applicationOn(id, 'web');
+      await leftToStart(id, {
+        toStart: [{ kind: 'application', id: web, name: 'web' }],
+      });
+
+      await ctx.app.get(BoughtServersHourly).tick();
+
+      expect(queuedFor()).toEqual([web]);
+      expect((await rowOf(id)).restoreRedeploys).toBeNull();
+      expect(toldOwner()).toHaveLength(1);
+    });
+  });
+
+  describe('a redeploy refused before it starts', () => {
+    it('shows on its Service as a failed deploy, and the email lists it apart, with why, never as redeployed', async () => {
+      const { id, chosen } = await readyServer();
+      const web = await applicationOn(id, 'web');
+      await deployedAt({ applicationId: web }, AFTER_THE_BACKUP);
+      const orders = await postgresOn(id, 'orders');
+      docker.createService.mockClear();
+
+      await restored(id, chosen.id, () =>
+        ctx.db
+          .update(server)
+          .set({ maintenanceSince: new Date().toISOString() })
+          .where(eq(server.serverId, id)),
+      );
+
+      expect(queuedFor()).toEqual([]);
+      expect(created()).toEqual([]);
+      const [failed] = await ctx.db
+        .select()
+        .from(deployment)
+        .where(eq(deployment.applicationId, web))
+        .orderBy(deployment.createdAt)
+        .then((rows) => rows.filter((row) => row.status === 'error'));
+      expect(failed).toMatchObject({
+        title: 'Redeploy after restoring web-1',
+        description: 'web-1 is in maintenance',
+      });
+      expect(failed.finishedAt).not.toBeNull();
+      const [database] = await ctx.db
+        .select({ status: postgres.applicationStatus })
+        .from(postgres)
+        .where(eq(postgres.postgresId, orders));
+      expect(database.status).toBe('error');
+      const [told] = toldOwner();
+      expect(told.html).toContain(
+        'Cloudgate could not redeploy orders and web, which were deployed after that backup: web-1 is in maintenance.',
+      );
+      expect(told.html).not.toContain('Cloudgate redeployed');
+    });
+
+    it('starts none for a frozen Organization, and the email says why', async () => {
+      const { id, chosen } = await readyServer();
+      const web = await applicationOn(id, 'web');
+      await deployedAt({ applicationId: web }, AFTER_THE_BACKUP);
+      await postgresOn(id, 'orders');
+      docker.createService.mockClear();
+
+      await restored(id, chosen.id, () =>
+        ctx.db
+          .update(subscription)
+          .set({ suspendedAt: new Date(), suspendedReason: 'Sending spam' })
+          .where(eq(subscription.organizationId, owner.organizationId)),
+      );
+
+      expect(queuedFor()).toEqual([]);
+      expect(created()).toEqual([]);
+      const [told] = toldOwner();
+      expect(told.html).toContain(
+        'Cloudgate could not redeploy orders and web, which were deployed after that backup: its Organization is frozen (Suspended. Contact Octabyte), so no deploy starts.',
+      );
+      expect(told.html).not.toContain('Cloudgate redeployed');
+    });
   });
 });

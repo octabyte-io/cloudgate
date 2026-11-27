@@ -1,6 +1,7 @@
 import type {
   BoughtServerChangeTarget,
   BoughtServerRestore,
+  BoughtServerRestoreRedeploys,
   BoughtServerStage,
 } from './bought-server.schema';
 
@@ -16,7 +17,7 @@ import type {
  * Creating --machine or Volume refused twice--> Failed (refund, machine deleted, owner emailed)
  * Setting up --setup fails--> Ready-with-Setup-failed
  * Ready --paid change--> Changing --done--> Ready
- * Ready --Restore--> Changing --setup run ended--> Ready (owners emailed)
+ * Ready --Restore--> Changing --setup run ended--> Ready --redeploys started--> (owners emailed)
  * Changing --refused twice--> Ready (as before; refund; owner emailed)
  * Ready/any --Delete--> Deleting --> Deleted
  * ```
@@ -31,7 +32,9 @@ export const MAX_CREATE_TRIES = 2;
 /**
  * The stages a restart can leave work in, which the hourly job resumes
  * (#1391). Waiting for payment is not one: only a payment moves it on.
- * Ready and Deleted have nothing left to do by themselves.
+ * Deleted has nothing left to do by itself, nor has Ready, but for a
+ * Restore's redeploys still stored (`restoreRedeploys`), which the hourly
+ * job resumes too.
  */
 export const MID_STAGE: readonly BoughtServerStage[] = [
   'creating',
@@ -123,6 +126,8 @@ export interface StageFacts {
   changeInvoiceId?: string | null;
   /** How many times the first Setup run was started by the backend. */
   setupStarts: number;
+  /** A finished Restore's redeploys and email still to do, once Ready again. */
+  restoreRedeploys?: BoughtServerRestoreRedeploys | null;
   /**
    * How many of its lines the subscription still carries (a stored
    * subscription item): Deleting takes them off before anything else.
@@ -223,6 +228,11 @@ export type NextStep =
   | { kind: 'restore-setup-cut-off' }
   /** The setup run ended: what follows it, then Ready. */
   | { kind: 'after-restore-setup' }
+  /**
+   * Ready after a Restore, with redeploys stored still to start or its
+   * email still to send (#181): each started once, then the email.
+   */
+  | { kind: 'start-restore-redeploys' }
   /** Nothing for the stages to do by themselves. */
   | { kind: 'none' };
 
@@ -247,6 +257,10 @@ export function nextStep(facts: StageFacts): NextStep {
         : { kind: 'setup-cut-off' };
     case 'failed':
       return { kind: 'refund' };
+    case 'ready':
+      return facts.restoreRedeploys
+        ? { kind: 'start-restore-redeploys' }
+        : { kind: 'none' };
     case 'changing':
       return changeStep(facts);
     case 'deleting':

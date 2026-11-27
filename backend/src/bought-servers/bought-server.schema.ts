@@ -14,6 +14,7 @@ import { customAlphabet } from 'nanoid';
 import { organization } from '../organizations/organizations.schema';
 import { server } from '../servers/server.schema';
 import { sshKey } from '../ssh-keys/ssh-key.schema';
+import type { RedeployedKind } from './restore-redeployer.port';
 
 /**
  * **Bought Servers** at rest (ADR-0071, spec #1387's Storage): one
@@ -126,6 +127,38 @@ export interface BoughtServerRestore {
   setupStarts?: number;
   /** How that run ended; only what follows it is left. */
   setup?: { ok: boolean; message: string | null };
+}
+
+/** One Service a Restore redeploys, as its stored follow-up names it (#181). */
+export interface RestoreRedeploy {
+  kind: RedeployedKind;
+  id: string;
+  name: string;
+}
+
+/**
+ * What a finished Restore still has to do once its Server is Ready again
+ * (#181, ADR-0093): start the redeploy of each Service deployed after its
+ * backup, then tell the owners and admins once. Stored with the Ready write,
+ * so a restart between the two starts what is left rather than losing it;
+ * cleared by whoever sends the email, which is the claim on it.
+ */
+export interface BoughtServerRestoreRedeploys {
+  /** When the backup restored was taken, ISO, as the email says it. */
+  backupTakenAt: string;
+  /** How the Server setup run after it ended. */
+  setupOk: boolean;
+  /** Still to start, in order. */
+  toStart: RestoreRedeploy[];
+  /**
+   * Claimed and being started. A restart that finds one here starts it
+   * again, a harmless redeploy, rather than lose it.
+   */
+  starting: RestoreRedeploy | null;
+  /** Started: queued, or its deploy under way. */
+  started: { name: string }[];
+  /** Refused before it started, and why: recorded on the Service as a failed deploy. */
+  notStarted: { name: string; reason: string }[];
 }
 
 /**
@@ -248,6 +281,12 @@ export const boughtServer = pgTable('bought_server', {
   changeTarget: jsonb('change_target').$type<BoughtServerChangeTarget>(),
   changeTries: integer('change_tries').notNull().default(0),
   changeInvoiceId: text('change_invoice_id'),
+  /**
+   * A finished Restore's redeploys and email still to do (#181); null once
+   * the email is sent, and while there is no Restore.
+   */
+  restoreRedeploys:
+    jsonb('restore_redeploys').$type<BoughtServerRestoreRedeploys>(),
   /**
    * Who ticked the terms box at Buy, and when: the proof of acceptance
    * (ADR-0071). The user's id, deliberately not a foreign key: a key would

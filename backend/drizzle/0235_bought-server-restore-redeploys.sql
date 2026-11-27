@@ -1,0 +1,1 @@
+ALTER TABLE "bought_server" ADD COLUMN "restore_redeploys" jsonb;

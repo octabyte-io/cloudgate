@@ -843,6 +843,14 @@ const JSON_COLUMNS: Readonly<Record<string, JsonColumnEntry>> = {
       'backups on or off, and extra storage in GB. Facts the customer chose ' +
       'and the console shows, with nothing secret among them.',
   },
+  'boughtServer.restoreRedeploys': {
+    encrypted: false,
+    reason:
+      'the redeploys a finished Restore still has to start (ADR-0093): each ' +
+      'Service by kind, id and name, a rollback point id and version, and ' +
+      'the refusals the email names. Ids and names the console shows, with ' +
+      'nothing secret among them.',
+  },
   'boughtServerOrphan.labels': {
     encrypted: false,
     reason:

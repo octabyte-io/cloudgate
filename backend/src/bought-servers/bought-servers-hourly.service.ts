@@ -4,7 +4,7 @@ import {
   Logger,
   OnApplicationBootstrap,
 } from '@nestjs/common';
-import { and, asc, inArray, isNull } from 'drizzle-orm';
+import { and, asc, inArray, isNotNull, isNull, or } from 'drizzle-orm';
 import { DRIZZLE } from '../db/drizzle.module';
 import type { DrizzleDB } from '../db/drizzle.module';
 import { InstanceMode } from '../instance-mode/instance-mode.service';
@@ -92,7 +92,13 @@ export class BoughtServersHourly implements OnApplicationBootstrap {
     const rows = await this.db
       .select({ id: boughtServer.id })
       .from(boughtServer)
-      .where(inArray(boughtServer.stage, [...MID_STAGE]))
+      .where(
+        or(
+          inArray(boughtServer.stage, [...MID_STAGE]),
+          // Ready, with a finished Restore's redeploys still stored (#181).
+          isNotNull(boughtServer.restoreRedeploys),
+        ),
+      )
       .orderBy(asc(boughtServer.createdAt));
     for (const { id } of rows) {
       await this.stages.advance(id);

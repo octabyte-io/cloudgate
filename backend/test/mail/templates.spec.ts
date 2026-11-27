@@ -377,6 +377,7 @@ describe('mail templates', () => {
           backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
           setupOk: true,
           redeployed: [],
+          notRedeployed: [],
         },
       });
 
@@ -399,6 +400,7 @@ describe('mail templates', () => {
           backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
           setupOk: true,
           redeployed: ['web', 'orders', 'shop'],
+          notRedeployed: [],
         },
       });
 
@@ -415,6 +417,7 @@ describe('mail templates', () => {
           backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
           setupOk: true,
           redeployed: ['web'],
+          notRedeployed: [],
         },
       });
 
@@ -431,12 +434,67 @@ describe('mail templates', () => {
           backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
           setupOk: true,
           redeployed: [],
+          notRedeployed: [],
         },
       });
 
       expect(text(rendered.html)).toContain(
         'No Service on it was deployed after that backup, so none was redeployed.',
       );
+    });
+
+    it('lists apart each Service a restore could not redeploy, with the reason, and names only those started as redeployed', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: {
+          kind: 'restore',
+          backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+          setupOk: true,
+          redeployed: ['shop'],
+          notRedeployed: [
+            { name: 'web', reason: 'web-1 is in maintenance' },
+            { name: 'orders', reason: 'web-1 is in maintenance' },
+            { name: 'files', reason: 'files is an S3 bucket' },
+          ],
+        },
+      });
+
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Cloudgate redeployed shop, which was deployed after that backup, so it runs its current version again. How the redeploy went shows on that Service.',
+      );
+      expect(body).toContain(
+        'Cloudgate could not redeploy orders and web, which were deployed after that backup: web-1 is in maintenance. Each shows as failed on its Service, and runs the version the backup holds until it is deployed again.',
+      );
+      expect(body).toContain(
+        'Cloudgate could not redeploy files, which was deployed after that backup: files is an S3 bucket. It shows as failed on its Service, and runs the version the backup holds until it is deployed again.',
+      );
+    });
+
+    it('says nothing was redeployed, and why, when none could be', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...props,
+        change: {
+          kind: 'restore',
+          backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+          setupOk: true,
+          redeployed: [],
+          notRedeployed: [
+            {
+              name: 'web',
+              reason:
+                'its Organization is frozen (Suspended. Contact Octabyte), so no deploy starts',
+            },
+          ],
+        },
+      });
+
+      const body = text(rendered.html);
+      expect(body).toContain(
+        'Cloudgate could not redeploy web, which was deployed after that backup: its Organization is frozen (Suspended. Contact Octabyte), so no deploy starts.',
+      );
+      expect(body).not.toContain('Cloudgate redeployed');
+      expect(body).not.toContain('none was redeployed');
     });
 
     it('says to run setup again when the setup run after a restore failed', async () => {
@@ -447,6 +505,7 @@ describe('mail templates', () => {
           backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
           setupOk: false,
           redeployed: [],
+          notRedeployed: [],
         },
       });
 

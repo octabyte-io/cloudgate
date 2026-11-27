@@ -9,16 +9,19 @@ import { MailService } from '../mail/mail.service';
 import { renderBoughtServerRestoreFailedEmail } from '../mail/templates';
 import type { RestoreGivenUp } from '../mail/templates';
 import { renderServerChangedEmail } from '../mail/templates/server-changed';
-import { server } from '../servers/server.schema';
 import { ServerSetupRuns } from '../servers/server-setup-runs';
 import type { SetupRunOutcome } from '../servers/server-setup-runs';
-import { boughtServer, boughtServerLine } from './bought-server.schema';
-import type { BoughtServer, BoughtServerRestore } from './bought-server.schema';
+import { boughtServer, boughtServerLine, server } from '../db/schema';
+import type {
+  BoughtServer,
+  BoughtServerRestore,
+  BoughtServerRestoreRedeploys,
+  RestoreRedeploy,
+} from '../db/schema';
 import { HETZNER_MACHINES } from './hetzner/hetzner-cloud.port';
 import type { HetznerCloudPort } from './hetzner/hetzner-cloud.port';
 import { backupDateOf, safetyCopyPushesOut } from './restore';
 import { RestoreRedeploys } from './restore-redeploys.service';
-import type { RestoreRedeploy } from './restore-redeploys.service';
 import type { NextStep } from './stages';
 
 /** What the Server setup run after a Restore cut off by a restart each time it was started is stored as. */
@@ -64,7 +67,8 @@ export type RestoreStep = Extract<
       | 'start-machine'
       | 'restore-setup'
       | 'restore-setup-cut-off'
-      | 'after-restore-setup';
+      | 'after-restore-setup'
+      | 'start-restore-redeploys';
   }
 >;
 
@@ -88,9 +92,10 @@ export type RestoreStep = Extract<
  * - *Server setup run*, which waits for SSH and mounts the extra storage
  *   again (`ServersService.setup`); once more if a restart cut it off, then
  *   stored as failed.
- * - *After the setup run* ({@link afterSetup}): Ready, the redeploy of
- *   every Service deployed after the backup started, and the owners and
- *   admins told once, naming them.
+ * - *After the setup run* ({@link afterSetup}): Ready, with the redeploy
+ *   of every Service deployed after the backup stored as still to start;
+ *   each is then started once ({@link startRedeploys}), and the owners and
+ *   admins told once, naming them, after the last.
  *
  * Every write is conditional on the row's stored target and tries, so two
  * callers (a press's follow and the hourly resume) never both take a step,
@@ -101,6 +106,8 @@ export type RestoreStep = Extract<
 @Injectable()
 export class BoughtServerRestoreSteps {
   private readonly logger = new Logger(BoughtServerRestoreSteps.name);
+  /** The Bought Servers whose stored redeploys a caller on this backend is starting now. */
+  private readonly carrying = new Set<string>();
 
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
@@ -134,6 +141,8 @@ export class BoughtServerRestoreSteps {
         return this.setupCutOff(row);
       case 'after-restore-setup':
         return this.afterSetup(row);
+      case 'start-restore-redeploys':
+        return this.startRedeploys(row.id);
     }
   }
 
@@ -469,36 +478,125 @@ export class BoughtServerRestoreSteps {
   /**
    * Ready again, and only then the redeploys: the readiness rule refuses
    * any deploy to a Bought Server that is not Ready, the queued ones at
-   * their claim too. That write is the claim on them, as on the email:
-   * whoever made it starts each redeploy once and emails the owners and
-   * admins once, naming them, so a restart or a second caller reaching
-   * this again finds the Server Ready and starts none.
+   * their claim too. The same write stores them as still to start, so a
+   * restart between the two starts them rather than losing them; it is the
+   * claim on the Restore's end, so a second caller reaching this again finds
+   * the Server Ready and writes nothing.
    */
   private async finish(
     row: BoughtServer,
     redeploys: readonly RestoreRedeploy[],
   ): Promise<boolean> {
     const restore = restoreOf(row);
+    const left: BoughtServerRestoreRedeploys = {
+      backupTakenAt: restore.backupTakenAt,
+      setupOk: restore.setup?.ok ?? false,
+      toStart: [...redeploys],
+      starting: null,
+      started: [],
+      notStarted: [],
+    };
     const [done] = await this.db
       .update(boughtServer)
-      .set({ stage: 'ready', changeTarget: null, changeTries: 0 })
+      .set({
+        stage: 'ready',
+        changeTarget: null,
+        changeTries: 0,
+        restoreRedeploys: left,
+      })
       .where(this.unchanged(row))
       .returning({ id: boughtServer.id });
     if (!done) return false;
-    await this.redeploys.start(row.name, restore.backupTakenAt, redeploys);
-    await this.sendRestored(
-      row,
-      restore,
-      redeploys.map((one) => one.name),
-    );
-    return false;
+    return this.startRedeploys(row.id);
   }
 
-  /** To every owner and admin, as any finished change is: which backup, how setup ended, and what was redeployed. */
+  /**
+   * **The redeploys a finished Restore stored** (#181), each started once,
+   * then the one email. Each is claimed (moved to `starting`) before it is
+   * started and recorded after, every write conditional on the stored list
+   * as read, so two callers never start the same one; one caller here at a
+   * time ({@link carrying}), so a press's follow and the hourly resume do
+   * not both pick up a claimed one. A restart that finds one claimed and not
+   * recorded starts it again, a harmless redeploy, rather than lose it.
+   * Whoever clears the list once none is left sends the email.
+   */
+  private async startRedeploys(id: string): Promise<boolean> {
+    if (this.carrying.has(id)) return false;
+    this.carrying.add(id);
+    try {
+      for (;;) {
+        const row = await this.find(id);
+        const left = row?.restoreRedeploys;
+        if (!row || !left) return false;
+        const next = left.starting ?? left.toStart[0] ?? null;
+        if (next === null) {
+          const [cleared] = await this.db
+            .update(boughtServer)
+            .set({ restoreRedeploys: null })
+            .where(this.redeploysUnchanged(id, left))
+            .returning({ id: boughtServer.id });
+          if (cleared) await this.sendRestored(row, left);
+          return false;
+        }
+        const claimed: BoughtServerRestoreRedeploys = left.starting
+          ? left
+          : { ...left, toStart: left.toStart.slice(1), starting: next };
+        if (
+          claimed !== left &&
+          !(await this.writeRedeploys(id, left, claimed))
+        ) {
+          continue;
+        }
+        const outcome = await this.redeploys.start(
+          row.organizationId,
+          row.name,
+          left.backupTakenAt,
+          next,
+        );
+        await this.writeRedeploys(id, claimed, {
+          ...claimed,
+          starting: null,
+          started: outcome.started
+            ? [...claimed.started, { name: next.name }]
+            : claimed.started,
+          notStarted: outcome.started
+            ? claimed.notStarted
+            : [
+                ...claimed.notStarted,
+                { name: next.name, reason: outcome.reason },
+              ],
+        });
+      }
+    } finally {
+      this.carrying.delete(id);
+    }
+  }
+
+  /** The stored redeploys moved from `from` to `to`, unless another caller moved them first. */
+  private async writeRedeploys(
+    id: string,
+    from: BoughtServerRestoreRedeploys,
+    to: BoughtServerRestoreRedeploys,
+  ): Promise<boolean> {
+    const [written] = await this.db
+      .update(boughtServer)
+      .set({ restoreRedeploys: to })
+      .where(this.redeploysUnchanged(id, from))
+      .returning({ id: boughtServer.id });
+    return written !== undefined;
+  }
+
+  private redeploysUnchanged(id: string, left: BoughtServerRestoreRedeploys) {
+    return and(
+      eq(boughtServer.id, id),
+      sql`${boughtServer.restoreRedeploys} = ${JSON.stringify(left)}::jsonb`,
+    );
+  }
+
+  /** To every owner and admin, as any finished change is: which backup, how setup ended, what was redeployed and what could not be. */
   private async sendRestored(
     row: BoughtServer,
-    restore: BoughtServerRestore,
-    redeployed: readonly string[],
+    done: BoughtServerRestoreRedeploys,
   ): Promise<void> {
     try {
       const lines = await this.db
@@ -519,9 +617,10 @@ export class BoughtServerRestoreSteps {
             serverName: row.name,
             change: {
               kind: 'restore',
-              backupTakenAt: backupDateOf(restore.backupTakenAt),
-              setupOk: restore.setup?.ok ?? false,
-              redeployed,
+              backupTakenAt: backupDateOf(done.backupTakenAt),
+              setupOk: done.setupOk,
+              redeployed: done.started.map((one) => one.name),
+              notRedeployed: done.notStarted,
             },
             monthlyPrice,
             serverUrl: this.serverUrl(row),

@@ -1,19 +1,23 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { HttpException, Inject, Injectable, Logger } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { and, eq, exists, gt, isNull, sql } from 'drizzle-orm';
 import type { AnyPgColumn, PgTable } from 'drizzle-orm/pg-core';
-import { application } from '../applications/application.schema';
-import { bucket } from '../buckets/bucket.schema';
-import { compose } from '../compose/compose.schema';
-import { libsql } from '../databases/libsql/libsql.schema';
-import { mariadb } from '../databases/mariadb/mariadb.schema';
-import { mongo } from '../databases/mongo/mongo.schema';
-import { mysql } from '../databases/mysql/mysql.schema';
-import { postgres } from '../databases/postgres/postgres.schema';
-import { redis } from '../databases/redis/redis.schema';
+import { FrozenOrganizations } from '../cloud/billing/frozen-organizations.service';
 import { DRIZZLE } from '../db/drizzle.module';
 import type { DrizzleDB } from '../db/drizzle.module';
-import { deployment } from '../deployments/deployment.schema';
+import {
+  application,
+  bucket,
+  compose,
+  deployment,
+  libsql,
+  mariadb,
+  mongo,
+  mysql,
+  postgres,
+  redis,
+} from '../db/schema';
+import type { RestoreRedeploy } from '../db/schema';
 import { backupDateOf } from './restore';
 import { RESTORE_REDEPLOYER } from './restore-redeployer.port';
 import type {
@@ -82,12 +86,9 @@ const ENGINES: readonly Engine[] = [
   },
 ];
 
-/** One Service a Restore redeploys. */
-export interface RestoreRedeploy {
-  kind: RedeployedKind;
-  id: string;
-  name: string;
-}
+/** How starting one redeploy went: started, or refused before it started and why. */
+export type RedeployStart =
+  { started: true } | { started: false; reason: string };
 
 /**
  * **The redeploys after a Restore** (#181, ADR-0093): the disk is back as it
@@ -103,7 +104,8 @@ export interface RestoreRedeploy {
  *
  * The deploys themselves go through {@link RESTORE_REDEPLOYER}, resolved at
  * call time: the deploy paths are in modules that import the Bought Servers
- * readiness rule.
+ * readiness rule. Which are started, once each, and the email after, is
+ * `BoughtServerRestoreSteps`' (the stored `restoreRedeploys`).
  */
 @Injectable()
 export class RestoreRedeploys {
@@ -112,6 +114,7 @@ export class RestoreRedeploys {
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly moduleRef: ModuleRef,
+    private readonly frozen: FrozenOrganizations,
   ) {}
 
   /** Every Service on the Server whose current Deployment finished after `takenAt`. */
@@ -186,16 +189,19 @@ export class RestoreRedeploys {
   }
 
   /**
-   * Starts each redeploy, never throwing: each fails as its deploy does, on
-   * its own Service, and a refusal to start one is logged. Neither fails
+   * Starts one redeploy, never throwing. A Frozen Organization starts no
+   * deploy (ADR-0052), so none is started for one, and the refusal says so.
+   * A refusal before it starts (that, or one of the deploy's own) is
+   * recorded on its Service as a failed deploy and answered with why; once
+   * started, it fails on its own Service as its deploy does. Neither fails
    * the Restore.
    */
   async start(
+    organizationId: string,
     serverName: string,
     backupTakenAt: string,
-    redeploys: readonly RestoreRedeploy[],
-  ): Promise<void> {
-    if (redeploys.length === 0) return;
+    one: RestoreRedeploy,
+  ): Promise<RedeployStart> {
     const meta = {
       title: `Redeploy after restoring ${serverName}`,
       description: `Queued by restoring ${serverName} from its backup of ${backupDateOf(backupTakenAt)}, since it was deployed after that backup`,
@@ -204,14 +210,40 @@ export class RestoreRedeploys {
       RESTORE_REDEPLOYER,
       { strict: false },
     );
-    for (const one of redeploys) {
-      try {
-        await redeployer.redeploy({ kind: one.kind, id: one.id }, meta);
-      } catch (error) {
-        this.logger.warn(
-          `${one.name} was not redeployed after ${serverName} was restored: ${error instanceof Error ? error.message : String(error)}`,
-        );
+    const service = { kind: one.kind, id: one.id };
+    let reason: string;
+    try {
+      const frozen = await this.frozen.refusalAt({ organizationId });
+      if (frozen === null) {
+        await redeployer.redeploy(service, meta);
+        return { started: true };
       }
+      reason = `its Organization is frozen (${frozen}), so no deploy starts`;
+    } catch (error) {
+      reason = refusalOf(error);
+    }
+    this.logger.warn(
+      `${one.name} was not redeployed after ${serverName} was restored: ${reason}`,
+    );
+    try {
+      await redeployer.recordRefused(service, meta, reason);
+    } catch (error) {
+      this.logger.error(
+        `${one.name}: could not record that its redeploy after ${serverName} was restored was refused: ${refusalOf(error)}`,
+      );
+    }
+    return { started: false, reason };
+  }
+}
+
+/** A refusal's own words: an HTTP refusal's message, as its caller is shown it. */
+function refusalOf(error: unknown): string {
+  if (error instanceof HttpException) {
+    const body = error.getResponse();
+    if (typeof body === 'object' && body !== null && 'message' in body) {
+      const { message } = body;
+      if (typeof message === 'string') return message;
     }
   }
+  return error instanceof Error ? error.message : String(error);
 }

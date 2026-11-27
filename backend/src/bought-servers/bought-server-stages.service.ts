@@ -6,7 +6,7 @@ import {
   OnApplicationBootstrap,
   OnModuleDestroy,
 } from '@nestjs/common';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { subscriptionIdOf } from '../cloud/billing/billing.plans';
 import { STRIPE_API } from '../cloud/billing/stripe-api';
@@ -180,16 +180,23 @@ export class BoughtServerStages
     }
   }
 
-  /** A restart cut every follow off: each Restore still Changing is followed again. */
+  /**
+   * A restart cut every follow off: each Restore still Changing is followed
+   * again, and each finished one whose redeploys a restart left stored is
+   * carried on (#181).
+   */
   async resumeRestores(): Promise<void> {
     try {
       const rows = await this.db
         .select({ id: boughtServer.id })
         .from(boughtServer)
         .where(
-          and(
-            eq(boughtServer.stage, 'changing'),
-            sql`${boughtServer.changeTarget} -> 'restore' is not null`,
+          or(
+            and(
+              eq(boughtServer.stage, 'changing'),
+              sql`${boughtServer.changeTarget} -> 'restore' is not null`,
+            ),
+            isNotNull(boughtServer.restoreRedeploys),
           ),
         );
       for (const row of rows) void this.follow(row.id);
@@ -263,6 +270,7 @@ export class BoughtServerStages
       case 'restore-setup':
       case 'restore-setup-cut-off':
       case 'after-restore-setup':
+      case 'start-restore-redeploys':
         return this.changes.restore(row, step);
       case 'remove-lines':
         return this.deletion.removeLines(row);

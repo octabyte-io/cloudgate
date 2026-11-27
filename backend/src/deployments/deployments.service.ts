@@ -625,6 +625,50 @@ export class DeploymentsService
     );
   }
 
+  /**
+   * Records a redeploy after a Server restore that was refused before it
+   * started (ADR-0093, #181): a Deployment of the Service ended `error`, its
+   * description the refusal, as {@link refuseFrozenClaim} ends a queued one,
+   * so the Service shows it failed as a failed deploy would. Internal, as
+   * {@link redeployAfterServerRestore} is. Its log is started where the
+   * build's would be; when that host cannot be reached, the row still
+   * names the path and holds no log.
+   */
+  async recordRefusedAfterServerRestore(
+    service: { kind: BuiltServiceType; id: string },
+    meta: { title: string },
+    reason: string,
+  ): Promise<void> {
+    const target =
+      service.kind === 'compose'
+        ? await this.findCompose(service.id)
+        : await this.findApplication(service.id);
+    let { deploymentId, logPath } = {
+      deploymentId: nanoid(),
+      logPath: '',
+    };
+    try {
+      ({ deploymentId, logPath } = await this.initializeLog(target));
+    } catch {
+      logPath = `${deploymentLogsDirectoryOn(buildHostServerId(target), target.appName)}/${deploymentId}.log`;
+    }
+    await this.db.insert(deployment).values({
+      deploymentId,
+      ...(service.kind === 'compose'
+        ? { composeId: service.id }
+        : { applicationId: service.id }),
+      queuedAs:
+        service.kind === 'compose'
+          ? { applicationType: 'compose', type: 'deploy' }
+          : { applicationType: 'application', type: 'redeploy' },
+      title: meta.title,
+      description: reason,
+      status: 'error',
+      logPath,
+      finishedAt: new Date().toISOString(),
+    });
+  }
+
   /** Shared by {@link deploy} and {@link redeploy}: whoever can read the
    * Application and create deployments may trigger one, the attempt is
    * recorded pending before it is enqueued, and only the job's `type` and the

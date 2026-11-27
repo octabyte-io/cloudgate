@@ -13,25 +13,54 @@ export type ServerChange =
   | { kind: 'size'; size: string | null }
   /**
    * A Restore (#180): the backup's date as the email says it, how the
-   * Server setup run after it ended, and the name of each Service it
-   * redeployed because it was deployed after that backup (#181).
+   * Server setup run after it ended, the name of each Service whose
+   * redeploy it started because it was deployed after that backup (#181),
+   * and apart from those each one refused before it started, with why.
    */
   | {
       kind: 'restore';
       backupTakenAt: string;
       setupOk: boolean;
       redeployed: readonly string[];
+      notRedeployed: readonly { name: string; reason: string }[];
     };
 
-/** What a Restore redeployed, by name, or that it redeployed nothing. */
-function restoreRedeploysSentence(names: readonly string[]): string {
-  if (names.length === 0) {
-    return 'No Service on it was deployed after that backup, so none was redeployed.';
+/**
+ * What a Restore redeployed, by name, then what it could not, one sentence
+ * per reason; or that nothing was deployed after the backup. Only a
+ * redeploy that started is called redeployed.
+ */
+function restoreRedeploysSentences(
+  names: readonly string[],
+  refused: readonly { name: string; reason: string }[],
+): string[] {
+  if (names.length === 0 && refused.length === 0) {
+    return [
+      'No Service on it was deployed after that backup, so none was redeployed.',
+    ];
   }
-  const sorted = [...names].sort((a, b) => a.localeCompare(b));
-  return names.length === 1
-    ? `Cloudgate redeployed ${sorted[0]}, which was deployed after that backup, so it runs its current version again. How the redeploy went shows on that Service.`
-    : `Cloudgate redeployed ${listed(sorted)}, which were deployed after that backup, so they run their current version again. How each redeploy went shows on its Service.`;
+  const sentences: string[] = [];
+  if (names.length > 0) {
+    const sorted = [...names].sort((a, b) => a.localeCompare(b));
+    sentences.push(
+      names.length === 1
+        ? `Cloudgate redeployed ${sorted[0]}, which was deployed after that backup, so it runs its current version again. How the redeploy went shows on that Service.`
+        : `Cloudgate redeployed ${listed(sorted)}, which were deployed after that backup, so they run their current version again. How each redeploy went shows on its Service.`,
+    );
+  }
+  const byReason = new Map<string, string[]>();
+  for (const one of refused) {
+    byReason.set(one.reason, [...(byReason.get(one.reason) ?? []), one.name]);
+  }
+  for (const [reason, group] of byReason) {
+    const sorted = [...group].sort((a, b) => a.localeCompare(b));
+    sentences.push(
+      sorted.length === 1
+        ? `Cloudgate could not redeploy ${sorted[0]}, which was deployed after that backup: ${reason}. It shows as failed on its Service, and runs the version the backup holds until it is deployed again.`
+        : `Cloudgate could not redeploy ${listed(sorted)}, which were deployed after that backup: ${reason}. Each shows as failed on its Service, and runs the version the backup holds until it is deployed again.`,
+    );
+  }
+  return sentences;
 }
 
 /** `a`, `a and b`, `a, b and c`. */
@@ -89,7 +118,9 @@ export async function renderServerChangedEmail({
           ? 'Server setup ran on it again.'
           : 'Server setup ran on it again and failed: open its Setup card and press Run setup.',
       );
-      more.push(restoreRedeploysSentence(change.redeployed));
+      more.push(
+        ...restoreRedeploysSentences(change.redeployed, change.notRedeployed),
+      );
       break;
   }
   return renderConfirmationEmail(userName, {
