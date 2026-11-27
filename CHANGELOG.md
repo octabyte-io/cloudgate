@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.3.14 (2026-11-27)
+
+### A Bought Server's backups can be listed, taken now and restored
+
+A Bought Server's settings list its **Server backups** while its backups are on, newest first, with **Being made** for one still being made (#178). **Back up now** takes one more at once, in the same 7 slots: its confirmation names the backup it pushes out once 7 are kept, and it is refused while the Organization is frozen, the Server is not Ready or its backups are off (#179). **Restore** on a backup row asks for the Server's name and says the date, the downtime and what is lost. It takes a safety copy first, puts the disk back as it was at that backup, runs Server setup again, and redeploys every Service on the Server whose current Deployment finished after the backup, naming them in its email (ADR-0093, #180, #181). A Restore is never charged, and is refused while the Server is in maintenance.
+
+**What to do on upgrade**: nothing.
+
 ### Release candidates, to check a version on a box before it ships
 
 A version can be released as a candidate first, `v0.3.14-rc.1` (ADR-0094). It is tested, built and signed like a version and published as a GitHub pre-release, but it is not deployed to the Hosted instance and no install or update notice offers it. `CLOUDGATE_VERSION=v0.3.14-rc.1` installs it on a test box. **Promote release candidate** in GitHub Actions then publishes `v0.3.14` from the same commit without running the tests again, and deploys it to the Hosted instance. The install now takes a release candidate in `CLOUDGATE_VERSION` and orders it before the version it becomes. docs/deploy.md §11 has the steps.
