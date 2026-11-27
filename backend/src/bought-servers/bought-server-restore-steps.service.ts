@@ -361,12 +361,23 @@ export class BoughtServerRestoreSteps {
   /**
    * The Server setup run, as the person who pressed Restore would start it:
    * claimed on the row first, so a restart reads it as started. A run
-   * already going on this backend (a *Run setup* pressed meanwhile) is left
-   * alone. Its end is stored, and what follows it runs then.
+   * already going on this backend (a *Run setup* pressed meanwhile) may have
+   * begun before the rebuild, so it is not taken as this one: its end is
+   * waited on (`ServerSetupRuns.start` answers with it), and this one starts
+   * then, rather than at the next hourly resume. Its end is stored, and what
+   * follows it runs then.
    */
   private async startSetup(row: BoughtServer): Promise<boolean> {
     const restore = restoreOf(row);
-    if (!row.serverId || this.setupRuns.inFlight(row.serverId)) return false;
+    if (!row.serverId) return false;
+    if (this.setupRuns.inFlight(row.serverId)) {
+      const { ended } = this.setupRuns.start(row.serverId, {
+        user: { id: restore.requestedBy },
+        session: { activeOrganizationId: row.organizationId },
+      });
+      void ended.then(() => this.startSetupAfter(row.id));
+      return false;
+    }
     const claimed = await this.progress(row, {
       setupStarts: (restore.setupStarts ?? 0) + 1,
     });
@@ -381,6 +392,23 @@ export class BoughtServerRestoreSteps {
     );
     void ended.then((outcome) => this.setupEnded(row.id, outcome));
     return false;
+  }
+
+  /** The run that was going on ended: this Restore's own starts, unless a later step or caller moved on. */
+  private async startSetupAfter(id: string): Promise<void> {
+    try {
+      const row = await this.find(id);
+      const restore = row?.changeTarget?.restore;
+      if (!row || row.stage !== 'changing' || !restore || restore.setup) {
+        return;
+      }
+      if (!restore.running) return;
+      await this.startSetup(row);
+    } catch (error) {
+      this.logger.error(
+        `Bought Server ${id}: could not start the setup run after its restore: ${(error as Error).message}`,
+      );
+    }
   }
 
   /** The run ended, either way: stored, then what follows it. */

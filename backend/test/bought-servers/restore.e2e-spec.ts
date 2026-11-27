@@ -21,6 +21,7 @@ import type { StripeApi } from '../../src/cloud/billing/stripe-api';
 import { MailService } from '../../src/mail/mail.service';
 import { RemoteExecService } from '../../src/remote/remote-exec.service';
 import { server } from '../../src/servers/server.schema';
+import { ServerSetupRuns } from '../../src/servers/server-setup-runs';
 import { SSH_ANSWERS_PROBE } from '../../src/servers/servers.service';
 import { fakeStripe } from '../utils/fake-stripe';
 import { givenPlan } from '../utils/hosted-plan';
@@ -733,6 +734,33 @@ describe('Restore a Bought Server from a Server backup (e2e)', () => {
       expect(sent[0].email.html.replace(/<!-- -->/g, '')).toContain(
         'its safety copy would now remove that backup',
       );
+    });
+
+    it('waits for a setup run already going on the Server, then runs its own once that one ends', async () => {
+      const { id } = await readyServer();
+      await cutOff(id, { safetyCopy: null, rebuilt: true, running: true });
+      void ctx.app.get(ServerSetupRuns).start(
+        id,
+        {
+          user: { id: owner.id },
+          session: { activeOrganizationId: owner.organizationId },
+        },
+        {},
+      );
+      const pressed = await setupRun();
+      held = [];
+
+      await resume(id);
+      expect(setupCalls()).toHaveLength(1);
+
+      pressed.finish();
+
+      const own = await setupRun();
+      expect(setupCalls()).toHaveLength(2);
+      expect((await rowOf(id)).changeTarget?.restore?.setupStarts).toBe(1);
+      own.finish();
+      await readyRow(id);
+      await told(RESTORED, 'grace@example.com');
     });
 
     it('finishes when the setup run ended before a restart could say so', async () => {
