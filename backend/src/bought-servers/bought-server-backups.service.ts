@@ -6,10 +6,12 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull, notExists } from 'drizzle-orm';
 import { DRIZZLE } from '../db/drizzle.module';
 import type { DrizzleDB } from '../db/drizzle.module';
 import type { PermissionCtx } from '../rbac/permission.service';
+import { server } from '../servers/server.schema';
+import { refuseWhileInMaintenance } from '../servers/server-maintenance';
 import {
   BoughtServerChanges,
   NOT_CHANGEABLE_CODE,
@@ -17,7 +19,10 @@ import {
 import type { BoughtServerView } from './bought-server-changes.service';
 import { BoughtServerStages } from './bought-server-stages.service';
 import { boughtServer } from './bought-server.schema';
-import type { BoughtServerChangeTarget } from './bought-server.schema';
+import type {
+  BoughtServer,
+  BoughtServerChangeTarget,
+} from './bought-server.schema';
 import { BoughtServersConfig } from './bought-servers.config';
 import { HETZNER_MACHINES } from './hetzner/hetzner-cloud.port';
 import { safetyCopyDescription, safetyCopyPushesOut } from './restore';
@@ -145,7 +150,7 @@ export class BoughtServerBackups {
    * **Restore** (#180, ADR-0093): the disk put back as it was at one of its
    * Server backups, a safety copy taken first. Refused as any change is
    * unless the Server is Ready (and not powered off by an Operator), while
-   * its backups are off, for a backup that is not its own or is still being
+   * it is in maintenance, while its backups are off, for a backup that is not its own or is still being
    * made, and for the oldest of 7 unless `withoutSafetyCopy` says to go
    * ahead with none. It costs nothing, so neither a charge nor a deletion
    * date stands in its way. Answered at once, Changing; the steps follow
@@ -169,7 +174,7 @@ export class BoughtServerBackups {
       )
       .limit(1);
     if (!row) throw new NotFoundException('Server not found');
-    this.changes.assertChangeable(row);
+    await this.assertRestorable(row);
     if (!row.backups || row.providerServerId === null) {
       throw new ConflictException({
         code: BACKUPS_OFF_CODE,
@@ -221,6 +226,9 @@ export class BoughtServerBackups {
       },
     };
     // Claimed once: a second press, or a change already running, is refused.
+    // Ready, not powered off and not in maintenance are asked again here, in
+    // the write: an Operator's power-off or a maintenance begun while the
+    // provider was asked for the list would otherwise be passed over.
     const [claimed] = await this.db
       .update(boughtServer)
       .set({
@@ -229,12 +237,48 @@ export class BoughtServerBackups {
         changeTries: 0,
         changeInvoiceId: null,
       })
-      .where(and(eq(boughtServer.id, id), eq(boughtServer.stage, 'ready')))
+      .where(
+        and(
+          eq(boughtServer.id, id),
+          eq(boughtServer.stage, 'ready'),
+          isNull(boughtServer.poweredOffAt),
+          notExists(
+            this.db
+              .select({ id: server.serverId })
+              .from(server)
+              .where(
+                and(
+                  eq(server.serverId, boughtServer.serverId),
+                  isNotNull(server.maintenanceSince),
+                ),
+              ),
+          ),
+        ),
+      )
       .returning({ id: boughtServer.id });
-    if (!claimed) throw this.changes.notChangeable('changing');
+    if (!claimed) {
+      // Why, as the checks above would say it now.
+      const [now] = await this.db
+        .select()
+        .from(boughtServer)
+        .where(eq(boughtServer.id, id))
+        .limit(1);
+      if (now) await this.assertRestorable(now);
+      throw this.changes.notChangeable('changing');
+    }
 
     void this.stages.follow(id);
     return this.changes.view(ctx, id);
+  }
+
+  /**
+   * Refused as any change is (Ready, and not powered off by an Operator), and
+   * while the Server is in maintenance, as any work that starts something on
+   * it is: a Restore runs Server setup and redeploys (spec #1420).
+   */
+  private async assertRestorable(row: BoughtServer): Promise<void> {
+    this.changes.assertChangeable(row);
+    await refuseWhileInMaintenance(this.db, [row.serverId]);
   }
 
   /** The Bought Server's own row, org-scoped; a bare 404 where the feature is absent. */

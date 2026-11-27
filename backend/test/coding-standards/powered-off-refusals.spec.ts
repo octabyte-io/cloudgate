@@ -52,6 +52,8 @@ const POWER_OFF = new Set([
 const EXEMPT: Record<string, string> = {
   'src/deployments/deployments.service.ts#deployOnGithubPush':
     "a push's build is a deploy: it is queued, and `refuseServerClaim`'s `deployRefusal` ends it at the claim with the power-off refusal",
+  'src/bought-servers/bought-server-backups.service.ts#assertRestorable':
+    "a Restore is a change of the Bought Server itself: `BoughtServerChanges.assertChangeable` refuses one an Operator powered off, in a change's own words, and the Restore's claim asks `powered_off_at` again",
 };
 
 function walk(dir: string): string[] {

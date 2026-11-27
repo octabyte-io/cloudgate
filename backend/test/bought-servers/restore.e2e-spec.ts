@@ -865,6 +865,66 @@ describe('Restore a Bought Server from a Server backup (e2e)', () => {
       expect(providerCalls()).toEqual([]);
     });
 
+    it('is refused while the Server is in maintenance, asking the provider nothing', async () => {
+      const { id, daily } = await readyServer();
+      await ctx.db
+        .update(server)
+        .set({ maintenanceSince: new Date().toISOString() })
+        .where(eq(server.serverId, id));
+
+      const res = await restore(id, daily[1].id);
+
+      expect(res.status).toBe(409);
+      expect(res.body).toMatchObject({
+        code: 'SERVER_IN_MAINTENANCE',
+        message: 'web-1 is in maintenance',
+      });
+      expect(providerCalls()).toEqual([]);
+      expect((await rowOf(id)).stage).toBe('ready');
+    });
+
+    it.each<[string, (id: string) => Promise<unknown>]>([
+      [
+        'an operator powers it off',
+        (id: string) =>
+          ctx.db
+            .update(boughtServer)
+            .set({ poweredOffAt: new Date(), poweredOffReason: 'Abuse report' })
+            .where(eq(boughtServer.id, id)),
+      ],
+      [
+        'maintenance begins',
+        (id: string) =>
+          ctx.db
+            .update(server)
+            .set({ maintenanceSince: new Date().toISOString() })
+            .where(eq(server.serverId, id)),
+      ],
+    ])(
+      'is refused when %s while the press is checked, and claims nothing',
+      async (_, meanwhile) => {
+        const { id, daily } = await readyServer();
+        // Between the checks and the claim: the provider is asked for the
+        // list. The call inside is the spy's own, past its one replacement.
+        const machines = fake();
+        jest
+          .spyOn(machines, 'listBackups')
+          .mockImplementationOnce(async (machineId) => {
+            await meanwhile(id);
+            return machines.listBackups(machineId);
+          });
+
+        const res = await restore(id, daily[1].id);
+
+        expect(res.status).toBe(409);
+        expect(await rowOf(id)).toMatchObject({
+          stage: 'ready',
+          changeTarget: null,
+        });
+        expect(providerCalls()).toEqual([]);
+      },
+    );
+
     it('is refused while backups are off', async () => {
       const { id } = await readyServer(false);
 
