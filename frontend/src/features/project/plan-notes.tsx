@@ -70,7 +70,7 @@ export function NotesSection({ plan }: { plan: Plan }) {
           </p>
           {"line" in note ? (
             <div className="ml-6 flex items-start gap-2">
-              <pre className="min-w-0 flex-1 overflow-x-auto rounded-md border border-line bg-panel-2 px-2.5 py-1.5 font-mono text-meta text-tx-2">
+              <pre className="min-w-0 flex-1 whitespace-pre-wrap wrap-anywhere rounded-md border border-line bg-panel-2 px-2.5 py-1.5 font-mono text-meta text-tx-2">
                 {note.line}
               </pre>
               <CopyButton value={note.line} label="line" />

@@ -71,10 +71,16 @@ describe("PatchEditorTabs", () => {
 
       const diff = document.querySelector<HTMLElement>('[data-slot="diff"]');
       expect(diff).not.toBeNull();
-      // The diff owns its scrollbar …
-      expect(diff!.className).toMatch(/\boverflow-x-auto\b/);
-      // … and the grid item around it may shrink below its content, which is
-      // what lets that scrollbar exist instead of the dialog's.
+      // The diff wraps rather than scrolls: no sideways scrollbar of its own …
+      expect(diff!.className).not.toMatch(/\boverflow-x-auto\b/);
+      const text = diff!.querySelectorAll<HTMLElement>('[data-slot="diff-text"]');
+      expect(text.length).toBeGreaterThan(0);
+      for (const line of text) {
+        expect(line.className).toMatch(/\bwhitespace-pre-wrap\b/);
+        expect(line.className).toMatch(/\bwrap-anywhere\b/);
+      }
+      // … and the grid item around it may still shrink below its content, the
+      // guard against anything unbreakable widening the dialog.
       expect(gridItemOf(diff!).className).toMatch(/(^|\s)min-w-0(\s|$)/);
     },
   );

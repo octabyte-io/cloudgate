@@ -151,7 +151,7 @@ export function ExistingCacheCard({
             >
               <p className="font-medium">{registration.sentence}.</p>
               {registration.command ? (
-                <pre className="overflow-x-auto whitespace-pre-wrap break-all font-mono text-meta text-tx-2">
+                <pre className="whitespace-pre-wrap wrap-anywhere font-mono text-meta text-tx-2">
                   {registration.command}
                 </pre>
               ) : null}

@@ -84,7 +84,7 @@ const ACTION_TONE: Record<AwsRawLine["action"], string> = {
 
 function RawTable({ lines }: { lines: AwsRawLine[] }) {
   return (
-    <div className="mt-1.5 overflow-x-auto rounded-md border border-line bg-panel-2">
+    <div className="mt-1.5 rounded-md border border-line bg-panel-2">
       <table className="w-full border-collapse font-mono text-meta">
         <tbody>
           {lines.map((line) => (
@@ -92,7 +92,7 @@ function RawTable({ lines }: { lines: AwsRawLine[] }) {
               key={line.address}
               className="border-b border-line last:border-b-0"
             >
-              <td className="px-2 py-0.5 whitespace-nowrap text-tx-2">
+              <td className="px-2 py-0.5 wrap-anywhere text-tx-2">
                 {line.address}
               </td>
               <td
@@ -104,7 +104,7 @@ function RawTable({ lines }: { lines: AwsRawLine[] }) {
                 {line.action}
                 {line.briefDowntime ? ", brief downtime" : ""}
               </td>
-              <td className="px-2 py-0.5 text-tx-3">
+              <td className="px-2 py-0.5 wrap-anywhere text-tx-3">
                 {line.fields.join(", ")}
               </td>
             </tr>

@@ -1,3 +1,4 @@
+import { hangStyle } from "@/lib/format/hang";
 import { cn } from "@/lib/utils";
 
 /**
@@ -10,10 +11,19 @@ import { cn } from "@/lib/utils";
  * an operator reading build output are doing the same kind of looking), sharing
  * the machinery is not.
  *
- * The line numbers are `aria-hidden` and the content is one `<pre>`, so
- * selecting the text copies the file rather than the file interleaved with a
- * column of numbers — which is what a numbered gutter built out of rows does,
- * and it is only discovered by someone trying to paste it somewhere.
+ * The content is one `<pre>`, and the line numbers are generated content
+ * (`counter(line)` in each line's `::before`) rather than text, so selecting the
+ * text copies the file rather than the file interleaved with a column of
+ * numbers — which is what a numbered gutter built out of rows does, and it is
+ * only discovered by someone trying to paste it somewhere.
+ *
+ * **Long lines wrap; nothing here scrolls sideways.** `pre-wrap` keeps every
+ * space the file has and `wrap-anywhere` breaks the digests and paths that no
+ * word boundary is ever found in — `LogWell`'s rule. Each line is its own block
+ * so its number sits beside its *first* row and a wrapped line keeps one number,
+ * and the continuation rows **hang at the line's own indentation** (padding plus
+ * an equal negative `text-indent`), so a wrapped YAML value still reads as
+ * belonging to its key instead of looking like a line at column zero.
  */
 export function CodeWell({
   content,
@@ -26,36 +36,52 @@ export function CodeWell({
   className?: string;
 }) {
   const lines = content.replace(/\n$/, "").split("\n");
+  // The gutter is as wide as the largest line number, plus its padding.
+  const digits = String(lines.length).length;
+  const gutter = `calc(${digits}ch + var(--spacing) * 6)`;
 
-  // `contain-inline-size` keeps the longest line out of the width this box
-  // offers its parent. Without it a Modal — a grid whose one column is
-  // as wide as its item's min-content — grew to that line and became the
-  // sideways scroller, taking its title and Close button with it, while the
-  // `<pre>` below never overflowed. The box still fills whatever it is given,
-  // and its height still follows the content.
+  // `contain-inline-size` keeps the content out of the width this box offers
+  // its parent. Lines wrap now, so the `<pre>`'s min-content is a character
+  // rather than the longest line — but a Modal is a grid whose one column is as
+  // wide as its item's min-content, and this is the guard that was measured to
+  // keep it from becoming the sideways scroller, so it stays.
   return (
     <div
       className={cn(
-        "max-h-log overflow-auto rounded-lg border border-line bg-well contain-inline-size",
+        "max-h-log overflow-y-auto rounded-lg border border-line bg-well contain-inline-size",
         className,
       )}
     >
-      <div className="flex min-w-0 font-mono text-meta leading-log">
+      <div
+        className="relative min-w-0 font-mono text-meta leading-log"
+        style={{ "--gutter": gutter } as React.CSSProperties}
+      >
+        {/* The gutter's rule, drawn once down the whole file. */}
         <div
           aria-hidden="true"
-          className="num flex-none border-r border-line/40 py-3 pr-2.5 pl-3.5 text-right text-well-ts select-none"
-        >
-          {lines.map((_, index) => (
-            // The index is the line number — there is nothing else it could be
-            // keyed on, and a file's lines do not reorder.
-            <div key={index}>{index + 1}</div>
-          ))}
-        </div>
+          className="absolute inset-y-0 left-(--gutter) border-r border-line/40"
+        />
         <pre
           aria-label={label}
-          className="min-w-0 flex-1 overflow-x-auto px-3.5 py-3 text-well-tx"
+          className="min-w-0 py-3 pr-3.5 whitespace-pre-wrap wrap-anywhere text-well-tx [counter-reset:line]"
         >
-          {content.replace(/\n$/, "")}
+          {lines.map((line, index) => (
+            // The index is the line number — there is nothing else it could be
+            // keyed on, and a file's lines do not reorder.
+            <span
+              key={index}
+              data-line
+              className={cn(
+                "relative block min-h-[1lh] [counter-increment:line]",
+                "pl-[calc(var(--gutter)+var(--spacing)*3.5+var(--hang))] indent-[calc(var(--hang)*-1)]",
+                "before:absolute before:left-0 before:w-(--gutter) before:pr-2.5 before:indent-0 before:text-right before:text-well-ts before:tabular-nums before:content-[counter(line)]",
+              )}
+              style={hangStyle(line)}
+            >
+              {line}
+              {index < lines.length - 1 ? "\n" : null}
+            </span>
+          ))}
         </pre>
       </div>
     </div>

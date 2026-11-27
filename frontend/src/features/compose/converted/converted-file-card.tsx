@@ -14,9 +14,9 @@ import { useConvertedCompose, wasRefused } from "../use-compose";
  * The rewritten file, from the platform's own copy of the rewrite.
  *
  * Two views behind `Tabs`, which is the shape `patch-editor-modal.tsx` settled on
- * for the same problem: a diff cannot wrap without lying about its indentation, so
- * two panes side by side inside a card leaves each too narrow to read. Tabs give
- * the whole measure to whichever one is being read.
+ * for the same problem: a diff's long lines wrap (hanging at their indentation),
+ * and two panes side by side inside a card would leave each so narrow that nearly
+ * every line wrapped. Tabs give the whole measure to whichever one is being read.
  *
  * **The diff is only offered for a `raw` source**, and that is the honest half of
  * this card rather than a limitation of it: the "before" side is the stored

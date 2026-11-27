@@ -46,7 +46,7 @@ export function Menu({
       <DropdownMenuTrigger render={trigger as React.ReactElement} />
       <DropdownMenuContent
         className={cn(
-          "w-auto min-w-53.5 rounded-xl border border-line bg-panel p-1.5 shadow-pop ring-0",
+          "w-auto max-w-(--available-width) min-w-53.5 rounded-xl border border-line bg-panel p-1.5 shadow-pop ring-0",
           className,
         )}
         {...props}

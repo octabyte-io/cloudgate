@@ -36,7 +36,7 @@ export function AccessSection({
 }) {
   const headingId = useId();
   return (
-    <section aria-labelledby={headingId}>
+    <section aria-labelledby={headingId} className="min-w-0">
       <h3 id={headingId} className="text-body font-medium text-tx">
         {title}
       </h3>

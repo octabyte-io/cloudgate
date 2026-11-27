@@ -50,15 +50,19 @@ export function RowLink({
 export function RowSub({
   mono,
   className,
+  title,
   children,
 }: {
   mono?: boolean;
   /** A width cap, for the one sub-line with no natural limit — a description. */
   className?: string;
+  /** The whole line, where the cell may cut it short. */
+  title?: string;
   children: React.ReactNode;
 }) {
   return (
     <div
+      title={title}
       className={cn(
         "truncate text-meta text-tx-3",
         mono && "font-mono tracking-mono",

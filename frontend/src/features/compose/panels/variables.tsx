@@ -185,7 +185,7 @@ function ResolutionCard({ compose }: { compose: ComposeDetail }) {
 
         <div className="mt-3 rounded-lg border border-line bg-panel-2 px-3 py-2.5">
           <p className="text-meta text-tx-2">To use one, reference it by name:</p>
-          <pre className="mt-1.5 overflow-x-auto font-mono text-meta text-tx">
+          <pre className="mt-1.5 whitespace-pre-wrap wrap-anywhere font-mono text-meta text-tx">
             <code>{"CACHE_URL=${{project.REDIS_URL}}"}</code>
           </pre>
           <p className="mt-1.5 text-meta text-tx-3">

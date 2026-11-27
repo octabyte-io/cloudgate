@@ -253,7 +253,7 @@ describe("Environment Services table, Token spend column", () => {
     const heads = within(table)
       .getAllByRole("columnheader")
       .map((head) => head.textContent?.trim());
-    expect(heads).toContain("Token spend, 30 days");
+    expect(heads).toContain("Spend");
     expect(requested().filter((path) => path.endsWith("/token-spend"))).toEqual(
       [expect.stringMatching(/\/environments\/env-1\/token-spend$/)],
     );
@@ -267,7 +267,7 @@ describe("Environment Services table, Token spend column", () => {
     const heads = within(table)
       .getAllByRole("columnheader")
       .map((head) => head.textContent?.trim());
-    expect(heads).not.toContain("Token spend, 30 days");
+    expect(heads).not.toContain("Spend");
   });
 
   it("has no Token spend column when the spend read is refused", async () => {
@@ -276,6 +276,6 @@ describe("Environment Services table, Token spend column", () => {
 
     const table = await screen.findByRole("table");
     await within(table).findByText("Incident open");
-    expect(within(table).queryByText("Token spend, 30 days")).toBeNull();
+    expect(within(table).queryByText("Spend")).toBeNull();
   });
 });

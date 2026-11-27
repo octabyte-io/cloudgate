@@ -137,7 +137,7 @@ export function AuditDetailModal({
             <p className="text-meta font-medium text-tx-3">
               Recorded with it, as stored
             </p>
-            <pre className="overflow-x-auto rounded-lg border border-line bg-panel-2 p-3 font-mono text-meta text-tx-2">
+            <pre className="whitespace-pre-wrap wrap-anywhere rounded-lg border border-line bg-panel-2 p-3 font-mono text-meta text-tx-2">
               {metadata.text}
             </pre>
           </div>

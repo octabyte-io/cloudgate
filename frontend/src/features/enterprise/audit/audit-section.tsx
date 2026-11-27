@@ -239,13 +239,19 @@ export function AuditSection() {
               {
                 id: "when",
                 head: "When",
-                className: "w-44",
+                // Sized by its words ("14 minutes ago"), not a fixed `w-44`:
+                // the 176px it reserved was what put Details behind the
+                // scroll at 1280px.
                 cell: (row) => <RowTime iso={row.createdAt} />,
               },
               {
                 id: "who",
                 head: "Who",
                 tone: "key",
+                // An address has no limit and no spaces; it may break
+                // rather than set the row's width (a cell is `nowrap`
+                // until a column says otherwise).
+                className: "whitespace-normal wrap-anywhere",
                 cell: (row) => <WhoCell entry={row} />,
               },
               {
@@ -256,7 +262,6 @@ export function AuditSection() {
               {
                 id: "outcome",
                 head: "Outcome",
-                className: "w-28",
                 cell: (row) => OUTCOME_LABELS[row.outcome] ?? row.outcome,
               },
               {
