@@ -111,6 +111,13 @@ export type ResourceSpec<Row, Values extends FieldValues> = {
   addInstead?: React.ReactNode;
   /** Controls that belong to a row and are not Edit or Remove — "Run now". */
   rowExtras?: (row: Row) => React.ReactNode;
+  /**
+   * `Menu.Item`s for a row with more actions than fit beside it. With it,
+   * the row keeps {@link rowExtras} as buttons and puts these, Edit and
+   * Remove in one menu, so the table stays inside its card: a volume
+   * backup's Run now, Restore, Edit and Remove made it scroll sideways.
+   */
+  rowMenu?: (row: Row) => React.ReactNode;
 
   /**
    * The table's accessible name, when the heading is not enough on its own.

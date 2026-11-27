@@ -4,6 +4,7 @@ import Link from "next/link";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
+import { Menu } from "@/components/console/menu";
 import type { ResourceSpec } from "@/components/console/resource-spec";
 import { ApiError } from "@/lib/api/api-error";
 
@@ -230,6 +231,62 @@ describe("ResourceList", () => {
  * empty state; and with nothing a row needs to exist yet (a backup schedule
  * with no destination), both opened a form that could never be submitted.
  */
+describe("ResourceList — a row menu", () => {
+  // A row with more actions than fit beside it — a volume backup's Run now,
+  // Restore, Edit and Remove — made the table wider than its card, so it
+  // scrolled sideways. With `rowMenu`, the row keeps `rowExtras` as buttons
+  // and the rest goes into one menu.
+  function withMenu(onRestore: () => void) {
+    return {
+      ...spec(async () => undefined),
+      rowExtras: () => <button type="button">Run now</button>,
+      rowMenu: (row: Row) => (
+        <Menu.Item onClick={() => onRestore()}>Restore {row.name}</Menu.Item>
+      ),
+    } as unknown as ResourceSpec<Row, { name: string }>;
+  }
+
+  it("keeps rowExtras as buttons and puts the menu's items, Edit and Remove in one menu", async () => {
+    const onRestore = vi.fn();
+    render(<ResourceList spec={withMenu(onRestore)} query={query} />);
+
+    expect(screen.getByRole("button", { name: "Run now" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Remove" })).toBeNull();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Actions for ui-tick" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Restore ui-tick" }),
+    );
+    expect(onRestore).toHaveBeenCalledOnce();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Actions for ui-tick" }),
+    );
+    expect(await screen.findByRole("menuitem", { name: "Edit" })).toBeTruthy();
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Remove" }));
+    expect(
+      await screen.findByRole("button", { name: "Remove schedule" }),
+    ).toBeTruthy();
+  });
+
+  it("turns the menu's Edit and Remove off with the reason for a role without their statements", async () => {
+    held.current = new Set();
+    render(<ResourceList spec={withMenu(() => undefined)} query={query} />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Actions for ui-tick" }),
+    );
+    const remove = await screen.findByRole("menuitem", { name: "Remove" });
+    expect(remove.getAttribute("aria-disabled")).toBe("true");
+    expect(remove.getAttribute("title")).toMatch(/cannot remove this schedule/);
+    fireEvent.click(remove);
+    expect(screen.queryByRole("button", { name: "Remove schedule" })).toBeNull();
+  });
+});
+
 describe("ResourceList — the Add control", () => {
   const empty = {
     data: [],

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Card } from "@/components/console/card";
+import { Menu } from "@/components/console/menu";
 import { Page } from "@/components/console/page";
 import { PageHeader } from "@/components/console/page-header";
 import { ResourceList } from "@/components/console/resource-list";
@@ -127,24 +128,28 @@ export default function Panel({ id, label, icon }: PanelProps) {
               >
                 Run now
               </Button>
-              <Button
-                size="xs"
-                disabled={!canRestore.allowed}
-                title={canRestore.allowed ? undefined : RESTORE_REFUSAL}
-                onClick={() => {
-                  if (!canRestore.allowed) return;
-                  if (item.scope === "stack") {
-                    setOpening((n) => n + 1);
-                    setMomentOf(item);
-                    setHistoryOf(item.volumeBackupId);
-                  } else {
-                    openRestore(item);
-                  }
-                }}
-              >
-                Restore
-              </Button>
             </>
+          ),
+          // Restore, Edit and Remove share the row's menu: four buttons
+          // made the list wider than its card, and it scrolled sideways.
+          rowMenu: (item) => (
+            <Menu.Item
+              icon="back"
+              disabled={!canRestore.allowed}
+              title={canRestore.allowed ? undefined : RESTORE_REFUSAL}
+              onClick={() => {
+                if (!canRestore.allowed) return;
+                if (item.scope === "stack") {
+                  setOpening((n) => n + 1);
+                  setMomentOf(item);
+                  setHistoryOf(item.volumeBackupId);
+                } else {
+                  openRestore(item);
+                }
+              }}
+            >
+              Restore
+            </Menu.Item>
           ),
         }}
         query={backups}
