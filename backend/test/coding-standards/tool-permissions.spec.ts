@@ -171,6 +171,7 @@ const FROZEN_ROUTES: Readonly<Record<string, readonly string[]>> = {
     'postgres',
     'redis',
   ],
+  // One twin for both kinds; routed so a Compose's audit row is `compose`.
   read_runtime_log: ['application', 'compose'],
 };
 
