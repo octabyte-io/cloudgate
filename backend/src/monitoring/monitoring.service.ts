@@ -23,7 +23,9 @@ import {
 } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
+import type { ServiceType } from '../applications/application.schema';
 import { checkServerAccess } from '../common/owned-server';
+import { findParentService } from '../common/service-parent';
 import { DRIZZLE } from '../db/drizzle.module';
 import type { DrizzleDB } from '../db/drizzle.module';
 import { PermissionService } from '../rbac/permission.service';
@@ -48,6 +50,16 @@ import {
   SERVER_STATS_COMMAND,
 } from './collectors/server-stats.collector';
 import { parseMetricsRange } from './metrics-window';
+import {
+  SERVICE_METRICS_UNAVAILABLE,
+  summarizeSamples,
+  unavailableMetrics,
+} from './service-metrics-summary';
+import type {
+  MetricsWindowRead,
+  ServiceMetricsSummary,
+  StoredContainerSample,
+} from './service-metrics-summary';
 import { containerMetric, serverMetric } from './monitoring.schema';
 import type { ServerMetric } from './monitoring.schema';
 import { ThresholdService } from './threshold.service';
@@ -790,6 +802,82 @@ export class MonitoringService implements OnApplicationBootstrap {
           ).reverse();
 
     return rows.map((row) => row.metrics);
+  }
+
+  /**
+   * `get_service_metrics` (ADR-0096): one Service's own container metrics
+   * over the last `hours`, summarised, read through
+   * {@link getContainerMetrics} — its twin — on the host the Service runs on
+   * and under its appName, so a series reaches the summary only by ADR-0067's
+   * per-series entitlement.
+   *
+   * The Service is found in the caller's Organization and entitled with
+   * `service: ['read']` first, so another Organization's or an ungranted
+   * Service is the same not-found, before anything says where it runs. Then
+   * a Service in a Cloud account, or on a host whose monitoring was never set
+   * up, is answered as that, never as zeros; a host that has stored nothing
+   * this caller may read under the appName, or a series that turns out to be
+   * another Service's (the twin resolves by substring), is answered as no
+   * samples. Nothing here reads a Server's or the platform host's own
+   * metrics.
+   */
+  async summarizeServiceMetrics(
+    ctx: PermissionCtx,
+    serviceType: ServiceType,
+    serviceId: string,
+    window: { hours: number; maxPoints: number },
+  ): Promise<ServiceMetricsSummary> {
+    const parent = await findParentService(
+      this.db,
+      ctx.session.activeOrganizationId,
+      serviceId,
+      serviceType,
+    );
+    await this.permissions.checkServiceAccess(ctx, serviceId, 'read');
+
+    const until = new Date();
+    const read: MetricsWindowRead = {
+      serviceType,
+      serviceId,
+      windowHours: window.hours,
+      since: new Date(until.getTime() - window.hours * 3_600_000).toISOString(),
+      until: until.toISOString(),
+    };
+    if (parent.cloudAccountId !== null) {
+      return unavailableMetrics(read, SERVICE_METRICS_UNAVAILABLE.cloud);
+    }
+    const target = await this.findTarget(parent.serverId);
+    if (!target?.metricsConfig.server.cronJob) {
+      return unavailableMetrics(
+        read,
+        parent.serverId === null
+          ? SERVICE_METRICS_UNAVAILABLE.platformHostNotSetUp
+          : SERVICE_METRICS_UNAVAILABLE.serverNotSetUp,
+      );
+    }
+
+    let samples: StoredContainerSample[];
+    try {
+      samples = (await this.getContainerMetrics(ctx, {
+        serverId: parent.serverId ?? undefined,
+        appName: parent.appName,
+        start: read.since,
+        end: read.until,
+      })) as unknown as StoredContainerSample[];
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        return unavailableMetrics(read, SERVICE_METRICS_UNAVAILABLE.noSamples);
+      }
+      throw error;
+    }
+    if (samples.length === 0) {
+      return unavailableMetrics(read, SERVICE_METRICS_UNAVAILABLE.emptyWindow);
+    }
+    const series = serviceNameOf(samples[0].Name.replace(/^\//, ''));
+    if (!ownerCandidates(series).includes(parent.appName)) {
+      return unavailableMetrics(read, SERVICE_METRICS_UNAVAILABLE.noSamples);
+    }
+    return summarizeSamples(read, samples, window.maxPoints);
   }
 
   /**

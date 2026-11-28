@@ -13,6 +13,7 @@ import { DeploymentsModule } from '../deployments/deployments.module';
 import { DomainsModule } from '../domains/domains.module';
 import { lastRateLimited } from '../enterprise/audit-logs/rate-limit-refusals';
 import { EnvironmentsModule } from '../environments/environments.module';
+import { MonitoringModule } from '../monitoring/monitoring.module';
 import { AgentRateLimitNotifierAdapter } from '../notifications/agent-rate-limit-notifier.adapter';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { ProjectConfigModule } from '../project-config';
@@ -74,6 +75,8 @@ import { MCP_TOOLS } from './tools';
     PreviewDeploymentsModule,
     // get_service_health and get_service's open Incidents.
     ServiceHealthModule,
+    // get_service_metrics.
+    MonitoringModule,
     // get_project_config, get_plan and request_plan.
     ProjectConfigModule,
   ],

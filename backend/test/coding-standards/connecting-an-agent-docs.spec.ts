@@ -6,6 +6,9 @@ import {
   LOG_WINDOW_DEFAULT_LINES,
   LOG_WINDOW_MAX_BYTES,
   LOG_WINDOW_MAX_LINES,
+  METRICS_TREND_MAX_POINTS,
+  METRICS_WINDOW_DEFAULT_HOURS,
+  METRICS_WINDOW_MAX_HOURS,
   MODERN_REVISIONS,
   LEGACY_REVISIONS,
   OLDEST_SERVED_REVISION,
@@ -174,6 +177,22 @@ const PINS: readonly Pin[] = [
     what: 'LOG_WINDOW_MAX_LINES',
     pattern: /(?:never more than|answered at) (\d+)/g,
     expected: [String(LOG_WINDOW_MAX_LINES)],
+  },
+  {
+    what: 'METRICS_WINDOW_DEFAULT_HOURS',
+    pattern: /over (an|one|\d+) hours? unless/gi,
+    expected: [String(METRICS_WINDOW_DEFAULT_HOURS)],
+    read: (capture) => String(count(capture)),
+  },
+  {
+    what: 'METRICS_WINDOW_MAX_HOURS',
+    pattern: /(\d+) hours at most/g,
+    expected: [String(METRICS_WINDOW_MAX_HOURS)],
+  },
+  {
+    what: 'METRICS_TREND_MAX_POINTS',
+    pattern: /at most (\d+) trend points/g,
+    expected: [String(METRICS_TREND_MAX_POINTS)],
   },
   {
     what: 'LOG_WINDOW_MAX_BYTES, in MiB',

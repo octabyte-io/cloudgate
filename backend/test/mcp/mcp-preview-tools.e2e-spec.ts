@@ -73,6 +73,8 @@ const READ_TOOLS = [
   'read_deployment_log',
   'list_domains',
   'get_service_health',
+  // On the monitoring read both roles hold for it (ADR-0096).
+  'get_service_metrics',
 ];
 const WRITE_TOOLS = [
   'deploy_service',

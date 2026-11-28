@@ -318,6 +318,36 @@ const FROZEN_PROJECTIONS: Readonly<Record<string, readonly string[]>> = {
     'uptimeChecks[].upShare24h',
     'uptimeChecks[].uptimeCheckId',
   ].sort(),
+  // ADR-0096: tell whether a crashing Service ran out of memory or CPU.
+  // A summary — never the raw samples, nor a container's name, nor the
+  // host's include and exclude lists — or why there is none.
+  get_service_metrics: [
+    'available',
+    'cpu.averagePercent',
+    'cpu.nowPercent',
+    'cpu.peakPercent',
+    'disk.readMB',
+    'disk.writtenMB',
+    'lastSampledAt',
+    'memory.averageMiB',
+    'memory.limitMiB',
+    'memory.nowMiB',
+    'memory.nowPercent',
+    'memory.peakMiB',
+    'memory.peakPercent',
+    'network.receivedMB',
+    'network.sentMB',
+    'samples',
+    'serviceId',
+    'serviceType',
+    'since',
+    'trend[].at',
+    'trend[].cpuPercent',
+    'trend[].memoryMiB',
+    'unavailableReason',
+    'until',
+    'windowHours',
+  ],
   // The id to poll, and whether it joined one already queued. The
   // row's `logPath` stays out, as on list_deployments.
   deploy_service: [

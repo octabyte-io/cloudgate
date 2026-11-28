@@ -656,6 +656,7 @@ describe('MCP endpoint (e2e)', () => {
         'read_deployment_log',
         'list_domains',
         'get_service_health',
+        'get_service_metrics',
         'list_previews',
         'get_preview',
         'get_project_config',
