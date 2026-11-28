@@ -41,6 +41,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { BoughtServersScreen } = await import("./bought-servers-screen");
+const { PURCHASES_POLL_MS } = await import("../buy/use-bought-servers");
 
 const HELSINKI = { city: "Helsinki", country: "FI" };
 
@@ -112,6 +113,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
   api.offer.mockReset();
   api.list.mockReset();
@@ -178,6 +180,30 @@ describe("BoughtServersScreen", () => {
     expect(document.body.textContent).toContain(
       "2 Bought Servers, $41/month on your plan's invoice, and 1 waiting for payment.",
     );
+  });
+
+  it("asks again while a Server is on its way, as Changing is", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    api.list.mockResolvedValue([WEB, EDGE]);
+    renderScreen();
+
+    await screen.findByRole("table", { name: "Bought Servers" });
+    expect(api.list).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(PURCHASES_POLL_MS);
+
+    await vi.waitFor(() => expect(api.list).toHaveBeenCalledTimes(2));
+  });
+
+  it("does not ask again while a Server only waits for payment, which can take days", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    api.list.mockResolvedValue([WEB, WAITING]);
+    renderScreen();
+
+    await screen.findByRole("table", { name: "Bought Servers" });
+    await vi.advanceTimersByTimeAsync(PURCHASES_POLL_MS * 3);
+
+    // Only the first read: nothing moves until the customer pays.
+    expect(api.list).toHaveBeenCalledTimes(1);
   });
 
   it("opens a Server's Bought Server tab from Manage", async () => {

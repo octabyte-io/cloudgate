@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/api/api-error";
 
 import { boughtServersApi } from "@/lib/api/endpoints/bought-servers";
 import type {
+  BoughtServerStage,
   BoughtServerView,
   BuyChoice,
   BuyInput,
@@ -94,7 +95,7 @@ export function useBuyServer() {
 }
 
 /** How often the list asks again while a purchase waits or its machine is being made. */
-const PURCHASES_POLL_MS = 5_000;
+export const PURCHASES_POLL_MS = 5_000;
 
 /**
  * The Organization's Bought Servers not made yet, asked again every few
@@ -113,9 +114,21 @@ export function useServerPurchases(enabled: boolean) {
 }
 
 /**
+ * The stages a Bought Server moves out of by itself, in minutes. Waiting for
+ * payment is not one: it waits on the customer, which can take days, and
+ * *Finish paying* reads the list again when they act.
+ */
+const MOVING_STAGES: ReadonlySet<BoughtServerStage> = new Set([
+  "creating",
+  "setting_up",
+  "changing",
+  "deleting",
+]);
+
+/**
  * Every Bought Server of the Organization (the Bought Servers page), asked
- * again every few seconds while one is on its way to Ready or gone, so its
- * stage moves on without a reload.
+ * again every few seconds while one is Creating, Setting up, Changing or
+ * Deleting, so its stage moves on without a reload.
  */
 export function useBoughtServers(enabled: boolean) {
   const { organizationId } = useActiveOrganizationId();
@@ -124,7 +137,7 @@ export function useBoughtServers(enabled: boolean) {
     queryFn: () => boughtServersApi.list(),
     enabled: enabled && organizationId !== null,
     refetchInterval: (query) =>
-      query.state.data?.some((row) => row.stage !== "ready")
+      query.state.data?.some((row) => MOVING_STAGES.has(row.stage))
         ? PURCHASES_POLL_MS
         : false,
   });
