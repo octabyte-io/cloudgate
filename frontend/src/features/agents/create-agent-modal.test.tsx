@@ -163,7 +163,7 @@ describe("CreateAgentModal", () => {
     open();
     expect(screen.getByText(LOG_MASK_NOTICE)).toBeDefined();
     expect(LOG_MASK_NOTICE).toBe(
-      "This Agent can always read the build logs of what you grant, and its run logs only with Can read runtime logs on. Cloudgate masks the secrets it stores, not what a build or an app prints.",
+      "This Agent can always read the Deployment logs of what you grant, and their Runtime logs only with Can read runtime logs on. Cloudgate masks the secrets it stores, not what a build or a running Service prints.",
     );
   });
 

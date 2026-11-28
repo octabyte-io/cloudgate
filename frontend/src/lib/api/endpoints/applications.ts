@@ -553,11 +553,12 @@ export interface RuntimeLogLine {
 }
 
 /**
- * `GET /applications/:id/runtime-log`: one read of a cloud Service's
- * Runtime log, every task merged by time, and the `since` of the next read.
- * Each read starts a few seconds back for lines CloudWatch takes in late, so a
- * line can come twice; its `id` says so. `more`: lines were left for a read
- * that can come at once.
+ * `GET /applications/:id/runtime-log`: one read of an Application's or a
+ * Compose's Runtime log, on a Server, the platform host, a Stack VM or in a
+ * Cloud account, every copy merged by time, and the `since` of the next read.
+ * A cloud read starts a few seconds back for lines CloudWatch takes in late,
+ * so a line can come twice; its `id` says so. `more`: lines were left for a
+ * read that can come at once.
  */
 export interface RuntimeLog {
   lines: RuntimeLogLine[];

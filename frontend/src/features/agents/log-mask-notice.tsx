@@ -9,12 +9,11 @@
  * (ADR-0095), and the mask catches even less of it. Said before the grant is
  * made, not discovered after.
  *
- * It says "build logs" and "run logs" rather than the glossary's terms, as
- * spec #189 words it, because the glossary's would read as two product names
- * in one sentence; pinned by `create-agent-modal.test.tsx`.
+ * It names both logs by the glossary's terms, Deployment log and Runtime
+ * log (CONTEXT.md avoids "Build log"); pinned by `create-agent-modal.test.tsx`.
  */
 export const LOG_MASK_NOTICE =
-  "This Agent can always read the build logs of what you grant, and its run logs only with Can read runtime logs on. Cloudgate masks the secrets it stores, not what a build or an app prints.";
+  "This Agent can always read the Deployment logs of what you grant, and their Runtime logs only with Can read runtime logs on. Cloudgate masks the secrets it stores, not what a build or a running Service prints.";
 
 /**
  * {@link LOG_MASK_NOTICE} in its warning box — one component, because the

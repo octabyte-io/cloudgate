@@ -45,7 +45,7 @@ export function AgentRuntimeLogs({
 
   return (
     <>
-      <dt className="text-tx-3">Runtime logs</dt>
+      <dt className="text-tx-3">{RUNTIME_LOGS_LABEL}</dt>
       <dd className="flex flex-wrap items-center gap-x-2 gap-y-1 text-tx-2">
         <Switch
           size="sm"
