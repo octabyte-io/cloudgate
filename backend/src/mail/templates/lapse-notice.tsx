@@ -26,80 +26,109 @@ import { emailTailwindConfig } from './tailwind-config';
  */
 export type NoticeAudience = 'owners-and-admins' | 'owners' | 'operators';
 
-const FOOTERS: Record<NoticeAudience, string> = {
-  'owners-and-admins':
-    "This is an automated email from Cloudgate about your Organization's billing. It goes to every owner and admin, and cannot be turned off.",
-  owners:
-    "This is an automated email from Cloudgate about your Organization's billing. It goes to every owner, and cannot be turned off.",
-  operators:
-    'This is an automated email to the Operators of this Cloudgate instance: every owner and admin of its Instance organization. It cannot be turned off.',
+/**
+ * What an email to an Organization is about, which its footer says too: its
+ * billing (a payment, the plan, a price), its Servers (a Restore, which costs
+ * nothing), or the Organization itself (an abuse report, a suspension).
+ *
+ * Its own prop, and required, because it does not follow from the audience:
+ * the footer used to be fixed per audience, so a Restore's email to the
+ * owners and admins called itself billing (#194). Each email now says which.
+ */
+export type NoticeTopic = 'billing' | 'servers' | 'organization';
+
+const TOPICS: Record<NoticeTopic, string> = {
+  billing: "your Organization's billing",
+  servers: "your Organization's Servers",
+  organization: 'your Organization',
 };
+
+const RECIPIENTS: Record<Exclude<NoticeAudience, 'operators'>, string> = {
+  'owners-and-admins': 'every owner and admin',
+  owners: 'every owner',
+};
+
+function footer(props: LapseNoticeProps): string {
+  if (props.audience === 'operators') {
+    return 'This is an automated email to the Operators of this Cloudgate instance: every owner and admin of its Instance organization. It cannot be turned off.';
+  }
+  const to = RECIPIENTS[props.audience ?? 'owners-and-admins'];
+  return `This is an automated email from Cloudgate about ${TOPICS[props.about]}. It goes to ${to}, and cannot be turned off.`;
+}
 
 export type LapseNoticeProps = {
   userName: string;
   heading: string;
   paragraphs: string[];
   action?: { label: string; url: string };
-  /** Whom it goes to, for the footer; every owner and admin by default. */
-  audience?: NoticeAudience;
-};
-
-export const LapseNoticeTemplate = ({
-  userName = 'User',
-  heading = 'Your Cloudgate plan has ended',
-  paragraphs = [],
-  action,
-  audience = 'owners-and-admins',
-}: LapseNoticeProps) => (
-  <Html>
-    <Head />
-    <Preview>{heading}</Preview>
-    <Tailwind config={emailTailwindConfig}>
-      <Body className="bg-[#f4f4f5] my-auto mx-auto font-sans">
-        <Container className="my-[40px] mx-auto max-w-[520px]">
-          <EmailHeader />
-
-          <Section className="bg-white px-[40px] py-[32px]">
-            <Heading className="text-[#09090b] text-[22px] font-semibold m-0 mb-[8px]">
-              {heading}
-            </Heading>
-            <Text className="text-[#71717a] text-[14px] leading-[22px] m-0 mb-[16px]">
-              Hello {userName},
-            </Text>
-            {paragraphs.map((paragraph) => (
-              <Text
-                key={paragraph}
-                className="text-[#3f3f46] text-[14px] leading-[22px] m-0 mb-[16px]"
-              >
-                {paragraph}
-              </Text>
-            ))}
-            {action ? (
-              <>
-                <Section className="text-center my-[24px]">
-                  <Button
-                    href={action.url}
-                    className="bg-[#09090b] rounded-lg text-white text-[14px] font-semibold no-underline text-center px-[24px] py-[12px]"
-                  >
-                    {action.label}
-                  </Button>
-                </Section>
-                <Text className="text-[#71717a] text-[12px] leading-[18px] m-0 text-center break-all">
-                  {action.url}
-                </Text>
-              </>
-            ) : null}
-          </Section>
-
-          <Section className="bg-[#fafafa] rounded-b-xl px-[40px] py-[24px] text-center border-t border-solid border-[#e4e4e7]">
-            <Text className="text-[#a1a1aa] text-[12px] leading-[18px] m-0">
-              {FOOTERS[audience]}
-            </Text>
-          </Section>
-        </Container>
-      </Body>
-    </Tailwind>
-  </Html>
+} & (
+  | { audience: 'operators'; about?: never }
+  | {
+      /** Whom it goes to, for the footer; every owner and admin by default. */
+      audience?: Exclude<NoticeAudience, 'operators'>;
+      /** What it is about, for the footer. */
+      about: NoticeTopic;
+    }
 );
+
+export const LapseNoticeTemplate = (props: LapseNoticeProps) => {
+  const {
+    userName = 'User',
+    heading = 'Your Cloudgate plan has ended',
+    paragraphs = [],
+    action,
+  } = props;
+  return (
+    <Html>
+      <Head />
+      <Preview>{heading}</Preview>
+      <Tailwind config={emailTailwindConfig}>
+        <Body className="bg-[#f4f4f5] my-auto mx-auto font-sans">
+          <Container className="my-[40px] mx-auto max-w-[520px]">
+            <EmailHeader />
+
+            <Section className="bg-white px-[40px] py-[32px]">
+              <Heading className="text-[#09090b] text-[22px] font-semibold m-0 mb-[8px]">
+                {heading}
+              </Heading>
+              <Text className="text-[#71717a] text-[14px] leading-[22px] m-0 mb-[16px]">
+                Hello {userName},
+              </Text>
+              {paragraphs.map((paragraph) => (
+                <Text
+                  key={paragraph}
+                  className="text-[#3f3f46] text-[14px] leading-[22px] m-0 mb-[16px]"
+                >
+                  {paragraph}
+                </Text>
+              ))}
+              {action ? (
+                <>
+                  <Section className="text-center my-[24px]">
+                    <Button
+                      href={action.url}
+                      className="bg-[#09090b] rounded-lg text-white text-[14px] font-semibold no-underline text-center px-[24px] py-[12px]"
+                    >
+                      {action.label}
+                    </Button>
+                  </Section>
+                  <Text className="text-[#71717a] text-[12px] leading-[18px] m-0 text-center break-all">
+                    {action.url}
+                  </Text>
+                </>
+              ) : null}
+            </Section>
+
+            <Section className="bg-[#fafafa] rounded-b-xl px-[40px] py-[24px] text-center border-t border-solid border-[#e4e4e7]">
+              <Text className="text-[#a1a1aa] text-[12px] leading-[18px] m-0">
+                {footer(props)}
+              </Text>
+            </Section>
+          </Container>
+        </Body>
+      </Tailwind>
+    </Html>
+  );
+};
 
 export default LapseNoticeTemplate;

@@ -377,6 +377,7 @@ export async function renderLapseEmail({
     subject: copy.subject,
     html: await render(
       LapseNoticeTemplate({
+        about: 'billing',
         userName: userName || 'User',
         heading: copy.heading,
         paragraphs: copy.paragraphs,
@@ -412,6 +413,7 @@ export async function renderStoppedPayingEmail({
     subject: `${org} is frozen: ${payer} has stopped paying for it`,
     html: await render(
       LapseNoticeTemplate({
+        about: 'billing',
         userName: userName || 'User',
         heading: `${payer} has stopped paying for ${org}`,
         paragraphs: [
@@ -479,6 +481,7 @@ export async function renderBoughtServerRefundedEmail({
       : `Your Server ${serverName} could not be created, so your payment was refunded`,
     html: await render(
       LapseNoticeTemplate({
+        about: 'billing',
         audience: 'owners',
         userName: userName || 'User',
         heading: 'Your payment was refunded',
@@ -630,6 +633,7 @@ export async function renderBoughtServersDeletionEmail({
     subject: copy.subject,
     html: await render(
       LapseNoticeTemplate({
+        about: 'billing',
         audience: 'owners',
         userName: userName || 'User',
         heading: copy.heading,
@@ -693,6 +697,7 @@ export async function renderSuspensionEmail({
     subject: copy.subject,
     html: await render(
       LapseNoticeTemplate({
+        about: 'organization',
         audience: 'owners',
         userName: userName || 'User',
         heading: copy.heading,
@@ -757,6 +762,7 @@ export async function renderCustomRolesStoppedEmail({
         : `${count} members of ${org} are on custom roles that no longer work`,
     html: await render(
       LapseNoticeTemplate({
+        about: 'billing',
         userName: userName || 'User',
         heading: 'Custom roles have stopped working',
         paragraphs: [
@@ -801,6 +807,7 @@ export async function renderLicenseExpiringEmail({
     subject: `The enterprise license for ${org} expires on ${expiresOn}`,
     html: await render(
       LapseNoticeTemplate({
+        about: 'billing',
         userName: userName || 'User',
         heading: 'Your enterprise license is about to expire',
         paragraphs: [
@@ -856,6 +863,7 @@ export async function renderTrialStartedEmail(
     subject: `Your 30-day Cloudgate free trial for ${org} has started`,
     html: await render(
       LapseNoticeTemplate({
+        about: 'billing',
         userName: facts.userName || 'User',
         heading: 'Your free trial has started',
         paragraphs: [
@@ -882,6 +890,7 @@ export async function renderTrialEndingEmail(
     subject: `Your Cloudgate free trial for ${org} ends in 7 days`,
     html: await render(
       LapseNoticeTemplate({
+        about: 'billing',
         userName: facts.userName || 'User',
         heading: 'Your free trial ends in 7 days',
         paragraphs: [
@@ -923,6 +932,7 @@ export async function renderBoughtServerChangeRefundedEmail({
     subject: `We couldn't ${attempted}, so the payment was refunded`,
     html: await render(
       LapseNoticeTemplate({
+        about: 'billing',
         audience: 'owners',
         userName: userName || 'User',
         heading: 'Your change could not be made',
@@ -1011,6 +1021,7 @@ export async function renderBoughtServerRestoreFailedEmail({
     subject: `We couldn't restore ${serverName} from its backup`,
     html: await render(
       LapseNoticeTemplate({
+        about: 'servers',
         audience: 'owners',
         userName: userName || 'User',
         heading: 'Your restore could not be done',

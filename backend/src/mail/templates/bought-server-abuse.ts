@@ -45,6 +45,7 @@ export async function renderAbuseReportEmail({
     subject: `Abuse report about ${org}: please answer by ${by}`,
     html: await render(
       LapseNoticeTemplate({
+        about: 'organization',
         userName: userName || 'User',
         heading: 'An abuse report needs your answer',
         paragraphs: [

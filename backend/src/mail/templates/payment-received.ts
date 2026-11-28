@@ -52,6 +52,7 @@ export async function renderPaymentReceivedEmail({
 
   if (payer !== undefined) {
     return renderConfirmationEmail(userName, {
+      about: 'billing',
       subject: stillSuspended
         ? `${payer} has paid, but ${org} is still suspended`
         : `${org} is no longer frozen: ${payer} has paid`,
@@ -65,6 +66,7 @@ export async function renderPaymentReceivedEmail({
     });
   }
   return renderConfirmationEmail(userName, {
+    about: 'billing',
     subject: `Payment received for ${org}`,
     heading: 'Your payment was received',
     paragraphs: [

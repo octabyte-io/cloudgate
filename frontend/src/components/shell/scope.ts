@@ -87,6 +87,24 @@ const RESOURCE_SEGMENT = {
 
 type ResourceSegment = keyof typeof RESOURCE_SEGMENT;
 
+/**
+ * The pages that sit beside a resource's id, as folders next to its dynamic
+ * segment (`app/(console)/servers/buy` beside `servers/[serverId]`). Next
+ * matches a static folder before the dynamic one, so `/servers/buy` is the
+ * *Buy a Server* page and never a Server whose id is `buy`; the scope says
+ * the same, or the shell asks for that Server, gets a 404 and titles the page
+ * "Not found" (#194). `scope.test.ts` reads the route folders and fails until
+ * a new one is named here.
+ */
+export const RESOURCE_PAGES = {
+  servers: ["buy"],
+  projects: [],
+  environments: [],
+  applications: [],
+  compose: [],
+  databases: [],
+} as const satisfies Record<ResourceSegment, readonly string[]>;
+
 const ORGANIZATION = (segments: string[]): ScopeRoute => ({
   kind: "organization",
   id: null,
@@ -97,7 +115,8 @@ const ORGANIZATION = (segments: string[]): ScopeRoute => ({
 /**
  * `/servers` is Organization scope (it is the fleet list); `/servers/<id>` is
  * Server scope. The id is what makes a scope, which is why the check is on
- * length rather than on the first segment alone.
+ * length rather than on the first segment alone; a page beside the id, named
+ * in {@link RESOURCE_PAGES}, is not an id.
  *
  * An engine this app does not have falls back to Organization scope rather than
  * opening a database rail over nothing — `/databases/sqlserver/x` is not a
@@ -109,6 +128,9 @@ export function scopeFromPath(pathname: string): ScopeRoute {
   const entry = first ? RESOURCE_SEGMENT[first] : undefined;
 
   if (!entry || segments.length < 1 + entry.depth) return ORGANIZATION(segments);
+  if ((RESOURCE_PAGES[first!] as readonly string[]).includes(segments[1])) {
+    return ORGANIZATION(segments);
+  }
 
   if (entry.depth === 2) {
     const variant = segments[1];

@@ -146,5 +146,8 @@ export async function renderServerChangedEmail({
       `${serverName} now costs ${monthlyPrice} a month.`,
     ],
     action: { label: 'Open the Server', url: serverUrl },
+    // Backups, storage and a size each move the price; a Restore costs
+    // nothing, so its email is about the Server and not billing (#194).
+    about: change.kind === 'restore' ? 'servers' : 'billing',
   });
 }

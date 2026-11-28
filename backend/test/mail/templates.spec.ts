@@ -2021,4 +2021,92 @@ describe('mail templates', () => {
       );
     });
   });
+
+  /**
+   * The footer says what an email is about as well as whom it goes to. It
+   * used to be fixed per audience, so every owner-and-admin or owner-only
+   * email called itself billing, a restore and a suspension included (#194).
+   */
+  describe('what the footer says an email is about', () => {
+    const footer = (html: string) =>
+      html.replace(/<!-- -->/g, '').replace(/&#x27;|&#39;/g, "'");
+    const BILLING = "about your Organization's billing";
+    const changed = {
+      userName: 'Grace',
+      organizationName: 'Hopper Labs',
+      serverName: 'web-1',
+      monthlyPrice: '$30.00',
+      serverUrl: 'https://console.example.com/servers/abc/settings',
+    };
+
+    it('calls a restore an email about the Servers, not billing', async () => {
+      const rendered = await renderServerChangedEmail({
+        ...changed,
+        change: {
+          kind: 'restore',
+          backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+          setupOk: true,
+          redeployed: [],
+          notRedeployed: [],
+        },
+      });
+
+      const body = footer(rendered.html);
+      expect(body).toContain(
+        "This is an automated email from Cloudgate about your Organization's Servers. It goes to every owner and admin, and cannot be turned off.",
+      );
+      expect(body).not.toContain(BILLING);
+    });
+
+    it('calls a restore that could not be done an email about the Servers, not billing', async () => {
+      const rendered = await renderBoughtServerRestoreFailedEmail({
+        userName: 'Grace',
+        serverName: 'web-1',
+        backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+        outcome: 'refused',
+        serverUrl: 'https://console.example.com/servers/abc/settings',
+      });
+
+      const body = footer(rendered.html);
+      expect(body).toContain(
+        "This is an automated email from Cloudgate about your Organization's Servers. It goes to every owner, and cannot be turned off.",
+      );
+      expect(body).not.toContain(BILLING);
+    });
+
+    it('calls a suspension and its lifting an email about the Organization, not billing', async () => {
+      for (const notice of [
+        { kind: 'suspended', reason: 'Abuse of the free tier' },
+        { kind: 'lifted', stillLapsed: false },
+      ] as const) {
+        const rendered = await renderSuspensionEmail({
+          userName: 'Grace',
+          organizationName: 'Hopper Labs',
+          billingUrl: 'https://console.example.com/settings/billing',
+          notice,
+        });
+
+        const body = footer(rendered.html);
+        expect(body).toContain(
+          'This is an automated email from Cloudgate about your Organization. It goes to every owner, and cannot be turned off.',
+        );
+        expect(body).not.toContain(BILLING);
+      }
+    });
+
+    it.each([
+      { kind: 'backups', on: true },
+      { kind: 'storage', storageGb: 250 },
+      { kind: 'size', size: '3 vCPU · 4 GB RAM' },
+    ] as const)(
+      'still calls a change that moves the price, %j, an email about billing',
+      async (change) => {
+        const rendered = await renderServerChangedEmail({ ...changed, change });
+
+        expect(footer(rendered.html)).toContain(
+          "This is an automated email from Cloudgate about your Organization's billing. It goes to every owner and admin, and cannot be turned off.",
+        );
+      },
+    );
+  });
 });
