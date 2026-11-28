@@ -67,7 +67,10 @@ const backendRoot = join(__dirname, '..', '..');
  * and no apply tool, which would need a Service write no agent role holds.
  * `get_service_metrics` reads a granted Service's container metrics under its
  * twin's `monitoring: ['read']`, which both roles gained for it (ADR-0096):
- * 21 → 22. The count is frozen (ADR-0023).
+ * 21 → 22. `read_runtime_log` reads a granted Application's or Compose's
+ * Runtime log under its twin's `service: ['read']`, which both roles held,
+ * and only for an Agent whose Can read runtime logs switch is on (ADR-0095):
+ * 22 → 23. The count is frozen (ADR-0023).
  */
 const FROZEN_TOOLS = [
   'list_projects',
@@ -92,7 +95,17 @@ const FROZEN_TOOLS = [
   'get_project_config',
   'get_plan',
   'request_plan',
+  'read_runtime_log',
 ];
+
+/**
+ * The tools that need a per-Agent switch beyond their statement, and which
+ * (ADR-0095). A switch is a decision about what leaves Cloudgate, so a tool
+ * gaining or losing one is an argued edit.
+ */
+const FROZEN_SWITCHES: Readonly<Record<string, string>> = {
+  read_runtime_log: 'canReadRuntimeLogs',
+};
 
 /**
  * Tools taking a Service kind, one twin per kind. Written out so a
@@ -334,6 +347,17 @@ function enforcedBy(
 describe('MCP_TOOLS', () => {
   it('serves exactly the frozen tool list, which a new tool has to be argued onto', () => {
     expect(MCP_TOOLS.map((tool) => tool.name)).toEqual(FROZEN_TOOLS);
+  });
+
+  it('asks a per-Agent switch of exactly the frozen tools', () => {
+    expect(
+      Object.fromEntries(
+        MCP_TOOLS.filter((tool) => tool.agentSwitch).map((tool) => [
+          tool.name,
+          tool.agentSwitch,
+        ]),
+      ),
+    ).toEqual(FROZEN_SWITCHES);
   });
 
   it('routes each kind-taking tool by exactly the frozen kinds', () => {

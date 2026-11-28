@@ -2,6 +2,8 @@ import { getTableColumns, is } from 'drizzle-orm';
 import { getTableConfig, PgTable } from 'drizzle-orm/pg-core';
 import * as schema from '../../src/db/schema';
 import { secretReachOf, secretValuesOf } from '../../src/mcp/secret-mask';
+import { allowList } from '../../src/mcp/tool-projection';
+import { MCP_TOOLS } from '../../src/mcp/tools';
 
 /**
  * The mask's schema derivation, held to an independent walk (ADR-0024).
@@ -205,5 +207,41 @@ describe('secretReachOf', () => {
         return !secretValuesOf(stored).includes(secret);
       });
     expect(unread).toEqual([]);
+  });
+});
+
+/**
+ * ADR-0024's third source, as ADR-0095 amends it: log text leaves `POST /mcp`
+ * from exactly two places, a Deployment log window and a Runtime log window
+ * of an Application or Compose, and both are masked from the Service they
+ * are about. A third tool carrying a `log` field reds here until it is
+ * argued into the ADR's list.
+ */
+const FROZEN_LOG_SOURCES = ['read_deployment_log', 'read_runtime_log'];
+
+describe('MCP_TOOLS', () => {
+  const carriesLog = (tool: (typeof MCP_TOOLS)[number]) =>
+    allowList(tool.projection).some((path) => /(^|\.)log$/.test(path));
+
+  it("returns log text from ADR-0024's frozen log sources only", () => {
+    expect(MCP_TOOLS.filter(carriesLog).map((tool) => tool.name)).toEqual(
+      FROZEN_LOG_SOURCES,
+    );
+  });
+
+  it("masks each log window from the Application's or Compose's own row", () => {
+    for (const serviceType of ['application', 'compose'] as const) {
+      const found = { serviceType, serviceId: 'svc-1' };
+      for (const tool of MCP_TOOLS.filter(carriesLog)) {
+        expect({
+          [tool.name]: tool
+            .maskRoots({ deploymentId: 'dep-1', serviceId: 'svc-1' }, found)
+            .some(
+              (root) =>
+                root.table === table(serviceType) && root.id === 'svc-1',
+            ),
+        }).toEqual({ [tool.name]: true });
+      }
+    }
   });
 });

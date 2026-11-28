@@ -92,6 +92,8 @@ const PREVIEW_TOOLS = [
 ];
 /** The Project config tools, on statements both roles hold. */
 const PROJECT_CONFIG_TOOLS = ['get_project_config', 'get_plan', 'request_plan'];
+/** Listed on `service: read`; the Agent's switch is asked at the call (ADR-0095). */
+const RUNTIME_LOG_TOOLS = ['read_runtime_log'];
 
 /** What one preview answers: its fields, and nothing else. */
 const PREVIEW_KEYS = [
@@ -377,12 +379,14 @@ describe('MCP Requested-preview tools (e2e)', () => {
         'list_previews',
         'get_preview',
         ...PROJECT_CONFIG_TOOLS,
+        ...RUNTIME_LOG_TOOLS,
       ]);
       expect(await listed(operator.key)).toEqual([
         ...READ_TOOLS,
         ...WRITE_TOOLS,
         ...PREVIEW_TOOLS,
         ...PROJECT_CONFIG_TOOLS,
+        ...RUNTIME_LOG_TOOLS,
       ]);
     });
   });

@@ -77,7 +77,7 @@ import { MCP_TOOLS } from './tools';
     ServiceHealthModule,
     // get_service_metrics.
     MonitoringModule,
-    // get_project_config, get_plan and request_plan.
+    // get_project_config, get_plan and request_plan, and read_runtime_log.
     ProjectConfigModule,
   ],
   controllers: [McpController],

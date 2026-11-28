@@ -437,6 +437,9 @@ const FROZEN_PROJECTIONS: Readonly<Record<string, readonly string[]>> = {
   ],
   get_plan: PLAN.map((key) => `plan.${key}`),
   request_plan: PLAN,
+  // ADR-0095: the window applied and the app's own lines, each naming its
+  // copy, through the Service's mask. Where it runs stays out.
+  read_runtime_log: ['lines', 'log', 'serviceId', 'serviceType', 'since'],
 };
 
 /**

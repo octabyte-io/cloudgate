@@ -24,6 +24,10 @@ export {
   PlansController,
   ProjectConfigsController,
 } from './project-config.controller';
+// read_runtime_log's twin and target.
+export { RuntimeLogController } from './runtime-log/runtime-log.controller';
+export { RuntimeLogs } from './runtime-log/runtime-logs.service';
+export type { RuntimeLogWindow } from './runtime-log/runtime-logs.service';
 export {
   CONFIG_PATH_AMBIGUOUS_CODE,
   CONFIG_UNREADABLE_CODE,

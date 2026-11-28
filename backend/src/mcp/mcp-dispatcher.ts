@@ -42,6 +42,7 @@ import {
   ORIGIN_REFUSED,
   PERSONAL_KEY,
   rateLimited,
+  RUNTIME_LOGS_OFF,
   SUSPENDED,
   UNSUPPORTED_MEDIA_TYPE,
 } from './mcp-answers';
@@ -443,6 +444,22 @@ export class McpDispatcher implements OnModuleDestroy {
         });
         continue;
       }
+
+      if (tool.agentSwitch && !(await this.switchOn(agent.ctx, tool))) {
+        verdicts.push({
+          toolCall,
+          outcome: 'refused',
+          reason: AUDIT_REASON.permission,
+        });
+        refusal = answer(403, {
+          code: 'refused',
+          reason: AUDIT_REASON.permission,
+          tool: tool.name,
+          switch: tool.agentSwitch,
+          message: RUNTIME_LOGS_OFF,
+        });
+        continue;
+      }
       verdicts.push({ toolCall, admitted: tool });
     }
 
@@ -694,6 +711,16 @@ export class McpDispatcher implements OnModuleDestroy {
       if (error instanceof ForbiddenException) return false;
       throw error;
     }
+  }
+
+  /**
+   * Whether the Agent's member row has the tool's switch on (ADR-0095),
+   * read at the call: an operator's change applies to the next one.
+   */
+  private async switchOn(ctx: PermissionCtx, tool: AnyTool): Promise<boolean> {
+    if (!tool.agentSwitch) return true;
+    const found = await this.permissions.findMember(ctx);
+    return found[tool.agentSwitch] === true;
   }
 
   /**

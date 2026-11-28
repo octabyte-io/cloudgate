@@ -513,9 +513,9 @@ describe('MCP write tools (e2e)', () => {
       };
       const readerTools = (await listed(reader.key)).map((tool) => tool.name);
       // The seven reads, get_service_health, get_service_metrics, the two
-      // Requested-preview reads, and the three Project config tools
-      // whose plan request is a read's statement.
-      expect(readerTools).toHaveLength(14);
+      // Requested-preview reads, the three Project config tools
+      // whose plan request is a read's statement, and read_runtime_log.
+      expect(readerTools).toHaveLength(15);
       for (const name of WRITE_TOOLS) expect(readerTools).not.toContain(name);
 
       const operatorTools = await listed(operator.key);

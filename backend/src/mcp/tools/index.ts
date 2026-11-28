@@ -4,6 +4,7 @@ import { METRICS_TOOLS } from './metrics.tools';
 import { NAVIGATION_TOOLS } from './navigation.tools';
 import { PREVIEW_TOOLS } from './preview.tools';
 import { PROJECT_CONFIG_TOOLS } from './project-config.tools';
+import { RUNTIME_LOG_TOOLS } from './runtime-log.tools';
 import { SERVICE_TOOLS } from './service.tools';
 import { WRITE_TOOLS } from './write.tools';
 
@@ -22,4 +23,6 @@ export const MCP_TOOLS: readonly AnyTool[] = [
   ...WRITE_TOOLS,
   ...PREVIEW_TOOLS,
   ...PROJECT_CONFIG_TOOLS,
+  // read_runtime_log, behind the Agent's Can read runtime logs switch.
+  ...RUNTIME_LOG_TOOLS,
 ];
