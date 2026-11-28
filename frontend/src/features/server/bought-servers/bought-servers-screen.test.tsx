@@ -276,6 +276,8 @@ describe("BoughtServersScreen", () => {
       name: "No Bought Servers yet",
     });
     const body = title.nextElementSibling?.textContent ?? "";
-    expect(body).toMatch(/^Buy a Server to /);
+    expect(body).toBe(
+      "Buy a Server to have one set up for you, paid monthly on your plan's invoice.",
+    );
   });
 });

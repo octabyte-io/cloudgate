@@ -452,7 +452,7 @@ describe("the Bought Server tab", () => {
         await screen.findByRole("button", { name: "Back up now" }),
       );
       const dialog = screen.getByRole("dialog");
-      expect(dialog.textContent).toMatch(/Tuesday 03:00 will be removed/);
+      expect(dialog.textContent).toMatch(/Tuesday 03:00 will be pushed out/);
       api.backups.mockResolvedValue([taken, ...seven.slice(0, 6)]);
       fireEvent.click(
         within(dialog).getByRole("button", { name: "Back up now" }),
@@ -470,7 +470,7 @@ describe("the Bought Server tab", () => {
       expect(table.textContent).not.toMatch(/Nov 17, 2026/);
     });
 
-    it("names no backup to be removed while fewer than 7 are kept", async () => {
+    it("names no backup to be pushed out while fewer than 7 are kept", async () => {
       api.server.mockResolvedValue(WITH_BACKUPS);
       api.backups.mockResolvedValue(BACKUPS);
       renderCard();
@@ -480,7 +480,7 @@ describe("the Bought Server tab", () => {
       );
 
       expect(screen.getByRole("dialog").textContent).not.toMatch(
-        /will be removed/,
+        /will be pushed out/,
       );
     });
 

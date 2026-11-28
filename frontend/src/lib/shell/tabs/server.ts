@@ -80,8 +80,8 @@ export const SERVER_TABS: readonly TabEntry[] = [
   },
 ];
 
-/** Why a Server has no Bought Server tab: it is a machine of the customer's own. */
+/** Why a Server has no Bought Server tab: it is a Server of the customer's own. */
 function notBought(subject: TabSubject): string | null {
   if (subject.boughtServer) return null;
-  return "Only a Server bought from Cloudgate has this tab. This one is a machine of your own, so its backups, size and price are with whoever provides it.";
+  return "Only a Server bought from Cloudgate has this tab. This one is a Server of your own, so its backups, size and price are with whoever provides it.";
 }

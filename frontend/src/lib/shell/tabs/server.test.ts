@@ -27,7 +27,7 @@ describe("the Bought Server tab", () => {
       const entry = tabEntry("server", "bought-server");
       expect(entry).not.toBeNull();
       expect(absentReason(entry!, { boughtServer })).toBe(
-        "Only a Server bought from Cloudgate has this tab. This one is a machine of your own, so its backups, size and price are with whoever provides it.",
+        "Only a Server bought from Cloudgate has this tab. This one is a Server of your own, so its backups, size and price are with whoever provides it.",
       );
     },
   );

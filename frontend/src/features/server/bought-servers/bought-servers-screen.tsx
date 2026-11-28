@@ -124,8 +124,8 @@ export function BoughtServersScreen() {
                         ) : null
                       }
                     >
-                      Buy a Server to get a machine set up for you, paid monthly
-                      on your plan&apos;s invoice.
+                      Buy a Server to have one set up for you, paid monthly on
+                      your plan&apos;s invoice.
                     </EmptyState>
                   }
                 />

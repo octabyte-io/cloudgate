@@ -100,7 +100,7 @@ export function BackUpNow({ view }: { view: BoughtServerView }) {
               <strong className="text-tx">
                 {weekdayAndTime(pushedOut.takenAt)}
               </strong>{" "}
-              will be removed.
+              will be pushed out.
             </p>
           </Modal.Body>
         ) : null}

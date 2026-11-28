@@ -38,9 +38,10 @@ const HELSINKI = { city: 'Helsinki', country: 'FI' };
  * `GET /bought-servers`, the **Bought Servers** page's list (#199, spec
  * #196): every Bought Server of the caller's Organization except Deleted and
  * Failed, oldest first, each with its Server id, name, stage, size, Location,
- * backups on or off and monthly price. It asks the provider about no machine,
- * so it holds no last backup time; the size and Location are named from the
- * price list, as the Server tab's are, and left out when that can't be read.
+ * backups on or off and monthly price. It asks the provider nothing about
+ * any Server, so it holds no last backup time; the size and Location are
+ * named from the price list, as the Server tab's are, and left out when that
+ * can't be read.
  * A read (`server: ['read']`).
  *
  * The rows are written straight into the database: how a Server reaches each
@@ -270,7 +271,7 @@ describe('Bought Servers list (e2e)', () => {
     ]);
   });
 
-  it('asks the provider about no machine, and names neither the provider nor its codes', async () => {
+  it('asks the provider nothing about any Server, and names neither the provider nor its codes', async () => {
     await given({ name: 'web-1', stage: 'ready', withServer: true });
 
     const res = await list();
