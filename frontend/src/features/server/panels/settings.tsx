@@ -3,7 +3,7 @@
 import type { PanelProps } from "@/lib/shell/tab-registry";
 
 import { ServerPanel } from "../server-panel";
-import { BoughtServerCard } from "../settings/bought-server-card";
+import { BoughtServerCard } from "../bought-server/bought-server-card";
 import { ConnectionCard } from "../settings/connection-card";
 import { HousekeepingCard } from "../settings/housekeeping-card";
 import { IdentityCard } from "../settings/identity-card";
