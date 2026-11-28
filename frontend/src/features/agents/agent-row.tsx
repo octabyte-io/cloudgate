@@ -20,6 +20,7 @@ import {
   lastUsed,
 } from "./agent-facts";
 import { AgentKeyList } from "./agent-key-list";
+import { AgentRuntimeLogs } from "./agent-runtime-logs";
 import type { AgentLifecycle } from "./agent-lifecycle";
 import {
   agentRowAnchor,
@@ -148,6 +149,7 @@ export function AgentRow({
             onRemove={lifecycle.removeKey}
           />
         </dd>
+        <AgentRuntimeLogs agent={agent} canUpdate={canUpdate.allowed} />
         <dt className="text-tx-3">Last used</dt>
         <dd className="text-tx-2">
           <LastUsed at={lastUsed(agent)} />

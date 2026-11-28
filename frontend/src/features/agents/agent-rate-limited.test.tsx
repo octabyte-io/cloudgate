@@ -41,6 +41,7 @@ const agent = (overrides: Partial<Agent> = {}): Agent => ({
   accessedServices: [],
   keys: [],
   suspended: false,
+  canReadRuntimeLogs: false,
   createdBy: null,
   lastConnection: null,
   rateLimitedLastHour: 0,

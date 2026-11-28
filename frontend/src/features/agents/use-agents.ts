@@ -64,6 +64,21 @@ export function useSuspendAgent() {
   });
 }
 
+/** Turn Can read runtime logs on or off. */
+export function useSetAgentRuntimeLogs() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({
+      agentId,
+      canReadRuntimeLogs,
+    }: {
+      agentId: string;
+      canReadRuntimeLogs: boolean;
+    }) => agentsApi.setRuntimeLogs(agentId, canReadRuntimeLogs),
+    onSettled: () => invalidate.membership(),
+  });
+}
+
 /**
  * Another key for an Agent, answered once — `gcTime: 0` for
  * {@link useCreateAgent}'s reason.

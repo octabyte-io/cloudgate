@@ -68,6 +68,11 @@ export interface Agent {
   keys: AgentKey[];
   /** A ban on its user is in force — Suspend. */
   suspended: boolean;
+  /**
+   * Can read runtime logs (ADR-0095): whether it may read the Runtime log of
+   * what it is granted. Always `false` on a Caller.
+   */
+  canReadRuntimeLogs: boolean;
   createdBy: AgentCreator | null;
   /** `null` until a client has connected with one of its keys. */
   lastConnection: AgentConnection | null;
@@ -87,6 +92,8 @@ export interface CreateAgentInput {
   role: AgentRole;
   grant: MemberEntitlements;
   keyExpiresInDays: AgentKeyExpiryDays;
+  /** Refused on a Caller. */
+  canReadRuntimeLogs: boolean;
 }
 
 /** The Agent, and its first key — the only time the key is ever answered. */
@@ -116,6 +123,13 @@ export const agentsApi = {
     api.post<Agent>(`/agents/${agentId}/suspend`, {}),
 
   resume: (agentId: string) => api.post<Agent>(`/agents/${agentId}/resume`, {}),
+
+  /**
+   * Whoever may change its role — owner or admin. Turns Can read runtime logs
+   * on or off, audited; refused on a Caller.
+   */
+  setRuntimeLogs: (agentId: string, canReadRuntimeLogs: boolean) =>
+    api.patch<Agent>(`/agents/${agentId}`, { canReadRuntimeLogs }),
 
   /** Owner or admin. Answers the new key — the only time it is ever shown. */
   addKey: (agentId: string, expiresInDays: AgentKeyExpiryDays) =>

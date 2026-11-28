@@ -62,6 +62,7 @@ const AGENT: Agent = {
     },
   ],
   suspended: false,
+  canReadRuntimeLogs: false,
   createdBy: null,
   lastConnection: null,
   rateLimitedLastHour: 0,
