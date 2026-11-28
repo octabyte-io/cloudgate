@@ -6,6 +6,7 @@ import { ApplicationsService } from '../../src/applications/applications.service
 import { ComposeService } from '../../src/compose/compose.service';
 import { PostgresService } from '../../src/databases/postgres/postgres.service';
 import {
+  aiModelFacet,
   application,
   auditLog,
   cloudAccount,
@@ -50,6 +51,10 @@ const GATEWAY_ONLY = `This Agent's role only calls AI models through the Gateway
 const APP_SECRET = 'sk-live-4f9a8b7c6d5e';
 const MASK = '••••••';
 const PLATFORM_HOST = 'platform host';
+const TOO_LARGE =
+  'This part of the Runtime log is larger than 1 MiB. Ask for fewer lines.';
+const GIVE_A_LATER_SINCE =
+  'More of this Runtime log was written in the time asked for than one call reads, so its last lines could not be reached. Give a later since.';
 
 interface ToolResult {
   content: Array<{ type: string; text: string }>;
@@ -286,6 +291,37 @@ describe('MCP read_runtime_log (e2e)', () => {
     ]);
   }
 
+  /** Puts Web in an AWS Cloud account; answers its CloudWatch log group. */
+  async function webInCloud(t: Tree): Promise<string> {
+    const [account] = await ctx.db
+      .insert(cloudAccount)
+      .values({
+        organizationId,
+        name: 'Production AWS',
+        cloud: 'aws',
+        cloudId: '123456789012',
+        accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
+        secretAccessKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+        deployRoleArn: 'arn:aws:iam::123456789012:role/cloudgate-deploy',
+        taskExecutionRoleArn:
+          'arn:aws:iam::123456789012:role/cloudgate-task-execution',
+        externalId: 'external-id-made-by-cloudgate',
+        policyVersion: 1,
+        lastCheckedAt: new Date().toISOString(),
+        lastCheckResult: 'passed',
+      })
+      .returning();
+    await ctx.db
+      .update(application)
+      .set({
+        serverId: null,
+        cloudAccountId: account.cloudAccountId,
+        region: 'eu-central-1',
+      })
+      .where(eq(application.applicationId, t.app.applicationId));
+    return `/cloudgate/${t.environment.environmentId}/${t.app.applicationId}`;
+  }
+
   /** Two copies of web-app, interleaved by time, as Docker hands them over. */
   const WEB_COPIES = [
     // Docker reads each copy's tail on its own, so copy 1's come first.
@@ -314,6 +350,7 @@ describe('MCP read_runtime_log (e2e)', () => {
       const agent = await agentFor(t);
 
       const res = await callTool(agent.key, {
+        serviceType: 'application',
         serviceId: t.app.applicationId,
       });
 
@@ -360,6 +397,7 @@ describe('MCP read_runtime_log (e2e)', () => {
 
       const last = windowOf(
         await callTool(agent.key, {
+          serviceType: 'application',
           serviceId: t.app.applicationId,
           lines: 2,
         }),
@@ -372,6 +410,7 @@ describe('MCP read_runtime_log (e2e)', () => {
 
       const after = windowOf(
         await callTool(agent.key, {
+          serviceType: 'application',
           serviceId: t.app.applicationId,
           since: '2026-11-28T10:00:02.500Z',
         }),
@@ -385,6 +424,7 @@ describe('MCP read_runtime_log (e2e)', () => {
 
       const capped = windowOf(
         await callTool(agent.key, {
+          serviceType: 'application',
           serviceId: t.app.applicationId,
           lines: 5000,
         }),
@@ -421,7 +461,10 @@ describe('MCP read_runtime_log (e2e)', () => {
       const agent = await agentFor(t);
 
       const window = windowOf(
-        await callTool(agent.key, { serviceId: t.app.applicationId }),
+        await callTool(agent.key, {
+          serviceType: 'application',
+          serviceId: t.app.applicationId,
+        }),
       );
 
       expect(window.log).toBe(
@@ -449,7 +492,10 @@ describe('MCP read_runtime_log (e2e)', () => {
       const agent = await agentFor(t);
 
       const window = windowOf(
-        await callTool(agent.key, { serviceId: t.stack.composeId }),
+        await callTool(agent.key, {
+          serviceType: 'compose',
+          serviceId: t.stack.composeId,
+        }),
       );
 
       expect(window).toMatchObject({
@@ -461,15 +507,9 @@ describe('MCP read_runtime_log (e2e)', () => {
           '',
         ].join('\n'),
       });
-      // The row carries its twin's vocabulary, `GET /applications/:id/runtime-log`'s.
+      // The row names the Service by its kind, as get_service's does.
       expect(await rowsOf(agent.id)).toEqual([
-        [
-          'application',
-          'succeeded',
-          t.stack.composeId,
-          'read_runtime_log',
-          null,
-        ],
+        ['compose', 'succeeded', t.stack.composeId, 'read_runtime_log', null],
       ]);
     });
 
@@ -508,7 +548,10 @@ describe('MCP read_runtime_log (e2e)', () => {
       const agent = await agentFor(t);
 
       const window = windowOf(
-        await callTool(agent.key, { serviceId: t.stack.composeId }),
+        await callTool(agent.key, {
+          serviceType: 'compose',
+          serviceId: t.stack.composeId,
+        }),
       );
 
       expect(window.log).toBe(
@@ -557,7 +600,10 @@ describe('MCP read_runtime_log (e2e)', () => {
       const agent = await agentFor(t);
 
       const all = windowOf(
-        await callTool(agent.key, { serviceId: t.app.applicationId }),
+        await callTool(agent.key, {
+          serviceType: 'application',
+          serviceId: t.app.applicationId,
+        }),
       );
       expect(all.log).toBe(
         [
@@ -570,6 +616,7 @@ describe('MCP read_runtime_log (e2e)', () => {
 
       const after = windowOf(
         await callTool(agent.key, {
+          serviceType: 'application',
           serviceId: t.app.applicationId,
           lines: 1,
           since: new Date(now - 2_500).toISOString(),
@@ -582,13 +629,225 @@ describe('MCP read_runtime_log (e2e)', () => {
       expect(ran).toEqual([]);
     });
 
+    it("reads a stack Compose's Swarm services, each line naming its task", async () => {
+      const t = await tree();
+      await ctx.db
+        .update(compose)
+        .set({ composeType: 'stack' })
+        .where(eq(compose.composeId, t.stack.composeId));
+      machines.set(PLATFORM_HOST, [
+        [
+          /^docker service ls --filter label=com\.docker\.stack\.namespace=stack-app /,
+          'stack-app_api\nstack-app_worker\n',
+        ],
+        [
+          /service logs .*stack-app_api$/,
+          stamped(
+            '2026-11-28T10:00:03.000000000Z',
+            'stack-app_api.1@node-1    | GET /orders 500\n',
+          ),
+        ],
+        [
+          /service logs .*stack-app_worker$/,
+          stamped(
+            '2026-11-28T10:00:01.000000000Z',
+            'stack-app_worker.1@node-1    | worker exited 137\n',
+          ),
+        ],
+      ]);
+      const agent = await agentFor(t);
+
+      const window = windowOf(
+        await callTool(agent.key, {
+          serviceType: 'compose',
+          serviceId: t.stack.composeId,
+        }),
+      );
+
+      expect(window.log).toBe(
+        [
+          '2026-11-28T10:00:01.000Z [stack-app_worker.1] worker exited 137',
+          '2026-11-28T10:00:03.000Z [stack-app_api.1] GET /orders 500',
+          '',
+        ].join('\n'),
+      );
+      expect(
+        ran
+          .filter(({ command }) => command.includes('logs'))
+          .map(({ command }) => command.replace(/\s+/g, ' ')),
+      ).toEqual([
+        'docker service logs --timestamps --no-task-ids --tail 100 stack-app_api',
+        'docker service logs --timestamps --no-task-ids --tail 100 stack-app_worker',
+      ]);
+    });
+
+    it("reads an AI model's Runtime log as the Application it is", async () => {
+      const t = await tree();
+      const llm = await ctx.app
+        .get(ApplicationsService)
+        .create(ctxIn(organizationId), {
+          name: 'Llama',
+          appName: 'llama-app',
+          environmentId: t.environment.environmentId,
+        });
+      await ctx.db
+        .update(application)
+        .set({ gpus: 1 })
+        .where(eq(application.applicationId, llm.applicationId));
+      await ctx.db.insert(aiModelFacet).values({
+        applicationId: llm.applicationId,
+        runtime: 'ollama',
+        model: 'smollm2:135m',
+        upstreamSecret: 'upstream-secret-9d8c7b6a',
+      });
+      swarmService(PLATFORM_HOST, 'llama-app', [
+        stamped(
+          '2026-11-28T10:00:02.000000000Z',
+          'llama-app.1@node-1    | CUDA error: out of memory',
+        ),
+      ]);
+      const res = await request(httpServer)
+        .post('/agents')
+        .set('Cookie', ownerCookie)
+        .send({
+          name: 'model-reader',
+          role: 'agentReader',
+          canReadRuntimeLogs: true,
+          grant: {
+            accessedProjects: [t.project.projectId],
+            accessedEnvironments: [t.environment.environmentId],
+            accessedServices: [llm.applicationId],
+          },
+        });
+      expect(res.status).toBe(201);
+      const { key } = res.body as { key: string };
+
+      expect(
+        windowOf(
+          await callTool(key, {
+            serviceType: 'application',
+            serviceId: llm.applicationId,
+          }),
+        ),
+      ).toEqual({
+        serviceType: 'application',
+        serviceId: llm.applicationId,
+        lines: 100,
+        since: null,
+        log: '2026-11-28T10:00:02.000Z [llama-app.1] CUDA error: out of memory\n',
+      });
+    });
+
+    it('refuses a window larger than 1 MiB once its copies are merged, asking for fewer lines', async () => {
+      const t = await tree();
+      // Each copy is under the 1 MiB one read may carry; the two are not.
+      swarmService(PLATFORM_HOST, 'web-app', [
+        stamped(
+          '2026-11-28T10:00:01.000000000Z',
+          `web-app.1@node-1    | ${'a'.repeat(600_000)}`,
+        ),
+        stamped(
+          '2026-11-28T10:00:02.000000000Z',
+          `web-app.2@node-1    | ${'b'.repeat(600_000)}`,
+        ),
+      ]);
+      const agent = await agentFor(t);
+
+      const result = resultOf(
+        await callTool(agent.key, {
+          serviceType: 'application',
+          serviceId: t.app.applicationId,
+        }),
+      );
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toBe(TOO_LARGE);
+    });
+
+    it("keeps a Cloud account's newest lines when the hour before holds more than one call reads", async () => {
+      const t = await tree();
+      const group = await webInCloud(t);
+      const now = Date.now();
+      // 6000 lines between 50 and 40 minutes ago: more than five pages.
+      ctx.cloud.writeLog(
+        group,
+        'task-a',
+        Array.from({ length: 6000 }, (_, i) => ({
+          timestamp: now - 50 * 60_000 + i * 100,
+          message: `old line ${i}\n`,
+        })),
+      );
+      ctx.cloud.writeLog(group, 'task-b', [
+        { timestamp: now - 3_000, message: 'b: listening on :8080\n' },
+        { timestamp: now - 1_000, message: 'b: Error: out of memory\n' },
+      ]);
+      const agent = await agentFor(t);
+
+      const window = windowOf(
+        await callTool(agent.key, {
+          serviceType: 'application',
+          serviceId: t.app.applicationId,
+        }),
+      );
+
+      expect(window.log).toBe(
+        [
+          `${new Date(now - 3_000).toISOString()} [task-b] b: listening on :8080`,
+          `${new Date(now - 1_000).toISOString()} [task-b] b: Error: out of memory`,
+          '',
+        ].join('\n'),
+      );
+    });
+
+    it('asks for a later since when the Cloud account says more is left on every page', async () => {
+      const t = await tree();
+      const group = await webInCloud(t);
+      const now = Date.now();
+      ctx.cloud.writeLog(group, 'task-a', [
+        { timestamp: now - 2_000, message: 'a: listening on :8080\n' },
+        { timestamp: now - 1_000, message: 'a: Error: out of memory\n' },
+      ]);
+      const filterLogStreams = ctx.cloud.filterLogStreams.bind(ctx.cloud);
+      const always = jest
+        .spyOn(ctx.cloud, 'filterLogStreams')
+        .mockImplementation(async (session, query) => {
+          const answer = await filterLogStreams(session, query);
+          return answer.ok
+            ? { ok: true, value: { ...answer.value, more: true } }
+            : answer;
+        });
+      const agent = await agentFor(t);
+
+      try {
+        for (const since of [undefined, new Date(now - 2_500).toISOString()]) {
+          const result = resultOf(
+            await callTool(agent.key, {
+              serviceType: 'application',
+              serviceId: t.app.applicationId,
+              ...(since === undefined ? {} : { since }),
+            }),
+          );
+          expect(result.isError).toBe(true);
+          expect(result.content[0].text).toBe(GIVE_A_LATER_SINCE);
+        }
+        // Each call stops at its five pages.
+        expect(always).toHaveBeenCalledTimes(10);
+      } finally {
+        always.mockRestore();
+      }
+    });
+
     it('answers an empty log for a Service with nothing deployed yet', async () => {
       const t = await tree();
       const agent = await agentFor(t);
 
       expect(
-        windowOf(await callTool(agent.key, { serviceId: t.app.applicationId }))
-          .log,
+        windowOf(
+          await callTool(agent.key, {
+            serviceType: 'application',
+            serviceId: t.app.applicationId,
+          }),
+        ).log,
       ).toBe('');
     });
   });
@@ -600,6 +859,7 @@ describe('MCP read_runtime_log (e2e)', () => {
       const agent = await agentFor(t, { canReadRuntimeLogs: false });
 
       const res = await callTool(agent.key, {
+        serviceType: 'application',
         serviceId: t.app.applicationId,
       });
 
@@ -628,8 +888,12 @@ describe('MCP read_runtime_log (e2e)', () => {
         .set({ canReadRuntimeLogs: true })
         .where(eq(member.userId, agent.id));
       expect(
-        windowOf(await callTool(agent.key, { serviceId: t.app.applicationId }))
-          .serviceId,
+        windowOf(
+          await callTool(agent.key, {
+            serviceType: 'application',
+            serviceId: t.app.applicationId,
+          }),
+        ).serviceId,
       ).toBe(t.app.applicationId);
     });
 
@@ -641,6 +905,7 @@ describe('MCP read_runtime_log (e2e)', () => {
       });
 
       const res = await callTool(caller.key, {
+        serviceType: 'application',
         serviceId: t.app.applicationId,
       });
 
@@ -657,9 +922,18 @@ describe('MCP read_runtime_log (e2e)', () => {
         t.database.postgresId,
         t.worker.applicationId,
         t.foreign.applicationId,
+        // A Compose's id under the other kind is no Application.
+        t.stack.composeId,
         'no-such-service',
       ]) {
-        expect(resultOf(await callTool(agent.key, { serviceId }))).toEqual({
+        expect(
+          resultOf(
+            await callTool(agent.key, {
+              serviceType: 'application',
+              serviceId,
+            }),
+          ),
+        ).toEqual({
           content: [{ type: 'text', text: NOT_FOUND_OR_NOT_PERMITTED }],
           structuredContent: {
             code: 'refused',
@@ -674,6 +948,7 @@ describe('MCP read_runtime_log (e2e)', () => {
         ['refused', t.database.postgresId, 'read_runtime_log', 'grant'],
         ['refused', t.worker.applicationId, 'read_runtime_log', 'grant'],
         ['refused', t.foreign.applicationId, 'read_runtime_log', 'grant'],
+        ['refused', t.stack.composeId, 'read_runtime_log', 'grant'],
         ['refused', 'no-such-service', 'read_runtime_log', 'grant'],
       ]);
     });
@@ -703,6 +978,36 @@ describe('MCP read_runtime_log (e2e)', () => {
       ]);
       expect(body.next).toBe(Date.parse('2026-11-28T10:00:05.000Z'));
       expect(body.more).toBe(false);
+    });
+
+    it('answers more when a read fills its 1000 lines', async () => {
+      const t = await tree();
+      const since = Date.parse('2026-11-28T10:00:00.000Z');
+      swarmService(
+        PLATFORM_HOST,
+        'web-app',
+        Array.from({ length: 1000 }, (_, i) =>
+          stamped(
+            new Date(since + i * 1000).toISOString(),
+            `web-app.1@node-1    | line ${i}`,
+          ),
+        ),
+      );
+
+      const res = await request(httpServer)
+        .get(`/applications/${t.app.applicationId}/runtime-log`)
+        .query({ since })
+        .set('Cookie', ownerCookie);
+
+      expect(res.status).toBe(200);
+      const body = res.body as {
+        lines: unknown[];
+        next: number;
+        more: boolean;
+      };
+      expect(body.lines).toHaveLength(1000);
+      expect(body.next).toBe(since + 999_000);
+      expect(body.more).toBe(true);
     });
   });
 });

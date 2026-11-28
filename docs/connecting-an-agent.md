@@ -125,7 +125,7 @@ The write tools are built to answer inside that:
 
 There is no follow and no streaming: an agent watching a build polls. The logs of a schedule's or a backup's run are not readable through it, and answer exactly as an unknown id does.
 
-`read_runtime_log` has the same window: the last 100 lines unless it asks for another number, never more than 500, the same cap on its size, and, when it gives `since`, only lines written at or after that time. A database has no Runtime log and answers as an unknown id does. A Cloud account's Runtime log is read back as far as the console's Logs tab reads it, no further.
+`read_runtime_log` has the same window: the last 100 lines unless it asks for another number, never more than 500, the same cap on its size, and, when it gives `since`, only lines written at or after that time. A database has no Runtime log and answers as an unknown id does. A Cloud account's Runtime log is read back as far as the console's Logs tab reads it, no further, and when more was written in the time asked for than one call reaches, the tool answers a failure asking for a later `since` rather than older lines. It takes `serviceType`, `application` or `compose`, as `list_deployments` does.
 
 ### Requests carrying an Origin header
 

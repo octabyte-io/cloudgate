@@ -4,6 +4,7 @@ import {
   Logger,
   NotFoundException,
   PayloadTooLargeException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import type { ComposeType } from '../../compose/compose.schema';
 import { findParentService } from '../../common/service-parent';
@@ -13,7 +14,6 @@ import type { DrizzleDB } from '../../db/drizzle.module';
 import { rethrowIfHostUnreachable } from '../../docker-ops/host-reachability';
 import { ContainerAccessService } from '../../realtime/container-access.service';
 import { buildContainerLogsCommand } from '../../realtime/ws.utils';
-import { LOG_WINDOW_MAX_BYTES } from '../../mcp/mcp-limits';
 import { PermissionService } from '../../rbac/permission.service';
 import type { PermissionCtx } from '../../rbac/permission.service';
 import {
@@ -30,6 +30,19 @@ import { copyLinesOf, mergedWindow } from './server-runtime-log';
 
 /** The two kinds that write a Runtime log; a database writes none. */
 export type RuntimeLogServiceType = 'application' | 'compose';
+
+/** What a window is asked for: `read_runtime_log`'s arguments, capped by the tool. */
+export interface RuntimeLogWindowQuery {
+  serviceType: RuntimeLogServiceType;
+  count: number;
+  since?: number;
+  /**
+   * The most bytes one copy's read may answer on its machine; past it the
+   * read is a 413. The MCP log window sets it; the HTTP route leaves it to
+   * the exec defaults.
+   */
+  maxBuffer?: number;
+}
 
 /** One window of a Service's Runtime log: its last lines, oldest first. */
 export interface RuntimeLogWindow {
@@ -89,7 +102,8 @@ export class RuntimeLogs {
    * few minutes), every copy's lines merged by time, and where the next read
    * starts. A cloud Service is read exactly as it was; a Server Service
    * answers its lines from `since` on (from the last few minutes when not
-   * given), at most {@link RUNTIME_LOG_LINES}.
+   * given), at most {@link RUNTIME_LOG_LINES}, and `more` when it read that
+   * many, so the next read can come at once.
    */
   async read(
     ctx: PermissionCtx,
@@ -97,7 +111,10 @@ export class RuntimeLogs {
     since: number | undefined,
   ): Promise<RuntimeLog> {
     await this.permissions.checkServiceAccess(ctx, serviceId, 'read');
-    const found = await this.serviceOf(ctx, serviceId);
+    const found = await this.serviceOf(ctx, serviceId, [
+      'application',
+      'compose',
+    ]);
     if (found.serviceType === 'application' && found.cloudAccountId) {
       return this.cloud.read(ctx, serviceId, since);
     }
@@ -108,22 +125,28 @@ export class RuntimeLogs {
       count: RUNTIME_LOG_LINES,
       since: startTime,
     });
-    return { lines, next: lines.at(-1)?.at ?? startTime, more: false };
+    return {
+      lines,
+      next: lines.at(-1)?.at ?? startTime,
+      more: lines.length >= RUNTIME_LOG_LINES,
+    };
   }
 
   /**
-   * The last `count` lines a Service wrote, only those at or after `since`
-   * when given — `read_runtime_log`'s window (ADR-0095). A cloud Service's
-   * log is read as the Cloudgate CLI reads it: its last few minutes, and
-   * when that holds fewer than `count`, as far back as a read goes (an hour).
+   * The last `count` lines the `serviceType` Service `serviceId` names
+   * wrote, only those at or after `since` when given — `read_runtime_log`'s
+   * window (ADR-0095); an id of the other kind is the same 404. A cloud
+   * Service's log is read as the Cloudgate CLI reads it: its last few
+   * minutes, and when that holds fewer than `count`, as far back as a read
+   * goes (an hour) — see {@link inCloud}.
    */
   async window(
     ctx: PermissionCtx,
     serviceId: string,
-    query: { count: number; since?: number },
+    query: RuntimeLogWindowQuery,
   ): Promise<RuntimeLogWindow> {
     await this.permissions.checkServiceAccess(ctx, serviceId, 'read');
-    const found = await this.serviceOf(ctx, serviceId);
+    const found = await this.serviceOf(ctx, serviceId, [query.serviceType]);
     const lines =
       found.serviceType === 'application' && found.cloudAccountId
         ? await this.inCloud(ctx, serviceId, query)
@@ -131,13 +154,14 @@ export class RuntimeLogs {
     return { serviceType: found.serviceType, serviceId, lines };
   }
 
-  /** The Application or Compose `serviceId` names in this Organization, or a 404. */
+  /** The Service of one of `kinds` that `serviceId` names in this Organization, or a 404. */
   private async serviceOf(
     ctx: PermissionCtx,
     serviceId: string,
+    kinds: readonly RuntimeLogServiceType[],
   ): Promise<ServiceParent & { serviceType: RuntimeLogServiceType }> {
     const organizationId = ctx.session.activeOrganizationId;
-    for (const serviceType of ['application', 'compose'] as const) {
+    for (const serviceType of kinds) {
       try {
         const found = await findParentService(
           this.db,
@@ -153,32 +177,63 @@ export class RuntimeLogs {
     throw new NotFoundException('Service not found');
   }
 
+  /**
+   * A cloud Service's window. Each start is read forward a page at a time,
+   * for at most {@link CLOUD_WINDOW_PAGES} pages ({@link cloudPass}): the
+   * last few minutes first, or `since` when given. When the last few minutes
+   * hold fewer than `count`, the hour before is read too and merged with them
+   * by id. An hour holding more than those pages reach ends before the last
+   * few minutes, so its lines would be old ones with a gap before the newest:
+   * the window is then the later start's lines alone. A first start that
+   * itself holds more never reaches its last lines, and is refused asking for
+   * a later `since` rather than answering old ones.
+   */
   private async inCloud(
     ctx: PermissionCtx,
     serviceId: string,
-    query: { count: number; since?: number },
+    query: RuntimeLogWindowQuery,
   ): Promise<RuntimeLogLine[]> {
-    // `0` asks for as far back as a read goes (`startOf`'s lookback).
-    const starts = query.since === undefined ? [undefined, 0] : [query.since];
-    let lines: RuntimeLogLine[] = [];
-    for (const start of starts) {
-      const seen = new Map<string, RuntimeLogLine>();
-      let read = await this.cloud.read(ctx, serviceId, start);
-      for (const line of read.lines) seen.set(line.id, line);
-      for (let page = 1; read.more && page < CLOUD_WINDOW_PAGES; page += 1) {
-        read = await this.cloud.read(ctx, serviceId, read.next);
-        for (const line of read.lines) seen.set(line.id, line);
-      }
-      lines = mergedWindow([[...seen.values()]], query.count, query.since);
-      if (lines.length >= query.count) break;
+    const later = await this.cloudPass(ctx, serviceId, query.since);
+    if (later === null) {
+      throw new UnprocessableEntityException(
+        'More of the Runtime log was written after since than one read reaches',
+      );
     }
-    return lines;
+    const window = mergedWindow([later], query.count, query.since);
+    if (query.since !== undefined || window.length >= query.count) {
+      return window;
+    }
+    // `0` asks for as far back as a read goes (`startOf`'s lookback).
+    const hour = await this.cloudPass(ctx, serviceId, 0);
+    if (hour === null) return window;
+    const byId = new Map<string, RuntimeLogLine>();
+    for (const line of [...hour, ...later]) byId.set(line.id, line);
+    return mergedWindow([[...byId.values()]], query.count);
+  }
+
+  /**
+   * Every line from `start` on, by id, reading page after page while more is
+   * left; `null` when more is still left after the last page allowed.
+   */
+  private async cloudPass(
+    ctx: PermissionCtx,
+    serviceId: string,
+    start: number | undefined,
+  ): Promise<RuntimeLogLine[] | null> {
+    const seen = new Map<string, RuntimeLogLine>();
+    let read = await this.cloud.read(ctx, serviceId, start);
+    for (const line of read.lines) seen.set(line.id, line);
+    for (let page = 1; read.more && page < CLOUD_WINDOW_PAGES; page += 1) {
+      read = await this.cloud.read(ctx, serviceId, read.next);
+      for (const line of read.lines) seen.set(line.id, line);
+    }
+    return read.more ? null : [...seen.values()];
   }
 
   private async onMachine(
     ctx: PermissionCtx,
     found: ServiceParent & { serviceType: RuntimeLogServiceType },
-    query: { count: number; since?: number },
+    query: { count: number; since?: number; maxBuffer?: number },
   ): Promise<RuntimeLogLine[]> {
     // The container sockets' own gate. It has already been answered above
     // for this caller, so a refusal here would be a race, not a decision.
@@ -214,8 +269,7 @@ export class RuntimeLogs {
             follow: false,
             taskPrefix: source.swarm,
           }),
-          // One copy's read is held to a log window's bytes.
-          { maxBuffer: LOG_WINDOW_MAX_BYTES },
+          query.maxBuffer === undefined ? {} : { maxBuffer: query.maxBuffer },
         );
         // Docker replays what the app wrote to stderr on its own stderr.
         copies.push(
@@ -224,7 +278,9 @@ export class RuntimeLogs {
       }
       return mergedWindow(copies, query.count, query.since);
     } catch (error) {
-      if (isMaxBufferExceeded(error)) throw new PayloadTooLargeException();
+      if (isMaxBufferExceeded(error)) {
+        throw new PayloadTooLargeException('Runtime log window is too large');
+      }
       rethrowIfHostUnreachable(this.logger, remoteId, error);
       throw error;
     }

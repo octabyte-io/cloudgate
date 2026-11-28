@@ -171,6 +171,7 @@ const FROZEN_ROUTES: Readonly<Record<string, readonly string[]>> = {
     'postgres',
     'redis',
   ],
+  read_runtime_log: ['application', 'compose'],
 };
 
 /**
