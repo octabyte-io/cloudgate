@@ -96,6 +96,19 @@ export class BoughtServersController {
     return this.purchases.purchases(toCtx(user, session));
   }
 
+  /**
+   * The **Bought Servers** page (#199): every Bought Server of the
+   * Organization but the Deleted and the Failed, from the database alone.
+   */
+  @Get()
+  @RequirePermission('server', 'read')
+  listAll(
+    @CurrentUser() user: AuthSession['user'],
+    @CurrentSession() session: Session,
+  ) {
+    return this.changes.list(toCtx(user, session));
+  }
+
   /** Buy: charged at once; the machine is asked for only once the payment succeeds. */
   @Post()
   @RequirePermission('server', 'create')

@@ -10840,6 +10840,18 @@
       }
     },
     "/bought-servers": {
+      "get": {
+        "operationId": "BoughtServersController_listAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "BoughtServers"
+        ]
+      },
       "post": {
         "operationId": "BoughtServersController_create",
         "parameters": [],

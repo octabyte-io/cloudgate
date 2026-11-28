@@ -13,9 +13,10 @@ import { createTestApp, TestAppContext } from '../utils/test-app';
 jest.setTimeout(180_000);
 
 /**
- * Off hosted mode the feature does not exist (ADR-0071, #1388): both routes
- * answer a bare 404, as the Operator page's do, whatever tokens the
- * environment holds, and the provider is never asked.
+ * Off hosted mode the feature does not exist (ADR-0071, #1388): these
+ * routes, the Bought Servers page's list (#199) among them, answer a bare
+ * 404, as the Operator page's do, whatever tokens the environment holds,
+ * and the provider is never asked.
  */
 describe('Bought Servers on a Self-hosted instance (e2e)', () => {
   let ctx: TestAppContext;
@@ -39,14 +40,15 @@ describe('Bought Servers on a Self-hosted instance (e2e)', () => {
     await ctx?.teardown();
   });
 
-  it.each(['/bought-servers/offer', '/bought-servers/catalogue'])(
-    '%s does not exist',
-    async (path) => {
-      const res = await request(http).get(path).set('Cookie', cookie);
+  it.each([
+    '/bought-servers/offer',
+    '/bought-servers/catalogue',
+    '/bought-servers',
+  ])('%s does not exist', async (path) => {
+    const res = await request(http).get(path).set('Cookie', cookie);
 
-      expect(res.status).toBe(404);
-      expect(ctx.hetzner.prices.calls).toEqual([]);
-      expect(ctx.hetzner.machines.calls).toEqual([]);
-    },
-  );
+    expect(res.status).toBe(404);
+    expect(ctx.hetzner.prices.calls).toEqual([]);
+    expect(ctx.hetzner.machines.calls).toEqual([]);
+  });
 });

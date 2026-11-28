@@ -7,7 +7,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq, notInArray } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { FrozenOrganizations } from '../cloud/billing/frozen-organizations.service';
 import { payingOrganizationOf } from '../cloud/billing/paying-organization';
@@ -83,6 +83,27 @@ export interface BoughtServerView {
     diskGb: number;
   } | null;
 }
+
+/**
+ * One row of the **Bought Servers** page (#199): what the Organization
+ * bought, by what it is. Read from the database alone, so it holds nothing
+ * only a machine can say, such as its last backup.
+ */
+export interface BoughtServerRow {
+  id: string;
+  /** Its Server, which Manage opens; null while it has no `server` row. */
+  serverId: string | null;
+  name: string;
+  stage: BoughtServerStage;
+  size: BoughtServerView['size'];
+  location: BoughtServerView['location'];
+  backups: boolean;
+  /** Every line together, US cents a month. */
+  monthlyCents: number;
+}
+
+/** The stages the Bought Servers page leaves out: gone, or never made. */
+const NOT_LISTED: BoughtServerStage[] = ['deleted', 'failed'];
 
 /** One size the Server can move to, in its own Location, as its Settings show it. */
 export interface SizeChoice {
@@ -262,7 +283,7 @@ export class BoughtServerChanges {
       .from(boughtServerLine)
       .where(eq(boughtServerLine.boughtServerId, id));
     const target = row.changeTarget;
-    const catalogue = await this.readCatalogue(row);
+    const catalogue = await this.readCatalogue(`Bought Server ${row.id}`);
     return {
       id: row.id,
       name: row.name,
@@ -293,6 +314,61 @@ export class BoughtServerChanges {
         : null,
       ...aboutIn(catalogue, row),
     };
+  }
+
+  /**
+   * The **Bought Servers** page (#199): every Bought Server of the
+   * Organization but the Deleted and the Failed, oldest first. It asks the
+   * provider about no machine; its size and Location are named from the
+   * price list, as {@link view}'s are, and null while that can't be read.
+   */
+  async list(ctx: PermissionCtx): Promise<BoughtServerRow[]> {
+    this.assertPresent();
+    const rows = await this.db
+      .select()
+      .from(boughtServer)
+      .where(
+        and(
+          eq(boughtServer.organizationId, ctx.session.activeOrganizationId),
+          notInArray(boughtServer.stage, NOT_LISTED),
+        ),
+      )
+      .orderBy(asc(boughtServer.createdAt), asc(boughtServer.id));
+    if (rows.length === 0) return [];
+    const lines = await this.db
+      .select({
+        boughtServerId: boughtServerLine.boughtServerId,
+        monthlyCents: boughtServerLine.monthlyCents,
+      })
+      .from(boughtServerLine)
+      .innerJoin(
+        boughtServer,
+        eq(boughtServer.id, boughtServerLine.boughtServerId),
+      )
+      .where(eq(boughtServer.organizationId, ctx.session.activeOrganizationId));
+    const monthly = new Map<string, number>();
+    for (const line of lines) {
+      monthly.set(
+        line.boughtServerId,
+        (monthly.get(line.boughtServerId) ?? 0) + line.monthlyCents,
+      );
+    }
+    const catalogue = await this.readCatalogue(
+      `the Bought Servers of ${ctx.session.activeOrganizationId}`,
+    );
+    return rows.map((row) => {
+      const { size, location } = aboutIn(catalogue, row);
+      return {
+        id: row.id,
+        serverId: row.serverId,
+        name: row.name,
+        stage: row.stage,
+        size,
+        location,
+        backups: row.backups,
+        monthlyCents: monthly.get(row.id) ?? 0,
+      };
+    });
   }
 
   /**
@@ -736,19 +812,19 @@ export class BoughtServerChanges {
 
   /** What backups cost a month now for this size there, in cents; null when it is not sold there any more. */
   private async backupsCents(row: BoughtServer): Promise<number | null> {
-    const catalogue = await this.readCatalogue(row);
+    const catalogue = await this.readCatalogue(`Bought Server ${row.id}`);
     return catalogue ? backupsCentsIn(catalogue, row) : null;
   }
 
   /** The catalogue as it is, or null, logged, when it cannot be read now. */
   private async readCatalogue(
-    row: BoughtServer,
+    what: string,
   ): Promise<BoughtServerCatalogue | null> {
     try {
       return await this.catalogue.catalogue();
     } catch (error) {
       this.logger.warn(
-        `Could not read the catalogue for Bought Server ${row.id}: ${(error as Error).message}`,
+        `Could not read the catalogue for ${what}: ${(error as Error).message}`,
       );
       return null;
     }
