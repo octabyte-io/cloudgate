@@ -1,5 +1,6 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 
+import { useBoughtServerOffer } from "@/features/server/buy/use-bought-servers";
 import { environmentsApi } from "@/lib/api/endpoints/environments";
 import { projectsApi } from "@/lib/api/endpoints/projects";
 import { serversApi } from "@/lib/api/endpoints/servers";
@@ -7,7 +8,7 @@ import { keys } from "@/lib/api/keys";
 import { useActiveOrganizationId } from "@/lib/auth/client";
 import type { IconName } from "@/lib/design/icons";
 
-import { organizationNav } from "./nav";
+import { organizationNav, type OrganizationFacts } from "./nav";
 
 /**
  * What ⌘K searches (e-console.html:2306-2400).
@@ -93,9 +94,12 @@ export const PREFIXES: {
   },
 ];
 
-/** Every Organization-scope destination, from the one table that defines them. */
-function pages(): PaletteResult[] {
-  return organizationNav().flatMap((entry) =>
+/**
+ * Every Organization-scope destination, from the one table that defines them,
+ * with the rail's conditional rows decided the same way.
+ */
+function pages(facts: OrganizationFacts): PaletteResult[] {
+  return organizationNav(facts).flatMap((entry) =>
     (entry.kind === "item" || entry.kind === "group") && entry.tab !== undefined
       ? [
           {
@@ -139,6 +143,10 @@ export function usePaletteSources(open: boolean): {
     queryFn: () => projectsApi.list(),
     enabled,
   });
+
+  // The Bought Servers page, offered only where buying is. Asked whether the
+  // palette is open or not, since the rail asks it too and the answer is cached.
+  const boughtServerOffered = useBoughtServerOffer().offered;
 
   // Environments are listed per Project — `GET /environments` takes a
   // `projectId` and there is no org-wide route — so this is one request per
@@ -188,7 +196,7 @@ export function usePaletteSources(open: boolean): {
         href: `/servers/${server.serverId}`,
       }),
     ),
-    ...pages(),
+    ...pages({ boughtServerOffered }),
   ];
 
   // Environments hang off the Project list, so a Project list that failed is

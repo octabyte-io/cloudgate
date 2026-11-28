@@ -1,6 +1,7 @@
 import { usePathname } from "next/navigation";
 import { createContext, use, useEffect, useMemo } from "react";
 
+import { useBoughtServerOffer } from "@/features/server/buy/use-bought-servers";
 import { useBrandingOrDefault } from "@/lib/api/use-branding";
 import { useActiveOrganizationId } from "@/lib/auth/client";
 import { usePermission } from "@/lib/auth/use-permission";
@@ -167,13 +168,22 @@ function useScopeValue(): ScopeContext {
   const shellAllowed = usePermission({ service: ["update"] }).allowed;
   // An Application's Logs tab takes service:read, and fails open the same way.
   const logsAllowed = usePermission({ service: ["read"] }).allowed;
+  // The Organization rail's Bought Servers row. Unlike the gates above it
+  // fails closed: the row shows only on a yes.
+  const boughtServerOffered = useBoughtServerOffer().offered;
 
   // `resolveScope` is pure, so this memo is only about identity: every consumer
   // of the context re-renders when this object changes, and it must not change
   // because a query re-reported the same rows. `q` is memoized on those rows by
   // `useScopeQueries`, which is the hook that knows which of its fields matter.
   return useMemo(
-    () => resolveScope(scope, q, { shellAllowed, logsAllowed }),
-    [scope, q, shellAllowed, logsAllowed],
+    () =>
+      resolveScope(
+        scope,
+        q,
+        { shellAllowed, logsAllowed },
+        { boughtServerOffered },
+      ),
+    [scope, q, shellAllowed, logsAllowed, boughtServerOffered],
   );
 }

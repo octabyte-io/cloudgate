@@ -4,7 +4,7 @@ import { serverMark } from "@/lib/design/server-mark";
 import { isApiError } from "@/lib/api/api-error";
 import type { TabSubject } from "@/lib/shell/tab-registry";
 
-import { scopeExit, scopeNav } from "./nav";
+import { scopeExit, scopeNav, type OrganizationFacts } from "./nav";
 import { scopeRoot, type ScopeRoute } from "./scope";
 import type { ScopeContext, ScopeParent, ScopeSibling } from "./scope-provider";
 import type { ScopeQueries } from "./use-scope-queries";
@@ -20,8 +20,9 @@ export function resolveScope(
   scope: ScopeRoute,
   q: ScopeQueries,
   caller: CallerFacts = {},
+  organization: OrganizationFacts = {},
 ): ScopeContext {
-  const context = resolveFound(scope, q, caller);
+  const context = resolveFound(scope, q, caller, organization);
   // A scope that answered 404 has no tabs to offer: every one of them
   // leads to the same not-found screen, so the rail keeps only its way out
   // ("Back to …") rather than a full tab list with Settings lit over nothing.
@@ -40,8 +41,9 @@ function resolveFound(
   scope: ScopeRoute,
   q: ScopeQueries,
   caller: CallerFacts,
+  organization: OrganizationFacts,
 ): ScopeContext {
-  const nav = scopeNav(scope);
+  const nav = scopeNav(scope, undefined, organization);
   const base = {
     scope,
     nav,

@@ -24,6 +24,15 @@ const reader = vi.hoisted(() => ({ hosted: false, operator: false }));
 vi.mock("@/features/operator/use-operator", () => ({
   useIsOperator: () => ({ ...reader, pending: false }),
 }));
+// Whether buying a Server is offered: the instance's mode, then the offer.
+const about = vi.hoisted(() => vi.fn());
+const offer = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/api/endpoints/settings", () => ({
+  settingsApi: { about: () => about() },
+}));
+vi.mock("@/lib/api/endpoints/bought-servers", () => ({
+  boughtServersApi: { offer: () => offer() },
+}));
 
 const { usePaletteSources } = await import("./palette-sources");
 
@@ -31,6 +40,8 @@ afterEach(cleanup);
 beforeEach(() => {
   reader.hosted = false;
   reader.operator = false;
+  about.mockReset().mockResolvedValue({ mode: "self-hosted" });
+  offer.mockReset().mockResolvedValue({ offered: false });
   servers.mockReset().mockResolvedValue([]);
   projects.mockReset().mockResolvedValue([]);
   environments.mockReset().mockResolvedValue([]);
@@ -109,5 +120,33 @@ describe("usePaletteSources go: pages", () => {
     reader.hosted = true;
     reader.operator = true;
     expect(pages(sources())).toContain("Requests");
+  });
+
+  it("offers no Bought Servers page on a Self-hosted instance", async () => {
+    const result = sources();
+
+    await waitFor(() => expect(result.current.pending).toBe(false));
+    expect(pages(result)).not.toContain("Bought Servers");
+    expect(offer).not.toHaveBeenCalled();
+  });
+
+  it("offers no Bought Servers page on the Hosted instance while buying is not offered", async () => {
+    about.mockResolvedValue({ mode: "hosted" });
+    const result = sources();
+
+    await waitFor(() => expect(offer).toHaveBeenCalled());
+    await waitFor(() => expect(result.current.pending).toBe(false));
+    expect(pages(result)).not.toContain("Bought Servers");
+  });
+
+  it("offers the Bought Servers page on the Hosted instance with buying offered", async () => {
+    about.mockResolvedValue({ mode: "hosted" });
+    offer.mockResolvedValue({ offered: true });
+    const result = sources();
+
+    await waitFor(() => expect(pages(result)).toContain("Bought Servers"));
+    expect(
+      result.current.results.find((row) => row.name === "Bought Servers"),
+    ).toMatchObject({ kind: "go", href: "/bought-servers" });
   });
 });
