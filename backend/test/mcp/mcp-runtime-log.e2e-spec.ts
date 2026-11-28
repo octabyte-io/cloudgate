@@ -801,20 +801,30 @@ describe('MCP read_runtime_log (e2e)', () => {
 
     it('asks for a later since when the Cloud account says more is left on every page', async () => {
       const t = await tree();
-      const group = await webInCloud(t);
+      await webInCloud(t);
       const now = Date.now();
-      ctx.cloud.writeLog(group, 'task-a', [
-        { timestamp: now - 2_000, message: 'a: listening on :8080\n' },
-        { timestamp: now - 1_000, message: 'a: Error: out of memory\n' },
-      ]);
-      const filterLogStreams = ctx.cloud.filterLogStreams.bind(ctx.cloud);
+      // Every page answers the same two lines and says more is left.
       const always = jest
         .spyOn(ctx.cloud, 'filterLogStreams')
-        .mockImplementation(async (session, query) => {
-          const answer = await filterLogStreams(session, query);
-          return answer.ok
-            ? { ok: true, value: { ...answer.value, more: true } }
-            : answer;
+        .mockResolvedValue({
+          ok: true,
+          value: {
+            events: [
+              {
+                eventId: 'event-1',
+                logStreamName: 'service/service/task-a',
+                timestamp: now - 2_000,
+                message: 'a: listening on :8080\n',
+              },
+              {
+                eventId: 'event-2',
+                logStreamName: 'service/service/task-a',
+                timestamp: now - 1_000,
+                message: 'a: Error: out of memory\n',
+              },
+            ],
+            more: true,
+          },
         });
       const agent = await agentFor(t);
 
