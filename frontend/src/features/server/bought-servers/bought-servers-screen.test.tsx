@@ -17,6 +17,7 @@ const api = vi.hoisted(() => ({
   finishPaying: vi.fn(),
 }));
 const NOT_FOUND = "NEXT_NOT_FOUND";
+const permission = vi.hoisted(() => ({ allowed: true }));
 
 vi.mock("@/lib/api/use-instance-mode", () => ({
   useInstanceMode: () => ({ data: "hosted", isPending: false }),
@@ -26,7 +27,7 @@ vi.mock("@/lib/auth/client", () => ({
 }));
 vi.mock("@/lib/auth/use-permission", async (original) => ({
   ...(await original<typeof import("@/lib/auth/use-permission")>()),
-  usePermission: () => ({ allowed: true, pending: false }),
+  usePermission: () => ({ allowed: permission.allowed, pending: false }),
 }));
 vi.mock("@/lib/api/endpoints/bought-servers", () => ({
   boughtServersApi: api,
@@ -42,6 +43,7 @@ vi.mock("next/navigation", () => ({
 
 const { BoughtServersScreen } = await import("./bought-servers-screen");
 const { PURCHASES_POLL_MS } = await import("../buy/use-bought-servers");
+const { SERVER_CREATE_REFUSAL } = await import("../use-server");
 
 const HELSINKI = { city: "Helsinki", country: "FI" };
 
@@ -113,6 +115,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  permission.allowed = true;
   vi.useRealTimers();
   vi.restoreAllMocks();
   api.offer.mockReset();
@@ -266,6 +269,20 @@ describe("BoughtServersScreen", () => {
     expect(
       screen.getByRole("link", { name: "Buy a Server" }).getAttribute("href"),
     ).toBe("/servers/buy");
+  });
+
+  it("says on screen why Buy a Server is off for a role that cannot add a Server", async () => {
+    permission.allowed = false;
+    renderScreen();
+
+    await screen.findByRole("table", { name: "Bought Servers" });
+    const buy = screen.getByRole("button", { name: "Buy a Server" });
+    expect(buy.getAttribute("aria-disabled")).toBe("true");
+    const describedBy = buy.getAttribute("aria-describedby");
+    expect(describedBy).toBeTruthy();
+    const why = document.getElementById(describedBy!);
+    expect(why?.textContent).toBe(SERVER_CREATE_REFUSAL);
+    expect(screen.getByText(SERVER_CREATE_REFUSAL)).toBe(why);
   });
 
   it("starts its empty state with Buy a Server while nothing is bought", async () => {

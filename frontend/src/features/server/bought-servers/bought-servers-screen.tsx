@@ -1,7 +1,7 @@
 "use client";
 
 import { notFound } from "next/navigation";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Card } from "@/components/console/card";
 import { Cols } from "@/components/console/cols";
@@ -39,6 +39,7 @@ export function BoughtServersScreen() {
   const canCreate = usePermission({ server: ["create"] });
   const finish = useFinishPaying();
   const [said, setSaid] = useState<string | null>(null);
+  const refusalId = useId();
 
   if (!offer.pending && !offer.offered) notFound();
 
@@ -58,7 +59,12 @@ export function BoughtServersScreen() {
       Buy a Server
     </LinkButton>
   ) : (
-    <Button variant="pri" disabled title={SERVER_CREATE_REFUSAL}>
+    <Button
+      variant="pri"
+      disabled
+      title={SERVER_CREATE_REFUSAL}
+      aria-describedby={refusalId}
+    >
       <Icon name="plus" size={15} />
       Buy a Server
     </Button>
@@ -76,6 +82,11 @@ export function BoughtServersScreen() {
         title="Bought Servers"
         icon="cash"
         lede="The Servers you bought from Cloudgate: their backups, size and what they cost."
+        strap={
+          canCreate.allowed ? undefined : (
+            <span id={refusalId}>{SERVER_CREATE_REFUSAL}</span>
+          )
+        }
         actions={buy}
       />
       <Cols>
