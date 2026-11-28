@@ -7,35 +7,10 @@ import type {
   BoughtServerRow,
   BoughtServerStage,
 } from "@/lib/api/endpoints/bought-servers";
-import type { Mark } from "@/lib/design/status";
 
 import { perMonth } from "../bought-server/per-month";
-import { FAMILIES, countryName, sizeLabel } from "../buy/buy-model";
-
-/**
- * How each stage the page lists reads. Ready is the one at rest; waiting on
- * the customer stands out; Deleting is only shown going, as on the Servers
- * page's "Servers being bought".
- */
-const STAGE_MARKS: Partial<Record<BoughtServerStage, Mark>> = {
-  ready: { glyph: "●", tone: "ok", label: "Ready" },
-  changing: { glyph: "◐", tone: "info", label: "Changing" },
-  setting_up: { glyph: "◐", tone: "info", label: "Setting up" },
-  creating: { glyph: "◐", tone: "info", label: "Creating" },
-  waiting_for_payment: {
-    glyph: "◐",
-    tone: "warn",
-    label: "Waiting for payment",
-  },
-  deleting: { glyph: "○", tone: "mute", label: "Deleting" },
-};
-
-/** A size by what it is, as the Server's About this Server names it. */
-function sizeOf(row: BoughtServerRow): string | null {
-  if (!row.size) return null;
-  const family = FAMILIES.find((each) => each.value === row.size?.family);
-  return [family?.label, sizeLabel(row.size)].filter(Boolean).join(" · ");
-}
+import { stageMark } from "../bought-server/stage-mark";
+import { countryName, sizeName } from "../buy/buy-model";
 
 /**
  * Whether a Bought Server in this stage is on the plan's invoice: not while
@@ -78,23 +53,13 @@ export function boughtServerColumns({
     {
       id: "stage",
       head: "Stage",
-      cell: (row) => (
-        <StatusPill
-          mark={
-            STAGE_MARKS[row.stage] ?? {
-              glyph: "◐",
-              tone: "info",
-              label: row.stage,
-            }
-          }
-        />
-      ),
+      cell: (row) => <StatusPill mark={stageMark(row.stage)} />,
     },
     {
       id: "size",
       head: "Size",
       tone: "muted",
-      cell: (row) => sizeOf(row) ?? <Dash word="Unknown" />,
+      cell: (row) => (row.size ? sizeName(row.size) : <Dash word="Unknown" />),
     },
     {
       id: "backups",

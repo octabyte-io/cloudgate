@@ -6,7 +6,7 @@ import type {
   BoughtServerView,
 } from "@/lib/api/endpoints/bought-servers";
 
-import { FAMILIES, countryName, sizeLabel } from "../buy/buy-model";
+import { countryName, sizeName } from "../buy/buy-model";
 import { perMonth } from "./per-month";
 
 /** What each line of a Bought Server's charge is called. */
@@ -23,9 +23,6 @@ const LINE_LABEL: Record<BoughtServerLineKind, string> = {
  * the catalogue could not name shows as a dash.
  */
 export function BoughtServerFacts({ view }: { view: BoughtServerView }) {
-  const family = view.size
-    ? FAMILIES.find((each) => each.value === view.size?.family)?.label
-    : undefined;
   return (
     <>
       <Card>
@@ -72,13 +69,7 @@ export function BoughtServerFacts({ view }: { view: BoughtServerView }) {
             <KVRow
               label="Size"
               wrap
-              value={
-                view.size ? (
-                  [family, sizeLabel(view.size)].filter(Boolean).join(" · ")
-                ) : (
-                  <Dash word="Unknown" />
-                )
-              }
+              value={view.size ? sizeName(view.size) : <Dash word="Unknown" />}
             />
           </KVList>
         </Card.Body>

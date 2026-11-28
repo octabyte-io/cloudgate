@@ -3,38 +3,16 @@ import { useState } from "react";
 import { Card } from "@/components/console/card";
 import { StatusPill } from "@/components/console/status-pill";
 import { Button } from "@/components/ui/button";
-import type {
-  BoughtServerStage,
-  ServerPurchase,
-} from "@/lib/api/endpoints/bought-servers";
+import type { ServerPurchase } from "@/lib/api/endpoints/bought-servers";
 import { errorMessage } from "@/lib/api/error-message";
-import type { Mark } from "@/lib/design/status";
 
+import { stageMark } from "../bought-server/stage-mark";
 import { centsUsd } from "./buy-summary";
 import {
   useCancelPurchase,
   useFinishPaying,
   useServerPurchases,
 } from "./use-bought-servers";
-
-/** How a stage reads while the Server has no row of its own. */
-export const PURCHASE_STAGE_LABELS: Partial<Record<BoughtServerStage, string>> =
-  {
-    waiting_for_payment: "Waiting for payment",
-    creating: "Creating",
-    deleting: "Deleting",
-  };
-
-/**
- * Waiting on the customer stands out; Deleting is only shown going. A stage is
- * a status, so it is a pill with its glyph and word — not a chip, which is a
- * static label (rule 5, and `chip`'s own contract).
- */
-const STAGE_MARKS: Partial<Record<BoughtServerStage, Omit<Mark, "label">>> = {
-  waiting_for_payment: { tone: "warn", glyph: "◐" },
-  creating: { tone: "info", glyph: "◐" },
-  deleting: { tone: "mute", glyph: "○" },
-};
 
 /**
  * The Bought Servers not made yet (ADR-0071), above the fleet: each counts
@@ -97,15 +75,7 @@ export function PurchasesCard({ enabled }: { enabled: boolean }) {
                   <span className="min-w-0 text-body font-medium text-tx wrap-anywhere">
                     {row.name}
                   </span>
-                  <StatusPill
-                    mark={{
-                      ...(STAGE_MARKS[row.stage] ?? {
-                        tone: "info",
-                        glyph: "◐",
-                      }),
-                      label: PURCHASE_STAGE_LABELS[row.stage] ?? row.stage,
-                    }}
-                  />
+                  <StatusPill mark={stageMark(row.stage)} />
                   <span className="num text-meta text-tx-2">
                     {centsUsd(row.monthlyCents)}/month
                   </span>
