@@ -56,7 +56,7 @@ function toCtx(user: AuthSession['user'], session: Session): PermissionCtx {
 export class BoughtServersController {
   constructor(
     private readonly boughtServers: BoughtServersService,
-    private readonly purchases: BoughtServerPurchases,
+    private readonly buying: BoughtServerPurchases,
     private readonly changes: BoughtServerChanges,
     private readonly backups: BoughtServerBackups,
   ) {}
@@ -83,17 +83,17 @@ export class BoughtServersController {
     @CurrentSession() session: Session,
     @Query() query: TodayQueryDto,
   ) {
-    return this.purchases.today(toCtx(user, session), query);
+    return this.buying.today(toCtx(user, session), query);
   }
 
   /** The Organization's Bought Servers not yet made: waiting for payment, or being created. */
   @Get('purchases')
   @RequirePermission('server', 'read')
-  list(
+  purchases(
     @CurrentUser() user: AuthSession['user'],
     @CurrentSession() session: Session,
   ) {
-    return this.purchases.purchases(toCtx(user, session));
+    return this.buying.purchases(toCtx(user, session));
   }
 
   /**
@@ -102,7 +102,7 @@ export class BoughtServersController {
    */
   @Get()
   @RequirePermission('server', 'read')
-  listAll(
+  list(
     @CurrentUser() user: AuthSession['user'],
     @CurrentSession() session: Session,
   ) {
@@ -117,7 +117,7 @@ export class BoughtServersController {
     @CurrentSession() session: Session,
     @Body() body: BuyDto,
   ) {
-    return this.purchases.buy(toCtx(user, session), body);
+    return this.buying.buy(toCtx(user, session), body);
   }
 
   /** *Finish paying*: where the payment stands, and where to finish it (3D Secure). */
@@ -133,7 +133,7 @@ export class BoughtServersController {
     // Validated, so a bad `returnTo` is refused as anywhere else, but not
     // read: an open Checkout keeps the return Buy gave it (`finishPayingSchema`).
     void body;
-    return this.purchases.finishPaying(toCtx(user, session), id);
+    return this.buying.finishPaying(toCtx(user, session), id);
   }
 
   /**
@@ -149,7 +149,7 @@ export class BoughtServersController {
     @CurrentSession() session: Session,
     @Param('id') id: string,
   ) {
-    return this.purchases.cancel(toCtx(user, session), id);
+    return this.buying.cancel(toCtx(user, session), id);
   }
 
   /**
