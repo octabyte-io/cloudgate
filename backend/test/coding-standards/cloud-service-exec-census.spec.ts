@@ -629,6 +629,10 @@ const CENSUS: Readonly<Record<string, Verdict>> = {
     verdict: SERVER_ONLY,
     why: "Grows a Stack VM's data disk's filesystem after a change through the stack's run target, which reaches the Stack VM through the cloud's tunnel (ADR-0070, #1368), never the platform host.",
   },
+  'project-config/runtime-log/runtime-logs.service.ts#onMachine': {
+    verdict: SERVER_ONLY,
+    why: "A Service's Runtime log, read with `docker … logs` on its own machine. Both callers (`read`, `window`) fork a cloud Application away to `CloudRuntimeLogs` first; a Compose stack in a Cloud account goes to its own Stack VM's run target through the cloud's tunnel (ADR-0070), never the platform host.",
+  },
   'databases/common/database-ops.ts#scaleDatabaseService': {
     verdict: SERVER_ONLY,
     why: 'Start, Stop and Rebuild ask `inCloud` first and go to the cloud.',
