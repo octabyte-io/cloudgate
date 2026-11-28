@@ -74,6 +74,16 @@ const WAITING: BoughtServerRow = {
   backups: false,
   monthlyCents: 900,
 };
+const DELETING: BoughtServerRow = {
+  id: "old",
+  serverId: null,
+  name: "old-db",
+  stage: "deleting",
+  size: { family: "shared", vcpus: 2, memoryGb: 4, diskGb: 40 },
+  location: HELSINKI,
+  backups: false,
+  monthlyCents: 1200,
+};
 
 function renderScreen() {
   const client = new QueryClient({
@@ -138,6 +148,22 @@ describe("BoughtServersScreen", () => {
     renderScreen();
 
     await screen.findByRole("table", { name: "Bought Servers" });
+    expect(document.body.textContent).toContain(
+      "2 Bought Servers, $41/month on your plan's invoice. 1 is waiting for payment.",
+    );
+  });
+
+  it("leaves a Deleting Server out of the count and the total, and shows no price for it", async () => {
+    api.list.mockResolvedValue([WEB, EDGE, WAITING, DELETING]);
+    renderScreen();
+
+    const old = await rowOf("old-db");
+    expect(
+      old.querySelector('[data-slot="status-pill"]')?.textContent,
+    ).toContain("Deleting");
+    // Deletion has already taken it off the subscription.
+    expect(old.textContent).not.toContain("$12/month");
+    expect(old.textContent).toContain("Not charged");
     expect(document.body.textContent).toContain(
       "2 Bought Servers, $41/month on your plan's invoice. 1 is waiting for payment.",
     );

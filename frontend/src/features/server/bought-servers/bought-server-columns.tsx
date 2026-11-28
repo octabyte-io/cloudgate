@@ -38,6 +38,15 @@ function sizeOf(row: BoughtServerRow): string | null {
 }
 
 /**
+ * Whether a Bought Server in this stage is on the plan's invoice: not while
+ * it waits for payment, and no longer once it is Deleting, which takes it off
+ * the subscription before the provider deletes it.
+ */
+export function isCharged(stage: BoughtServerStage): boolean {
+  return stage !== "waiting_for_payment" && stage !== "deleting";
+}
+
+/**
  * The Bought Servers table: name and Location, stage, size, backups, monthly
  * price, then Manage (its Server's Bought Server tab) or, while it waits for
  * payment, *Finish paying*. One being created or deleted has no Server to
@@ -101,7 +110,12 @@ export function boughtServerColumns({
       id: "monthly",
       head: "Monthly",
       tone: "num",
-      cell: (row) => perMonth(row.monthlyCents),
+      cell: (row) =>
+        row.stage === "deleting" ? (
+          <Dash word="Not charged" />
+        ) : (
+          perMonth(row.monthlyCents)
+        ),
     },
     {
       id: "actions",

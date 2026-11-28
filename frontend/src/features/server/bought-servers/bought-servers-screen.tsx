@@ -25,7 +25,7 @@ import {
   useFinishPaying,
 } from "../buy/use-bought-servers";
 import { SERVER_CREATE_REFUSAL } from "../use-server";
-import { boughtServerColumns } from "./bought-server-columns";
+import { boughtServerColumns, isCharged } from "./bought-server-columns";
 
 /**
  * The **Bought Servers** page (#199, spec #196), behind the Organization
@@ -141,11 +141,12 @@ export function BoughtServersScreen() {
 /**
  * How many there are and what they cost a month on the plan's invoice. One
  * still waiting for payment is not on it yet, so it is counted apart and
- * left out of the total.
+ * left out of the total; one Deleting is off it already, since deletion
+ * takes it off the subscription first, so it is left out of both.
  */
 function Summary({ rows }: { rows: BoughtServerRow[] }) {
   const waiting = rows.filter((row) => row.stage === "waiting_for_payment");
-  const paid = rows.filter((row) => row.stage !== "waiting_for_payment");
+  const paid = rows.filter((row) => isCharged(row.stage));
   const total = paid.reduce((sum, row) => sum + row.monthlyCents, 0);
   return (
     <MetaStrip>
