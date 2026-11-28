@@ -51,6 +51,7 @@ import {
 } from './collectors/server-stats.collector';
 import { parseMetricsRange } from './metrics-window';
 import {
+  samplesByContainer,
   SERVICE_METRICS_UNAVAILABLE,
   summarizeSamples,
   unavailableMetrics,
@@ -806,20 +807,26 @@ export class MonitoringService implements OnApplicationBootstrap {
 
   /**
    * `get_service_metrics` (ADR-0096): one Service's own container metrics
-   * over the last `hours`, summarised, read through
-   * {@link getContainerMetrics} — its twin — on the host the Service runs on
-   * and under its appName, so a series reaches the summary only by ADR-0067's
-   * per-series entitlement.
+   * over the last `hours`, summed across its containers and summarised, read
+   * through {@link getContainerMetrics} — its twin — on the Server or platform
+   * host the Service runs on, so a series reaches the summary only by
+   * ADR-0067's per-series entitlement.
+   *
+   * An Application is one series, its appName's, whose replicas are its
+   * containers; a Compose is a series per service it runs (`<appName>-web-1`,
+   * `<appName>_web`), each one read on its own. Every container answered is
+   * checked for ownership on its own series, since the twin resolves by
+   * substring and so could answer another Service's.
    *
    * The Service is found in the caller's Organization and entitled with
    * `service: ['read']` first, so another Organization's or an ungranted
    * Service is the same not-found, before anything says where it runs. Then
-   * a Service in a Cloud account, or on a host whose monitoring was never set
-   * up, is answered as that, never as zeros; a host that has stored nothing
-   * this caller may read under the appName, or a series that turns out to be
-   * another Service's (the twin resolves by substring), is answered as no
-   * samples. Nothing here reads a Server's or the platform host's own
-   * metrics.
+   * a Service in a Cloud account, or on a Server or platform host whose
+   * monitoring was never set up, is answered as that, never as zeros; a
+   * Server or platform host that has stored nothing this caller may read for
+   * the Service, or only series that turn out to be another Service's, is
+   * answered as no samples. Nothing here reads a Server's or the platform
+   * host's own metrics.
    */
   async summarizeServiceMetrics(
     ctx: PermissionCtx,
@@ -856,28 +863,66 @@ export class MonitoringService implements OnApplicationBootstrap {
       );
     }
 
-    let samples: StoredContainerSample[];
-    try {
-      samples = (await this.getContainerMetrics(ctx, {
-        serverId: parent.serverId ?? undefined,
-        appName: parent.appName,
-        start: read.since,
-        end: read.until,
-      })) as unknown as StoredContainerSample[];
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        return unavailableMetrics(read, SERVICE_METRICS_UNAVAILABLE.noSamples);
+    const names =
+      serviceType === 'compose'
+        ? await this.composeSeries(parent.serverId, parent.appName)
+        : [parent.appName];
+    const samples: StoredContainerSample[] = [];
+    let resolved = false;
+    for (const appName of names) {
+      try {
+        samples.push(
+          ...((await this.getContainerMetrics(ctx, {
+            serverId: parent.serverId ?? undefined,
+            appName,
+            start: read.since,
+            end: read.until,
+          })) as unknown as StoredContainerSample[]),
+        );
+        resolved = true;
+      } catch (error) {
+        if (!(error instanceof BadRequestException)) throw error;
       }
-      throw error;
+    }
+    if (!resolved) {
+      return unavailableMetrics(read, SERVICE_METRICS_UNAVAILABLE.noSamples);
     }
     if (samples.length === 0) {
       return unavailableMetrics(read, SERVICE_METRICS_UNAVAILABLE.emptyWindow);
     }
-    const series = serviceNameOf(samples[0].Name.replace(/^\//, ''));
-    if (!ownerCandidates(series).includes(parent.appName)) {
+    const owned = [...samplesByContainer(samples)]
+      .filter(([container]) =>
+        ownerCandidates(serviceNameOf(container)).includes(parent.appName),
+      )
+      .flatMap(([, series]) => series);
+    if (owned.length === 0) {
       return unavailableMetrics(read, SERVICE_METRICS_UNAVAILABLE.noSamples);
     }
-    return summarizeSamples(read, samples, window.maxPoints);
+    return summarizeSamples(read, owned, window.maxPoints);
+  }
+
+  /**
+   * The series a Compose stack's containers are stored under on the Server
+   * or platform host it runs on: every stored name that is the appName or
+   * starts with it before a `-` or `_` (`ownerCandidates`), as a
+   * `docker-compose` container and a `stack`'s Swarm service are named.
+   */
+  private async composeSeries(
+    serverId: MonitoringTargetId,
+    appName: string,
+  ): Promise<string[]> {
+    const rows = await this.db
+      .selectDistinct({ containerName: containerMetric.containerName })
+      .from(containerMetric)
+      .where(
+        and(
+          scopedTo(containerMetric.serverId, serverId),
+          like(containerMetric.containerName, `${appName}%`),
+        ),
+      );
+    return [...new Set(rows.map((row) => serviceNameOf(row.containerName)))]
+      .filter((series) => ownerCandidates(series).includes(appName))
+      .sort();
   }
 
   /**

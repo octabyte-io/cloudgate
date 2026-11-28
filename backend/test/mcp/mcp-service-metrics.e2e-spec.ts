@@ -562,6 +562,130 @@ describe('MCP get_service_metrics (e2e)', () => {
     expect(trend[59].at).toBe(answer.lastSampledAt);
   });
 
+  it("sums an Application's replicas, collection tick by collection tick", async () => {
+    const t = await tree();
+    await seed(t.monitored, 'web-app.1.t6ga2k', [
+      { minutesAgo: 30, cpu: 10, memory: [100, 'MB', 9.77] },
+      { minutesAgo: 20, cpu: 20, memory: [200, 'MB', 19.53] },
+      {
+        minutesAgo: 10,
+        cpu: 30,
+        memory: [300, 'MB', 29.3],
+        network: [1, 'GB', 100, 'kB'],
+        disk: [10, 'MB', 1, 'GB'],
+      },
+    ]);
+    await seed(t.monitored, 'web-app.2.p0q9r8', [
+      { minutesAgo: 30, cpu: 40, memory: [400, 'MB', 39.06] },
+      { minutesAgo: 20, cpu: 50, memory: [500, 'MB', 48.83] },
+      {
+        minutesAgo: 10,
+        cpu: 60,
+        memory: [600, 'MB', 58.59],
+        network: [500, 'MB', 150, 'kB'],
+        disk: [5, 'MB', 2, 'GB'],
+      },
+    ]);
+    const agent = await agentFor(t);
+
+    const answer = await read(agent.key, {
+      serviceType: 'application',
+      serviceId: t.webId,
+    });
+
+    expect(answer).toMatchObject({
+      available: true,
+      samples: 3,
+      lastSampledAt: at(10),
+      // 10 + 40, 20 + 50, 30 + 60
+      cpu: { nowPercent: 90, averagePercent: 70, peakPercent: 90 },
+      memory: {
+        nowMiB: 900,
+        averageMiB: 700,
+        peakMiB: 900,
+        // Two 1 GB limits.
+        limitMiB: 2048,
+        // 900 of 2048 MiB
+        nowPercent: 43.95,
+        peakPercent: 43.95,
+      },
+      // Each replica's last counters: 1000 + 500 MB in, 0.1 + 0.15 MB out.
+      network: { receivedMB: 1500, sentMB: 0.25 },
+      disk: { readMB: 15, writtenMB: 3000 },
+    });
+    expect(answer.trend).toEqual([
+      { at: at(30), cpuPercent: 50, memoryMiB: 500 },
+      { at: at(20), cpuPercent: 70, memoryMiB: 700 },
+      { at: at(10), cpuPercent: 90, memoryMiB: 900 },
+    ]);
+  });
+
+  it("reads every container a Compose runs and sums them, never another Service's", async () => {
+    const t = await tree();
+    await ctx.db
+      .update(compose)
+      .set({ serverId: t.monitored })
+      .where(eq(compose.composeId, t.composeId));
+    await seed(t.monitored, 'stack-app-api-1', [
+      { minutesAgo: 20, cpu: 5, memory: [50, 'MB', 4.88] },
+      { minutesAgo: 10, cpu: 15, memory: [150, 'MB', 14.65] },
+    ]);
+    await seed(t.monitored, 'stack-app-worker-1', [
+      { minutesAgo: 20, cpu: 25, memory: [250, 'MB', 24.41] },
+      { minutesAgo: 10, cpu: 35, memory: [350, 'MB', 34.18] },
+    ]);
+    // Its name contains the Compose's, but it is not one of its containers.
+    await seed(t.monitored, 'stack-apple-1', [
+      { minutesAgo: 10, cpu: 99, memory: [990, 'MB', 96.68] },
+    ]);
+    const agent = await agentFor(t);
+
+    const answer = await read(agent.key, {
+      serviceType: 'compose',
+      serviceId: t.composeId,
+    });
+
+    expect(answer).toMatchObject({
+      serviceType: 'compose',
+      available: true,
+      samples: 2,
+      lastSampledAt: at(10),
+      cpu: { nowPercent: 50, averagePercent: 40, peakPercent: 50 },
+      memory: {
+        nowMiB: 500,
+        averageMiB: 400,
+        peakMiB: 500,
+        limitMiB: 2048,
+        // 500 of 2048 MiB
+        nowPercent: 24.41,
+        peakPercent: 24.41,
+      },
+    });
+    expect(answer.trend).toEqual([
+      { at: at(20), cpuPercent: 30, memoryMiB: 300 },
+      { at: at(10), cpuPercent: 50, memoryMiB: 500 },
+    ]);
+    expect(await rowsOf(agent.id)).toEqual([
+      ['compose', 'succeeded', t.composeId, 'get_service_metrics', undefined],
+    ]);
+  });
+
+  it('takes no bucket, which runs no container', async () => {
+    const t = await tree();
+    const agent = await agentFor(t);
+
+    const refused = await callTool(agent.key, {
+      serviceType: 'bucket',
+      serviceId: t.webId,
+    });
+
+    expect(refused.isError).toBe(true);
+    expect(refused.content[0].text).not.toContain('"cpu"');
+    expect((await rowsOf(agent.id)).map((row) => [row[1], row[4]])).toEqual([
+      ['failed', 'invalid-arguments'],
+    ]);
+  });
+
   it('answers a Service in a Cloud account, on a Server without monitoring, or on a platform host without it, as which, never as zeros', async () => {
     const t = await tree();
     await seedWeb(t);
@@ -638,7 +762,7 @@ describe('MCP get_service_metrics (e2e)', () => {
     ).toMatchObject({
       available: false,
       unavailableReason:
-        "No samples are stored for this Service's containers: its host's monitoring does not collect for it, or has not sampled it yet",
+        "No samples are stored for this Service's containers: the monitoring of the Server or platform host it runs on does not collect for it, or has not sampled it yet",
       cpu: null,
       trend: [],
     });
@@ -667,7 +791,7 @@ describe('MCP get_service_metrics (e2e)', () => {
     ]);
   });
 
-  it('refuses a Caller key, which holds no monitoring statement', async () => {
+  it('refuses a Caller key, as at every other tool', async () => {
     const t = await tree();
     await seedWeb(t);
     const caller = await agentFor(t, 'agentCaller');

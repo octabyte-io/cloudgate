@@ -141,7 +141,7 @@ const FROZEN_ROUTES: Readonly<Record<string, readonly string[]>> = {
   ],
   get_service_metrics: [
     'application',
-    'bucket',
+    // A bucket runs no container, so it has no container metrics.
     'compose',
     'libsql',
     'mariadb',
