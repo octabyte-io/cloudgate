@@ -97,8 +97,9 @@ export class BoughtServersController {
   }
 
   /**
-   * The **Bought Servers** page (#199): every Bought Server of the
-   * Organization but the Deleted and the Failed, from the database alone.
+   * The **Bought Servers** page (#199): every Bought Server of the caller's
+   * active Organization but the Deleted and the Failed, from the database
+   * alone. Any caller holding `server: read` there may call it.
    */
   @Get()
   @RequirePermission('server', 'read')

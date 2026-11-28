@@ -317,10 +317,12 @@ export class BoughtServerChanges {
   }
 
   /**
-   * The **Bought Servers** page (#199): every Bought Server of the
-   * Organization but the Deleted and the Failed, oldest first. It asks the
-   * provider about no machine; its size and Location are named from the
-   * price list, as {@link view}'s are, and null while that can't be read.
+   * The **Bought Servers** page (#199): every Bought Server of the caller's
+   * active Organization but the Deleted and the Failed, oldest first, scoped
+   * by `ctx.session.activeOrganizationId`; its route needs `server: read`.
+   * It asks the provider nothing about any Server; its size and Location are
+   * named from the price list, as {@link view}'s are, and null while that
+   * can't be read.
    */
   async list(ctx: PermissionCtx): Promise<BoughtServerRow[]> {
     this.assertPresent();
