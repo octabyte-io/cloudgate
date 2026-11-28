@@ -2,7 +2,30 @@
 
 ## Unreleased
 
-## 0.3.14 (2026-11-27)
+## 0.3.14 (2026-11-28)
+
+### Agents can read a Service's Runtime log and container metrics
+
+An Agent has two new MCP tools (spec #189):
+
+- **`get_service_metrics`** summarises the CPU, memory, network and disk of a granted Service's own containers over the last hour, or up to 24 hours. It adds up every container the Service runs and includes at most 60 points for a trend. It is open to every Reader and Operator Agent, and never reads a Server's own metrics (ADR-0096).
+- **`read_runtime_log`** returns the last lines an Application or a Compose wrote: 100 by default, 500 at most, or only those after a time. It works on a Server, the platform host, a Stack VM or a Cloud account, and masks the secrets Cloudgate stores. It answers only an Agent whose new **Can read runtime logs** switch is on (ADR-0095).
+
+The switch is off by default. You set it when you create the Agent and can change it later on the Agent's row, and each change is audited. A Caller Agent never has it. A Service's Logs read, `GET /applications/:id/runtime-log`, now also answers Services on a Server.
+
+**What to do on upgrade**: nothing.
+
+### A Bought Servers page, and a Bought Server tab on each one
+
+A Bought Server's backups, **Back up now**, **Restore**, size and extra storage move from its Settings to a new **Bought Server** tab. The tab's side panel also shows what you pay, the Location, the Server image and the size (spec #196). A **Bought Servers** page under Servers lists every Bought Server with its stage, size, Location, backups and monthly price, plus the total on the plan's invoice. Emails about backups, storage, size and Restore now link to the new tab.
+
+**What to do on upgrade**: nothing.
+
+### Three Bought Server messages corrected
+
+The Delete row on a Bought Server now says the machine is deleted with its data and backups. The **Buy a Server** page is no longer titled "Not found". The footer of a Restore email names Servers, and the footer of an abuse or suspension email names the Organization, instead of billing (#194).
+
+**What to do on upgrade**: nothing.
 
 ### A Bought Server's backups can be listed, taken now and restored
 
