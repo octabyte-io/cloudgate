@@ -1,10 +1,10 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 
-import { useBoughtServerOffer } from "@/features/server/buy/use-bought-servers";
 import { environmentsApi } from "@/lib/api/endpoints/environments";
 import { projectsApi } from "@/lib/api/endpoints/projects";
 import { serversApi } from "@/lib/api/endpoints/servers";
 import { keys } from "@/lib/api/keys";
+import { useBoughtServerOffer } from "@/lib/api/use-bought-server-offer";
 import { useActiveOrganizationId } from "@/lib/auth/client";
 import type { IconName } from "@/lib/design/icons";
 

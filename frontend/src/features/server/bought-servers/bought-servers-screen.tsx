@@ -15,15 +15,12 @@ import { Skeleton } from "@/components/console/skeleton";
 import { Button } from "@/components/ui/button";
 import type { BoughtServerRow } from "@/lib/api/endpoints/bought-servers";
 import { errorMessage } from "@/lib/api/error-message";
+import { useBoughtServerOffer } from "@/lib/api/use-bought-server-offer";
 import { usePermission } from "@/lib/auth/use-permission";
 import { Icon } from "@/lib/design/icons";
 
 import { perMonth } from "../bought-server/per-month";
-import {
-  useBoughtServerOffer,
-  useBoughtServers,
-  useFinishPaying,
-} from "../buy/use-bought-servers";
+import { useBoughtServers, useFinishPaying } from "../buy/use-bought-servers";
 import { SERVER_CREATE_REFUSAL } from "../use-server";
 import { boughtServerColumns, isCharged } from "./bought-server-columns";
 

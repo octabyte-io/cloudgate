@@ -15,33 +15,6 @@ import { useInvalidate } from "@/lib/api/use-invalidate";
 import { useInstanceMode } from "@/lib/api/use-instance-mode";
 import { useActiveOrganizationId } from "@/lib/auth/client";
 
-/**
- * Whether *Buy a Server* is offered here (ADR-0071).
- *
- * Asked only once the mode is known to be hosted: on a Self-hosted instance
- * the route does not exist, so the answer is no without a request. `offered`
- * stays false while anything is pending or refused, so the action is shown
- * only on a yes; `pending` says the answer is not in yet.
- */
-export function useBoughtServerOffer(): { offered: boolean; pending: boolean } {
-  const mode = useInstanceMode();
-  const { organizationId } = useActiveOrganizationId();
-  const hosted = mode.data === "hosted";
-  const offer = useQuery({
-    queryKey: keys.boughtServers.offer(organizationId),
-    queryFn: () => boughtServersApi.offer(),
-    enabled: hosted && organizationId !== null,
-    staleTime: Infinity,
-    retry: false,
-  });
-  return {
-    offered: hosted && offer.data?.offered === true,
-    pending:
-      mode.isPending ||
-      (hosted && (organizationId === null || offer.isPending)),
-  };
-}
-
 /** Every Location and size with its price; asked only once buying is offered. */
 export function useBoughtServerCatalogue(enabled: boolean) {
   const { organizationId } = useActiveOrganizationId();

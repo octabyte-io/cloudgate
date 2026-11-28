@@ -19,6 +19,7 @@ import {
   useInstanceGate,
 } from "@/features/settings/platform/use-platform";
 import { errorMessage } from "@/lib/api/error-message";
+import { useBoughtServerOffer } from "@/lib/api/use-bought-server-offer";
 import { useServers } from "@/lib/api/use-servers";
 import { usePermission } from "@/lib/auth/use-permission";
 import { Icon } from "@/lib/design/icons";
@@ -26,7 +27,6 @@ import { Icon } from "@/lib/design/icons";
 import { LocalShellCard } from "../local/local-shell-card";
 
 import { PurchasesCard } from "../buy/purchases-card";
-import { useBoughtServerOffer } from "../buy/use-bought-servers";
 import { SERVER_CREATE_REFUSAL } from "../use-server";
 import { AddServerDialogs } from "./add-server-dialogs";
 import { FleetAside } from "./fleet-aside";

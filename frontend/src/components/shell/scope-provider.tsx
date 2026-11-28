@@ -1,7 +1,7 @@
 import { usePathname } from "next/navigation";
 import { createContext, use, useEffect, useMemo } from "react";
 
-import { useBoughtServerOffer } from "@/features/server/buy/use-bought-servers";
+import { useBoughtServerOffer } from "@/lib/api/use-bought-server-offer";
 import { useBrandingOrDefault } from "@/lib/api/use-branding";
 import { useActiveOrganizationId } from "@/lib/auth/client";
 import { usePermission } from "@/lib/auth/use-permission";
