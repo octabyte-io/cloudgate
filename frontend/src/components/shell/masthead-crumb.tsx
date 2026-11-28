@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Icon, type IconName } from "@/lib/design/icons";
 import { cn } from "@/lib/utils";
 
-import { organizationNav } from "./nav";
+import type { NavEntry } from "./nav";
 import { useScope } from "./scope-provider";
 
 /**
@@ -18,8 +18,8 @@ import { useScope } from "./scope-provider";
  * permanently, so there would be nothing for this to reveal.
  */
 export function MastheadCrumb({ scrolled }: { scrolled: boolean }) {
-  const { scope } = useScope();
-  const here = currentPage(scope.tab);
+  const { scope, nav } = useScope();
+  const here = currentPage(scope.tab, nav);
 
   if (!here) return null;
 
@@ -46,14 +46,15 @@ export function MastheadCrumb({ scrolled }: { scrolled: boolean }) {
 }
 
 /**
- * Which Organization page this is, read off the nav table — so the crumb cannot
- * name a page the rail does not offer, and a phase that adds a row gets the
- * crumb for free.
+ * Which Organization page this is, read off the rail's own rows — so the crumb
+ * cannot name a page the rail does not offer, and a phase that adds a row gets
+ * the crumb for free.
  */
 function currentPage(
   tab: string,
+  nav: NavEntry[],
 ): { label: string; icon: IconName; href: string } | null {
-  for (const entry of organizationNav()) {
+  for (const entry of nav) {
     if (entry.kind !== "item" && entry.kind !== "group") continue;
     if (entry.tab === undefined) continue;
     if (entry.tab === tab) {

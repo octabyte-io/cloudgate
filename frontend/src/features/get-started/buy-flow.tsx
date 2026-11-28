@@ -5,9 +5,9 @@ import { Card } from "@/components/console/card";
 import { LinkButton } from "@/components/console/link-button";
 import { Skeleton } from "@/components/console/skeleton";
 import type { TemplateSummary } from "@/lib/api/endpoints/templates";
+import { useBoughtServerOffer } from "@/lib/api/use-bought-server-offer";
 import { usePermission } from "@/lib/auth/use-permission";
 
-import { useBoughtServerOffer } from "../server/buy/use-bought-servers";
 import { BuyPicker } from "./buy-picker";
 import { useWizardPurchases, useWizardServers } from "./use-get-started";
 import { AskAdmin, StepNote } from "./wizard-parts";

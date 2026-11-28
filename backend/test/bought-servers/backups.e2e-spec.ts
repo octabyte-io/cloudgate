@@ -785,7 +785,7 @@ describe('Backups on a Bought Server (e2e)', () => {
         expect(sent.email.subject).toBe('Backups are on for your Server web-1');
         // The Server's $25 and its backups' $5.
         expect(sent.email.html).toContain('$30.00 a month');
-        expect(sent.email.html).toContain(`/servers/${id}`);
+        expect(sent.email.html).toContain(`/servers/${id}/bought-server`);
         expect(sent.email.html).not.toMatch(/hetzner/i);
       }
     });
@@ -884,7 +884,23 @@ describe('Backups on a Bought Server (e2e)', () => {
         monthlyCents: 2500,
         backupsOfferCents: 500,
         change: null,
+        // "About this Server" (#198): where it is, what it runs and its
+        // size, by what each is and never by the provider's code.
+        location: { city: 'Helsinki', country: 'FI' },
+        image: 'Ubuntu 24.04',
+        size: { family: 'amd', vcpus: 3, memoryGb: 4, diskGb: 80 },
       });
+      expect(JSON.stringify(res.body)).not.toMatch(/hel1|cpx22|ubuntu-24/);
+    });
+
+    it('names the Server image picked at Buy', async () => {
+      const id = await readyServer({ image: 'debian-12' });
+
+      const res = await request(http)
+        .get(`/bought-servers/${id}`)
+        .set('Cookie', owner.cookie);
+
+      expect((res.body as { image: string }).image).toBe('Debian 12');
     });
 
     it('shows Changing while a change runs', async () => {

@@ -838,6 +838,7 @@ export function useInvalidate() {
       boughtServers: () =>
         Promise.all([
           invalidate(keys.boughtServers.purchases(organizationId)),
+          invalidate(keys.boughtServers.list(organizationId)),
           invalidate(keys.servers.all(organizationId)),
           invalidate(keys.billing.all(organizationId)),
         ]),

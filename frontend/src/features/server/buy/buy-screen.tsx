@@ -11,14 +11,12 @@ import { PageHeader } from "@/components/console/page-header";
 import { Skeleton } from "@/components/console/skeleton";
 import type { BoughtServerCatalogue } from "@/lib/api/endpoints/bought-servers";
 import { errorMessage } from "@/lib/api/error-message";
+import { useBoughtServerOffer } from "@/lib/api/use-bought-server-offer";
 
 import { BuyOptions } from "./buy-options";
 import { BuySummary } from "./buy-summary";
 import { useWhereYouAre } from "./location-chooser";
-import {
-  useBoughtServerCatalogue,
-  useBoughtServerOffer,
-} from "./use-bought-servers";
+import { useBoughtServerCatalogue } from "./use-bought-servers";
 import { useBuyForm } from "./use-buy-form";
 import { byDistance } from "./where-you-are";
 

@@ -20,7 +20,7 @@ vi.mock("@/lib/auth/use-permission", async (original) => ({
   ...(await original<typeof import("@/lib/auth/use-permission")>()),
   usePermission: () => ({ allowed: true, refusal: "" }),
 }));
-vi.mock("../buy/use-bought-servers", () => ({
+vi.mock("@/lib/api/use-bought-server-offer", () => ({
   useBoughtServerOffer: () => ({ offered: false, pending: false }),
 }));
 vi.mock("../buy/purchases-card", () => ({ PurchasesCard: () => null }));

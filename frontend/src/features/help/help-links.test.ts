@@ -18,7 +18,7 @@ describe("the Help & support links", () => {
   });
 
   it("is the last row of the Organization rail, under Settings", () => {
-    const nav = organizationNav();
+    const nav = organizationNav({});
     const last = nav.at(-1);
     const beforeLast = nav.at(-2);
     expect(last).toMatchObject({ label: "Help & support", tab: "/help" });

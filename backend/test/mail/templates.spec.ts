@@ -28,6 +28,7 @@ import { renderPaymentReceivedEmail } from '../../src/mail/templates/payment-rec
 import { renderPlanChangedEmail } from '../../src/mail/templates/plan-changed';
 import { renderAddOnsChangedEmail } from '../../src/mail/templates/add-ons-changed';
 import { renderEventEmail } from '../../src/notifications/events/event-emails';
+import { boughtServerPageUrl } from '../../src/bought-servers/bought-server-page';
 
 // React Email templates rendered to { subject, html } — the pure half of the
 // mail seam (`src/mail/templates/*`). Senders are tested separately; here we
@@ -1728,7 +1729,7 @@ describe('mail templates', () => {
         'We tried twice to restore web-1 from its backup of Nov 02, 2026 at 03:00 UTC, and it could not be done.',
       );
       expect(text).toContain(
-        'web-1 is as it was, and keeps running. A restore costs nothing, so nothing was charged. You can try again from its Settings.',
+        'web-1 is as it was, and keeps running. A restore costs nothing, so nothing was charged. You can try again from its Bought Server tab.',
       );
       expect(text).toContain(
         'https://console.example.com/servers/abc/settings',
@@ -1743,7 +1744,7 @@ describe('mail templates', () => {
         'We did not restore web-1 from its backup of Nov 02, 2026 at 03:00 UTC: a newer backup was taken meanwhile, so its safety copy would now remove that backup.',
       );
       expect(text).toContain(
-        'web-1 is as it was, and keeps running. Nothing was charged. To restore it anyway, try again from its Settings and confirm restoring without a safety copy, or pick a newer backup.',
+        'web-1 is as it was, and keeps running. Nothing was charged. To restore it anyway, try again from its Bought Server tab and confirm restoring without a safety copy, or pick a newer backup.',
       );
     });
 
@@ -2106,6 +2107,80 @@ describe('mail templates', () => {
         expect(footer(rendered.html)).toContain(
           "This is an automated email from Cloudgate about your Organization's billing. It goes to every owner and admin, and cannot be turned off.",
         );
+      },
+    );
+  });
+  /**
+   * Every email about a change to a Bought Server or its Restore links to
+   * that Server's own Bought Server tab, where the change and the Restore
+   * are made, not to its Settings (#198).
+   */
+  describe('the link in a Bought Server change or Restore email', () => {
+    const TAB = 'https://console.example.com/servers/abc/bought-server';
+    const serverUrl = boughtServerPageUrl('https://console.example.com', 'abc');
+    const changed = (
+      change: Parameters<typeof renderServerChangedEmail>[0]['change'],
+    ) =>
+      renderServerChangedEmail({
+        userName: 'Grace',
+        organizationName: 'Hopper Labs',
+        serverName: 'web-1',
+        monthlyPrice: '$30.00',
+        change,
+        serverUrl,
+      });
+
+    it.each([
+      ['backups turned on', () => changed({ kind: 'backups', on: true })],
+      ['backups turned off', () => changed({ kind: 'backups', on: false })],
+      [
+        'extra storage grown',
+        () => changed({ kind: 'storage', storageGb: 250 }),
+      ],
+      [
+        'a new size',
+        () => changed({ kind: 'size', size: '3 vCPU · 4 GB RAM' }),
+      ],
+      [
+        'a Restore',
+        () =>
+          changed({
+            kind: 'restore',
+            backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+            setupOk: true,
+            redeployed: [],
+            notRedeployed: [],
+          }),
+      ],
+      [
+        'a change refunded',
+        () =>
+          renderBoughtServerChangeRefundedEmail({
+            userName: 'Grace',
+            serverName: 'web-1',
+            attempted: 'turn on backups for web-1',
+            amount: '$4.12',
+            serverUrl,
+          }),
+      ],
+      [
+        'a failed Restore',
+        () =>
+          renderBoughtServerRestoreFailedEmail({
+            userName: 'Grace',
+            serverName: 'web-1',
+            backupTakenAt: 'Nov 02, 2026 at 03:00 UTC',
+            outcome: 'refused',
+            serverUrl,
+          }),
+      ],
+    ] as const)(
+      'links the email about %s to the Bought Server tab',
+      async (_, rendered) => {
+        const { html } = await rendered();
+
+        expect(html).toContain(`href="${TAB}"`);
+        expect(html).not.toContain('/servers/abc/settings');
       },
     );
   });

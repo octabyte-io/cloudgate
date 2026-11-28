@@ -50,6 +50,20 @@ export type NavItem = {
   tab: string;
   /** A quiet marker on the right. Never a status; a status belongs in the page. */
   tag?: string;
+  /**
+   * The fact this row needs. While it does not hold, the row is left out of
+   * the rail and of ⌘K's `go:` pages: no entry rather than a disabled one.
+   */
+  when?: keyof OrganizationFacts;
+};
+
+/**
+ * What the Organization rail asks of the instance before it shows a
+ * conditional row. Absent reads as not holding, so a row waits for a yes.
+ */
+export type OrganizationFacts = {
+  /** Buying a Server is offered here (`useBoughtServerOffer`, ADR-0071). */
+  boughtServerOffered?: boolean;
 };
 
 export type NavGroup = {
@@ -91,6 +105,16 @@ const ORGANIZATION_NAV: NavEntry[] = [
     source: "starred",
   },
   { kind: "item", icon: "hdd", label: "Servers", tab: "/servers" },
+  // Every Bought Server with what it costs. Only where buying is offered (the
+  // Hosted instance, with the provider set up), and from then on even before
+  // anything is bought, so the page that offers Buy a Server is findable.
+  {
+    kind: "item",
+    icon: "cash",
+    label: "Bought Servers",
+    tab: "/bought-servers",
+    when: "boughtServerOffered",
+  },
   // Build sits above Observe: the work comes before watching it run.
   { kind: "label", label: "Build" },
   {
@@ -146,18 +170,31 @@ function navFromTabs(tabs: readonly TabEntry[]): NavEntry[] {
  * Which table the rail renders. The only reason `scopeFromPath` exists.
  *
  * `subject` is the scope's own row, when it has been read: an AI model's
- * tabs are not a plain Application's (`TabEntry.absentBecause`).
+ * tabs are not a plain Application's (`TabEntry.absentBecause`). `facts`
+ * decide Organization scope's conditional rows.
  */
-export function scopeNav(scope: ScopeRoute, subject?: TabSubject): NavEntry[] {
-  if (scope.kind === "organization") return ORGANIZATION_NAV;
+export function scopeNav(
+  scope: ScopeRoute,
+  subject?: TabSubject,
+  facts: OrganizationFacts = {},
+): NavEntry[] {
+  if (scope.kind === "organization") return organizationNav(facts);
   return isTabScope(scope.kind)
     ? navFromTabs(visibleTabEntries(scope.kind, subject))
     : [];
 }
 
-/** Every page Organization scope offers, for ⌘K's `go:` rows. */
-export function organizationNav(): NavEntry[] {
-  return ORGANIZATION_NAV;
+/**
+ * Every page Organization scope offers here, for the rail and ⌘K's `go:`
+ * rows: a conditional row only while its fact holds.
+ */
+export function organizationNav(facts: OrganizationFacts): NavEntry[] {
+  return ORGANIZATION_NAV.filter(
+    (entry) =>
+      entry.kind !== "item" ||
+      entry.when === undefined ||
+      facts[entry.when] === true,
+  );
 }
 
 /**

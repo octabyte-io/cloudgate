@@ -942,7 +942,7 @@ export async function renderBoughtServerChangeRefundedEmail({
             amount ? `The ${amount} paid for it` : 'Its payment',
             refundedTo,
           ),
-          `${serverName} is as it was before the change, and keeps running. You can try again from its Settings.`,
+          `${serverName} is as it was before the change, and keeps running. You can try again from its Bought Server tab.`,
         ],
         action: { label: 'Open the Server', url: serverUrl },
       }),
@@ -976,12 +976,12 @@ function restoreGivenUpParagraphs(
     case 'refused':
       return [
         `We tried twice to restore ${serverName} from its backup of ${backupTakenAt}, and it could not be done.`,
-        `${serverName} is as it was, and keeps running. A restore costs nothing, so nothing was charged. You can try again from its Settings.`,
+        `${serverName} is as it was, and keeps running. A restore costs nothing, so nothing was charged. You can try again from its Bought Server tab.`,
       ];
     case 'safety-copy-would-remove':
       return [
         `We did not restore ${serverName} from its backup of ${backupTakenAt}: a newer backup was taken meanwhile, so its safety copy would now remove that backup.`,
-        `${serverName} is as it was, and keeps running. Nothing was charged. To restore it anyway, try again from its Settings and confirm restoring without a safety copy, or pick a newer backup.`,
+        `${serverName} is as it was, and keeps running. Nothing was charged. To restore it anyway, try again from its Bought Server tab and confirm restoring without a safety copy, or pick a newer backup.`,
       ];
     case 'not-started':
       return [

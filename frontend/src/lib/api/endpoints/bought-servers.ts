@@ -171,6 +171,17 @@ export type BoughtServerView = {
     /** A Restore: when the backup it puts back was taken, ISO 8601. */
     restore?: { backupTakenAt: string };
   } | null;
+  /** Where it is: `Helsinki` and an ISO 3166-1 alpha-2 code; null when the catalogue can't say. */
+  location: { city: string; country: string } | null;
+  /** Its **Server image**, `Ubuntu 24.04`; null when the catalogue can't say. */
+  image: string | null;
+  /** Its size by what it is, its own disk included; null when the catalogue can't say. */
+  size: {
+    family: SizeFamily;
+    vcpus: number;
+    memoryGb: number;
+    diskGb: number;
+  } | null;
 };
 
 /**
@@ -194,6 +205,26 @@ export type SizeChoice = {
   smallerDisk: boolean;
   /** The size it is now. */
   current: boolean;
+};
+
+/**
+ * `GET /bought-servers`: one row of the **Bought Servers** page, every
+ * Bought Server but the Deleted and the Failed. Read from the database
+ * alone, so it carries no last backup time.
+ */
+export type BoughtServerRow = {
+  id: string;
+  /** Its Server, which Manage opens; null while it has none (being bought or deleted). */
+  serverId: string | null;
+  name: string;
+  stage: BoughtServerStage;
+  /** By what it is, its own disk included; null when the catalogue can't say. */
+  size: BoughtServerView["size"];
+  /** `Helsinki` and an ISO 3166-1 alpha-2 code; null when the catalogue can't say. */
+  location: BoughtServerView["location"];
+  backups: boolean;
+  /** Every line together, US cents a month. */
+  monthlyCents: number;
 };
 
 /** `GET /bought-servers/purchases`: a Bought Server not made yet. */
@@ -237,6 +268,8 @@ export const boughtServersApi = {
     ),
   /** Buy: charged at once; the machine is made only once the payment succeeds. */
   buy: (input: BuyInput) => api.post<PurchaseResult>("/bought-servers", input),
+  /** Every Bought Server of the Organization but the Deleted and the Failed, oldest first. */
+  list: () => api.get<BoughtServerRow[]>("/bought-servers"),
   /** The Organization's Bought Servers not made yet: waiting for payment, or being created. */
   purchases: () => api.get<ServerPurchase[]>("/bought-servers/purchases"),
   /** Where the payment stands, and where to finish it. */

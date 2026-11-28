@@ -10402,7 +10402,7 @@
     },
     "/bought-servers/purchases": {
       "get": {
-        "operationId": "BoughtServersController_list",
+        "operationId": "BoughtServersController_purchases",
         "parameters": [],
         "responses": {
           "200": {
@@ -10415,6 +10415,18 @@
       }
     },
     "/bought-servers": {
+      "get": {
+        "operationId": "BoughtServersController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "BoughtServers"
+        ]
+      },
       "post": {
         "operationId": "BoughtServersController_create",
         "parameters": [],

@@ -59,6 +59,18 @@ export function sizeLabel(
   return `${size.vcpus} vCPU · ${size.memoryGb} GB RAM · ${size.diskGb} GB disk`;
 }
 
+/**
+ * `Performance · 3 vCPU · 4 GB RAM · 80 GB disk`: a Bought Server's size by
+ * its family and what it is, as its About this Server and the Bought Servers
+ * page name it. A family the console does not know is left out.
+ */
+export function sizeName(
+  size: Pick<CatalogueSize, "family" | "vcpus" | "memoryGb" | "diskGb">,
+): string {
+  const family = FAMILIES.find((each) => each.value === size.family)?.label;
+  return [family, sizeLabel(size)].filter(Boolean).join(" · ");
+}
+
 /** `3 vCPU · 4 GB`, for a summary line. */
 export function shortSizeLabel(size: CatalogueSize): string {
   return `${size.vcpus} vCPU · ${size.memoryGb} GB`;

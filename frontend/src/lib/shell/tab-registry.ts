@@ -93,6 +93,12 @@ export type TabSubject = {
    * (`runsOnStackVm`): it has no Server to tar its volumes on (#163).
    */
   stackVm?: boolean;
+  /**
+   * A Server's **Bought Server** (ADR-0071), or null for a Server of the
+   * customer's own: only a Bought Server has the Bought Server tab (#198).
+   * Absent until the Server row answers.
+   */
+  boughtServer?: object | null;
 };
 
 export type TabEntry = {

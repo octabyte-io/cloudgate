@@ -1,7 +1,6 @@
-import { useId, useState } from "react";
+import { useState } from "react";
 
 import { Card } from "@/components/console/card";
-import { Chip } from "@/components/console/chip";
 import { Modal } from "@/components/console/modal";
 import { QAList, QARow } from "@/components/console/qa-row";
 import { toast } from "@/components/console/toast";
@@ -11,66 +10,41 @@ import type { BoughtServerView } from "@/lib/api/endpoints/bought-servers";
 import type { Server } from "@/lib/api/endpoints/servers";
 import { usePermission } from "@/lib/auth/use-permission";
 
-import { wholeUsd } from "../buy/buy-model";
-import { useBoughtServer, useSetBackups } from "../buy/use-bought-servers";
-import { CHANGE_WAITS_FOR_READY } from "./bought-server-reasons";
-import { BoughtServerSizeRow } from "./bought-server-size";
-import { ExtraStorageRow } from "./extra-storage-row";
+import { useSetBackups } from "../buy/use-bought-servers";
+import { BACKUPS_READY_NOTE_ID } from "./bought-server-reasons";
+import { perMonth } from "./per-month";
 import { ServerBackupList } from "./server-backup-list";
 
-/** Said on the switch to a role that may not change what the Organization pays for. */
-export const BOUGHT_SERVER_CHANGE_REFUSAL =
-  "Your role in this Organization cannot change what this Server is charged for. Ask an owner or an admin.";
-
-/** US cents a month as whole dollars: `$5/month`. */
-function perMonth(cents: number): string {
-  return `${wholeUsd(cents / 100)}/month`;
-}
-
 /**
- * What a **Bought Server** is charged for, and the changes to it (ADR-0071):
- * backups, extra storage (`ExtraStorageRow`) and size (`BoughtServerSizeRow`).
- * Shown only for a Server bought from Cloudgate, on the Hosted instance.
+ * A Bought Server's **Server backups** on its tab (ADR-0071, ADR-0093): the
+ * switch, and while backups are on the strip and the list with Restore
+ * (`ServerBackupList`). Back up now is in the tab's header.
  *
- * Each change asks first. Turning backups on says what it costs and that
- * today's part is charged now; turning them off warns that every backup is
- * deleted at once and says the unused part is credited. While backups are
- * on, the Server backups are listed under it (`ServerBackupList`). While a change runs
- * the card says **Changing** and every switch waits.
+ * Turning backups on asks first, says what it costs and that today's part
+ * is charged now; turning them off warns that every backup is deleted at
+ * once and says the unused part is credited. While a change runs the
+ * switch shows where it is going and waits.
  */
-export function BoughtServerCard({ server }: { server: Server }) {
-  const bought = useBoughtServer(server.serverId);
-  if (!bought.data) return null;
-  return <BoughtServerChanges view={bought.data} server={server} />;
-}
-
-function BoughtServerChanges({
+export function ServerBackupsCard({
   view,
   server,
+  rowWhy,
 }: {
   view: BoughtServerView;
   server: Server;
+  /** Why the Server can't be changed now (role, or not Ready), or null. */
+  rowWhy: string | null;
 }) {
   const canChange = usePermission({ server: ["create"] });
-  const whyId = useId();
   const setBackups = useSetBackups(view.id);
   const [asking, setAsking] = useState<"on" | "off" | null>(null);
 
-  const changing = view.stage === "changing";
-  const ready = view.stage === "ready";
   const backupsLine = view.lines.find((line) => line.kind === "backups");
   const offer = view.backupsOfferCents;
   const shownOn =
-    changing && view.change?.backups !== undefined
+    view.stage === "changing" && view.change?.backups !== undefined
       ? view.change.backups
       : view.backups;
-
-  /** Why the extra storage and size rows wait, if they do. */
-  const rowWhy = !canChange.allowed
-    ? BOUGHT_SERVER_CHANGE_REFUSAL
-    : !ready
-      ? CHANGE_WAITS_FOR_READY
-      : null;
   const why =
     rowWhy ??
     (!view.backups && offer === null
@@ -94,10 +68,9 @@ function BoughtServerChanges({
   return (
     <Card>
       <Card.Header
-        title="Bought Server"
-        sub={`${perMonth(view.monthlyCents)} on your plan's invoice.`}
+        title="Server backups"
+        sub="A copy of the Server's own disk every day, the last 7 kept."
         headingLevel={2}
-        actions={changing ? <Chip variant="warn">Changing</Chip> : null}
       />
       <Card.Body>
         <QAList>
@@ -105,8 +78,8 @@ function BoughtServerChanges({
             title="Backups"
             description={
               view.backups && backupsLine
-                ? `On · ${perMonth(backupsLine.monthlyCents)}. A copy of the Server's own disk every day, the last 7 kept. They don't include extra storage.`
-                : `Off${offer !== null ? ` · ${perMonth(offer)} when on` : ""}. A copy of the Server's own disk every day, the last 7 kept.`
+                ? `On · ${perMonth(backupsLine.monthlyCents)}. They don't include extra storage.`
+                : `Off${offer !== null ? ` · ${perMonth(offer)} when on` : ""}.`
             }
             action={
               <Switch
@@ -118,16 +91,14 @@ function BoughtServerChanges({
               />
             }
           />
-          <ExtraStorageRow view={view} why={rowWhy} />
-          <BoughtServerSizeRow view={view} why={rowWhy} />
         </QAList>
         {why && canChange.allowed ? (
-          <p id={whyId} className="mt-2 text-meta text-tx-3">
+          <p id={BACKUPS_READY_NOTE_ID} className="mt-2 text-meta text-tx-3">
             {why}
           </p>
         ) : null}
       </Card.Body>
-      <ServerBackupList view={view} server={server} readyNoteId={whyId} />
+      <ServerBackupList view={view} server={server} />
 
       <Modal
         open={asking === "on"}

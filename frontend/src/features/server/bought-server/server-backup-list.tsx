@@ -3,9 +3,7 @@ import { useId, useState } from "react";
 import { Card } from "@/components/console/card";
 import { DataTable, type Column } from "@/components/console/data-table";
 import { MetaStrip } from "@/components/console/meta-strip";
-import { Modal } from "@/components/console/modal";
 import { Skeleton } from "@/components/console/skeleton";
-import { toast } from "@/components/console/toast";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/api/error-message";
 import type {
@@ -18,8 +16,12 @@ import { Icon } from "@/lib/design/icons";
 import { counted } from "@/lib/format/plural";
 import { timeExact } from "@/lib/format/time";
 
-import { useBackUpNow, useServerBackups } from "../buy/use-bought-servers";
-import { CHANGE_WAITS_FOR_READY } from "./bought-server-reasons";
+import { useServerBackups } from "../buy/use-bought-servers";
+import {
+  BACKUPS_NOTE_ID,
+  BACKUPS_READY_NOTE_ID,
+  CHANGE_WAITS_FOR_READY,
+} from "./bought-server-reasons";
 import { RestoreBackupModal, takenOn } from "./restore-backup-modal";
 
 /** Said while backups are on and the provider has made none yet: it makes one a day. */
@@ -43,24 +45,7 @@ export const RESTORE_WAITS_FOR_BACKUP =
   "This backup can be restored once it is made.";
 
 /** The provider keeps this many; one more pushes out the oldest (ADR-0093). */
-const SLOTS = 7;
-
-/**
- * The backup a confirmation names, "Tuesday 03:00": the 7 slots span a week
- * at most, so the weekday picks it out. Made per call, so it reads the
- * reader's zone as it is then.
- */
-function weekdayAndTime(iso: string): string {
-  const parts = new Intl.DateTimeFormat("en", {
-    weekday: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(new Date(iso));
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((each) => each.type === type)?.value ?? "";
-  return `${part("weekday")} ${part("hour")}:${part("minute")}`;
-}
+export const SLOTS = 7;
 
 /**
  * GB as the provider counts them (decimal), to one place; under one, in MB.
@@ -102,15 +87,11 @@ const SIZE: Pick<Column<ServerBackup>, "id" | "head" | "tone"> = {
  * Backups switch: shown only while backups are on, since turning them off
  * deletes every one. The order is the API's.
  *
- * **Back up now** takes one more at once, in the same 7 slots and at no
- * cost. It asks first and, once all 7 are full, names the oldest it will
- * push out; the list is read again until the new one is made. It waits,
- * with its reason, for a Ready Server and a role that may change it
- * (`server: ['create']`); a frozen Organization's refusal comes back from
- * the API as a toast, as the other changes' do.
+ * **Back up now** is in the tab's header (`BackUpNow`).
  *
  * **Restore** on each row puts the disk back as it was then
- * (`RestoreBackupModal`), waiting with its reason for the same two, for a
+ * (`RestoreBackupModal`), waiting with its reason for a Ready Server and a
+ * role that may change it (`server: ['create']`), for a
  * Server out of maintenance and for a backup that is whole. While one runs,
  * the strip says which backup; as it ends, the list is read again, so the
  * safety copy shows.
@@ -118,29 +99,24 @@ const SIZE: Pick<Column<ServerBackup>, "id" | "head" | "tone"> = {
  * A control that waits says why on screen as well as in its `title`, and
  * points `aria-describedby` at that sentence (design-system.md, "Off, and
  * looking off"): the card's own note while the Server is not Ready
- * (`readyNoteId`, so the sentence is not said twice), a note under the strip
- * for the role and for maintenance, and a backup's "Being made".
+ * (`BACKUPS_READY_NOTE_ID`, so the sentence is not said twice), a note
+ * under the strip for the role and for maintenance (`BACKUPS_NOTE_ID`,
+ * which Back up now points at too), and a backup's "Being made".
  */
 export function ServerBackupList({
   view,
   server,
-  readyNoteId,
 }: {
   view: BoughtServerView;
   server: Server;
-  /** The card's note saying {@link CHANGE_WAITS_FOR_READY}, while it shows. */
-  readyNoteId: string;
 }) {
   const backups = useServerBackups(
     view.id,
     view.backups,
     view.stage === "changing",
   );
-  const backUpNow = useBackUpNow(view.id);
   const canChange = usePermission({ server: ["create"] });
-  const [asking, setAsking] = useState(false);
   const [restoring, setRestoring] = useState<ServerBackup | null>(null);
-  const noteId = useId();
   const rowId = useId();
   if (!view.backups) return null;
 
@@ -162,7 +138,6 @@ export function ServerBackupList({
     );
   }
   const rows = backups.data;
-  const pushedOut = rows.length >= SLOTS ? rows[rows.length - 1] : null;
   const ready = view.stage === "ready";
   const inMaintenance = server.maintenanceSince !== null;
   const why = !canChange.allowed
@@ -173,9 +148,10 @@ export function ServerBackupList({
   const restoreWhy =
     why ?? (inMaintenance ? RESTORE_WAITS_FOR_MAINTENANCE : null);
   // Where each reason is said on screen: the card's note says Ready's.
-  const whyId = why === CHANGE_WAITS_FOR_READY ? readyNoteId : noteId;
   const restoreWhyId =
-    restoreWhy === CHANGE_WAITS_FOR_READY ? readyNoteId : noteId;
+    restoreWhy === CHANGE_WAITS_FOR_READY
+      ? BACKUPS_READY_NOTE_ID
+      : BACKUPS_NOTE_ID;
   const note = restoreWhy === CHANGE_WAITS_FOR_READY ? null : restoreWhy;
   const beingMadeId = (backup: ServerBackup) => `${rowId}-${backup.id}`;
 
@@ -221,49 +197,27 @@ export function ServerBackupList({
   ];
   const restoringFrom = view.change?.restore?.backupTakenAt;
 
-  async function confirm() {
-    setAsking(false);
-    try {
-      await backUpNow.mutateAsync();
-      toast.done(`A backup of ${view.name} is being made.`);
-    } catch (error) {
-      toast.error(error);
-    }
-  }
-
   return (
     <>
-      <MetaStrip className="flex items-center justify-between gap-3 border-t">
-        <span>
-          {restoringFrom ? (
-            <>
-              Restoring the backup of <strong>{takenOn(restoringFrom)}</strong>.
-            </>
-          ) : rows.length > 0 ? (
-            <>
-              <strong>
-                {counted(rows.length, "Server backup", "Server backups")}
-              </strong>{" "}
-              kept, at most 7.
-            </>
-          ) : (
-            FIRST_BACKUP_WITHIN_A_DAY
-          )}
-        </span>
-        <Button
-          type="button"
-          size="xs"
-          disabled={why !== null || backUpNow.isPending}
-          title={why ?? undefined}
-          aria-describedby={why !== null ? whyId : undefined}
-          onClick={() => setAsking(true)}
-        >
-          Back up now
-        </Button>
+      <MetaStrip className="border-t">
+        {restoringFrom ? (
+          <>
+            Restoring the backup of <strong>{takenOn(restoringFrom)}</strong>.
+          </>
+        ) : rows.length > 0 ? (
+          <>
+            <strong>
+              {counted(rows.length, "Server backup", "Server backups")}
+            </strong>{" "}
+            kept, at most 7.
+          </>
+        ) : (
+          FIRST_BACKUP_WITHIN_A_DAY
+        )}
       </MetaStrip>
       {note ? (
         <p
-          id={noteId}
+          id={BACKUPS_NOTE_ID}
           className="border-b border-line px-4 py-2 text-meta text-tx-2"
         >
           {note}
@@ -291,36 +245,6 @@ export function ServerBackupList({
         }
         onOpenChange={(open) => !open && setRestoring(null)}
       />
-
-      <Modal open={asking} onOpenChange={(open) => !open && setAsking(false)}>
-        <Modal.Header
-          title={`Back up ${view.name} now?`}
-          description="A copy of the Server's own disk, kept with the daily ones in the same 7 slots, at no extra cost."
-        />
-        {pushedOut ? (
-          <Modal.Body>
-            <p className="text-body text-tx-2">
-              All 7 slots are full, so{" "}
-              <strong className="text-tx">
-                {weekdayAndTime(pushedOut.takenAt)}
-              </strong>{" "}
-              will be removed.
-            </p>
-          </Modal.Body>
-        ) : null}
-        <Modal.Footer>
-          <Modal.Gap />
-          <Modal.Close render={<Button type="button">Cancel</Button>} />
-          <Button
-            type="button"
-            variant="pri"
-            disabled={why !== null}
-            onClick={() => void confirm()}
-          >
-            Back up now
-          </Button>
-        </Modal.Footer>
-      </Modal>
     </>
   );
 }

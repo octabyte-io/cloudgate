@@ -1,4 +1,4 @@
-import { panel, type TabEntry } from "../tab-registry";
+import { panel, type TabEntry, type TabSubject } from "../tab-registry";
 
 /**
  * Server scope — the reference's `SERVER_NAV` (e-console.html:2014-2022),
@@ -62,6 +62,15 @@ export const SERVER_TABS: readonly TabEntry[] = [
     icon: "term",
     panel: panel(() => import("@/features/server/panels/shell")),
   },
+  // A Server bought from Cloudgate (#198): its Server backups, size and
+  // storage, and what it costs, which were one card among Settings' before.
+  {
+    slug: "bought-server",
+    label: "Bought Server",
+    icon: "cash",
+    absentBecause: notBought,
+    panel: panel(() => import("@/features/server/panels/bought-server")),
+  },
   {
     slug: "settings",
     label: "Settings",
@@ -70,3 +79,9 @@ export const SERVER_TABS: readonly TabEntry[] = [
     panel: panel(() => import("@/features/server/panels/settings")),
   },
 ];
+
+/** Why a Server has no Bought Server tab: it is a Server of the customer's own. */
+function notBought(subject: TabSubject): string | null {
+  if (subject.boughtServer) return null;
+  return "Only a Server bought from Cloudgate has this tab. This one is a Server of your own, so its backups, size and price are with whoever provides it.";
+}

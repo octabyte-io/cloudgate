@@ -42,6 +42,7 @@ const { ConnectionCard } = await import("./connection-card");
 const { IdentityCard } = await import("./identity-card");
 const { SetupCommandCard } = await import("./setup-command-card");
 const { DangerCard } = await import("./server-danger-card");
+const { BoughtServerMovedLine } = await import("./bought-server-moved-line");
 
 const server = {
   serverId: "srv-1",
@@ -230,5 +231,46 @@ describe("DangerCard — Delete", () => {
   it("still says a Server of the customer's own is only forgotten", () => {
     mount([]);
     expect(screen.getByText(/does nothing to it/)).not.toBeNull();
+  });
+});
+
+/**
+ * A Bought Server's backups, size, storage and price moved from Settings to
+ * its own tab (#198): Settings keeps one line pointing there, for a Bought
+ * Server only.
+ */
+describe("BoughtServerMovedLine", () => {
+  it("links a Bought Server's Settings to its Bought Server tab", () => {
+    render(
+      <BoughtServerMovedLine
+        server={
+          {
+            ...server,
+            boughtServer: { stage: "ready", deletesOn: null, deletedAt: null },
+          } as unknown as Server
+        }
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "Its Server backups, size, extra storage and what it costs are on its own tab.",
+      ),
+    ).not.toBeNull();
+    expect(
+      screen
+        .getByRole("link", { name: "Open Bought Server" })
+        .getAttribute("href"),
+    ).toBe("/servers/srv-1/bought-server");
+  });
+
+  it("shows nothing on a Server of the customer's own", () => {
+    const { container } = render(
+      <BoughtServerMovedLine
+        server={{ ...server, boughtServer: null } as unknown as Server}
+      />,
+    );
+
+    expect(container.textContent).toBe("");
   });
 });

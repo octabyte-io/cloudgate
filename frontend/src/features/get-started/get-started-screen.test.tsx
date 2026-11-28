@@ -135,8 +135,10 @@ vi.mock("@/lib/auth/use-permission", () => ({
     role: "member",
   }),
 }));
-vi.mock("../server/buy/use-bought-servers", () => ({
+vi.mock("@/lib/api/use-bought-server-offer", () => ({
   useBoughtServerOffer: () => ({ offered: reads.offered, pending: false }),
+}));
+vi.mock("../server/buy/use-bought-servers", () => ({
   useBoughtServerCatalogue: () => ({ data: CATALOGUE }),
   useCancelPurchase: () => ({ mutate: vi.fn(), isPending: false }),
   useBoughtServerToday: (choice: unknown) => ({

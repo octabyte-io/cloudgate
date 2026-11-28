@@ -74,6 +74,21 @@ vi.mock("@/features/operator/use-operator", () => ({
   useIsOperator: () => ({ ...reader, pending: false }),
 }));
 
+// Whether buying a Server is offered: the instance's mode, then the offer.
+// Self-hosted unless a test says otherwise.
+const offer = vi.hoisted(() => ({
+  about: vi.fn(),
+  offer: vi.fn(),
+}));
+vi.mock("@/lib/api/endpoints/settings", async (original) => ({
+  ...(await original<typeof import("@/lib/api/endpoints/settings")>()),
+  settingsApi: { about: offer.about },
+}));
+vi.mock("@/lib/api/endpoints/bought-servers", async (original) => ({
+  ...(await original<typeof import("@/lib/api/endpoints/bought-servers")>()),
+  boughtServersApi: { offer: offer.offer },
+}));
+
 const { ScopeProvider, useScope } = await import("./scope-provider");
 const { ScopeIdentity } = await import("./scope-identity");
 const { recordRecent, useRecents } = await import("./recents");
@@ -135,6 +150,8 @@ beforeEach(() => {
   api.environment.mockResolvedValue(ENVIRONMENT);
   api.environments.mockResolvedValue([ENVIRONMENT]);
   api.application.mockResolvedValue(APPLICATION);
+  offer.about.mockReset().mockResolvedValue({ mode: "self-hosted" });
+  offer.offer.mockReset().mockResolvedValue({ offered: false });
 });
 
 afterEach(() => {
@@ -328,13 +345,49 @@ describe("the Organization rail's Requests", () => {
 });
 
 /**
+ * Bought Servers sits under Servers only where buying a Server is offered:
+ * the Hosted instance with the provider set up, even before anything is
+ * bought.
+ */
+describe("the Organization rail's Bought Servers", () => {
+  function watchRail() {
+    let seen: ReturnType<typeof useScope> | null = null;
+    function Spy() {
+      seen = useScope();
+      return null;
+    }
+    mount("/", <Spy />);
+    return () =>
+      seen!.nav.flatMap((entry) =>
+        entry.kind === "item" || entry.kind === "group" ? [entry.label] : [],
+      );
+  }
+
+  it("is absent on a Self-hosted instance, and the offer is never asked", async () => {
+    const rail = watchRail();
+    await waitFor(() => expect(offer.about).toHaveBeenCalled());
+    expect(rail()).not.toContain("Bought Servers");
+    expect(offer.offer).not.toHaveBeenCalled();
+  });
+
+  it("sits directly under Servers on the Hosted instance with buying offered", async () => {
+    offer.about.mockResolvedValue({ mode: "hosted" });
+    offer.offer.mockResolvedValue({ offered: true });
+    const rail = watchRail();
+    await waitFor(() => expect(rail()).toContain("Bought Servers"));
+    const labels = rail();
+    expect(labels[labels.indexOf("Servers") + 1]).toBe("Bought Servers");
+  });
+});
+
+/**
  * The masthead's
  * star was write-only — it lit up on its own header and was shown nowhere else.
  * The Organization rail's Starred group is its reader, rendered here from the
  * real nav table beside the real toggle.
  */
 describe("Starred, from a resource scope", () => {
-  const STARRED = organizationNav().find(
+  const STARRED = organizationNav({}).find(
     (entry) => entry.kind === "group" && entry.id === "starred",
   );
 

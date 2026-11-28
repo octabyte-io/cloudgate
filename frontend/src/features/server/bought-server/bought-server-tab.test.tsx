@@ -46,8 +46,12 @@ vi.mock("@/lib/auth/use-permission", async (original) => ({
 }));
 vi.mock("@/components/console/toast", () => ({ toast }));
 
-const { BoughtServerCard, BOUGHT_SERVER_CHANGE_REFUSAL } =
-  await import("./bought-server-card");
+const {
+  BoughtServerActions,
+  BoughtServerAside,
+  BoughtServerMain,
+  BOUGHT_SERVER_CHANGE_REFUSAL,
+} = await import("./bought-server-tab");
 const { BACKUPS_POLL_MS } = await import("../buy/use-bought-servers");
 
 const SERVER = {
@@ -66,6 +70,9 @@ const READY: BoughtServerView = {
   monthlyCents: 2500,
   backupsOfferCents: 500,
   change: null,
+  location: { city: "Helsinki", country: "FI" },
+  image: "Ubuntu 24.04",
+  size: { family: "amd", vcpus: 3, memoryGb: 4, diskGb: 80 },
 };
 
 const WITH_BACKUPS: BoughtServerView = {
@@ -98,13 +105,19 @@ const BACKUPS: ServerBackup[] = [
   },
 ];
 
+/**
+ * The Bought Server tab as its panel lays it out: the header's actions,
+ * the main column and the aside (`panels/bought-server.tsx`).
+ */
 function renderCard(server: Server = SERVER) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <BoughtServerCard server={server} />
+      <BoughtServerActions server={server} />
+      <BoughtServerMain server={server} />
+      <BoughtServerAside server={server} />
     </QueryClientProvider>,
   );
 }
@@ -136,7 +149,7 @@ afterEach(() => {
   toast.error.mockReset();
 });
 
-describe("BoughtServerCard", () => {
+describe("the Bought Server tab", () => {
   it("shows nothing for a Server that was not bought", async () => {
     api.server.mockRejectedValue(new ApiError(404, "Server not found"));
     const { container } = renderCard();
@@ -145,13 +158,59 @@ describe("BoughtServerCard", () => {
     expect(container.textContent).toBe("");
   });
 
-  it("shows what the Server is charged and what backups would cost", async () => {
+  it("shows what backups would cost while they are off", async () => {
     renderCard();
 
-    expect(
-      await screen.findByText("$25/month on your plan's invoice."),
-    ).toBeTruthy();
-    expect(screen.getByText(/Off · \$5\/month when on/)).toBeTruthy();
+    expect(await screen.findByText(/Off · \$5\/month when on/)).toBeTruthy();
+  });
+
+  describe("the aside", () => {
+    /** The rows of the aside card titled `title`, as "label value". */
+    async function factsOf(title: string) {
+      const card = (
+        await screen.findByRole("heading", { name: title })
+      ).closest('[data-slot="card"]') as HTMLElement;
+      return within(card)
+        .getAllByRole("definition")
+        .map(
+          (value) =>
+            `${value.previousElementSibling?.textContent} ${value.textContent}`,
+        );
+    }
+
+    it("shows each line the Server is charged for, and the total", async () => {
+      api.server.mockResolvedValue({
+        ...READY,
+        backups: true,
+        storageGb: 100,
+        lines: [
+          { kind: "server", monthlyCents: 2500 },
+          { kind: "backups", monthlyCents: 500 },
+          { kind: "storage", monthlyCents: 1100 },
+        ],
+        monthlyCents: 4100,
+        backupsOfferCents: null,
+      });
+      renderCard();
+
+      expect(await factsOf("What you pay")).toEqual([
+        "Server $25/month",
+        "Backups $5/month",
+        "Extra storage $11/month",
+        "Total $41/month",
+      ]);
+    });
+
+    it("shows the Location, the Server image and the size", async () => {
+      renderCard();
+
+      expect(await factsOf("About this Server")).toEqual([
+        "Location Helsinki, Finland",
+        "Server image Ubuntu 24.04",
+        "Size Performance · 3 vCPU · 4 GB RAM · 80 GB disk",
+      ]);
+      expect(document.body.textContent).not.toMatch(/hel1|cpx22/);
+    });
   });
 
   it("asks before turning backups on, saying the cost and that today's part is charged now", async () => {
@@ -291,7 +350,7 @@ describe("BoughtServerCard", () => {
       await screen.findByRole("table", { name: "Server backups of web-1" });
       expect(
         document.querySelector('[data-slot="meta-strip"]')?.textContent,
-      ).toMatch(/^3 Server backups kept, at most 7\.Back up now$/);
+      ).toMatch(/^3 Server backups kept, at most 7\.$/);
     });
 
     it("says the first backup is taken within a day while backups are on and none exist yet", async () => {
@@ -393,7 +452,7 @@ describe("BoughtServerCard", () => {
         await screen.findByRole("button", { name: "Back up now" }),
       );
       const dialog = screen.getByRole("dialog");
-      expect(dialog.textContent).toMatch(/Tuesday 03:00 will be removed/);
+      expect(dialog.textContent).toMatch(/Tuesday 03:00 will be pushed out/);
       api.backups.mockResolvedValue([taken, ...seven.slice(0, 6)]);
       fireEvent.click(
         within(dialog).getByRole("button", { name: "Back up now" }),
@@ -411,7 +470,7 @@ describe("BoughtServerCard", () => {
       expect(table.textContent).not.toMatch(/Nov 17, 2026/);
     });
 
-    it("names no backup to be removed while fewer than 7 are kept", async () => {
+    it("names no backup to be pushed out while fewer than 7 are kept", async () => {
       api.server.mockResolvedValue(WITH_BACKUPS);
       api.backups.mockResolvedValue(BACKUPS);
       renderCard();
@@ -421,7 +480,7 @@ describe("BoughtServerCard", () => {
       );
 
       expect(screen.getByRole("dialog").textContent).not.toMatch(
-        /will be removed/,
+        /will be pushed out/,
       );
     });
 
@@ -462,10 +521,11 @@ describe("BoughtServerCard", () => {
       expect(describedBy(button)).toBe(
         "This Server can be changed once it is Ready.",
       );
-      // Said once on screen, by the card's own note.
+      // Said on screen once in each card whose controls it holds: Server
+      // backups, and Size and storage.
       expect(
         screen.getAllByText("This Server can be changed once it is Ready."),
-      ).toHaveLength(1);
+      ).toHaveLength(2);
     });
 
     it("holds Back up now for a role that may not change the Server", async () => {
@@ -492,6 +552,7 @@ describe("BoughtServerCard", () => {
         screen.queryByText("The first backup is taken within a day."),
       ).toBeNull();
       expect(api.backups).not.toHaveBeenCalled();
+      expect(screen.queryByRole("button", { name: "Back up now" })).toBeNull();
     });
   });
 

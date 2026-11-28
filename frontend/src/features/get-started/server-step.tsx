@@ -10,14 +10,12 @@ import { Button } from "@/components/ui/button";
 import type { Server } from "@/lib/api/endpoints/servers";
 import type { TemplateSummary } from "@/lib/api/endpoints/templates";
 import { errorMessage } from "@/lib/api/error-message";
+import { useBoughtServerOffer } from "@/lib/api/use-bought-server-offer";
 import { usePermission } from "@/lib/auth/use-permission";
 import { cn } from "@/lib/utils";
 
 import { wholeUsd } from "../server/buy/buy-model";
-import {
-  useBoughtServerCatalogue,
-  useBoughtServerOffer,
-} from "../server/buy/use-bought-servers";
+import { useBoughtServerCatalogue } from "../server/buy/use-bought-servers";
 import { BuyFlow } from "./buy-flow";
 import { OwnFlow } from "./own-flow";
 import { useWizardPurchases, useWizardServers } from "./use-get-started";

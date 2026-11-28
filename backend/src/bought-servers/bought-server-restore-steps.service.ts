@@ -19,6 +19,7 @@ import type {
   RestoreRedeploy,
 } from '../db/schema';
 import { HETZNER_MACHINES } from './hetzner/hetzner-cloud.port';
+import { boughtServerPageUrl } from './bought-server-page';
 import type { HetznerCloudPort } from './hetzner/hetzner-cloud.port';
 import { backupDateOf, safetyCopyPushesOut } from './restore';
 import { RestoreRedeploys } from './restore-redeploys.service';
@@ -723,7 +724,7 @@ export class BoughtServerRestoreSteps {
   }
 
   private serverUrl(row: BoughtServer): string {
-    return `${this.billingConfig.siteUrl}/servers/${row.id}/settings`;
+    return boughtServerPageUrl(this.billingConfig.siteUrl, row.id);
   }
 
   private async find(id: string): Promise<BoughtServer | null> {
