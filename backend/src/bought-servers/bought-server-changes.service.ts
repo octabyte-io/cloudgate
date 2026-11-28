@@ -63,6 +63,25 @@ export interface BoughtServerView {
     /** A Restore (#180): when the backup it puts back was taken, ISO. */
     restore?: { backupTakenAt: string };
   } | null;
+  /**
+   * Where it is, for "About this Server" (#198): the city and the country's
+   * ISO code, never the provider's Location code. Null when the catalogue
+   * cannot be read or no longer lists it.
+   */
+  location: { city: string; country: string } | null;
+  /** Its **Server image**, `Ubuntu 24.04`; null when the catalogue cannot name it. */
+  image: string | null;
+  /**
+   * Its size by what it is, never by the provider's code. The disk is its
+   * own, which a size change never grows. Null when the catalogue cannot
+   * be read or no longer sells the size.
+   */
+  size: {
+    family: SizeFamily;
+    vcpus: number;
+    memoryGb: number;
+    diskGb: number;
+  } | null;
 }
 
 /** One size the Server can move to, in its own Location, as its Settings show it. */
@@ -156,6 +175,41 @@ function movableSizes(
   return catalogue.sizes.filter((size) => (size.family === 'arm') === arm);
 }
 
+/** What backups cost a month for the row's size where it is, in cents; null when it is not sold there. */
+function backupsCentsIn(
+  catalogue: BoughtServerCatalogue,
+  row: BoughtServer,
+): number | null {
+  const offer = catalogue.sizes
+    .find((size) => size.id === row.serverType)
+    ?.offers.find((entry) => entry.locationId === row.location);
+  return offer ? offer.backupsMonthly * 100 : null;
+}
+
+/** "About this Server": its Location, Server image and size, as the catalogue names them. */
+function aboutIn(
+  catalogue: BoughtServerCatalogue | null,
+  row: BoughtServer,
+): Pick<BoughtServerView, 'location' | 'image' | 'size'> {
+  const place = catalogue?.locations.find((each) => each.id === row.location);
+  const image = catalogue?.images.find((each) => each.id === row.image);
+  const size = catalogue?.sizes.find((each) => each.id === row.serverType);
+  const diskGb = catalogue ? diskOf(catalogue, row) : null;
+  return {
+    location: place ? { city: place.city, country: place.country } : null,
+    image: image?.label ?? null,
+    size:
+      size && diskGb !== null
+        ? {
+            family: size.family,
+            vcpus: size.vcpus,
+            memoryGb: size.memoryGb,
+            diskGb,
+          }
+        : null,
+  };
+}
+
 /** A card Stripe refused outright, as the SDK throws it. */
 function isCardError(error: unknown): error is { message?: string } {
   return (
@@ -208,6 +262,7 @@ export class BoughtServerChanges {
       .from(boughtServerLine)
       .where(eq(boughtServerLine.boughtServerId, id));
     const target = row.changeTarget;
+    const catalogue = await this.readCatalogue(row);
     return {
       id: row.id,
       name: row.name,
@@ -216,7 +271,8 @@ export class BoughtServerChanges {
       storageGb: row.storageGb,
       lines,
       monthlyCents: lines.reduce((sum, line) => sum + line.monthlyCents, 0),
-      backupsOfferCents: row.backups ? null : await this.backupsCents(row),
+      backupsOfferCents:
+        row.backups || !catalogue ? null : backupsCentsIn(catalogue, row),
       change: target
         ? {
             ...(target.backups !== undefined
@@ -235,6 +291,7 @@ export class BoughtServerChanges {
               : {}),
           }
         : null,
+      ...aboutIn(catalogue, row),
     };
   }
 
@@ -679,15 +736,19 @@ export class BoughtServerChanges {
 
   /** What backups cost a month now for this size there, in cents; null when it is not sold there any more. */
   private async backupsCents(row: BoughtServer): Promise<number | null> {
+    const catalogue = await this.readCatalogue(row);
+    return catalogue ? backupsCentsIn(catalogue, row) : null;
+  }
+
+  /** The catalogue as it is, or null, logged, when it cannot be read now. */
+  private async readCatalogue(
+    row: BoughtServer,
+  ): Promise<BoughtServerCatalogue | null> {
     try {
-      const catalogue = await this.catalogue.catalogue();
-      const offer = catalogue.sizes
-        .find((size) => size.id === row.serverType)
-        ?.offers.find((entry) => entry.locationId === row.location);
-      return offer ? offer.backupsMonthly * 100 : null;
+      return await this.catalogue.catalogue();
     } catch (error) {
       this.logger.warn(
-        `Could not price backups for Bought Server ${row.id}: ${(error as Error).message}`,
+        `Could not read the catalogue for Bought Server ${row.id}: ${(error as Error).message}`,
       );
       return null;
     }
