@@ -171,6 +171,17 @@ export type BoughtServerView = {
     /** A Restore: when the backup it puts back was taken, ISO 8601. */
     restore?: { backupTakenAt: string };
   } | null;
+  /** Where it is: `Helsinki` and an ISO 3166-1 alpha-2 code; null when the catalogue can't say. */
+  location: { city: string; country: string } | null;
+  /** Its **Server image**, `Ubuntu 24.04`; null when the catalogue can't say. */
+  image: string | null;
+  /** Its size by what it is, its own disk included; null when the catalogue can't say. */
+  size: {
+    family: SizeFamily;
+    vcpus: number;
+    memoryGb: number;
+    diskGb: number;
+  } | null;
 };
 
 /**

@@ -12,8 +12,9 @@ import type {
 import { usePermission } from "@/lib/auth/use-permission";
 import { cn } from "@/lib/utils";
 
-import { FAMILIES, sizeLabel, wholeUsd } from "../buy/buy-model";
+import { FAMILIES, sizeLabel } from "../buy/buy-model";
 import { useBoughtServerSizes, useSetSize } from "../buy/use-bought-servers";
+import { perMonth } from "./per-month";
 
 /** Said first, whatever the size: the change means downtime. */
 export const SIZE_DOWNTIME_WARNING =
@@ -22,10 +23,6 @@ export const SIZE_DOWNTIME_WARNING =
 /** Said first too: the disk stays as it is, so a size can always move back down. */
 export const SIZE_DISK_NOTE =
   "Its disk isn't grown with the size, so you can always move back down. For more disk, add extra storage.";
-
-function perMonth(cents: number): string {
-  return `${wholeUsd(cents / 100)}/month`;
-}
 
 /** What the Server would cost a month on `size`, its backups moved with it. */
 function monthlyOn(size: SizeChoice, view: BoughtServerView): number {

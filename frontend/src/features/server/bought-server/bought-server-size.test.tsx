@@ -55,6 +55,9 @@ const VIEW: BoughtServerView = {
   monthlyCents: 1100,
   backupsOfferCents: null,
   change: null,
+  location: null,
+  image: null,
+  size: null,
 };
 
 const SMALL: SizeChoice = {

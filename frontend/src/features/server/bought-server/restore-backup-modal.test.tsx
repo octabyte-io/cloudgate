@@ -38,6 +38,9 @@ const VIEW: BoughtServerView = {
   monthlyCents: 3000,
   backupsOfferCents: null,
   change: null,
+  location: null,
+  image: null,
+  size: null,
 };
 
 const BACKUP: ServerBackup = {

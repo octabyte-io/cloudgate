@@ -45,8 +45,8 @@ vi.mock("@/lib/auth/use-permission", async (original) => ({
 }));
 vi.mock("@/components/console/toast", () => ({ toast }));
 
-const { BoughtServerCard, BOUGHT_SERVER_CHANGE_REFUSAL } =
-  await import("./bought-server-card");
+const { BoughtServerMain, BOUGHT_SERVER_CHANGE_REFUSAL } =
+  await import("./bought-server-tab");
 
 const SERVER = { serverId: "abc", name: "web-1" } as Server;
 
@@ -60,6 +60,9 @@ const READY: BoughtServerView = {
   monthlyCents: 2500,
   backupsOfferCents: 500,
   change: null,
+  location: null,
+  image: null,
+  size: null,
 };
 
 /** Bought with 100 GB of extra storage: $10 a month. */
@@ -82,7 +85,7 @@ function renderCard() {
   });
   return render(
     <QueryClientProvider client={client}>
-      <BoughtServerCard server={SERVER} />
+      <BoughtServerMain server={SERVER} />
     </QueryClientProvider>,
   );
 }
@@ -102,7 +105,7 @@ afterEach(() => {
   toast.error.mockReset();
 });
 
-describe("Extra storage on a Bought Server's Settings", () => {
+describe("Extra storage on a Bought Server's tab", () => {
   it("shows its size, price and mount point, and that it isn't in backups and never shrinks", async () => {
     renderCard();
 
@@ -116,7 +119,7 @@ describe("Extra storage on a Bought Server's Settings", () => {
     api.server.mockResolvedValue(READY);
     renderCard();
 
-    await screen.findByText("$25/month on your plan's invoice.");
+    await screen.findByRole("heading", { name: "Size and storage" });
     expect(screen.queryByText("Extra storage")).toBeNull();
     expect(screen.queryByRole("button", { name: "Grow" })).toBeNull();
   });

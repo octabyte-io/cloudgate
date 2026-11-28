@@ -3,7 +3,7 @@
 import type { PanelProps } from "@/lib/shell/tab-registry";
 
 import { ServerPanel } from "../server-panel";
-import { BoughtServerCard } from "../bought-server/bought-server-card";
+import { BoughtServerMovedLine } from "../settings/bought-server-moved-line";
 import { ConnectionCard } from "../settings/connection-card";
 import { HousekeepingCard } from "../settings/housekeeping-card";
 import { IdentityCard } from "../settings/identity-card";
@@ -36,6 +36,9 @@ import { SetupCommandCard } from "../settings/setup-command-card";
  *
  * Maintenance sits with Housekeeping: both are about running this Server
  * rather than how Cloudgate reaches it (spec #1420).
+ *
+ * A Bought Server's backups, size, storage and price are on its own Bought
+ * Server tab (#198); Settings keeps one line pointing there, and Delete.
  */
 export default function Panel(props: PanelProps) {
   return (
@@ -43,7 +46,7 @@ export default function Panel(props: PanelProps) {
       {(server) => (
         <>
           <IdentityCard server={server} />
-          <BoughtServerCard server={server} />
+          <BoughtServerMovedLine server={server} />
           <ConnectionCard server={server} />
           <SetupCommandCard server={server} />
           <HousekeepingCard server={server} />

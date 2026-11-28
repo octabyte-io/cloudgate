@@ -21,7 +21,7 @@ export const STORAGE_NOT_IN_BACKUPS =
   "It isn't in backups: back it up to a Destination outside this Server with volume backups.";
 
 /**
- * A Bought Server's **extra storage** on its Settings: its size and price,
+ * A Bought Server's **extra storage** on its Bought Server tab: its size and price,
  * where it is mounted, that it isn't in backups, and *Grow*. Growing asks
  * first with the new price, says the rest of the plan's month is charged
  * now and that it can never shrink again; the filesystem is grown for the

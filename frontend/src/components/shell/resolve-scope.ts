@@ -65,8 +65,12 @@ function resolveFound(
 
   if (scope.kind === "server") {
     const row = q.server.data;
+    // The Bought Server tab: absent on a Server of the customer's own (#198).
+    const subject = { boughtServer: row?.boughtServer };
     return {
       ...base,
+      nav: scopeNav(scope, subject),
+      subject,
       pending: q.server.isPending,
       identity: row ? { id: row.serverId, name: row.name } : null,
       badges: row
