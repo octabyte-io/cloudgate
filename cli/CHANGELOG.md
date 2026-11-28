@@ -4,6 +4,20 @@ The Cloudgate CLI's own changes, published to npm as `@octabyte-io/cloudgate`. A
 
 ## Unreleased
 
+## 0.1.2
+
+### `cloudgate.yml` is read beside `cloudgate.yaml`
+
+A Project folder's working copy may be spelled `cloudgate.yml`, as a repository's config may on Cloudgate 0.3.13 (ADR-0089, #154). `link`, `config pull`, `config plan`, `deploy` and `new` read `cloudgate.yaml`, else `cloudgate.yml`, and write back to the name already there. A folder holding both uses `cloudgate.yaml` and warns once a run that the other is not read. `.gitignore` covers both names, and the commands' help names both.
+
+### Template folders may spell their YAML files `.yml`
+
+`template check`, `template pack` and `template try` find a template folder's YAML files spelled `.yaml` or `.yml`, as the catalogue reads them (ADR-0090, #155). A folder holding both spellings of one file, test values included, is refused, and a reason names a file as the folder spells it. `template try`'s hint for a missing value names the test values file the folder holds, or both spellings when it holds none. Its check is Cloudgate 0.3.14's, so it takes a template that names `cloudgate: "0.3.14"`.
+
+### The Same-machine warning
+
+`deploy` and `config plan` print `⚠` and the warning once per create on Cloudgate's own machine, as the console does from Cloudgate 0.3.13 (#150). It goes to stderr, so stdout stays the plan alone. An older Instance sends no such note, and nothing changes there.
+
 ## 0.1.1
 
 ### `template check` and `template pack` take `signIn`
