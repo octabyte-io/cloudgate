@@ -112,6 +112,24 @@ export function useServerPurchases(enabled: boolean) {
   });
 }
 
+/**
+ * Every Bought Server of the Organization (the Bought Servers page), asked
+ * again every few seconds while one is on its way to Ready or gone, so its
+ * stage moves on without a reload.
+ */
+export function useBoughtServers(enabled: boolean) {
+  const { organizationId } = useActiveOrganizationId();
+  return useQuery({
+    queryKey: keys.boughtServers.list(organizationId),
+    queryFn: () => boughtServersApi.list(),
+    enabled: enabled && organizationId !== null,
+    refetchInterval: (query) =>
+      query.state.data?.some((row) => row.stage !== "ready")
+        ? PURCHASES_POLL_MS
+        : false,
+  });
+}
+
 /** *Finish paying*: where the payment stands, and where to finish it. */
 export function useFinishPaying() {
   const invalidate = useInvalidate();

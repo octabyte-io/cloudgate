@@ -989,6 +989,9 @@ export const keys = {
         backups,
         storageGb,
       ] as const,
+    /** Every Bought Server of the Organization, the Bought Servers page's list. */
+    list: (organizationId: OrganizationScope) =>
+      [...org(organizationId), "bought-servers", "list"] as const,
     /** The Organization's Bought Servers not made yet. */
     purchases: (organizationId: OrganizationScope) =>
       [...org(organizationId), "bought-servers", "purchases"] as const,
