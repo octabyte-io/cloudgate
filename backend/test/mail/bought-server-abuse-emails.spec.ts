@@ -34,6 +34,21 @@ describe('renderAbuseReportEmail', () => {
     expect(rendered.html).toContain('Octabyte may suspend Hopper Labs');
     expect(rendered.html).not.toMatch(/hetzner/i);
   });
+
+  it('calls itself an email about the Organization, not its billing', async () => {
+    const rendered = await renderAbuseReportEmail({
+      userName: 'Grace',
+      organizationName: 'Hopper Labs',
+      report: 'A port scan from 203.0.113.7.',
+      deadline: new Date('2026-11-11T09:05:00Z'),
+    });
+
+    const body = rendered.html.replace(/&#x27;|&#39;/g, "'");
+    expect(body).toContain(
+      'This is an automated email from Cloudgate about your Organization. It goes to every owner and admin, and cannot be turned off.',
+    );
+    expect(body).not.toContain("about your Organization's billing");
+  });
 });
 
 describe('renderPaymentDisputedEmail', () => {

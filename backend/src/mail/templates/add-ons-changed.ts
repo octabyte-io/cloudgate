@@ -64,6 +64,7 @@ export async function renderAddOnsChangedEmail({
             : []),
         ];
   return renderConfirmationEmail(userName, {
+    about: 'billing',
     subject: `Your Add-ons changed: ${org} now has ${now}`,
     heading: `${org} now has ${now}`,
     paragraphs: [...opening, ...planFactsParagraphs(plan)],

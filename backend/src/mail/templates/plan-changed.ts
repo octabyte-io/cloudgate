@@ -46,6 +46,7 @@ export async function renderPlanChangedEmail({
     plan.planLabel,
   );
   return renderConfirmationEmail(userName, {
+    about: 'billing',
     subject,
     heading,
     paragraphs: [...opening, ...planFactsParagraphs(plan), ...closing],

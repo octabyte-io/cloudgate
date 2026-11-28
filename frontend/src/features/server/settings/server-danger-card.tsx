@@ -10,10 +10,14 @@ import { SERVER_DELETE_REFUSAL } from "../use-server";
 import { DeleteServerModal } from "./delete-server-modal";
 
 /**
- * Removing the Server from Cloudgate — which does **nothing to the machine**.
+ * Removing the Server from Cloudgate — which does **nothing to the machine**,
+ * unless Cloudgate bought it.
  *
  * Whatever is running there keeps running, unmanaged and unreachable from here, so
- * the row says that rather than implying a teardown. The dialog itself is
+ * the row says that rather than implying a teardown. **A Bought Server is the
+ * exception** (ADR-0071): Delete destroys its machine with its data and backups,
+ * so its row says that, as `DeleteServerModal` does; the row is read first, and
+ * it used to promise the machine would keep running (#194). The dialog itself is
  * `ConfirmDeleteModal`'s since F19: it never cleared the typed name, so reopening
  * after a cancel armed the delete before you had read a word.
  *
@@ -39,7 +43,11 @@ export function DangerCard({ server }: { server: Server }) {
           <QAList>
             <QARow
               title={`Delete ${server.name} from Cloudgate`}
-              description="Cloudgate forgets the machine and does nothing to it. Whatever is running there keeps running, unmanaged and unreachable from here — so stop what should be stopped first."
+              description={
+                server.boughtServer
+                  ? "Cloudgate deletes the machine it bought, with its data and its backups. This cannot be undone, so copy out anything you want to keep first."
+                  : "Cloudgate forgets the machine and does nothing to it. Whatever is running there keeps running, unmanaged and unreachable from here — so stop what should be stopped first."
+              }
               action={
                 <Button
                   size="sm"

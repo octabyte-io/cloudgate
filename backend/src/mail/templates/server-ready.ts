@@ -22,6 +22,7 @@ export async function renderServerReadyEmail({
 }): Promise<RenderedEmail> {
   const failed = firstSetup === 'failed';
   return renderConfirmationEmail(userName, {
+    about: 'billing',
     subject: failed
       ? `Your Server ${serverName} is ready, but its first setup failed`
       : `Your Server ${serverName} is ready`,

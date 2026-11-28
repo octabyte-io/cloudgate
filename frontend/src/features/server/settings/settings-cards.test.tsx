@@ -203,4 +203,32 @@ describe("DangerCard — Delete", () => {
     fireEvent.click(button);
     expect(screen.getByText("delete dialog open")).not.toBeNull();
   });
+
+  // The row is read before the dialog is opened, so it has to say what the
+  // dialog says: a Bought Server's machine is deleted, not left running (#194).
+  it("says a Bought Server's machine, data and backups are deleted", () => {
+    hold([]);
+    render(
+      <DangerCard
+        server={
+          {
+            ...server,
+            boughtServer: { stage: "ready", deletesOn: null, deletedAt: null },
+          } as unknown as Server
+        }
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "Cloudgate deletes the machine it bought, with its data and its backups. This cannot be undone, so copy out anything you want to keep first.",
+      ),
+    ).not.toBeNull();
+    expect(screen.queryByText(/does nothing to it/)).toBeNull();
+  });
+
+  it("still says a Server of the customer's own is only forgotten", () => {
+    mount([]);
+    expect(screen.getByText(/does nothing to it/)).not.toBeNull();
+  });
 });

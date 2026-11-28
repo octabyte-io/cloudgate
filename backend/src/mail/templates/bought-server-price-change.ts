@@ -71,6 +71,7 @@ export async function renderBoughtServerPriceChangeEmail({
     subject,
     html: await render(
       LapseNoticeTemplate({
+        about: 'billing',
         audience: 'owners',
         userName: userName || 'User',
         heading: only

@@ -47,6 +47,7 @@ export async function renderPlanEndsEmail({
             : `The Servers you bought for ${organizationName} are deleted that day, and their data and backups go with them: ${serverNames.join(', ')}. This cannot be undone.`,
         ];
   return renderConfirmationEmail(userName, {
+    about: 'billing',
     subject: `Your plan ends on ${endsOn}`,
     heading: `Your plan ends on ${endsOn}`,
     paragraphs: [
@@ -78,6 +79,7 @@ export async function renderPlanCarriesOnEmail({
   billingUrl: string;
 }): Promise<RenderedEmail> {
   return renderConfirmationEmail(userName, {
+    about: 'billing',
     subject: 'Your plan will carry on',
     heading: 'Your plan will carry on',
     paragraphs: [
