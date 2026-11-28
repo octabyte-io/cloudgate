@@ -1045,7 +1045,15 @@ export class OrganizationsService {
         resourceType: 'user',
         resourceId: target.userId,
         resourceName: await this.emailOf(target.userId),
-        metadata: { before: target.role, after: role },
+        metadata: {
+          before: target.role,
+          after: role,
+          // An Agent made a Caller loses Can read runtime logs in the same
+          // write (`writeMemberRole`); this row is that change's record.
+          ...(target.canReadRuntimeLogs && !updated.canReadRuntimeLogs
+            ? { canReadRuntimeLogs: false }
+            : {}),
+        },
       },
     );
     return updated;

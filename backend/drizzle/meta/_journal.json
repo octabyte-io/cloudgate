@@ -1660,6 +1660,13 @@
       "when": 1795787393868,
       "tag": "0236_rollback-rolled-back-at",
       "breakpoints": true
+    },
+    {
+      "idx": 237,
+      "version": "7",
+      "when": 1795844984895,
+      "tag": "0237_agent-runtime-logs",
+      "breakpoints": true
     }
   ]
 }

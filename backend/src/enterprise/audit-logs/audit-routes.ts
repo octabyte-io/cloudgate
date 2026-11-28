@@ -221,6 +221,7 @@ export const NOT_RECORDED_ROUTES: Readonly<Record<string, NotRecorded>> = {
   },
   'POST /agents': AGENTS,
   'DELETE /agents/:id': AGENTS,
+  'PATCH /agents/:id': AGENTS,
   'POST /agents/:id/suspend': AGENTS,
   'POST /agents/:id/resume': AGENTS,
   'POST /agents/:id/keys': AGENTS,
