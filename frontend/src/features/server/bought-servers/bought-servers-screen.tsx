@@ -155,10 +155,10 @@ function Summary({ rows }: { rows: BoughtServerRow[] }) {
       </strong>
       {", "}
       <strong>{perMonth(total)}</strong>
-      {" on your plan's invoice."}
+      {" on your plan's invoice"}
       {waiting.length > 0
-        ? ` ${waiting.length} ${waiting.length === 1 ? "is" : "are"} waiting for payment.`
-        : null}
+        ? `, and ${waiting.length} waiting for payment.`
+        : "."}
     </MetaStrip>
   );
 }

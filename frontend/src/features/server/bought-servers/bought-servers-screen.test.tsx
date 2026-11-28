@@ -149,8 +149,19 @@ describe("BoughtServersScreen", () => {
 
     await screen.findByRole("table", { name: "Bought Servers" });
     expect(document.body.textContent).toContain(
-      "2 Bought Servers, $41/month on your plan's invoice. 1 is waiting for payment.",
+      "2 Bought Servers, $41/month on your plan's invoice, and 1 waiting for payment.",
     );
+  });
+
+  it("ends the summary at the total when nothing waits for payment", async () => {
+    api.list.mockResolvedValue([WEB]);
+    renderScreen();
+
+    await screen.findByRole("table", { name: "Bought Servers" });
+    expect(document.body.textContent).toContain(
+      "1 Bought Server, $34/month on your plan's invoice.",
+    );
+    expect(document.body.textContent).not.toContain("waiting for payment");
   });
 
   it("leaves a Deleting Server out of the count and the total, and shows no price for it", async () => {
@@ -165,7 +176,7 @@ describe("BoughtServersScreen", () => {
     expect(old.textContent).not.toContain("$12/month");
     expect(old.textContent).toContain("Not charged");
     expect(document.body.textContent).toContain(
-      "2 Bought Servers, $41/month on your plan's invoice. 1 is waiting for payment.",
+      "2 Bought Servers, $41/month on your plan's invoice, and 1 waiting for payment.",
     );
   });
 
