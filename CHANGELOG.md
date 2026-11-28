@@ -2,7 +2,19 @@
 
 ## Unreleased
 
-## 0.3.14 (2026-11-27)
+## 0.3.14 (2026-11-28)
+
+### Bought Servers get their own page, and each Bought Server its own tab
+
+An Organization where buying a Server is offered has a **Bought Servers** page in its rail, listing every Bought Server with its stage, size and price, and a one-sentence total (#196, #197, #199). A Deleting one is left out of the count and total. When **Buy a Server** is off, the page says why. Each Bought Server has its own **Bought Server** tab, naming its Location, Server image and size, with its backups, size and price; Settings points to it, and the change and Restore emails link to it (#198). Three Bought Server messages that said the wrong thing are fixed (#195).
+
+**What to do on upgrade**: nothing.
+
+### Agents read a Service's Runtime log and container metrics
+
+An Agent has a **Can read runtime logs** switch, off by default, set in the create dialog or on the Agent's row (ADR-0095, #190). With it on, `read_runtime_log` reads a granted Service's Runtime log. `get_service_metrics` gives a summary of a granted Service's container metrics, summed over every container it runs, never a Server's (ADR-0096, #191, #192).
+
+**What to do on upgrade**: nothing.
 
 ### A Bought Server's backups can be listed, taken now and restored
 
