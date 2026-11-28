@@ -80,6 +80,18 @@ export const member = pgTable(
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
+    /**
+     * An Agent's **Can read runtime logs** switch (ADR-0095): off by default,
+     * set by `AgentsService.create` and `setRuntimeLogs`, and read by the MCP
+     * dispatcher before a Runtime log tool call. On the member row rather than
+     * the user because it is tied to the role beside it: a Caller never holds
+     * it, which the `member_runtime_logs_reader_or_operator` check states and
+     * `writeMemberRole` keeps by turning it off on a move to Caller. A
+     * person's row never has it on.
+     */
+    canReadRuntimeLogs: boolean('can_read_runtime_logs')
+      .notNull()
+      .default(false),
   },
   (table) => [
     // One membership per user per Organization. An Agent has exactly
@@ -105,6 +117,15 @@ export const member = pgTable(
     check(
       'member_role_is_not_the_platform',
       sql`NOT ('system' = ANY (string_to_array(replace(${table.role}, ' ', ''), ',')))`,
+    ),
+    /**
+     * Only a Reader or an Operator Agent reads a Runtime log (ADR-0095). In
+     * the database as well as the service, for the reason the check above
+     * gives: a row written by anything but the Agents routes still holds it.
+     */
+    check(
+      'member_runtime_logs_reader_or_operator',
+      sql`NOT ${table.canReadRuntimeLogs} OR ${table.role} IN ('agentReader', 'agentOperator')`,
     ),
   ],
 );

@@ -1,0 +1,2 @@
+ALTER TABLE "member" ADD COLUMN "can_read_runtime_logs" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "member" ADD CONSTRAINT "member_runtime_logs_reader_or_operator" CHECK (NOT "member"."can_read_runtime_logs" OR "member"."role" IN ('agentReader', 'agentOperator'));

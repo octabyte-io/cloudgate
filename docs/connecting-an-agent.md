@@ -8,6 +8,10 @@ Create an Agent in the console, in the Agents section of Settings. Its key is sh
 
 **An Agent reads a Service's health and never configures it.** `get_service_health` answers what the Service's Health tab shows: its Uptime checks, its Error rate or why it is unavailable, its Error-rate threshold, and its open and most recently closed Incidents. `get_service` and `get_environment` carry the open Incidents too. No tool adds, edits, turns off or removes an Uptime check or an Error-rate threshold, whatever the Agent's role, so an Agent cannot silence an Incident. A check's keyword and header value are never in an answer, only whether one is set, and neither is anything a probed app answered.
 
+**An Agent reads a Runtime log only when you switch that on.** `read_runtime_log` answers the last lines an Application or a Compose itself wrote while running, from every copy it runs, merged by time, each line naming its copy, on a Server, the platform host, a Stack VM or in a Cloud account. It works only for an Agent whose **Can read runtime logs** switch is on. The switch is off unless you turn it on when you create the Agent, can be turned on or off later from the Agent's row by whoever may change its role, and every change is in the audit log. With it off the tool is refused with a sentence naming the switch. A Caller never has it. A Runtime log is whatever the app prints, which can include your users' emails, request bodies and tokens Cloudgate never stored: the mask hides only stored values, so switch it on for an Agent whose model host you would trust with that output.
+
+**An Agent reads a granted Service's container metrics, and never a Server's.** `get_service_metrics` answers a summary over an hour unless it asks for another window, and 24 hours at most: CPU now, on average and at peak; memory now, on average and at peak, against its limit; network and disk totals; and at most 60 trend points. Every figure is summed across the Service's containers: an Application's replicas, a Compose's services. A Reader and an Operator both hold the `monitoring` read this takes. A Service in a Cloud account, or on a Server or platform host where monitoring is not set up, gets an answer saying which, never zeros. No tool reads a Server's own metrics or the platform host's, because a Server is shared by Services the Agent was not granted.
+
 **An Agent reads a Project's config and its plans, asks for a plan, and never applies one.** `get_project_config` answers the Project's config as the Project keeps it, on the Project's grant; `get_plan` answers an Environment's open plan, or its latest, and `request_plan` asks for a fresh one, the console's Check for changes, both on the Environment's grant and open to a Reader. A plan it asks for replaces the Environment's open plan, as yours would. No tool applies or dismisses a plan, whatever the Agent's role, so an Agent can tell you what would change but changes nothing: you apply it in the console. The config's text reaches the Agent as written, comments included, with the Project's own stored secrets masked, so keep credentials out of it.
 
 **An Agent operates an AI model as the Application it is, and never calls it here.** `deploy_service`, `start_service`, `stop_service` and the read tools reach an AI model exactly as any Application; no tool creates, deletes or calls one, and none reads its Token spend. `get_service` on an AI model carries `aiModel`: its `runtime`, its `model`, the `gpus` it reserves and its `endpoint`, the OpenAI-compatible base URL on Cloudgate's `/ai` path that a client calls through the gateway with a caller Agent's key. `aiModel` is `null` on every other Service, and `endpoint` is `null` while the platform host URL is not set. The AI model's upstream secret is never in an answer, not even whether there is one.
@@ -77,11 +81,12 @@ With a licence, the platform host builds as many Deployments at once as its buil
 
 ### What the mask cannot hide
 
-Every tool result, deployment logs included, passes through one mask before the agent sees it. It replaces every **stored secret** reachable from what the tool is about — environment variables, build arguments, registry and git credentials, database passwords, backup destination keys — with `••••••`.
+Every tool result, deployment and runtime logs included, passes through one mask before the agent sees it. It replaces every **stored secret** reachable from what the tool is about — environment variables, build arguments, registry and git credentials, database passwords, backup destination keys — with `••••••`.
 
 It cannot hide:
 
 - **What a build prints that Cloudgate never stored.** A token the build fetches or generates, then echoes, reaches the agent as printed.
+- **What a running app prints that Cloudgate never stored**, for an Agent that can read runtime logs: a customer's email, a request body, a session token.
 - **An encoded copy** of a stored value, such as the value after the build has encoded or escaped it.
 - **A value shorter than 6 characters.** Masking those would eat ordinary words.
 
@@ -119,6 +124,8 @@ The write tools are built to answer inside that:
 `read_deployment_log` answers the last 100 lines of an Application's or Compose's Deployment log unless it asks for another number, and never more than 500. A request for more is answered at 500, not refused. A window larger than 1 MiB, which a build printing progress bars can reach well inside that line count, answers a failure asking for fewer lines.
 
 There is no follow and no streaming: an agent watching a build polls. The logs of a schedule's or a backup's run are not readable through it, and answer exactly as an unknown id does.
+
+`read_runtime_log` has the same window: the last 100 lines unless it asks for another number, never more than 500, the same cap on its size, and, when it gives `since`, only lines written at or after that time. A database has no Runtime log and answers as an unknown id does. A Cloud account's Runtime log is read back as far as the console's Logs tab reads it, no further, and when more was written in the time asked for than one call reaches, the tool answers a failure asking for a later `since` rather than older lines. It takes `serviceType`, `application` or `compose`, as `list_deployments` does.
 
 ### Requests carrying an Origin header
 

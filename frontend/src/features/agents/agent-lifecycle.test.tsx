@@ -25,6 +25,7 @@ const api = {
   resume: vi.fn(),
   addKey: vi.fn(),
   removeKey: vi.fn(),
+  setRuntimeLogs: vi.fn(),
 };
 const updateMemberRole = vi.fn();
 
@@ -50,6 +51,7 @@ vi.mock("@/lib/api/endpoints/agents", async (original) => ({
     resume: (...args: unknown[]) => api.resume(...args),
     addKey: (...args: unknown[]) => api.addKey(...args),
     removeKey: (...args: unknown[]) => api.removeKey(...args),
+    setRuntimeLogs: (...args: unknown[]) => api.setRuntimeLogs(...args),
   },
 }));
 
@@ -99,6 +101,7 @@ const agent = (overrides: Partial<Agent> = {}): Agent => ({
   accessedServices: [],
   keys: [key()],
   suspended: false,
+  canReadRuntimeLogs: false,
   createdBy: null,
   lastConnection: null,
   rateLimitedLastHour: 0,
@@ -285,6 +288,62 @@ describe("Change role", () => {
   });
 });
 
+describe("Can read runtime logs", () => {
+  const runtimeLogs = (row: HTMLElement) =>
+    within(row).queryByRole("switch", { name: "Can read runtime logs" });
+
+  it("shows the switch off on the row, and turns it on through the Agent's route", async () => {
+    api.setRuntimeLogs.mockResolvedValue(agent({ canReadRuntimeLogs: true }));
+    show();
+    const row = await rowOf("deploy-bot");
+
+    const control = runtimeLogs(row)!;
+    expect(control.getAttribute("aria-checked")).toBe("false");
+    expect(row.textContent).toContain(
+      "Cloudgate masks the secrets it stores, not what an app prints.",
+    );
+    fireEvent.click(control);
+    await waitFor(() =>
+      expect(api.setRuntimeLogs).toHaveBeenCalledWith("k3x9q2", true),
+    );
+  });
+
+  it("shows the switch on, and turns it off", async () => {
+    api.setRuntimeLogs.mockResolvedValue(agent());
+    listed = [agent({ canReadRuntimeLogs: true })];
+    show();
+    const row = await rowOf("deploy-bot");
+
+    const control = runtimeLogs(row)!;
+    expect(control.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(control);
+    await waitFor(() =>
+      expect(api.setRuntimeLogs).toHaveBeenCalledWith("k3x9q2", false),
+    );
+  });
+
+  it("shows no switch on a Caller", async () => {
+    listed = [agent({ role: "agentCaller" })];
+    show();
+    const row = await rowOf("deploy-bot");
+    expect(runtimeLogs(row)).toBeNull();
+    expect(row.textContent).not.toMatch(/runtime logs/i);
+  });
+
+  it("says Change role to Caller turns the switch off", async () => {
+    listed = [agent({ canReadRuntimeLogs: true })];
+    show();
+    const row = await rowOf("deploy-bot");
+
+    fireEvent.click(within(row).getByRole("button", { name: "Change role" }));
+    const dialog = await screen.findByRole("dialog");
+    const note = "A Caller cannot read runtime logs, so this turns that off.";
+    expect(dialog.textContent).not.toContain(note);
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Caller/ }));
+    expect(dialog.textContent).toContain(note);
+  });
+});
+
 describe("last connected", () => {
   it("names the client and revision it reported, labelled self-reported", async () => {
     listed = [
@@ -334,6 +393,15 @@ describe("a role without member: update", () => {
       ["Revoke", refusal("revoke an Agent’s key")],
       ["Remove", refusal("remove an Agent’s key")],
     ];
+    const control = within(row).getByRole("switch", {
+      name: "Can read runtime logs",
+    });
+    expect(control.getAttribute("aria-disabled")).toBe("true");
+    expect(control.getAttribute("title")).toBe(
+      refusal("change whether an Agent reads runtime logs"),
+    );
+    fireEvent.click(control);
+    expect(api.setRuntimeLogs).not.toHaveBeenCalled();
     for (const [name, title] of expectations) {
       const button = within(row).getByRole("button", { name });
       expect([name, button.getAttribute("aria-disabled")]).toEqual([

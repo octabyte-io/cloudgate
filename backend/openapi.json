@@ -1216,6 +1216,37 @@
         "tags": [
           "Agents"
         ]
+      },
+      "patch": {
+        "operationId": "AgentsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAgentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Agents"
+        ]
       }
     },
     "/agents/{id}/suspend": {
@@ -10039,462 +10070,6 @@
         ]
       }
     },
-    "/environments": {
-      "post": {
-        "operationId": "EnvironmentsController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateEnvironmentDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Environments"
-        ]
-      },
-      "get": {
-        "operationId": "EnvironmentsController_listByProject",
-        "parameters": [
-          {
-            "name": "projectId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "minLength": 1,
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Environments"
-        ]
-      }
-    },
-    "/environments/{id}": {
-      "get": {
-        "operationId": "EnvironmentsController_findOne",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Environments"
-        ]
-      },
-      "patch": {
-        "operationId": "EnvironmentsController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateEnvironmentDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Environments"
-        ]
-      },
-      "delete": {
-        "operationId": "EnvironmentsController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "force",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "deleteData",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Environments"
-        ]
-      }
-    },
-    "/environments/{id}/deployments": {
-      "get": {
-        "operationId": "EnvironmentsController_listDeployments",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Environments"
-        ]
-      }
-    },
-    "/environments/{id}/networks": {
-      "get": {
-        "operationId": "EnvironmentsController_listNetworks",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Environments"
-        ]
-      }
-    },
-    "/environments/{id}/domains": {
-      "get": {
-        "operationId": "EnvironmentsController_listDomains",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Environments"
-        ]
-      }
-    },
-    "/environments/{id}/health": {
-      "get": {
-        "operationId": "EnvironmentsController_listHealth",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Environments"
-        ]
-      }
-    },
-    "/environments/{id}/delete/retry": {
-      "post": {
-        "operationId": "EnvironmentsController_retryDelete",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Environments"
-        ]
-      }
-    },
-    "/environments/{id}/delete/forget": {
-      "post": {
-        "operationId": "EnvironmentsController_forgetDelete",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Environments"
-        ]
-      }
-    },
-    "/tags": {
-      "post": {
-        "operationId": "TagsController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTagDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Tags"
-        ]
-      },
-      "get": {
-        "operationId": "TagsController_list",
-        "parameters": [
-          {
-            "name": "projectId",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minLength": 1,
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Tags"
-        ]
-      }
-    },
-    "/tags/{id}": {
-      "get": {
-        "operationId": "TagsController_findOne",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Tags"
-        ]
-      },
-      "patch": {
-        "operationId": "TagsController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTagDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Tags"
-        ]
-      },
-      "delete": {
-        "operationId": "TagsController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Tags"
-        ]
-      }
-    },
-    "/tags/{id}/projects/{projectId}": {
-      "post": {
-        "operationId": "TagsController_assignToProject",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "projectId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Tags"
-        ]
-      },
-      "delete": {
-        "operationId": "TagsController_removeFromProject",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "projectId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Tags"
-        ]
-      }
-    },
     "/servers": {
       "post": {
         "operationId": "ServersController_create",
@@ -11144,6 +10719,462 @@
         },
         "tags": [
           "BoughtServers"
+        ]
+      }
+    },
+    "/environments": {
+      "post": {
+        "operationId": "EnvironmentsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEnvironmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Environments"
+        ]
+      },
+      "get": {
+        "operationId": "EnvironmentsController_listByProject",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Environments"
+        ]
+      }
+    },
+    "/environments/{id}": {
+      "get": {
+        "operationId": "EnvironmentsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Environments"
+        ]
+      },
+      "patch": {
+        "operationId": "EnvironmentsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEnvironmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Environments"
+        ]
+      },
+      "delete": {
+        "operationId": "EnvironmentsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "force",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "deleteData",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Environments"
+        ]
+      }
+    },
+    "/environments/{id}/deployments": {
+      "get": {
+        "operationId": "EnvironmentsController_listDeployments",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Environments"
+        ]
+      }
+    },
+    "/environments/{id}/networks": {
+      "get": {
+        "operationId": "EnvironmentsController_listNetworks",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Environments"
+        ]
+      }
+    },
+    "/environments/{id}/domains": {
+      "get": {
+        "operationId": "EnvironmentsController_listDomains",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Environments"
+        ]
+      }
+    },
+    "/environments/{id}/health": {
+      "get": {
+        "operationId": "EnvironmentsController_listHealth",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Environments"
+        ]
+      }
+    },
+    "/environments/{id}/delete/retry": {
+      "post": {
+        "operationId": "EnvironmentsController_retryDelete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Environments"
+        ]
+      }
+    },
+    "/environments/{id}/delete/forget": {
+      "post": {
+        "operationId": "EnvironmentsController_forgetDelete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Environments"
+        ]
+      }
+    },
+    "/tags": {
+      "post": {
+        "operationId": "TagsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTagDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Tags"
+        ]
+      },
+      "get": {
+        "operationId": "TagsController_list",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Tags"
+        ]
+      }
+    },
+    "/tags/{id}": {
+      "get": {
+        "operationId": "TagsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Tags"
+        ]
+      },
+      "patch": {
+        "operationId": "TagsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTagDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Tags"
+        ]
+      },
+      "delete": {
+        "operationId": "TagsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Tags"
+        ]
+      }
+    },
+    "/tags/{id}/projects/{projectId}": {
+      "post": {
+        "operationId": "TagsController_assignToProject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Tags"
+        ]
+      },
+      "delete": {
+        "operationId": "TagsController_removeFromProject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Tags"
         ]
       }
     },
@@ -17913,11 +17944,27 @@
                 ]
               }
             ]
+          },
+          "canReadRuntimeLogs": {
+            "default": false,
+            "type": "boolean"
           }
         },
         "required": [
           "name"
         ]
+      },
+      "UpdateAgentDto": {
+        "type": "object",
+        "properties": {
+          "canReadRuntimeLogs": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "canReadRuntimeLogs"
+        ],
+        "additionalProperties": false
       },
       "AddAgentKeyDto": {
         "type": "object",
@@ -25556,6 +25603,196 @@
           }
         }
       },
+      "CreateServerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string"
+          },
+          "ipAddress": {
+            "type": "string",
+            "minLength": 1
+          },
+          "port": {
+            "default": 22,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "username": {
+            "default": "root",
+            "type": "string",
+            "minLength": 1
+          },
+          "sshKeyId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "serverType": {
+            "type": "string",
+            "enum": [
+              "deploy",
+              "build"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "ipAddress",
+          "sshKeyId"
+        ]
+      },
+      "UpdateServerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "ipAddress": {
+            "type": "string",
+            "minLength": 1
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "username": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sshKeyId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "serverType": {
+            "type": "string",
+            "enum": [
+              "deploy",
+              "build"
+            ]
+          },
+          "command": {
+            "type": "string"
+          }
+        }
+      },
+      "BuyDto": {
+        "type": "object",
+        "properties": {
+          "serverType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "location": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "image": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "backups": {
+            "type": "boolean"
+          },
+          "storageGb": {
+            "type": "integer",
+            "minimum": 10,
+            "maximum": 10240
+          },
+          "termsAccepted": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "prorationDate": {
+            "type": "integer",
+            "exclusiveMinimum": true,
+            "maximum": 9007199254740991,
+            "minimum": 0
+          },
+          "returnTo": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "serverType",
+          "location",
+          "termsAccepted",
+          "prorationDate"
+        ]
+      },
+      "FinishPayingDto": {
+        "type": "object",
+        "properties": {
+          "returnTo": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "default": {}
+      },
+      "BackupsDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      },
+      "RestoreDto": {
+        "type": "object",
+        "properties": {
+          "withoutSafetyCopy": {
+            "type": "boolean"
+          }
+        },
+        "default": {}
+      },
+      "StorageDto": {
+        "type": "object",
+        "properties": {
+          "sizeGb": {
+            "type": "integer",
+            "minimum": 10,
+            "maximum": 10240
+          }
+        },
+        "required": [
+          "sizeGb"
+        ]
+      },
+      "SizeDto": {
+        "type": "object",
+        "properties": {
+          "serverType": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "serverType"
+        ]
+      },
       "CreateEnvironmentDto": {
         "type": "object",
         "properties": {
@@ -25760,196 +25997,6 @@
             "type": "string"
           }
         }
-      },
-      "CreateServerDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "minLength": 1
-          },
-          "description": {
-            "type": "string"
-          },
-          "ipAddress": {
-            "type": "string",
-            "minLength": 1
-          },
-          "port": {
-            "default": 22,
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 65535
-          },
-          "username": {
-            "default": "root",
-            "type": "string",
-            "minLength": 1
-          },
-          "sshKeyId": {
-            "type": "string",
-            "minLength": 1
-          },
-          "serverType": {
-            "type": "string",
-            "enum": [
-              "deploy",
-              "build"
-            ]
-          }
-        },
-        "required": [
-          "name",
-          "ipAddress",
-          "sshKeyId"
-        ]
-      },
-      "UpdateServerDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "minLength": 1
-          },
-          "description": {
-            "type": "string",
-            "nullable": true
-          },
-          "ipAddress": {
-            "type": "string",
-            "minLength": 1
-          },
-          "port": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 65535
-          },
-          "username": {
-            "type": "string",
-            "minLength": 1
-          },
-          "sshKeyId": {
-            "type": "string",
-            "minLength": 1
-          },
-          "serverType": {
-            "type": "string",
-            "enum": [
-              "deploy",
-              "build"
-            ]
-          },
-          "command": {
-            "type": "string"
-          }
-        }
-      },
-      "BuyDto": {
-        "type": "object",
-        "properties": {
-          "serverType": {
-            "type": "string",
-            "minLength": 1
-          },
-          "location": {
-            "type": "string",
-            "minLength": 1
-          },
-          "name": {
-            "type": "string",
-            "maxLength": 100
-          },
-          "image": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 100
-          },
-          "backups": {
-            "type": "boolean"
-          },
-          "storageGb": {
-            "type": "integer",
-            "minimum": 10,
-            "maximum": 10240
-          },
-          "termsAccepted": {
-            "type": "boolean",
-            "enum": [
-              true
-            ]
-          },
-          "prorationDate": {
-            "type": "integer",
-            "exclusiveMinimum": true,
-            "maximum": 9007199254740991,
-            "minimum": 0
-          },
-          "returnTo": {
-            "type": "string",
-            "maxLength": 2000
-          }
-        },
-        "required": [
-          "serverType",
-          "location",
-          "termsAccepted",
-          "prorationDate"
-        ]
-      },
-      "FinishPayingDto": {
-        "type": "object",
-        "properties": {
-          "returnTo": {
-            "type": "string",
-            "maxLength": 2000
-          }
-        },
-        "default": {}
-      },
-      "BackupsDto": {
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "enabled"
-        ]
-      },
-      "RestoreDto": {
-        "type": "object",
-        "properties": {
-          "withoutSafetyCopy": {
-            "type": "boolean"
-          }
-        },
-        "default": {}
-      },
-      "StorageDto": {
-        "type": "object",
-        "properties": {
-          "sizeGb": {
-            "type": "integer",
-            "minimum": 10,
-            "maximum": 10240
-          }
-        },
-        "required": [
-          "sizeGb"
-        ]
-      },
-      "SizeDto": {
-        "type": "object",
-        "properties": {
-          "serverType": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "required": [
-          "serverType"
-        ]
       },
       "CreatePatchDto": {
         "type": "object",

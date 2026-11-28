@@ -13,7 +13,11 @@ import type { DrizzleDB } from '../db/drizzle.module';
 import { apikey, auditLog, member, user } from '../db/schema';
 import { AuditLogService } from '../enterprise/audit-logs/audit-log.service';
 import { countRateLimited } from '../enterprise/audit-logs/rate-limit-refusals';
-import { insertAgentMember } from '../rbac/member-role';
+import {
+  CALLER_RUNTIME_LOGS_REFUSAL,
+  insertAgentMember,
+  roleMayReadRuntimeLogs,
+} from '../rbac/member-role';
 import {
   fullEntitlements,
   PermissionService,
@@ -76,6 +80,11 @@ export interface AgentSummary extends Required<MemberEntitlements> {
   memberId: string;
   name: string;
   role: AgentRole;
+  /**
+   * **Can read runtime logs** (ADR-0095): whether its Runtime log tool call
+   * is served. Always `false` on a Caller.
+   */
+  canReadRuntimeLogs: boolean;
   createdAt: Date;
   keys: AgentKeySummary[];
   /**
@@ -194,6 +203,7 @@ export class AgentsService {
         userId: id,
         organizationId,
         role: data.role,
+        canReadRuntimeLogs: data.canReadRuntimeLogs,
         ...grant,
       });
       await tx.insert(apikey).values(minted.row);
@@ -210,6 +220,7 @@ export class AgentsService {
           type: 'createAgent',
           role: data.role,
           keyExpiresInDays: data.keyExpiresInDays,
+          canReadRuntimeLogs: data.canReadRuntimeLogs,
         },
       },
     );
@@ -304,6 +315,55 @@ export class AgentsService {
     ip?: string,
   ): Promise<AgentSummary> {
     return this.writeBan(ctx, id, false, ip);
+  }
+
+  /**
+   * Turns an Agent's **Can read runtime logs** switch on or off (ADR-0095),
+   * and audits the change with the new value.
+   *
+   * Whoever may change the Agent's role may do this — owner or admin, the
+   * rule `updateMemberRole` applies to an Agent, which is never an admin —
+   * because the switch widens what the role reads. A Caller is refused it:
+   * it reads nothing over MCP, and the database refuses the row too.
+   * Writing the value it already holds is still a change the operator made,
+   * and is audited like one.
+   */
+  async setRuntimeLogs(
+    ctx: PermissionCtx,
+    id: string,
+    canReadRuntimeLogs: boolean,
+    ip?: string,
+  ): Promise<AgentSummary> {
+    const organizationId = ctx.session.activeOrganizationId;
+    await this.assertOwnerOrAdmin(ctx);
+    const target = await this.findAgent(organizationId, id);
+    if (canReadRuntimeLogs && !roleMayReadRuntimeLogs(target.role)) {
+      throw new ForbiddenException(CALLER_RUNTIME_LOGS_REFUSAL);
+    }
+
+    await this.db
+      .update(member)
+      .set({ canReadRuntimeLogs })
+      .where(
+        and(
+          eq(member.userId, target.id),
+          eq(member.organizationId, organizationId),
+        ),
+      );
+
+    await this.auditLogs.audit(
+      { userId: ctx.user.id, organizationId, ip },
+      {
+        action: 'update',
+        resourceType: 'user',
+        resourceId: target.id,
+        resourceName: target.name,
+        metadata: { type: 'setAgentRuntimeLogs', canReadRuntimeLogs },
+      },
+    );
+
+    const [agent] = await this.summaries(organizationId, [target.id]);
+    return agent;
   }
 
   private async writeBan(
@@ -485,6 +545,7 @@ export class AgentsService {
         memberId: member.id,
         name: user.firstName,
         role: member.role,
+        canReadRuntimeLogs: member.canReadRuntimeLogs,
         createdAt: member.createdAt,
         accessedProjects: member.accessedProjects,
         accessedEnvironments: member.accessedEnvironments,

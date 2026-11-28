@@ -67,6 +67,8 @@ import { PushPlans } from './push-plans.service';
 import { CloudRuntimeLogs } from './runtime-log/cloud-runtime-logs.service';
 import { GoogleRuntimeLogs } from './runtime-log/google-runtime-logs.service';
 import { RuntimeLogController } from './runtime-log/runtime-log.controller';
+import { RuntimeLogs } from './runtime-log/runtime-logs.service';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { StoppedDeployPlans } from './stopped-deploy-plans.service';
 import { CONFIG_READER_PROVIDERS } from './reader/config-readers';
 import { ConsoleSavesModule } from './console-saves';
@@ -109,12 +111,14 @@ import { WiredVariablesService } from './wired-variables.service';
     // A cloud database's destroy row names its final snapshot, and an
     // Environment's Delete deletes each cloud database.
     CloudDatabaseDeletesModule,
+    // A Server Service's Runtime log is authorized as the container sockets are.
+    RealtimeModule,
   ],
   controllers: [
     ProjectConfigSchemaController,
     ProjectConfigsController,
     PlansController,
-    // A cloud Service's Runtime log, read with its deploy role.
+    // A Service's Runtime log: Docker's on a machine, the cloud's in a Cloud account.
     RuntimeLogController,
     // What Cloudgate made, and Rebuild from the cloud.
     ServiceCloudResourcesController,
@@ -172,6 +176,7 @@ import { WiredVariablesService } from './wired-variables.service';
     { provide: STATIC_ROLLBACK_RUNNER, useExisting: CloudStaticDeploys },
     CloudRuntimeLogs,
     GoogleRuntimeLogs,
+    RuntimeLogs,
     CloudResources,
     // A cloud Service's Domains: their short Cloud runs and the ACM poller.
     // The Domains module cannot import this one, which imports it,
@@ -188,6 +193,8 @@ import { WiredVariablesService } from './wired-variables.service';
   ],
   exports: [
     ProjectConfigService,
+    // read_runtime_log's target.
+    RuntimeLogs,
     CONFIG_PUSH_PLANNER,
     ENVIRONMENT_CLOUD_DELETES,
   ],

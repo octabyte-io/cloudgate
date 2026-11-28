@@ -271,15 +271,6 @@ describe('The Runtime log of a cloud Service (e2e)', () => {
     expect(account.lastCheckReason).toContain('AccessDeniedException');
   });
 
-  it('refuses a Service that runs on a Server', async () => {
-    await ctx.db
-      .update(application)
-      .set({ cloudAccountId: null, region: null })
-      .where(eq(application.applicationId, applicationId));
-
-    const res = await read(cookie);
-
-    expect(res.status).toBe(400);
-    expect(reads()).toEqual([]);
-  });
+  // A Service on a Server answers from its containers' output since #192,
+  // pinned with the exec layer doubled in `test/mcp/mcp-runtime-log.e2e-spec.ts`.
 });

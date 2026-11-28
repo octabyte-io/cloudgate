@@ -21,6 +21,9 @@ import { AGENT_ROLE_CHOICES, AGENT_ROLE_COPY } from "./agent-roles";
  * create dialog's two cards, with each role's one line under it, and the
  * write is the Members route's own `PATCH /organizations/members/:id` against
  * the Agent's member row — the one writer, not a second path to it.
+ *
+ * That writer turns Can read runtime logs off on a move to Caller (ADR-0095),
+ * so picking Caller for an Agent that holds it says so before the change.
  */
 export function ChangeAgentRoleModal({
   agent,
@@ -67,6 +70,11 @@ export function ChangeAgentRoleModal({
               />
             ))}
           </PickGrid>
+          {agent.canReadRuntimeLogs && role === "agentCaller" && (
+            <p className="text-meta text-tx-2">
+              A Caller cannot read runtime logs, so this turns that off.
+            </p>
+          )}
           <FormError message={refusal ?? undefined} />
         </Modal.Body>
         <Modal.Footer>

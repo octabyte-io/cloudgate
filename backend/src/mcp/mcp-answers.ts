@@ -39,6 +39,13 @@ export const missingStatement = (statement: string): string =>
 export const GATEWAY_ONLY = `This Agent's role only calls AI models through the Gateway and holds no tool here. ${FINALITY_SENTENCE}`;
 
 /**
+ * `read_runtime_log` called by an Agent whose Can read runtime logs switch is
+ * off (ADR-0095): the switch is named, so the agent can tell the operator
+ * what to turn on.
+ */
+export const RUNTIME_LOGS_OFF = `This Agent's Can read runtime logs switch is off, so it reads no Runtime log. An operator can turn it on from the Agent's row in the console. ${FINALITY_SENTENCE}`;
+
+/**
  * An id-addressed tool's target that is missing, in another Organization or
  * not granted — one byte-identical answer for all three.
  */

@@ -728,8 +728,8 @@ export const memberRole = ac.newRole({
  * **Reader** — the base role an **Agent** is created on, and one of the two
  * roles only an Agent ever holds (ADR-0023).
  *
- * Exactly the four reads the MCP tool surface's read tools declare, and nothing
- * else: no `ac` (no gate consults it), no `monitoring`, no `tag`, and above all
+ * Exactly the five reads the MCP tool surface's read tools declare, and nothing
+ * else: no `ac` (no gate consults it), no `tag`, and above all
  * no `docker` — ADR-0024's standing prohibition on a tool running a command in
  * a Managed container is pinned by neither agent role ever holding a docker
  * statement. A resource this map does not name is refused by `role.authorize`
@@ -739,12 +739,18 @@ export const memberRole = ac.newRole({
  * a licence lapsed (`PermissionService.resolveRole`), taking production's
  * deploy Agent down with it, and it would erase the agent-only role name that
  * tells an audit row's Agent from its person.
+ *
+ * `monitoring: ['read']` is `get_service_metrics`' twin's statement
+ * (ADR-0096). On REST it would also buy a Server's own metrics; an Agent key
+ * is refused on REST, and no tool reads them, so the tool surface is the
+ * bound, in the shape of ADR-0023's third consequence.
  */
 export const agentReaderRole = ac.newRole({
   service: ['read'],
   environment: ['read'],
   deployment: ['read'],
   domain: ['read'],
+  monitoring: ['read'],
 });
 
 /**
@@ -760,6 +766,7 @@ export const agentOperatorRole = ac.newRole({
   environment: ['read'],
   deployment: ['read', 'create', 'cancel'],
   domain: ['read'],
+  monitoring: ['read'],
 });
 
 /**

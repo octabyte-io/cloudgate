@@ -14,6 +14,7 @@ import { SubmitButton } from "@/components/console/submit-button";
 import { useApiForm } from "@/components/console/use-api-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   AGENT_KEY_EXPIRY_DAYS,
   DEFAULT_AGENT_KEY_EXPIRY_DAYS,
@@ -30,6 +31,7 @@ import {
 import { AgentKeyReveal } from "./agent-key-reveal";
 import { AGENT_ROLE_CHOICES, AGENT_ROLE_COPY } from "./agent-roles";
 import { LogMaskNotice } from "./log-mask-notice";
+import { RUNTIME_LOGS_HINT, RUNTIME_LOGS_LABEL } from "./agent-runtime-logs";
 import { useCreateAgent } from "./use-agents";
 
 /** The backend's own bounds on an Agent's name (`CreateAgentSchema`). */
@@ -74,6 +76,10 @@ export const EXPIRY_OPTIONS = AGENT_KEY_EXPIRY_DAYS.map((days) => ({
  * one of them has no field here and goes to the root error, as `useApiForm`
  * routes any issue it cannot place.
  *
+ * **Can read runtime logs starts off** (ADR-0095), under the tree it widens,
+ * and is not offered to a Caller, which never holds it: picking Caller hides
+ * it and the body sends it off, whatever was switched before.
+ *
  * **`preset` opens it already chosen**: an AI model's "Create a caller Agent"
  * hands in `agentCaller` and a grant on that AI model. It is where the
  * dialog starts, not a lock; the role and the tree stay editable.
@@ -97,9 +103,12 @@ export function CreateAgentModal({
   const [expiry, setExpiry] = useState<AgentKeyExpiryDays>(
     DEFAULT_AGENT_KEY_EXPIRY_DAYS,
   );
+  const [runtimeLogs, setRuntimeLogs] = useState(false);
   const [created, setCreated] = useState<CreatedAgent | null>(null);
   const tree = useAccessTree(grants);
   const accessHeading = useId();
+  const runtimeLogsId = useId();
+  const readsLogs = role !== "agentCaller";
 
   const form = useApiForm<Values>({
     schema,
@@ -111,6 +120,7 @@ export function CreateAgentModal({
           role,
           grant: entitlementsBody(grants, tree.inventory),
           keyExpiresInDays: expiry,
+          canReadRuntimeLogs: readsLogs && runtimeLogs,
         }),
       );
     },
@@ -208,6 +218,31 @@ export function CreateAgentModal({
                   onChange={setGrants}
                   subject="this Agent"
                 />
+                {readsLogs && (
+                  <div className="flex items-start gap-3 rounded-lg bg-panel-2 px-3.5 py-3">
+                    <Switch
+                      id={runtimeLogsId}
+                      checked={runtimeLogs}
+                      className="mt-0.5"
+                      aria-describedby={`${runtimeLogsId}-hint`}
+                      onCheckedChange={setRuntimeLogs}
+                    />
+                    <div className="min-w-0">
+                      <label
+                        htmlFor={runtimeLogsId}
+                        className="text-body text-tx"
+                      >
+                        {RUNTIME_LOGS_LABEL}
+                      </label>
+                      <p
+                        id={`${runtimeLogsId}-hint`}
+                        className="mt-0.5 text-meta text-tx-2"
+                      >
+                        {RUNTIME_LOGS_HINT}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </section>
 
               <Field

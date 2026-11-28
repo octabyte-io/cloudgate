@@ -47,6 +47,14 @@ export const ROW_SCOPED = 'row-scoped';
 export type ToolPermissions = Permissions | typeof ROW_SCOPED;
 
 /**
+ * A per-Agent switch a tool needs on top of its statement, read off the
+ * Agent's member row: **Can read runtime logs** (ADR-0095). Not a role and
+ * not a statement, so the one check cannot carry it; the dispatcher refuses a
+ * call whose Agent has it off before the call runs, naming the switch.
+ */
+export type AgentSwitch = 'canReadRuntimeLogs';
+
+/**
  * The HTTP route the tool mirrors. `tool-permissions.spec.ts` reflects the
  * route and its `@RequirePermission` off `controller.prototype[handler]`.
  */
@@ -149,6 +157,8 @@ interface ToolCommon<Input extends z.ZodObject, Raw> {
   readonly input: Input;
   /** Mandatory. Identical to the twin's, or {@link ROW_SCOPED}. */
   readonly permissions: ToolPermissions;
+  /** A switch the Agent must also have on (`read_runtime_log`'s). */
+  readonly agentSwitch?: AgentSwitch;
   /**
    * The declared id argument naming the tool's target. Its value becomes the
    * audit row's `resourceId` — the only place a row's target id comes from.

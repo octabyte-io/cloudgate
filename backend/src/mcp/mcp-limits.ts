@@ -76,3 +76,13 @@ export const LOG_WINDOW_MAX_LINES = 500;
  * window past it answers a declared failure asking for fewer lines.
  */
 export const LOG_WINDOW_MAX_BYTES = 1024 * 1024;
+
+/**
+ * `get_service_metrics`' window and trend (ADR-0096): the hours a call reads
+ * when it names none, the most it may name — a longer window is refused, not
+ * cut — and the most trend points one answer carries, however many samples
+ * the window holds.
+ */
+export const METRICS_WINDOW_DEFAULT_HOURS = 1;
+export const METRICS_WINDOW_MAX_HOURS = 24;
+export const METRICS_TREND_MAX_POINTS = 60;

@@ -24,6 +24,7 @@ import type {
 import { SERVICE_SOURCES } from '../../environments/environment-services';
 import type { PermissionCtx } from '../../rbac/permission.service';
 import type { SecretRoot } from '../secret-mask';
+import type { ToolAudit } from '../tool-definition';
 
 /**
  * What the Service tools (`service.tools.ts`, `write.tools.ts`) say the same
@@ -135,6 +136,19 @@ export function engineRoutes<Route>(
       route(serviceType as EngineType, engine.service, engine.controller),
     ]),
   ) as Record<EngineType, Route>;
+}
+
+/**
+ * The audit vocabulary of each kind's read, as `get_service` writes it: an
+ * Application's and a Compose's under their own kind, every other kind's as a
+ * `database`'s.
+ */
+export function auditOf(serviceType: ServiceType): ToolAudit {
+  const resourceType =
+    serviceType === 'application' || serviceType === 'compose'
+      ? serviceType
+      : 'database';
+  return { resourceType, action: 'read' };
 }
 
 /** The Service's own row, which the mask walks from. */

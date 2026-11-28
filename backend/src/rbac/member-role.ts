@@ -60,6 +60,10 @@ export const AGENT_ROLE_REFUSAL = `An Agent can hold only the ${listOfAgentRoles
 /** Refused: anyone moved to the platform's audit role. */
 export const PLATFORM_ROLE_REFUSAL = `The ${PLATFORM_ACTOR_ROLE} role is the platform's own and no Member can hold it`;
 
+/** Refused: Can read runtime logs on a Caller Agent (ADR-0095). */
+export const CALLER_RUNTIME_LOGS_REFUSAL =
+  'A Caller Agent cannot read runtime logs';
+
 /** Refused: a person moved to an agent role. */
 export const PERSON_ROLE_REFUSAL = `The ${listOfAgentRoles('and')} roles are held only by Agents`;
 
@@ -86,6 +90,22 @@ export function assertRoleFitsKind(
 }
 
 /**
+ * The roles that may hold **Can read runtime logs** (ADR-0095). A Caller
+ * reads nothing over MCP, so it never holds the switch, and a person's row
+ * never has it on; `member_runtime_logs_reader_or_operator` holds the same
+ * rule in the database.
+ */
+export const RUNTIME_LOG_ROLES: readonly AgentRole[] = [
+  'agentReader',
+  'agentOperator',
+];
+
+/** Whether a member on `role` may hold Can read runtime logs. */
+export function roleMayReadRuntimeLogs(role: string): boolean {
+  return (RUNTIME_LOG_ROLES as readonly string[]).includes(role);
+}
+
+/**
  * Puts every member row `target` selects on `role`, refusing the whole write
  * if any one of them may not hold it. Answers the rows as written.
  *
@@ -94,6 +114,10 @@ export function assertRoleFitsKind(
  * it has *other* writes that must roll back with it (the custom-role rename).
  * A kind never changes once a user exists, so nothing between the read and the
  * write can make a checked row wrong.
+ *
+ * A move to a role that may not hold Can read runtime logs — an Agent made a
+ * Caller — turns the switch off in the same write, so the role change is the
+ * one row that records both.
  */
 export async function writeMemberRole(
   db: Writer,
@@ -110,7 +134,10 @@ export async function writeMemberRole(
 
   return db
     .update(member)
-    .set({ role })
+    .set({
+      role,
+      ...(roleMayReadRuntimeLogs(role) ? {} : { canReadRuntimeLogs: false }),
+    })
     .where(
       inArray(
         member.id,
@@ -137,9 +164,13 @@ export async function insertAgentMember(
     userId: string;
     organizationId: string;
     role: AgentRole;
+    canReadRuntimeLogs: boolean;
   } & Required<MemberEntitlements>,
 ): Promise<Member> {
   assertRoleFitsKind({ kind: 'agent' }, values.role);
+  if (values.canReadRuntimeLogs && !roleMayReadRuntimeLogs(values.role)) {
+    throw new ForbiddenException(CALLER_RUNTIME_LOGS_REFUSAL);
+  }
   const [created] = await db
     .insert(member)
     .values({ ...values, createdAt: new Date(), isDefault: true })

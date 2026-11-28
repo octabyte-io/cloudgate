@@ -6,6 +6,7 @@ import {
   Get,
   HttpCode,
   Param,
+  Patch,
   Post,
   Req,
 } from '@nestjs/common';
@@ -19,7 +20,11 @@ import {
 import { RequirePermission } from '../rbac/decorators/require-permission.decorator';
 import type { PermissionCtx } from '../rbac/permission.service';
 import { AgentsService } from './agents.service';
-import { AddAgentKeyDto, CreateAgentDto } from './dto/agent.dto';
+import {
+  AddAgentKeyDto,
+  CreateAgentDto,
+  UpdateAgentDto,
+} from './dto/agent.dto';
 
 type Session = NonNullable<ValidatedRequest['session']>;
 
@@ -38,7 +43,7 @@ function toCtx(user: AuthSession['user'], session: Session): PermissionCtx {
  * The Agents of the caller's active Organization. Changing an
  * Agent's role or grant is not here: an Agent is a Member, so the member
  * routes on `OrganizationsController` do it. What is here is what a person
- * does not have — its keys, and Suspend and Resume.
+ * does not have — its keys, Suspend and Resume, and Can read runtime logs.
  */
 @Controller('agents')
 export class AgentsController {
@@ -76,9 +81,26 @@ export class AgentsController {
     return this.agentsService.remove(toCtx(user, session), id, req.ip);
   }
 
-  // The four writes below change an existing Agent without adding or removing
+  // The writes below change an existing Agent without adding or removing
   // a Member, so they declare `member: update` — the statement the role and
   // entitlement routes declare. The owner/admin rule is the service's.
+  @Patch(':id')
+  @RequirePermission('member', 'update')
+  update(
+    @Req() req: Request,
+    @CurrentUser() user: AuthSession['user'],
+    @CurrentSession() session: Session,
+    @Param('id') id: string,
+    @Body() body: UpdateAgentDto,
+  ) {
+    return this.agentsService.setRuntimeLogs(
+      toCtx(user, session),
+      id,
+      body.canReadRuntimeLogs,
+      req.ip,
+    );
+  }
+
   @Post(':id/suspend')
   @HttpCode(200)
   @RequirePermission('member', 'update')

@@ -18,10 +18,11 @@ import type {
   UptimeCheckTcpTarget,
 } from '../../service-health/uptime-checks.service';
 import { defineTool, kindRoute } from '../tool-definition';
-import type { KindRoute, ToolAudit } from '../tool-definition';
+import type { KindRoute } from '../tool-definition';
 import { GRANT_REFUSALS } from '../tool-errors';
 import { listOf, row } from '../tool-projection';
 import {
+  auditOf,
   SERVICE_TYPES,
   serviceIdArg,
   serviceRoot,
@@ -83,15 +84,6 @@ const getServiceHealthInput = z.object({
   serviceType: serviceTypeArg,
   serviceId: serviceIdArg,
 });
-
-/** The audit vocabulary of each kind, as `get_service` writes it. */
-function auditOf(serviceType: ServiceType): ToolAudit {
-  const resourceType =
-    serviceType === 'application' || serviceType === 'compose'
-      ? serviceType
-      : 'database';
-  return { resourceType, action: 'read' };
-}
 
 /**
  * Every kind has the one twin, `GET /service-health/:serviceType/:serviceId`;

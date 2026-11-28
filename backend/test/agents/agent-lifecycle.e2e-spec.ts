@@ -51,6 +51,7 @@ interface ListedAgent {
   memberId: string;
   role: string;
   suspended: boolean;
+  canReadRuntimeLogs: boolean;
   accessedProjects: string[];
   keys: ListedKey[];
   lastConnection: {
@@ -158,7 +159,7 @@ describe('Agent lifecycle (e2e)', () => {
   }
 
   function write(
-    method: 'post' | 'delete',
+    method: 'post' | 'delete' | 'patch',
     path: string,
     cookie = ownerCookie,
     body?: object,
@@ -455,6 +456,174 @@ describe('Agent lifecycle (e2e)', () => {
         type: 'createAgent',
         role: 'agentCaller',
       });
+    });
+  });
+
+  describe('Can read runtime logs', () => {
+    /** The owner's rows about this Agent that carry the switch's value. */
+    async function switchRows(agentId: string) {
+      const rows = await ctx.db
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.resourceId, agentId))
+        .orderBy(asc(auditLog.createdAt));
+      return rows
+        .map((row) => ({
+          userId: row.userId,
+          action: row.action,
+          metadata: JSON.parse(row.metadata ?? '{}') as Record<string, unknown>,
+        }))
+        .filter((row) => 'canReadRuntimeLogs' in row.metadata);
+    }
+
+    it('creates an Agent with the switch off unless it was asked for', async () => {
+      const plain = await createAgent();
+      expect((await listed(plain.id)).canReadRuntimeLogs).toBe(false);
+
+      const res = await write('post', '/agents', ownerCookie, {
+        name: 'crash-reader',
+        role: 'agentReader',
+        canReadRuntimeLogs: true,
+      });
+      expect(res.status).toBe(201);
+      const created = (res.body as { agent: ListedAgent }).agent;
+      expect(created.canReadRuntimeLogs).toBe(true);
+      expect((await listed(created.id)).canReadRuntimeLogs).toBe(true);
+      expect(await switchRows(created.id)).toEqual([
+        {
+          userId: ownerId,
+          action: 'create',
+          metadata: expect.objectContaining({
+            type: 'createAgent',
+            canReadRuntimeLogs: true,
+          }) as Record<string, unknown>,
+        },
+      ]);
+    });
+
+    it('refuses to create a Caller Agent holding the switch', async () => {
+      const res = await write('post', '/agents', ownerCookie, {
+        name: 'chat-frontend',
+        role: 'agentCaller',
+        canReadRuntimeLogs: true,
+      });
+      expect(res.status).toBe(400);
+      expect(
+        await ctx.db.select().from(user).where(eq(user.kind, 'agent')),
+      ).toHaveLength(0);
+    });
+
+    it('turns the switch on and off from the Agent, and audits each change with the new value', async () => {
+      const agent = await createAgent();
+
+      const on = await write('patch', `/agents/${agent.id}`, ownerCookie, {
+        canReadRuntimeLogs: true,
+      });
+      expect(on.status).toBe(200);
+      expect((on.body as ListedAgent).canReadRuntimeLogs).toBe(true);
+      expect((await listed(agent.id)).canReadRuntimeLogs).toBe(true);
+
+      const off = await write('patch', `/agents/${agent.id}`, ownerCookie, {
+        canReadRuntimeLogs: false,
+      });
+      expect(off.status).toBe(200);
+      expect((await listed(agent.id)).canReadRuntimeLogs).toBe(false);
+
+      expect(await operatorRows(agent.id)).toEqual([
+        { action: 'create', resourceType: 'user', type: 'createAgent' },
+        { action: 'update', resourceType: 'user', type: 'setAgentRuntimeLogs' },
+        { action: 'update', resourceType: 'user', type: 'setAgentRuntimeLogs' },
+      ]);
+      expect(
+        (await switchRows(agent.id)).map(
+          (row) => row.metadata.canReadRuntimeLogs,
+        ),
+      ).toEqual([false, true, false]);
+    });
+
+    it('is changed by an admin, as the role is', async () => {
+      const agent = await createAgent();
+      const admin = await signUpMember(httpServer, ownerCookie, {
+        email: 'admin@example.com',
+        role: 'admin',
+      });
+      const res = await write('patch', `/agents/${agent.id}`, admin.cookie, {
+        canReadRuntimeLogs: true,
+      });
+      expect(res.status).toBe(200);
+      expect((await listed(agent.id)).canReadRuntimeLogs).toBe(true);
+    });
+
+    it('is refused to a plain member, and reads a person as no Agent at all', async () => {
+      const agent = await createAgent();
+      const plain = await signUpMember(httpServer, ownerCookie);
+
+      const res = await write('patch', `/agents/${agent.id}`, plain.cookie, {
+        canReadRuntimeLogs: true,
+      });
+      expect(res.status).toBe(403);
+      const person = await write('patch', `/agents/${plain.id}`, ownerCookie, {
+        canReadRuntimeLogs: true,
+      });
+      expect(person.status).toBe(404);
+      expect((await listed(agent.id)).canReadRuntimeLogs).toBe(false);
+      expect(await switchRows(agent.id)).toHaveLength(1);
+    });
+
+    it('refuses to turn the switch on for a Caller Agent', async () => {
+      const created = await write('post', '/agents', ownerCookie, {
+        name: 'chat-frontend',
+        role: 'agentCaller',
+      });
+      const { id } = (created.body as { agent: { id: string } }).agent;
+
+      const res = await write('patch', `/agents/${id}`, ownerCookie, {
+        canReadRuntimeLogs: true,
+      });
+      expect(res.status).toBe(403);
+      expect(res.body).toMatchObject({
+        message: 'A Caller Agent cannot read runtime logs',
+      });
+      expect((await listed(id)).canReadRuntimeLogs).toBe(false);
+    });
+
+    it('turns the switch off when the Agent is made a Caller, and audits that with the role', async () => {
+      const agent = await createAgent();
+      await write('patch', `/agents/${agent.id}`, ownerCookie, {
+        canReadRuntimeLogs: true,
+      }).expect(200);
+      const { memberId } = await listed(agent.id);
+
+      const res = await write(
+        'patch',
+        `/organizations/members/${memberId}`,
+        ownerCookie,
+        { role: 'agentCaller' },
+      );
+      expect(res.status).toBe(200);
+      const after = await listed(agent.id);
+      expect([after.role, after.canReadRuntimeLogs]).toEqual([
+        'agentCaller',
+        false,
+      ]);
+      expect((await switchRows(agent.id)).at(-1)?.metadata).toEqual({
+        before: 'agentOperator',
+        after: 'agentCaller',
+        canReadRuntimeLogs: false,
+      });
+    });
+
+    it('keeps the switch when the Agent moves between Reader and Operator', async () => {
+      const agent = await createAgent();
+      await write('patch', `/agents/${agent.id}`, ownerCookie, {
+        canReadRuntimeLogs: true,
+      }).expect(200);
+      const { memberId } = await listed(agent.id);
+
+      await write('patch', `/organizations/members/${memberId}`, ownerCookie, {
+        role: 'agentReader',
+      }).expect(200);
+      expect((await listed(agent.id)).canReadRuntimeLogs).toBe(true);
     });
   });
 

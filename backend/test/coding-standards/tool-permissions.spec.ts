@@ -64,8 +64,13 @@ const backendRoot = join(__dirname, '..', '..');
  * changed. The Project config tools (spec US70) read a Project's config on its
  * entitlement and an Environment's plan and ask for one under `environment:
  * ['read']`, all of which both roles already held: 18 → 21, no role changed —
- * and no apply tool, which would need a Service write no agent role holds. The
- * count is frozen (ADR-0023).
+ * and no apply tool, which would need a Service write no agent role holds.
+ * `get_service_metrics` reads a granted Service's container metrics under its
+ * twin's `monitoring: ['read']`, which both roles gained for it (ADR-0096):
+ * 21 → 22. `read_runtime_log` reads a granted Application's or Compose's
+ * Runtime log under its twin's `service: ['read']`, which both roles held,
+ * and only for an Agent whose Can read runtime logs switch is on (ADR-0095):
+ * 22 → 23. The count is frozen (ADR-0023).
  */
 const FROZEN_TOOLS = [
   'list_projects',
@@ -76,6 +81,7 @@ const FROZEN_TOOLS = [
   'read_deployment_log',
   'list_domains',
   'get_service_health',
+  'get_service_metrics',
   'deploy_service',
   'start_service',
   'stop_service',
@@ -89,7 +95,17 @@ const FROZEN_TOOLS = [
   'get_project_config',
   'get_plan',
   'request_plan',
+  'read_runtime_log',
 ];
+
+/**
+ * The tools that need a per-Agent switch beyond their statement, and which
+ * (ADR-0095). A switch is a decision about what leaves Cloudgate, so a tool
+ * gaining or losing one is an argued edit.
+ */
+const FROZEN_SWITCHES: Readonly<Record<string, string>> = {
+  read_runtime_log: 'canReadRuntimeLogs',
+};
 
 /**
  * Tools taking a Service kind, one twin per kind. Written out so a
@@ -123,6 +139,17 @@ const FROZEN_ROUTES: Readonly<Record<string, readonly string[]>> = {
     'postgres',
     'redis',
   ],
+  get_service_metrics: [
+    'application',
+    // A bucket runs no container, so it has no container metrics.
+    'compose',
+    'libsql',
+    'mariadb',
+    'mongo',
+    'mysql',
+    'postgres',
+    'redis',
+  ],
   deploy_service: ['application', 'compose'],
   start_service: [
     'application',
@@ -144,6 +171,8 @@ const FROZEN_ROUTES: Readonly<Record<string, readonly string[]>> = {
     'postgres',
     'redis',
   ],
+  // One twin for both kinds; routed so a Compose's audit row is `compose`.
+  read_runtime_log: ['application', 'compose'],
 };
 
 /**
@@ -157,6 +186,14 @@ const FROZEN_HEALTH_READS = [
   'ServiceHealthService.forAgent',
   'ServiceHealthService.openIncidents',
 ];
+
+/**
+ * The only monitoring method a tool may call (ADR-0096): a granted Service's
+ * own container metrics. A Server's own metrics and the platform host's
+ * (`getServerMetrics`) are read by no tool, although `monitoring: ['read']`
+ * would buy them on REST — so adding a method here has to be argued.
+ */
+const FROZEN_MONITORING_READS = ['MonitoringService.summarizeServiceMetrics'];
 
 /** Tools that declare no statement and filter by grant columns instead. */
 const FROZEN_ROW_SCOPED = [
@@ -312,6 +349,17 @@ function enforcedBy(
 describe('MCP_TOOLS', () => {
   it('serves exactly the frozen tool list, which a new tool has to be argued onto', () => {
     expect(MCP_TOOLS.map((tool) => tool.name)).toEqual(FROZEN_TOOLS);
+  });
+
+  it('asks a per-Agent switch of exactly the frozen tools', () => {
+    expect(
+      Object.fromEntries(
+        MCP_TOOLS.filter((tool) => tool.agentSwitch).map((tool) => [
+          tool.name,
+          tool.agentSwitch,
+        ]),
+      ),
+    ).toEqual(FROZEN_SWITCHES);
   });
 
   it('routes each kind-taking tool by exactly the frozen kinds', () => {
@@ -526,6 +574,22 @@ describe('MCP_TOOLS', () => {
           ),
       ).map((tool) => tool.name),
     ).toEqual([]);
+  });
+
+  it("reads no Server's own metrics and no platform host's: only the frozen monitoring read, twinned to the container route", () => {
+    const inMonitoring = (name: string) =>
+      fileDeclaring(name).file.startsWith('src/monitoring/');
+    expect(
+      TARGETS.filter(({ target }) => inMonitoring(target.service.name))
+        .map(({ target }) => `${target.service.name}.${target.method}`)
+        .filter((at, index, all) => all.indexOf(at) === index),
+    ).toEqual(FROZEN_MONITORING_READS);
+    expect(
+      ROUTES.filter(({ route }) => inMonitoring(route.twin.controller.name))
+        .map(({ route }) => routeOf(route.twin.controller, handlerOf(route))!)
+        .map(({ method, path }) => `${method} ${path}`)
+        .filter((at, index, all) => all.indexOf(at) === index),
+    ).toEqual(['GET /monitoring/metrics/containers']);
   });
 
   it('holds the ungated count at zero and the row-scoped tools to the frozen list', () => {

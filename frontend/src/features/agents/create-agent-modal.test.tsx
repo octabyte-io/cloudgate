@@ -67,6 +67,8 @@ function open(onOpenChange = vi.fn(), connect?: () => ReactNode) {
 }
 
 const box = (name: string) => screen.getByRole("checkbox", { name });
+const runtimeLogs = () =>
+  screen.queryByRole("switch", { name: /^Can read runtime logs/ });
 const ticked = (name: string) =>
   box(name).getAttribute("aria-checked") === "true";
 
@@ -140,6 +142,7 @@ describe("CreateAgentModal", () => {
     expect(ticked("Checkout")).toBe(false);
     expect(ticked("Billing")).toBe(false);
     expect(screen.getByRole("combobox").textContent).toMatch(/90 days/);
+    expect(runtimeLogs()?.getAttribute("aria-checked")).toBe("false");
   });
 
   it("offers 30, 90 and 365 days for the first key, and never Never", async () => {
@@ -160,8 +163,37 @@ describe("CreateAgentModal", () => {
     open();
     expect(screen.getByText(LOG_MASK_NOTICE)).toBeDefined();
     expect(LOG_MASK_NOTICE).toBe(
-      "This Agent can read the build and run logs of what you grant. Cloudgate masks the secrets it stores, not what a build prints.",
+      "This Agent can always read the Deployment logs of what you grant, and their Runtime logs only with Can read runtime logs on. Cloudgate masks the secrets it stores, not what a build or a running Service prints.",
     );
+  });
+
+  it("sends Can read runtime logs on when it is switched on", async () => {
+    open();
+    fireEvent.click(runtimeLogs()!);
+    expect(runtimeLogs()!.getAttribute("aria-checked")).toBe("true");
+    named("crash-reader");
+    fireEvent.click(screen.getByRole("button", { name: "Create Agent" }));
+
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0][0]).toMatchObject({
+      role: "agentReader",
+      canReadRuntimeLogs: true,
+    });
+  });
+
+  it("does not offer Can read runtime logs to a Caller, and never sends it on for one", async () => {
+    open();
+    fireEvent.click(runtimeLogs()!);
+    fireEvent.click(screen.getByRole("button", { name: /^Caller/ }));
+    expect(runtimeLogs()).toBeNull();
+
+    named("chat-frontend");
+    fireEvent.click(screen.getByRole("button", { name: "Create Agent" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0][0]).toMatchObject({
+      role: "agentCaller",
+      canReadRuntimeLogs: false,
+    });
   });
 
   it("saves an Agent with nothing granted, and sends every column", async () => {
@@ -179,6 +211,7 @@ describe("CreateAgentModal", () => {
         accessedServices: [],
       },
       keyExpiresInDays: 90,
+      canReadRuntimeLogs: false,
     });
   });
 

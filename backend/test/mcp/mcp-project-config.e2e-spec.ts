@@ -806,13 +806,17 @@ services:
         ).result.tools;
         const names = tools.map((tool) => tool.name);
 
-        expect(names.slice(-3)).toEqual([
+        // Read by position from get_project_config, not from the end:
+        // read_runtime_log is listed after them (ADR-0095).
+        const first = names.indexOf('get_project_config');
+        const configTools = tools.slice(first, first + 3);
+        expect(configTools.map((tool) => tool.name)).toEqual([
           'get_project_config',
           'get_plan',
           'request_plan',
         ]);
         expect(
-          tools.slice(-3).map((tool) => tool.annotations.readOnlyHint),
+          configTools.map((tool) => tool.annotations.readOnlyHint),
         ).toEqual([true, true, false]);
         expect(names.filter((name) => /apply|dismiss/.test(name))).toEqual([]);
       }

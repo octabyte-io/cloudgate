@@ -656,11 +656,14 @@ describe('MCP endpoint (e2e)', () => {
         'read_deployment_log',
         'list_domains',
         'get_service_health',
+        'get_service_metrics',
         'list_previews',
         'get_preview',
         'get_project_config',
         'get_plan',
         'request_plan',
+        // Listed on its statement; the switch is asked at the call.
+        'read_runtime_log',
       ]);
       // Every tool a Reader is listed is read-only but request_plan,
       // which stores a plan under a read's statement.
