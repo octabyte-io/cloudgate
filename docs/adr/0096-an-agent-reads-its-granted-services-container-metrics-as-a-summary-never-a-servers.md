@@ -1,0 +1,9 @@
+# An Agent reads its granted Services' container metrics as a summary, never a Server's
+
+An Agent debugging a crash needs to see a Service running out of memory or pinned on CPU. Container metrics are numbers with no customer data in them, and ADR-0067 already reads a managed container's stored series with `service: ['read']` on its Service. The route they come from, `GET /monitoring/metrics/containers`, is also gated by `monitoring: ['read']`, which no agent role holds, and ADR-0023 requires a tool to declare exactly its twin's statement.
+
+**Decision.** `agentReader` and `agentOperator` gain `monitoring: ['read']`, and one tool, `get_service_metrics`, reads a granted Service's own containers: a summary over a window (an hour unless asked, 24 hours at most) of CPU and memory now, on average and at peak, memory against its limit, network and disk totals, and at most 60 points for a trend. It needs no switch. No tool reads a Server's own metrics, the platform host's, or a container that belongs to no Service, although `monitoring: ['read']` would buy the Server's metrics on REST: an Agent key is refused on REST, so this is a bound set by the tool surface, in the shape of ADR-0023's third consequence, and it is stated here so that nobody discovers it.
+
+**Considered options.** Behind the same switch as the Runtime log (ADR-0095): rejected because metrics carry nothing ADR-0024 guards against, so a switch would add friction for no safety. Adding the Server's CPU and memory: rejected because a Server is shared by Services the Agent was not granted, and its figures describe them. Returning raw samples as the console's charts get them: rejected because thousands of rows fill a model's context and a summary is what it reasons over.
+
+**Consequences.** A Service in a Cloud account, or on a Server where monitoring is not set up, has no container metrics, and the tool says which rather than answering zeros. `agentCaller` gains nothing.
