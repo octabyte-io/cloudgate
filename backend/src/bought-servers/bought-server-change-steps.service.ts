@@ -14,6 +14,7 @@ import { renderBoughtServerChangeRefundedEmail } from '../mail/templates';
 import type { RefundedTo } from '../mail/templates';
 import { renderServerChangedEmail } from '../mail/templates/server-changed';
 import type { ServerChange } from '../mail/templates/server-changed';
+import { boughtServerPageUrl } from './bought-server-page';
 import { boughtServer, boughtServerLine } from './bought-server.schema';
 import type {
   BoughtServer,
@@ -347,7 +348,7 @@ export class BoughtServerChangeSteps {
         'usd',
       );
       const change = await this.changeOf(target);
-      const serverUrl = `${this.billingConfig.siteUrl}/servers/${row.id}/settings`;
+      const serverUrl = boughtServerPageUrl(this.billingConfig.siteUrl, row.id);
       await this.notifications.sendToOwnersAndAdmins(
         row.organizationId,
         'Bought Server changed',
@@ -443,7 +444,7 @@ export class BoughtServerChangeSteps {
       row.organizationId,
       ['owner'],
     );
-    const serverUrl = `${this.billingConfig.siteUrl}/servers/${row.id}/settings`;
+    const serverUrl = boughtServerPageUrl(this.billingConfig.siteUrl, row.id);
     for (const recipient of recipients) {
       try {
         await this.mail.send(

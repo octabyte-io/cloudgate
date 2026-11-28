@@ -785,7 +785,7 @@ describe('Backups on a Bought Server (e2e)', () => {
         expect(sent.email.subject).toBe('Backups are on for your Server web-1');
         // The Server's $25 and its backups' $5.
         expect(sent.email.html).toContain('$30.00 a month');
-        expect(sent.email.html).toContain(`/servers/${id}`);
+        expect(sent.email.html).toContain(`/servers/${id}/bought-server`);
         expect(sent.email.html).not.toMatch(/hetzner/i);
       }
     });
