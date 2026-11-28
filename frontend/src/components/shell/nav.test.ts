@@ -42,66 +42,70 @@ describe("the Organization rail", () => {
   });
 });
 
-/**
- * A row with a condition is left out of the rail and ⌘K's `go:` pages while
- * the condition does not hold. Bought Servers holds when buying a Server is
- * offered here: the Hosted instance with the provider set up, even before
- * anything is bought.
- */
-describe("the Organization rail's Bought Servers row", () => {
-  const organization: ScopeRoute = {
-    kind: "organization",
-    id: null,
-    variant: null,
-    tab: "/",
-  };
-  // The rail as it stood before the row, written out rather than read off
-  // the table, so a row the condition moved or dropped shows.
-  const everyOtherRow = [
-    "Organization home",
-    "Recents",
-    "Starred",
-    "Servers",
-    "Projects",
-    "Templates",
-    "Deployments",
-    "Monitoring",
-    "Requests",
-    "Settings",
-    "Help & support",
-  ];
-
-  it("is absent from the rail and the pages when buying is not offered", () => {
-    const facts = { boughtServerOffered: false };
-    expect(labels(scopeNav(organization, undefined, facts))).toEqual(
-      everyOtherRow,
-    );
-    expect(labels(organizationNav(facts))).toEqual(everyOtherRow);
-  });
-
-  it("sits directly under Servers when buying is offered", () => {
-    const facts = { boughtServerOffered: true };
-    const expected = [
-      ...everyOtherRow.slice(0, 4),
-      "Bought Servers",
-      ...everyOtherRow.slice(4),
+describe("organizationNav", () => {
+  /**
+   * A row with a condition is left out of the rail and ⌘K's `go:` pages while
+   * the condition does not hold. Bought Servers holds when buying a Server is
+   * offered here: the Hosted instance with the provider set up, even before
+   * anything is bought.
+   */
+  describe("the Organization rail's Bought Servers row", () => {
+    const organization: ScopeRoute = {
+      kind: "organization",
+      id: null,
+      variant: null,
+      tab: "/",
+    };
+    // The rail as it stood before the row, written out rather than read off
+    // the table, so a row the condition moved or dropped shows.
+    const everyOtherRow = [
+      "Organization home",
+      "Recents",
+      "Starred",
+      "Servers",
+      "Projects",
+      "Templates",
+      "Deployments",
+      "Monitoring",
+      "Requests",
+      "Settings",
+      "Help & support",
     ];
-    expect(labels(scopeNav(organization, undefined, facts))).toEqual(expected);
-    expect(labels(organizationNav(facts))).toEqual(expected);
-  });
 
-  it("opens the Bought Servers page", () => {
-    const row = organizationNav({ boughtServerOffered: true }).find(
-      (entry) => entry.kind === "item" && entry.label === "Bought Servers",
-    );
-    expect(row).toMatchObject({ tab: "/bought-servers" });
-  });
+    it("is absent from the rail and the pages when buying is not offered", () => {
+      const facts = { boughtServerOffered: false };
+      expect(labels(scopeNav(organization, undefined, facts))).toEqual(
+        everyOtherRow,
+      );
+      expect(labels(organizationNav(facts))).toEqual(everyOtherRow);
+    });
 
-  it("leaves every other row as it was", () => {
-    const without = organizationNav({ boughtServerOffered: false });
-    const withRow = organizationNav({ boughtServerOffered: true }).filter(
-      (entry) => !(entry.kind === "item" && entry.label === "Bought Servers"),
-    );
-    expect(withRow).toEqual(without);
+    it("sits directly under Servers when buying is offered", () => {
+      const facts = { boughtServerOffered: true };
+      const expected = [
+        ...everyOtherRow.slice(0, 4),
+        "Bought Servers",
+        ...everyOtherRow.slice(4),
+      ];
+      expect(labels(scopeNav(organization, undefined, facts))).toEqual(
+        expected,
+      );
+      expect(labels(organizationNav(facts))).toEqual(expected);
+    });
+
+    it("opens the Bought Servers page", () => {
+      const row = organizationNav({ boughtServerOffered: true }).find(
+        (entry) => entry.kind === "item" && entry.label === "Bought Servers",
+      );
+      expect(row).toMatchObject({ tab: "/bought-servers" });
+    });
+
+    it("leaves every other row as it was", () => {
+      const without = organizationNav({ boughtServerOffered: false });
+      const withRow = organizationNav({ boughtServerOffered: true }).filter(
+        (entry) => !(entry.kind === "item" && entry.label === "Bought Servers"),
+      );
+      expect(withRow).toEqual(without);
+    });
   });
 });
