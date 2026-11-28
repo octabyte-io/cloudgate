@@ -128,7 +128,17 @@ describe('Agent roles (e2e)', () => {
       );
     });
 
-    it('refuses Operator a backup, and neither role any statement beyond its four', async () => {
+    it('lets Reader and Operator read container metrics, for get_service_metrics (ADR-0096)', async () => {
+      const reader = await createAgent('agentReader');
+      const operator = await createAgent('agentOperator');
+
+      expect(await decide(reader.id, { monitoring: ['read'] })).toBe('allowed');
+      expect(await decide(operator.id, { monitoring: ['read'] })).toBe(
+        'allowed',
+      );
+    });
+
+    it('refuses Operator a backup, and neither role any statement beyond its five', async () => {
       const reader = await createAgent('agentReader');
       const operator = await createAgent('agentOperator');
 
@@ -137,7 +147,6 @@ describe('Agent roles (e2e)', () => {
           { backup: ['read' as const] },
           { service: ['update' as const] },
           { project: ['update' as const] },
-          { monitoring: ['read' as const] },
           { tag: ['read' as const] },
           { ac: ['read' as const] },
           { docker: ['read' as const] },
@@ -161,12 +170,14 @@ describe('Agent roles (e2e)', () => {
         environment: ['read'],
         deployment: ['read'],
         domain: ['read'],
+        monitoring: ['read'],
       });
       expect(agentOperatorRole.statements).toEqual({
         service: ['read'],
         environment: ['read'],
         deployment: ['read', 'create', 'cancel'],
         domain: ['read'],
+        monitoring: ['read'],
       });
     });
   });
@@ -236,6 +247,7 @@ describe('Agent roles (e2e)', () => {
         { deployment: ['read' as const] },
         { deployment: ['create' as const] },
         { domain: ['read' as const] },
+        { monitoring: ['read' as const] },
         { docker: ['read' as const] },
       ]) {
         expect([request, await decide(caller.id, request)]).toEqual([
